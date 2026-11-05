@@ -1,0 +1,17 @@
+# Private runtime and local custody
+.env
+.env.*
+!.env.example
+.delivery/
+.local/
+runtime/
+private/
+evidence/
+credentials/
+secrets/
+*.pem
+*.key
+*.p12
+*.sqlite
+*.sqlite3
+__pycache__/
