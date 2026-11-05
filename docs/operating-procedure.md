@@ -2,6 +2,14 @@
 
 Local mode is normal Foo session-based Codex/BAU when tokens are available. MCP mode is the current Morgan/native-agent fallback through Foo MCP. Select the actual mode and origin for the unit; shared Linear identity and evidence continuity do not make their execution receipts interchangeable.
 
+## Delivery-owner loop
+
+Five delivery owners (UIF, OffMenu, CIX, ANQR and CQ) follow the same loop: query Linear for the next eligible item; claim exclusive scope; deliver and verify; obtain independent review; record necessary durable results; close only the finite accepted issue; notify affected peers and Morgan; then query again. Do not close a parent capability for a completed child or infer eligibility from status. Preserve current in-flight ownership while reconciling the next unit.
+
+The planner supplies and hands over plans. It has no separate deliverable queue or Linear tracking loop; delivery owners maintain Linear from the plans. UIF-108 remains the repository reconciliation/custody coordination record, not a planner work queue.
+
+Current product delivery uses the UIF team and UIF issue keys with each product project. Selected current CIX issues are being transferred with the same UUID, preserved history and explicit old-key mapping/consumer reconciliation. Historical CIX keys remain references. This is not a completed migration or a blanket rewrite of 389 records.
+
 ## 1. Resolve work and exclusive ownership
 
 Find the existing canonical Linear leaf and applicable shared UIF obligation. Reconcile requirement, source, current stage, accepted work and original pending/unknown operations. Inferred repository work uses the existing warranted-new-work/dedup mechanism; it is not silently implemented or duplicated.

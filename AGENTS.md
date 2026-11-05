@@ -2,7 +2,7 @@
 
 ## Authority and ownership
 
-Read README.md and docs/operating-procedure.md first. Resolve the canonical Linear obligation, project, source baseline, current writer and affected consumers before edits. UIF-161 covers shared material contract alignment; UIF-108 is the existing planning/provenance lane. These references do not create execution admission or permission to change another owner's files.
+Read README.md and docs/operating-procedure.md first. Resolve the canonical Linear obligation, project, source baseline, current writer and affected consumers before edits. UIF-161 covers shared material contract alignment; UIF-108 is the existing repository reconciliation and custody coordination record, not a planner work queue. These references do not create execution admission or permission to change another owner's files.
 
 Repository commands run as the verified normal user (currently Foo user, UID1000). Root transport is infrastructure access, not repository authorship. Never modify global Git identity. Reuse a verified canonical identity only in repository-local configuration.
 
@@ -23,3 +23,11 @@ Linear receives necessary issue-specific durable decisions, source/evidence refe
 Respect each project's holds and source pins. Current foundation work does not authorize service activation, production effects, CIX START/workloads/benchmarks, paid providers or new credentials. BAU is deferred; do not turn it into a gate for documentation and workspace readiness.
 
 Before publication, obtain independent review of the exact candidate and verify links, source identities, scope and absence of private content. Push/merge/adoption need their own scoped authority; a local commit does not imply any of them.
+
+## Delivery-owner lifecycle
+
+Each of the five delivery owners (UIF, OffMenu, CIX, ANQR and CQ) queries Linear for eligible work, claims an exclusive bounded scope, delivers and verifies it, obtains independent review, records necessary durable results, and closes only the finite issue whose acceptance criteria are satisfied. Notify affected peers and Morgan, then query the next eligible item. A parent capability remains open when only its finite child is accepted. Eligibility requires actual authority, inputs and ownership; issue status alone is insufficient.
+
+The planner is the explicit exception: it supplies and hands over plans, without its own delivery queue or Linear tracking lifecycle. Delivery owners maintain their Linear records from those plans.
+
+Current delivery for all four products uses the UIF team and UIF issue keys, with the appropriate product project. For CIX, migration of selected current work is in progress: preserve issue UUIDs, old-key mappings, history and consumed references. Historical CIX references remain evidence; do not bulk-rewrite the 389-issue inventory or treat the migration as complete.

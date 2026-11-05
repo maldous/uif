@@ -20,7 +20,7 @@ The separate root handover is pinned by SHA256 `18f1b87c0da6aa8a7c1a35c4605815a6
 - [UIF-177: CQ controlled handover](https://linear.app/maldous/issue/UIF-177)
 - [UIF-178: CQ read-only readiness](https://linear.app/maldous/issue/UIF-178)
 - [UIF-179: bounded original-source assessment](https://linear.app/maldous/issue/UIF-179)
-- [UIF-108: existing planning/provenance lane](https://linear.app/maldous/issue/UIF-108)
+- [UIF-108: repository reconciliation/custody coordination record](https://linear.app/maldous/issue/UIF-108)
 
 Project source snapshots marked owner-reported require current owner reconciliation before execution. No temporal job counts or private runtime payloads are maintained here.
 
