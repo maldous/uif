@@ -47,13 +47,13 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 |---|---|---|---|---|
 | SRC-059 | `.claude` | UNKNOWN | [UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings) | Preserve the current path. UIF-243 tracks scope, custodian, consumers and physical disposition; repository identity remains unresolved. |
 | SRC-060 | `.cleanup-custody` | UNKNOWN | UIF-217 (identified OffMenu groups only) | Preserve mixed-project custody. UIF-217 applies only to the identified OffMenu groups; whole-root classification remains unresolved. |
-| SRC-061 | `.codex` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-062 | `.freebuff` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-063 | `.git` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-064 | `.impeccable` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-065 | `.openclaw` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-066 | `.remember` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-067 | `.usf` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
+| SRC-061 | `.codex` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
+| SRC-062 | `.freebuff` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
+| SRC-063 | `.git` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
+| SRC-064 | `.impeccable` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
+| SRC-065 | `.openclaw` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
+| SRC-066 | `.remember` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
+| SRC-067 | `.usf` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-068 | `archive` | UNKNOWN | UIF-108 (documented custody association) | Preserve whole-root custody. UIF-108 documents completed personal/USF moves and restore maps; whole-root disposition and consumers remain unresolved. |
 | SRC-069 | `offmenu-assessments` | https://github.com/maldous/offmenu; individual nested composition/schema repositories retain separate source bindings | UIF-107, UIF-108, UIF-161, UIF-217 | Retain current placement pending nested-store, consumer and access qualification. Preserve R035/R042 recovery archives; proposed feature move remains unexecuted. |
 | SRC-070 | `offmenu-data` | https://github.com/maldous/offmenu as owning software; raw datasets remain external data, not committed repository contents | UIF-107, UIF-108 | Preserve protected external data in place. Manual-runner deployment/config bindings and secondary consumer semantics remain unresolved; no cutover or raw-data upload is inferred. |
@@ -152,6 +152,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-062 · `.freebuff`
@@ -165,6 +166,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-063 · `.git`
@@ -178,6 +180,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-064 · `.impeccable`
@@ -191,6 +194,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-065 · `.openclaw`
@@ -204,6 +208,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-066 · `.remember`
@@ -217,6 +222,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-067 · `.usf`
@@ -230,6 +236,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
 
 
 #### SRC-068 · `archive`
