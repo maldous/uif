@@ -5,9 +5,11 @@ UIF: shared physical and virtual infrastructure, cross-project Linear integratio
 
 This ledger indexes recorded reconciliation candidates under `/home/user/src`, including dated directories, `offmenu-worktrees`, and unresolved top-level or relocated items. It lives in this README.
 
-**Inventory basis: user-directed working baseline.** The user directed that these 70 named records be used as the current working scope. Reconciliation proceeds from this baseline without requiring a new global census first. The reported 57 immediate entries from `ls -1d 20*/* offmenu-worktrees/* | wc -l` measure a narrower scope and do not replace the named index. This update does not claim an independently verified current filesystem inventory.
+**Inventory basis: outstanding work only.** The original 70 named records were the user-directed working baseline. Correctly completed physical entries are removed from this README even when separate product or Linear issue processing continues; their earlier records remain in Git history. Unresolved endpoints, aliases and custody remain listed. Reconciliation does not require a new global census first.
 
-GitHub and Linear evidence has been checked for the named records. Recorded local branches, HEADs, paths and destinations remain distinct from remotely verified refs, commit ancestry and issue outcomes. Current ownership, dirty/untracked/ignored contents, consumers and physical closure have not been established by those remote reads. Completed relocations remain listed only where a specific reconciliation requirement is still open. Historical inventories and derived ancestor directories are not additional active candidates.
+A permitted names-only observation at **2026-11-08T20:20:02.930717+00:00** enumerated 50 visible immediate entries: three children of dated `20*` directories and 47 children of `offmenu-worktrees`. All three dated names were already listed; sixteen OffMenu names were missing and are now individually recorded as SRC-071–086. Seven older source names were absent because their physical moves had completed, not because additional entries were missing. Further moves were underway after this snapshot. This bounded listing does not inspect hidden children or nested contents and does not establish repository identity or cleanup eligibility. [Terminal names-only observation](https://windmill.aldous.info/run/01a1bcd1-7d6a-fe97-df68-ae5789345624?workspace=offmenu).
+
+GitHub and Linear evidence has been checked for the named records. Recorded local branches, HEADs, paths and destinations remain distinct from remotely verified refs, commit ancestry and issue outcomes. Current ownership, dirty/untracked/ignored contents, consumers and physical closure have not been established by those remote reads. Correctly completed physical entries are omitted from this outstanding view; later source or issue work remains in its existing project records. Historical inventories and derived ancestor directories are not additional active candidates.
 
 ### How to use the ledger
 
@@ -17,7 +19,7 @@ GitHub and Linear evidence has been checked for the named records. Recorded loca
 - Keep completed or absent items out of the current outstanding index once their disposition is verified. Do not turn historical evidence or layout containers into new tasks.
 - Updating this document does not perform directory cleanup, relocation, repository integration, Linear changes or runtime changes.
 
-### Candidate index
+### Outstanding candidate index
 
 All paths in the tables are relative to `/home/user/src/`. IDs are ledger references, not Linear issue identifiers.
 
@@ -33,18 +35,6 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-004 | `feature/CIX-507-colour-consolidation` | cix-project/cix | CIX-507 | CIX-507 is In Progress. Preserve recorded local consolidation branch; remote publication of that exact branch is not verified. |
-| SRC-005 | `feature/CIX-507-colour-legacy-source` | maldous/colour-index-compression | CIX-507 | Colour repository is unarchived; source consolidation and directory naming remain incomplete under CIX-507. |
-| SRC-006 | `feature/CIX-508-documents-reconciliation` | Mixed CIX source/evidence custody; nested repositories separate | CIX-508 | Mixed CIX source/evidence custody is documented under CIX-508; preserve the container and resolve its final naming without treating it as one repository. |
-| SRC-007 | `feature/CircularQuay-sonar-41a8da186c71-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-008 | `feature/CircularQuay-sonar-42a3806d68a3-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-009 | `feature/CircularQuay-sonar-4886fc866070-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-010 | `feature/CircularQuay-sonar-4a485258c3a7-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-011 | `feature/CircularQuay-sonar-54fb84a2d3cc-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-012 | `feature/CircularQuay-sonar-8ed18f35be81-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-013 | `feature/CircularQuay-sonar-97b757af8a91-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-014 | `feature/CircularQuay-sonar-e55327d513b0-20261104` | maldous/CircularQuay | UIF-174, UIF-212, UIF-213 | Source is reachable from the CQ feature branch. Retain distinct task/coverage evidence under UIF-174/UIF-212; naming remains under UIF-213. |
-| SRC-015 | `feature/cix` | UNKNOWN | CIX-508 | CIX-508 is In Progress; exact container repository association remains UNKNOWN. Proposed review-custody name is unexecuted; preserve intact. |
 | SRC-016 | `feature/offmenu-all-held-reconciliation-20261028` | maldous/offmenu | UIF-107, UIF-108 | Recorded relocation is complete; whole-container issue association, compliant name and nested source/data/consumer bindings remain unresolved. |
 | SRC-017 | `feature/offmenu-detached-dc39d0d7-20261108` | maldous/offmenu | UNKNOWN | Recorded detached relocation is complete and its historical commit is in remote develop. Exact checkout review issue and compliant name remain unresolved. |
 
@@ -52,13 +42,6 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-018 | `offmenu-worktrees/delivery-evidence-inspection` | maldous/offmenu | UIF-106 | Source is integrated through PR151 and reachable from develop. UIF-106 is Canceled; remaining directory naming, unique evidence and custody stay separate. |
-| SRC-019 | `offmenu-worktrees/pantry-duration-expiry` | maldous/offmenu | UIF-114 | Source is integrated through PR149 and reachable from develop. UIF-114 is Done; remaining directory naming, unique evidence and custody stay separate. |
-| SRC-020 | `offmenu-worktrees/pr136-off-optional-projection-20261106` | maldous/offmenu | UIF-108, UIF-127, UIF-130, UIF-155, UIF-184, UIF-198 | Recorded HEAD is reachable from develop. UIF-198 is Done for bounded qualification; other recorded issues and directory/custody work remain separate. |
-| SRC-021 | `offmenu-worktrees/scanner-known-source-facts` | maldous/offmenu | UIF-93 | Source is integrated through PR149 and reachable from develop. UIF-93 is Backlog; remaining directory naming, unique evidence and custody stay separate. |
-| SRC-022 | `offmenu-worktrees/shared-meal-overflow` | maldous/offmenu | UIF-118 | Source is integrated through PR152 and reachable from develop. UIF-118 is Done; remaining directory naming, unique evidence and custody stay separate. |
-| SRC-023 | `offmenu-worktrees/shopping-positive-deficit` | maldous/offmenu | UIF-115 | Source is integrated through PR150 and reachable from develop. UIF-115 is Done; remaining directory naming, unique evidence and custody stay separate. |
-| SRC-024 | `offmenu-worktrees/source-index-deadline-budget` | maldous/offmenu | UIF-94 | Source is integrated through PR149 and reachable from develop. UIF-94 is Done; remaining directory naming, unique evidence and custody stay separate. |
 | SRC-025 | `offmenu-worktrees/stale-validation-wrapper-recovery` | maldous/offmenu | UIF-117 | Retain directory pending custody/consumer qualification; recorded committed source is already an ancestor of current develop, so do not remerge or replay the completed wrapper repair. |
 | SRC-026 | `offmenu-worktrees/stokowski-rebuild-terminal-gate` | maldous/offmenu | UIF-217 | Retain original worktree, branch and store; R096 remains a custody assessment, not a new repair instruction. |
 | SRC-027 | `offmenu-worktrees/uif-125-native-langgraph` | maldous/offmenu | UIF-125 | Preserve completed component acceptance; retain local source/evidence until exact recovery and custody are qualified. Do not reopen UIF-125 merely because the worktree remains. |
@@ -111,6 +94,29 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 | SRC-069 | `offmenu-assessments` | https://github.com/maldous/offmenu; individual nested composition/schema repositories retain separate source bindings | UIF-107, UIF-108, UIF-161, UIF-217 | Retain current placement pending nested-store, consumer and access qualification. Preserve R035/R042 recovery archives; proposed feature move remains unexecuted. |
 | SRC-070 | `offmenu-data` | https://github.com/maldous/offmenu as owning software; raw datasets remain external data, not committed repository contents | UIF-107, UIF-108 | Preserve protected external data in place. Manual-runner deployment/config bindings and secondary consumer semantics remain unresolved; no cutover or raw-data upload is inferred. |
 
+#### Additional OffMenu names observed at 20:20 UTC
+
+These are individually observed immediate names, not inferred repositories or reopened historical work. Only their names and presence were checked. Repository, Linear association, role and physical disposition remain UNKNOWN until item-specific evidence resolves them. Do not count contained children again without a distinct unresolved requirement.
+
+| ID | Observed path | Repository | Linear | Remaining reconciliation |
+|---|---|---|---|---|
+| SRC-071 | `offmenu-worktrees/consumer-cloud-b850-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-072 | `offmenu-worktrees/offmenu-global-collection` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-073 | `offmenu-worktrees/offmenu-manual-actions` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-074 | `offmenu-worktrees/offmenu-runner-setup-5722ca92` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-075 | `offmenu-worktrees/offmenu_worker_instructions` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-076 | `offmenu-worktrees/retained` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-077 | `offmenu-worktrees/retained-container--offmenu-workers` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-078 | `offmenu-worktrees/retired-compatibility-aliases-20261023` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-079 | `offmenu-worktrees/sdk-cloud-3e172-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-080 | `offmenu-worktrees/sdk-cloud-aligned-cee4-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-081 | `offmenu-worktrees/uif182-voice-inventory-20261105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-082 | `offmenu-worktrees/worker-37-staging-bind-20261018` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-083 | `offmenu-worktrees/worker-57-global-delivery-20261018` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-084 | `offmenu-worktrees/worker-57-nl-contract-20261018` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-085 | `offmenu-worktrees/worker26-runtime-state-roots-20261023` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-086 | `offmenu-worktrees/worker59-wfp-normalizer` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+
 ### Recorded branch and disposition evidence
 
 These values describe retained evidence, not a fresh filesystem or repository check. A recorded destination may be a proposal, an existing alias target, or a completed move with separate work remaining. It is not a cleanup instruction. Receipt links, where available, identify the supporting observation.
@@ -157,171 +163,6 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 - The supplied path remains in the working baseline. No current repository or HEAD observation was obtained for this held boundary.
 
 
-#### SRC-004 · `feature/CIX-507-colour-consolidation`
-
-- Recorded branch: `chore/cix507-colour-consolidation`; HEAD: `e7ea2923e9f81d2812ea3cb893edd925e51548ed`.
-- Recorded destination: `/home/user/src/feature/cix-CIX-507-colour-consolidation`.
-- Destination status: Unexecuted naming proposal only.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `reconciliation-supplement.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- Recorded local branch: `chore/cix507-colour-consolidation`. Hosted `cix-project/cix` develop is `e7ea2923e9f81d2812ea3cb893edd925e51548ed`; that different ref does not prove this local branch was published. [CIX-507](https://linear.app/maldous/issue/CIX-507) remains In Progress.
-
-
-#### SRC-005 · `feature/CIX-507-colour-legacy-source`
-
-- Recorded branch: `main`; HEAD: `7904a130fdea8e121f44381cfa0bad383af749d3`.
-- Recorded destination: `/home/user/src/feature/cix-CIX-507-colour-legacy-source`.
-- Destination status: Unexecuted naming proposal only.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `reconciliation-supplement.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- GitHub metadata reports `maldous/colour-index-compression` unarchived. This does not establish completed source consolidation or local cleanup.
-
-
-#### SRC-006 · `feature/CIX-508-documents-reconciliation`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/feature/cix-CIX-508-documents-reconciliation`.
-- Destination status: Unexecuted naming proposal only.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `reconciliation-supplement.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [CIX-508](https://linear.app/maldous/issue/CIX-508) documents this mixed custody container. The issue association is a reconciliation obligation, not ownership/acceptance of every nested source.
-
-
-#### SRC-007 · `feature/CircularQuay-sonar-41a8da186c71-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `41a8da186c71d94b420303328fbe06fcee708602`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-41a8da186c71-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `41a8da186c71d94b420303328fbe06fcee708602`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-008 · `feature/CircularQuay-sonar-42a3806d68a3-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `42a3806d68a39583584d22e51469278cfa698cac`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-42a3806d68a3-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `42a3806d68a39583584d22e51469278cfa698cac`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-009 · `feature/CircularQuay-sonar-4886fc866070-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `4886fc8660706909376f3543ad7cab186d9256b9`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-4886fc866070-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `4886fc8660706909376f3543ad7cab186d9256b9`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-- R131 also retains an additional diagnostic parser helper; preserve that distinct evidence.
-
-
-#### SRC-010 · `feature/CircularQuay-sonar-4a485258c3a7-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `4a485258c3a72a7227502f359b4a049996b4ba61`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-4a485258c3a7-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `4a485258c3a72a7227502f359b4a049996b4ba61`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-011 · `feature/CircularQuay-sonar-54fb84a2d3cc-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `54fb84a2d3ccd65d0cc7c3d7a780c7c5daa40507`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-54fb84a2d3cc-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `54fb84a2d3ccd65d0cc7c3d7a780c7c5daa40507`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-012 · `feature/CircularQuay-sonar-8ed18f35be81-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `8ed18f35be811f722068a3cf62d3093038fa8d93`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-8ed18f35be81-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `8ed18f35be811f722068a3cf62d3093038fa8d93`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-013 · `feature/CircularQuay-sonar-97b757af8a91-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `97b757af8a91c7dce5227f8b6230fa3d98545d1a`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-97b757af8a91-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `97b757af8a91c7dce5227f8b6230fa3d98545d1a`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-014 · `feature/CircularQuay-sonar-e55327d513b0-20261104`
-
-- Recorded branch: `UNKNOWN`; HEAD: `e55327d513b0753ce08ae82adffbc4cb3cd5d2d4`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-sonar-e55327d513b0-20261104`.
-- Destination status: Unknown; no relocation selected by this ledger.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records historical HEAD `e55327d513b0753ce08ae82adffbc4cb3cd5d2d4`. GitHub verifies it is an ancestor of CircularQuay `feature/initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. This is remote source reachability, not a fresh local HEAD observation.
-- [UIF-212](https://linear.app/maldous/issue/UIF-212) retains distinct Sonar task/coverage proof inputs; source ancestry does not prove a source-bound analysis or quality-gate pass.
-
-
-#### SRC-015 · `feature/cix`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/feature/cix-CIX-508-review-custody`.
-- Destination status: Unexecuted naming proposal only.
-- Observation: UNKNOWN. Current state: **not reverified**.
-- Source record: `reconciliation-supplement.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [CIX-508](https://linear.app/maldous/issue/CIX-508) owns source/evidence reconciliation. Do not substitute the separately relocated Documents container for this exact root.
-
-
 #### SRC-016 · `feature/offmenu-all-held-reconciliation-20261028`
 
 - Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
@@ -348,103 +189,6 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - GitHub verifies recorded `dc39d0d7f29f0b0650be374f0e7e2111ec45c4b7` as an ancestor of OffMenu develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`. Preserve Linear UNKNOWN and the separate directory/custody obligation.
-
-
-#### SRC-018 · `offmenu-worktrees/delivery-evidence-inspection`
-
-- Recorded branch: `refs/heads/feature/delivery-evidence-inspection`; HEAD: `b356a9c82a89d2b8849a83dbbfe6af147f922c7e`.
-- Recorded destination: `/home/user/src/feature/offmenu-UIF-106-delivery-evidence-inspection`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [PR151](https://github.com/maldous/offmenu/pull/151) is merged; the recorded commit is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`.
-- [UIF-106](https://linear.app/maldous/issue/UIF-106) is Canceled. Temporary autonomy approach was superseded, not accepted as Done. Do not replay the delivered source or reopen a completed source issue because directory custody remains.
-
-
-#### SRC-019 · `offmenu-worktrees/pantry-duration-expiry`
-
-- Recorded branch: `refs/heads/bugfix/pantry-duration-expiry`; HEAD: `a0d06b64b92dbab0278c018bc2eee8632ec29fdf`.
-- Recorded destination: `/home/user/src/bugfix/offmenu-UIF-114-pantry-duration-expiry`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [PR149](https://github.com/maldous/offmenu/pull/149) is merged; the recorded commit is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`.
-- [UIF-114](https://linear.app/maldous/issue/UIF-114) is Done. Finite accepted duration/expiry outcome. Do not replay the delivered source or reopen a completed source issue because directory custody remains.
-
-
-#### SRC-020 · `offmenu-worktrees/pr136-off-optional-projection-20261106`
-
-- Recorded branch: `refs/heads/bugfix/off-optional-projection-reconciliation-20261106`; HEAD: `3540b2d4d5f4e96a518a63c832ccd6c3db809686`.
-- Recorded destination: `/home/user/src/bugfix/offmenu-UIF-155-optional-projection-reconciliation-20261106`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- Recorded `3540b2d4d5f4e96a518a63c832ccd6c3db809686` is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`. [UIF-198](https://linear.app/maldous/issue/UIF-198) is Done for pinned developer-surface qualification; UIF-108/UIF-127/UIF-130/UIF-155/UIF-184 remain Backlog.
-
-
-#### SRC-021 · `offmenu-worktrees/scanner-known-source-facts`
-
-- Recorded branch: `refs/heads/bugfix/scanner-known-source-facts`; HEAD: `72d1b1e0c9ffaa4cc9da2ba368fe5a6575253ae1`.
-- Recorded destination: `/home/user/src/bugfix/offmenu-UIF-93-scanner-known-source-facts`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [PR149](https://github.com/maldous/offmenu/pull/149) is merged; the recorded commit is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`.
-- [UIF-93](https://linear.app/maldous/issue/UIF-93) is Backlog. Broader scanner/API/device acceptance remains open. Do not replay the delivered source or reopen a completed source issue because directory custody remains.
-
-
-#### SRC-022 · `offmenu-worktrees/shared-meal-overflow`
-
-- Recorded branch: `refs/heads/bugfix/shared-meal-overflow`; HEAD: `e857bcf87e1d6cd80b5c17bbaebacfde787d93c4`.
-- Recorded destination: `/home/user/src/bugfix/offmenu-UIF-118-shared-meal-overflow`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [PR152](https://github.com/maldous/offmenu/pull/152) is merged; the recorded commit is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`.
-- [UIF-118](https://linear.app/maldous/issue/UIF-118) is Done. Finite accepted overflow-safety outcome. Do not replay the delivered source or reopen a completed source issue because directory custody remains.
-
-
-#### SRC-023 · `offmenu-worktrees/shopping-positive-deficit`
-
-- Recorded branch: `refs/heads/bugfix/shopping-positive-deficit`; HEAD: `2bb150053faef85afdc89ee92d1052643a085354`.
-- Recorded destination: `/home/user/src/bugfix/offmenu-UIF-115-shopping-positive-deficit`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [PR150](https://github.com/maldous/offmenu/pull/150) is merged; the recorded commit is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`.
-- [UIF-115](https://linear.app/maldous/issue/UIF-115) is Done. Accepted develop source delivery; production/served acceptance was separate. Do not replay the delivered source or reopen a completed source issue because directory custody remains.
-
-
-#### SRC-024 · `offmenu-worktrees/source-index-deadline-budget`
-
-- Recorded branch: `refs/heads/bugfix/source-index-deadline-budget`; HEAD: `d9120c7a539f1427904a4742de64abc003848814`.
-- Recorded destination: `/home/user/src/bugfix/offmenu-UIF-94-source-index-deadline-budget`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [PR149](https://github.com/maldous/offmenu/pull/149) is merged; the recorded commit is an ancestor of remote develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`.
-- [UIF-94](https://linear.app/maldous/issue/UIF-94) is Done. Finite accepted deadline correction; broader scanner scope remains under UIF-93. Do not replay the delivered source or reopen a completed source issue because directory custody remains.
 
 
 #### SRC-025 · `offmenu-worktrees/stale-validation-wrapper-recovery`
