@@ -49,7 +49,6 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 | SRC-060 | `.cleanup-custody` | UNKNOWN | [UIF-217](https://linear.app/maldous/issue/UIF-217) (identified OffMenu groups), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional) (recorded USF groups) | Preserve mixed-project custody. These are group-specific recorded associations; whole-root classification and physical disposition remain unresolved. |
 | SRC-062 | `.freebuff` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-064 | `.impeccable` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
-| SRC-065 | `.openclaw` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-066 | `.remember` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-067 | `.usf` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-068 | `archive` | UNKNOWN | UIF-108 (documented custody association) | Preserve whole-root custody. UIF-108 documents completed personal/USF moves and restore maps; whole-root disposition and consumers remain unresolved. |
@@ -155,20 +154,6 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 
 
 #### SRC-064 · `.impeccable`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
-
-
-#### SRC-065 · `.openclaw`
 
 - Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
 - Recorded destination: `UNKNOWN`.
