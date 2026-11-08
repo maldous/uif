@@ -30,11 +30,21 @@ Use this sequence on fresh startup, restart, quota restoration, reassignment, an
 
 A white room is a clean execution context built from current accepted state. It is not deletion of historical evidence or a claim that all previous work disappeared.
 
+## Declared configuration and restoration drift
+
+For UIF and every admitted subproject, discover the repository-defined configuration and deployment contracts for managed dependencies, then compare those declarations at the current accepted revision with the actual running or installed state. Startup is gated by the applicable project-specific declared requirements, not a generic host checklist.
+
+- Resolve each required dependency's declaration, owning project, environment and expected state. Check repository-defined Windmill/MCP settings, environment configuration, systemd units and service state, SSH connectivity, durable local filesystem/data bindings, and other managed services where applicable.
+- Verify effective configuration and required behaviour through permitted live metadata, health checks and operation evidence. A committed configuration file is not proof it was deployed; a running service is not proof it matches the declared configuration. Do not expose secret values while checking bindings.
+- Record the declaration/revision, observed state, observation time, evidence, drift and impact for each applicable requirement. Distinguish compliant, drifted, failed, blocked, unknown and not applicable. Mark undiscovered requirements explicitly rather than treating an incomplete inventory as a pass.
+- At restoration, reconcile drift and stale runtime state against current declarations before dependent work is admitted. Do not silently adopt the old running configuration, rewrite the declaration to match it, or repair/redeploy services without authorization. Report the precise dependency and required correction; keep unrelated authorized work independent.
+- Check OS versions and generic host properties only where an actual project or dependency contract makes them relevant. Do not substitute irrelevant generic OS/version checks for verification of the required configuration and service behaviour.
+
 ## Foo startup: exhaustive dependency discovery and validation
 
 Discover actual dependencies for the service and each enabled project. Check all discovered requirements relevant to the proposed execution, not merely whether a process is alive. Record unavailable, inaccessible, failed, and unknown items separately. Discovery and permitted read-only validation can be prepared during downtime; this is not authorization to launch, restart, reconfigure, or repair services.
 
-- **OS and host identity:** confirm the intended Foo host, execution account, OS/toolchain compatibility, required utilities, network/name resolution, clock, required mounts/paths, and authorized access. Do not read secrets or change security settings as a shortcut.
+- **OS and host identity:** confirm the intended Foo host, execution account, declared OS/toolchain compatibility requirements, required utilities, network/name resolution, clock, required mounts/paths, and authorized access. Do not read secrets or change security settings as a shortcut.
 - **Storage and capacity:** verify disk space and inodes, writable workspace locations, required mount health, memory/CPU and process capacity, and the limits governing concurrent jobs. Preserve shared data and custody locations.
 - **Repositories and worktrees:** verify repository/remotes, current `develop`, branch/commit pins, worktree registration, dirty/local-only work, ownership and compatibility aliases, and clean task-specific worktrees. Respect the README's item-specific custody requirements; startup does not authorize a new cleanup campaign.
 - **Shared local data and services:** discover dependencies outside repositories, their consumers, owning projects, access modes, endpoints, versions/schema expectations, and health. `offmenu-data`, possible project/customer databases, mocks, UIF workspaces, and ANQR development resources are discovery examples, not assertions that a particular resource exists, is required, or is healthy. Verify actual bindings through permitted metadata and health surfaces; do not inspect database bodies or publish raw datasets merely to establish readiness.
