@@ -45,8 +45,6 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-057 | `.agents` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
-| SRC-058 | `.aws` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
 | SRC-059 | `.claude` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
 | SRC-060 | `.cleanup-custody` | UNKNOWN | UIF-217 (identified OffMenu groups only) | Preserve mixed-project custody. UIF-217 applies only to the identified OffMenu groups; whole-root classification remains unresolved. |
 | SRC-061 | `.codex` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
@@ -122,32 +120,6 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The supplied path remains in the working baseline. No current repository or HEAD observation was obtained for this held boundary.
-
-
-#### SRC-057 · `.agents`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-
-
-#### SRC-058 · `.aws`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
 
 
 #### SRC-059 · `.claude`
