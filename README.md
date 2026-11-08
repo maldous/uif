@@ -46,7 +46,7 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
 | SRC-059 | `.claude` | UNKNOWN | [UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings) | Preserve the current path. UIF-243 tracks scope, custodian, consumers and physical disposition; repository identity remains unresolved. |
-| SRC-060 | `.cleanup-custody` | UNKNOWN | UIF-217 (identified OffMenu groups only) | Preserve mixed-project custody. UIF-217 applies only to the identified OffMenu groups; whole-root classification remains unresolved. |
+| SRC-060 | `.cleanup-custody` | UNKNOWN | [UIF-217](https://linear.app/maldous/issue/UIF-217) (identified OffMenu groups), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional) (recorded USF groups) | Preserve mixed-project custody. These are group-specific recorded associations; whole-root classification and physical disposition remain unresolved. |
 | SRC-061 | `.codex` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-062 | `.freebuff` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
 | SRC-063 | `.git` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
@@ -139,6 +139,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - [UIF-217](https://linear.app/maldous/issue/UIF-217) is Backlog and records retained recovery maps/reflogs for identified OffMenu custody groups. It does not assign the entire mixed-project root to that issue.
+- [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional) also records USF recovery groups in this root. This is an existing custody association, not fresh host verification or whole-root disposition. Repository identity remains UNKNOWN.
 
 
 #### SRC-061 · `.codex`
