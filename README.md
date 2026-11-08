@@ -35,8 +35,6 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-016 | `feature/offmenu-all-held-reconciliation-20261028` | maldous/offmenu | UIF-107, UIF-108 | Recorded relocation is complete; whole-container issue association, compliant name and nested source/data/consumer bindings remain unresolved. |
-| SRC-017 | `feature/offmenu-detached-dc39d0d7-20261108` | maldous/offmenu | UNKNOWN | Recorded detached relocation is complete and its historical commit is in remote develop. Exact checkout review issue and compliant name remain unresolved. |
 
 #### Original offmenu-worktrees candidates
 
@@ -137,34 +135,6 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The supplied path remains in the working baseline. No current repository or HEAD observation was obtained for this held boundary.
-
-
-#### SRC-016 · `feature/offmenu-all-held-reconciliation-20261028`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/feature/offmenu-all-held-reconciliation-20261028`.
-- Destination status: Completed; final issue-based parent name remains unresolved.
-- Observation: 2026-11-08T13:19:05.150035+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-- [Observation receipt](https://windmill.aldous.info/run/01a1bb50-4ba5-51da-5aa6-fc40b9b389c6?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-107](https://linear.app/maldous/issue/UIF-107) and [UIF-108](https://linear.app/maldous/issue/UIF-108) remain Backlog. Neither provides a verified single issue, branch or HEAD for the entire mixed container.
-
-
-#### SRC-017 · `feature/offmenu-detached-dc39d0d7-20261108`
-
-- Recorded branch: `DETACHED`; HEAD: `dc39d0d7f29f0b0650be374f0e7e2111ec45c4b7`.
-- Recorded destination: `/home/user/src/feature/offmenu-detached-dc39d0d7-20261108`.
-- Destination status: Completed relocation; not a new proposal.
-- Observation: 2026-11-08T13:52:06.419816+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-- [Observation receipt](https://windmill.aldous.info/run/01a1bb6e-70ea-6f98-adac-5d194e6cfbc4?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- GitHub verifies recorded `dc39d0d7f29f0b0650be374f0e7e2111ec45c4b7` as an ancestor of OffMenu develop `a21e68c07c09750abbb1b3b284bb74609692cb5e`. Preserve Linear UNKNOWN and the separate directory/custody obligation.
 
 
 #### SRC-049 · `offmenu-worktrees/uif142-javascript-delivery`
