@@ -66,7 +66,6 @@ These are individually observed immediate names, not inferred repositories or re
 
 | ID | Observed path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-071 | `offmenu-worktrees/consumer-cloud-b850-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-072 | `offmenu-worktrees/offmenu-global-collection` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-073 | `offmenu-worktrees/offmenu-manual-actions` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-074 | `offmenu-worktrees/offmenu-runner-setup-5722ca92` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
