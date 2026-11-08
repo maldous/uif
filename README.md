@@ -45,7 +45,7 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-059 | `.claude` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
+| SRC-059 | `.claude` | UNKNOWN | [UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings) | Preserve the current path. UIF-243 tracks scope, custodian, consumers and physical disposition; repository identity remains unresolved. |
 | SRC-060 | `.cleanup-custody` | UNKNOWN | UIF-217 (identified OffMenu groups only) | Preserve mixed-project custody. UIF-217 applies only to the identified OffMenu groups; whole-root classification remains unresolved. |
 | SRC-061 | `.codex` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
 | SRC-062 | `.freebuff` | UNKNOWN | UNKNOWN | Preserve the working-baseline path. Role, repository/Linear association and disposition remain unresolved; do not infer identity from the name. |
@@ -126,6 +126,7 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 **Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
 
 - The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
+- Current Linear association: [UIF-243 — Reconcile SRC local agent settings](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings), verified Backlog. Physical disposition remains outstanding; this association does not establish a source repository or a completed move.
 
 
 #### SRC-060 · `.cleanup-custody`
