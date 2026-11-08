@@ -54,7 +54,6 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 | SRC-034 | `offmenu-worktrees/uif130-dependency-bound-integration-20261106` | maldous/offmenu | UIF-108, UIF-127, UIF-130, UIF-155, UIF-184, UIF-198 | Source successor is merged; retain local directory/custody until reconciled. Keep historical local HEAD separate from the verified remote branch tip. |
 | SRC-035 | `offmenu-worktrees/uif130-native-publication-producer` | maldous/offmenu | UIF-130, UIF-216, UIF-217 | Retain exact original history; source applicability remains an explicit R078 unknown under UIF-216, independent from UIF-217 custody. |
 | SRC-036 | `offmenu-worktrees/uif130-native-refill-terminal-history` | maldous/offmenu | UIF-130, UIF-216, UIF-217 | Retain exact original history; R054 remains a necessary source assessment under UIF-216 and separate custody outcome under UIF-217. |
-| SRC-037 | `offmenu-worktrees/uif130-native-result-progression` | maldous/offmenu | UIF-130, UIF-216, UIF-217 | Retain for source and custody reconciliation. Historical R055 pin differs from current origin branch; no directory or branch mutation. |
 | SRC-038 | `offmenu-worktrees/uif130-owner-policy-intake` | maldous/offmenu | UIF-130, UIF-216, UIF-217 | Retain R058 for source assessment and separate custody. Exact origin pin is verified; no cleanup or integration completed. |
 | SRC-039 | `offmenu-worktrees/uif130-project-aware-live` | maldous/offmenu | UIF-130, UIF-217 | Source is already in develop. Retain R059 for its separately documented unique .delivery custody; no remerge required for the exact commit. |
 | SRC-040 | `offmenu-worktrees/uif130-windmill-boundary-fixture` | maldous/offmenu | UIF-130, UIF-217 | Retain frozen R067. Exact origin ref and original commit could not be resolved; original-history recovery and directory custody remain open. |
@@ -399,21 +398,6 @@ These values describe retained evidence, not a fresh filesystem or repository ch
 - Source applicability and exact local content/consumer/recovery custody remain unresolved.
 - Sources: [UIF-130](https://linear.app/maldous/issue/UIF-130/verify-coherent-migration-recovery-and-operational-handover) (Backlog); [UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies) (Backlog); [UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement) (Backlog)
 - Repository evidence: https://github.com/maldous/offmenu/commit/f015ca72f0310303fe34ef65ba3491da0c358a67
-
-
-#### SRC-037 · `offmenu-worktrees/uif130-native-result-progression`
-
-- Recorded branch: `refs/heads/bugfix/uif130-native-result-progression`; HEAD: `95a216faa55939be26774cf14774eb40fce52a81`.
-- Recorded destination: `/home/user/src/bugfix/uif-UIF-217-native-result-progression`.
-- Destination status: Naming association only; not moved or fresh-qualified.
-- Observation: 2026-11-08T14:37:53.329802+00:00. Current state: **not reverified**.
-- Source record: `quiescence-handoff-20261108.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- UIF-216/217 name R055 at 95a216faa55939be26774cf14774eb40fce52a81. Exact origin ref now resolves to cde01895895776610e043795c6a32ef74c7e4ae6. The recorded 95a216fa commit lookup returned 404. Current remote head diverges from develop by 3 remote-branch commits versus 10 develop commits. Do not replace the recorded local pin with the remote head or call the difference an advancement without ancestry evidence.
-- Next: Resolve the local-versus-origin pin mismatch from the retained local object store and custody record, then determine source reuse/disposition under UIF-216 and physical custody under UIF-217.
-- Sources: https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies; https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement
 
 
 #### SRC-038 · `offmenu-worktrees/uif130-owner-policy-intake`
