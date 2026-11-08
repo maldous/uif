@@ -66,12 +66,10 @@ These are individually observed immediate names, not inferred repositories or re
 |---|---|---|---|---|
 | SRC-072 | `offmenu-worktrees/offmenu-global-collection` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-073 | `offmenu-worktrees/offmenu-manual-actions` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
-| SRC-076 | `offmenu-worktrees/retained` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-077 | `offmenu-worktrees/retained-container--offmenu-workers` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-078 | `offmenu-worktrees/retired-compatibility-aliases-20261023` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-079 | `offmenu-worktrees/sdk-cloud-3e172-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-080 | `offmenu-worktrees/sdk-cloud-aligned-cee4-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
-| SRC-081 | `offmenu-worktrees/uif182-voice-inventory-20261105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 
 ### Recorded branch and disposition evidence
 
