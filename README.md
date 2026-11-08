@@ -74,7 +74,6 @@ These are individually observed immediate names, not inferred repositories or re
 | SRC-079 | `offmenu-worktrees/sdk-cloud-3e172-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-080 | `offmenu-worktrees/sdk-cloud-aligned-cee4-1105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-081 | `offmenu-worktrees/uif182-voice-inventory-20261105` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
-| SRC-085 | `offmenu-worktrees/worker26-runtime-state-roots-20261023` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 
 ### Recorded branch and disposition evidence
 
