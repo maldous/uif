@@ -64,7 +64,7 @@ These are individually observed immediate names, not inferred repositories or re
 
 | ID | Observed path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
-| SRC-072 | `offmenu-worktrees/offmenu-global-collection` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
+| SRC-072 | `offmenu-worktrees/offmenu-global-collection` | UNKNOWN | [UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody) | Temporary compatibility alias remains after verified relocation. Resolve remaining consumer bindings and alias disposition under UIF-239; the relocated contents are complete. |
 | SRC-073 | `offmenu-worktrees/offmenu-manual-actions` | UNKNOWN | [UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody) | Temporary compatibility alias remains after verified relocation. Resolve remaining consumer bindings and alias disposition under UIF-239; the relocated contents are complete. |
 | SRC-077 | `offmenu-worktrees/retained-container--offmenu-workers` | UNKNOWN | UNKNOWN | Names-only presence observed at 2026-11-08T20:20:02.930717+00:00; classify role, source/consumer bindings and physical disposition without inferring them from the name. |
 | SRC-078 | `offmenu-worktrees/retired-compatibility-aliases-20261023` | UNKNOWN | [UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody) | Temporary compatibility alias remains after verified relocation. Resolve remaining consumer bindings and alias disposition under UIF-239; the relocated contents are complete. |
