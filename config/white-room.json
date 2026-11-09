@@ -1,0 +1,362 @@
+{
+  "version": 1,
+  "purpose": "Read-only dependency comparison, not admission or a replacement harness",
+  "projects": {
+    "uif": {
+      "repository": "maldous/uif",
+      "discovery_complete": {
+        "foo": false,
+        "cloud": false
+      }
+    },
+    "offmenu": {
+      "repository": "maldous/offmenu",
+      "discovery_complete": {
+        "foo": false,
+        "cloud": false
+      }
+    },
+    "circularquay": {
+      "repository": null,
+      "discovery_complete": {
+        "foo": false,
+        "cloud": false
+      }
+    },
+    "cix": {
+      "repository": null,
+      "discovery_complete": {
+        "foo": false,
+        "cloud": false
+      }
+    },
+    "anqr": {
+      "repository": null,
+      "discovery_complete": {
+        "foo": false,
+        "cloud": false
+      }
+    }
+  },
+  "requirements": [
+    {
+      "id": "github-access",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "linear-access",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "project-toolchain",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "project-dependencies",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "capacity",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "ownership-interface",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "persistence-compatibility",
+      "profiles": [
+        "foo",
+        "cloud"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "foo-quota",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "shared-data-bindings",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "git-delivery-runners",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "project-service-bindings",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "host-storage",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "stokowski-binding",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "langgraph-installed-lock",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "windmill-root-interface",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": {
+        "workspace": "offmenu",
+        "path": "u/admin/foo_root_jobs",
+        "tool": "mcp__codex_apps__windmill_foo_root_chat_foo_root_jobs",
+        "parameters": [
+          "action",
+          "command",
+          "cwd",
+          "job_id",
+          "timeout_seconds"
+        ],
+        "enabled": true,
+        "host": "foo",
+        "protocol": "foo-root-exec-v1"
+      },
+      "declaration_source": "Windmill deployed script and terminal host identity receipt, 2026-11-09",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "windmill-worker-health",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": null,
+      "declaration_source": "Windmill offmenu list_workers: declare task-specific tags/capacity before admission",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "stokowski-service",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "uif",
+        "offmenu",
+        "circularquay",
+        "cix",
+        "anqr"
+      ],
+      "expected": {
+        "unit": "offmenu-stokowski-current.service",
+        "active_state": "active",
+        "sub_state": "running"
+      },
+      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "max_age_seconds": 300
+    },
+    {
+      "id": "windmill-bridge",
+      "profiles": [
+        "foo"
+      ],
+      "projects": [
+        "offmenu"
+      ],
+      "expected": {
+        "workspace": "offmenu",
+        "path": "u/admin/foo_jobs_20261027",
+        "dispatch": "u/admin/offmenu_delivery_dispatch"
+      },
+      "declaration_source": "https://github.com/maldous/offmenu/blob/develop/tools/delivery/README.md",
+      "max_age_seconds": 300
+    }
+  ],
+  "unqualified": [
+    "Repository names except UIF/OffMenu require authoritative project mapping validation.",
+    "Null expectations cannot pass; select reviewed project-specific contracts before use.",
+    "Windmill MCP aliases are environment-specific: changes require explicit review, not fuzzy matching.",
+    "Foo-only dependencies must be added to a cloud task contract if that task actually needs them."
+  ]
+}
