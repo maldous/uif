@@ -1,0 +1,157 @@
+"""Read-only white-room evidence comparison. Never grants execution authority."""
+import argparse
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+STATES = {'compliant', 'drifted', 'failed', 'blocked', 'unknown', 'not-applicable'}
+
+def digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+def timestamp(value):
+    result = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    if result.tzinfo is None:
+        raise ValueError('timestamp must have a timezone')
+    return result
+
+def index(items):
+    result = {}
+    for item in items:
+        key = item['id']
+        if not isinstance(key, str) or not key or key in result:
+            raise ValueError('missing or duplicate identity')
+        result[key] = item
+    return result
+
+def evaluate(contract, evidence, profile, project, now=None):
+    """Compare caller-supplied evidence; freshness is not authenticity or a lease."""
+    now = now or datetime.now(timezone.utc)
+    if contract['version'] != 1 or evidence['version'] != 1:
+        raise ValueError('unsupported version')
+    if profile not in ('cloud', 'foo') or project not in contract['projects']:
+        raise ValueError('unknown profile or project')
+    repository = contract['projects'][project].get('repository')
+    import re
+    if not isinstance(repository, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository):
+        raise ValueError('unqualified repository mapping')
+    requirements = index(contract['requirements'])
+    for req in requirements.values():
+        if type(req['max_age_seconds']) is not int or not 1 <= req['max_age_seconds'] <= 86400:
+            raise ValueError('invalid freshness bound')
+    observations = index(evidence['observations'])
+    if set(observations) - set(requirements):
+        raise ValueError('unknown observation identity')
+    rows = []
+    def row(key, state, reason):
+        rows.append({'id': key, 'state': state, 'reason': reason})
+    if evidence.get('contract_sha256') != digest(contract):
+        row('contract-binding', 'drifted', 'evidence is not bound to this exact contract')
+    if evidence.get('profile') != profile or evidence.get('project') != project:
+        row('target-binding', 'drifted', 'evidence targets another executor or project')
+    selected = contract['projects'][project]
+    if selected.get('discovery_complete', {}).get(profile) is not True:
+        row('discovery', 'unknown', 'applicable dependency discovery is incomplete')
+    for key, req in requirements.items():
+        if profile not in req['profiles'] or project not in req['projects']:
+            continue
+        obs = observations.get(key)
+        if not obs:
+            row(key, 'unknown', 'no observation')
+            continue
+        state = obs.get('state')
+        if state not in STATES:
+            raise ValueError('invalid observation state')
+        try:
+            age = (now - timestamp(obs['observed_at'])).total_seconds()
+        except (KeyError, ValueError, TypeError, AttributeError):
+            row(key, 'unknown', 'missing or invalid observation time')
+            continue
+        if age < 0 or age > req['max_age_seconds']:
+            row(key, 'unknown', 'future or expired evidence')
+        elif not obs.get('source'):
+            row(key, 'unknown', 'missing evidence source')
+        elif state == 'not-applicable':
+            row(key, 'blocked', 'required dependency cannot be waived by observation')
+        elif state != 'compliant':
+            row(key, state, 'dependency did not pass')
+        elif req.get('expected') is None:
+            row(key, 'unknown', 'declaration is not yet qualified')
+        elif digest(obs.get('actual')) != digest(req['expected']):
+            row(key, 'drifted', 'observed configuration differs from declaration')
+        else:
+            row(key, 'compliant', 'fresh supplied evidence matches declaration')
+    # Omission never turns unknown checkpoint/ownership/effects into permission.
+    context = evidence.get('recovery', {})
+    needed = ('repository', 'accepted_commit', 'selected_commit', 'issue', 'owner',
+              'ownership_epoch', 'authoritative_owner', 'authoritative_epoch',
+              'remote_read_at', 'ownership_expires_at', 'workspace_isolated',
+              'recoverable_work_preserved', 'pending_operations', 'checkpoint',
+              'previous_owner_fenced', 'superseded', 'published_checkpoint')
+    missing = [key for key in needed if key not in context]
+    if missing:
+        row('recovery', 'unknown', 'missing recovery fields: ' + ', '.join(missing))
+    else:
+        def require(ok, key, reason):
+            if not ok:
+                row(key, 'blocked', reason)
+        require(context['repository'] == selected['repository'], 'repository', 'repository mismatch')
+        import re
+        valid_commit = isinstance(context['accepted_commit'], str) and bool(re.fullmatch('[a-f0-9]{40}', context['accepted_commit']))
+        require(valid_commit and context['selected_commit'] == context['accepted_commit'], 'source', 'selected source is not current accepted source')
+        require(bool(context['issue']) and bool(context['owner']) and type(context['ownership_epoch']) is int and context['ownership_epoch'] >= 1, 'identity', 'missing issue/owner/epoch')
+        require(context['owner'] == context['authoritative_owner'] and type(context['authoritative_epoch']) is int and context['ownership_epoch'] == context['authoritative_epoch'], 'owner', 'ownership does not match authoritative record')
+        try:
+            fresh = 0 <= (now - timestamp(context['remote_read_at'])).total_seconds() <= 300
+            live = timestamp(context['ownership_expires_at']) > now
+        except (ValueError, TypeError, AttributeError):
+            fresh = live = False
+        require(fresh and live, 'ownership-time', 'remote reconstruction stale or lease expired')
+        for flag in ('workspace_isolated', 'recoverable_work_preserved', 'previous_owner_fenced'):
+            require(context[flag] is True, flag, 'required recovery condition not established')
+        require(context['superseded'] is False, 'superseded', 'old task was superseded or disposition unknown')
+        require(context['pending_operations'] == [] and isinstance(context['pending_operations'], list), 'operations', 'reconcile original uncertain operations before replacement')
+        checkpoint = context['checkpoint']
+        if not isinstance(checkpoint, dict):
+            require(False, 'checkpoint', 'checkpoint disposition must be explicit')
+        elif checkpoint.get('disposition') == 'none':
+            require(checkpoint.get('absence_verified') is True, 'checkpoint', 'absence must be verified')
+        elif checkpoint.get('disposition') == 'resume':
+            expected = {'commit': context['accepted_commit'], 'issue': context['issue'], 'owner': context['owner'], 'epoch': context['ownership_epoch']}
+            require(all(digest(checkpoint.get(k)) == digest(v) for k, v in expected.items()) and checkpoint.get('compatibility_verified') is True and bool(checkpoint.get('receipt_source')), 'checkpoint', 'checkpoint identity/schema compatibility not verified')
+        else:
+            require(False, 'checkpoint', 'migration or supersession must be reconciled before resume')
+        published = context['published_checkpoint']
+        expected_publication = {k: context[k] for k in ('repository', 'issue', 'owner', 'ownership_epoch')}
+        expected_publication['commit'] = context['accepted_commit']
+        try:
+            publication_fresh = 0 <= (now - timestamp(published['observed_at'])).total_seconds() <= 300
+        except (KeyError, ValueError, TypeError, AttributeError):
+            publication_fresh = False
+        require(isinstance(published, dict) and published.get('remote_verified') is True and all(digest(published.get(k)) == digest(v) for k, v in expected_publication.items()) and bool(published.get('source')) and publication_fresh, 'publication', 'remote checkpoint identity or freshness not verified')
+    return {'version': 1, 'profile': profile, 'project': project, 'contract_sha256': digest(contract),
+            'evidence_sha256': digest(evidence), 'checked_at': now.isoformat(), 'checks': rows,
+            'preflight_passed': bool(rows) and all(r['state'] == 'compliant' for r in rows),
+            'execution_authorized': False, 'runtime_readiness_verified': False}
+
+def reject_constant(value):
+    raise ValueError('nonfinite JSON number')
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--contract', type=Path, required=True)
+    parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument('--profile', choices=['cloud', 'foo'], required=True)
+    parser.add_argument('--project', required=True)
+    args = parser.parse_args()
+    try:
+        result = evaluate(json.loads(args.contract.read_text(), parse_constant=reject_constant), json.loads(args.evidence.read_text(), parse_constant=reject_constant), args.profile, args.project)
+    except (ValueError, KeyError, TypeError, OSError) as exc:
+        print(json.dumps({'error': type(exc).__name__, 'preflight_passed': False}))
+        return 2
+    print(json.dumps(result, indent=2))
+    return 0 if result['preflight_passed'] else 1
+
+if __name__ == '__main__':
+    raise SystemExit(main())
