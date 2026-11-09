@@ -1,0 +1,449 @@
+{
+  "source_url": "https://github.com/windmill-labs/windmill/blob/5d3f239bf2c114ffe0215eebd1cc5fca38435c90/backend/windmill-api/openapi.yaml",
+  "source_commit": "5d3f239bf2c114ffe0215eebd1cc5fca38435c90",
+  "api_version": "1.864.1",
+  "note": "Selected verbatim endpoint definitions and two request schemas; references are documentation pointers, not a standalone full schema. Official current API is not verified against deployed Foo version.",
+  "paths": {
+    "/workspaces/create": {
+      "post": {
+        "summary": "create workspace",
+        "operationId": "createWorkspace",
+        "tags": [
+          "workspace"
+        ],
+        "requestBody": {
+          "description": "new token",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspace"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "token created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/exists": {
+      "post": {
+        "summary": "exists workspace",
+        "operationId": "existsWorkspace",
+        "tags": [
+          "workspace"
+        ],
+        "requestBody": {
+          "description": "id of workspace",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "status",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/w/{workspace}/scripts/create": {
+      "post": {
+        "summary": "create script",
+        "description": "Creates a new script at a path that does not already hold one.\nSupplying `parent_hash` instead deploys a new version of the script that hash names, and a `path` differing from that version's moves the script there. `POST /w/{workspace}/scripts/update/{path}` does the same, naming the superseded version in its URL.\n",
+        "operationId": "createScript",
+        "x-mcp-tool": true,
+        "x-mcp-tool-description": "Creates a script at a path that does not already hold one.",
+        "x-mcp-instructions": "Specify the path (e.g., 'f/my_folder/my_script'), the content (source code), and the language. For TypeScript, use 'bun' unless deno-specific APIs are needed. A path that already holds a script is refused: use updateScript to deploy a new version of it, and do NOT delete and recreate a script to change it. A new version generates its lock async, and only a version with a lock is runnable: until it lands, a run by path still executes the previous version. Poll getScriptByPath before running the new one and stop on either outcome: lock non-null means it is ready, lock_error_logs set means the lockfile failed and that version will never run, so report the error instead of polling on.",
+        "x-mcp-tool-include-fields": [
+          "path",
+          "content",
+          "language",
+          "summary",
+          "description",
+          "kind",
+          "tag",
+          "deployment_message",
+          "schema"
+        ],
+        "x-mcp-tool-opaque-fields": [
+          "schema"
+        ],
+        "tags": [
+          "script"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorkspaceId"
+          }
+        ],
+        "requestBody": {
+          "description": "Partially filled script",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewScript"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "script created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/w/{workspace}/scripts/get/p/{path}": {
+      "get": {
+        "summary": "get script by path",
+        "operationId": "getScriptByPath",
+        "x-mcp-tool": true,
+        "tags": [
+          "script"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorkspaceId"
+          },
+          {
+            "$ref": "#/components/parameters/ScriptPath"
+          },
+          {
+            "name": "with_starred_info",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/GetDraft"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "script details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Script"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UserDraftOverlay"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/w/{workspace}/variables/exists/{path}": {
+      "get": {
+        "summary": "does variable exists at path",
+        "operationId": "existsVariable",
+        "tags": [
+          "variable"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorkspaceId"
+          },
+          {
+            "$ref": "#/components/parameters/Path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "variable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "schemas": {
+    "CreateWorkspace": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "error_handler_fallback_to_instance_alerts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report failed jobs to the instance critical alert channels when no workspace error handler is set. Not available on cloud or on fork workspaces."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "NewScript": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "parent_hash": {
+          "type": "string",
+          "description": "The hash of the version this one supersedes: deploying with it archives that version and chains the new one onto its history, and a `path` differing from the superseded version's moves the script there."
+        },
+        "auto_parent": {
+          "type": "boolean",
+          "description": "When true, the backend resolves the parent to the current deployed head for this path within the transaction (ignoring parent_hash), instead of failing with a \"lineage must be linear\" error when the supplied parent_hash is stale."
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "object",
+          "description": "JSON Schema of the arguments of `main`, which is what a run form and an MCP tool offer. Omitted (or `{}`), it is inferred from `content` for TypeScript, Python, Go, Bash, PowerShell, SQL, GraphQL and Ansible scripts. For other languages, or code that does not parse, a new script gets none. A new version of an existing script also keeps what the previous version's schema says about each argument, or that whole schema when nothing can be inferred. A dbt script always takes its schema from its descriptor, whatever is sent."
+        },
+        "is_template": {
+          "type": "boolean"
+        },
+        "lock": {
+          "type": "string"
+        },
+        "language": {
+          "$ref": "#/components/schemas/ScriptLang"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "script",
+            "failure",
+            "trigger",
+            "command",
+            "approval",
+            "preprocessor"
+          ]
+        },
+        "tag": {
+          "type": "string"
+        },
+        "envs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "concurrent_limit": {
+          "type": "integer"
+        },
+        "concurrency_time_window_s": {
+          "type": "integer"
+        },
+        "on_concurrency_limit": {
+          "type": "string",
+          "enum": [
+            "queue",
+            "fail"
+          ],
+          "description": "What a run does when its concurrency limit is reached when a worker picks it up. `queue` (default) re-queues it to a later slot, `fail` ends it immediately as failed."
+        },
+        "cache_ttl": {
+          "type": "number"
+        },
+        "cache_ignore_s3_path": {
+          "type": "boolean"
+        },
+        "dedicated_worker": {
+          "type": "boolean"
+        },
+        "ws_error_handler_muted": {
+          "type": "boolean"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "restart_unless_cancelled": {
+          "type": "boolean"
+        },
+        "timeout": {
+          "type": "integer"
+        },
+        "delete_after_secs": {
+          "type": "integer",
+          "description": "If set, delete the job's args, result and logs after this many seconds following job completion"
+        },
+        "deployment_message": {
+          "type": "string"
+        },
+        "concurrency_key": {
+          "type": "string"
+        },
+        "debounce_key": {
+          "type": "string"
+        },
+        "debounce_delay_s": {
+          "type": "integer"
+        },
+        "debounce_args_to_accumulate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_total_debouncing_time": {
+          "type": "integer"
+        },
+        "max_total_debounces_amount": {
+          "type": "integer"
+        },
+        "visible_to_runner_only": {
+          "type": "boolean"
+        },
+        "auto_kind": {
+          "type": "string"
+        },
+        "codebase": {
+          "type": "string"
+        },
+        "has_preprocessor": {
+          "type": "boolean"
+        },
+        "on_behalf_of_email": {
+          "type": "string"
+        },
+        "on_behalf_of": {
+          "type": "string",
+          "description": "Authorization identity to run as: u/{username}, g/{group}, or a bare email when the username is itself email-shaped. Supply this or on_behalf_of_email; when only the address is given it is resolved to the account it names, and an address naming nobody is rejected. A pair that disagrees is rejected."
+        },
+        "preserve_on_behalf_of": {
+          "type": "boolean",
+          "description": "When true and the caller is a member of the 'wm_deployers' group, preserves the original on_behalf_of_email / on_behalf_of pair instead of overwriting it with the caller's own identity."
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "kind"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "$ref": "#/components/schemas/AssetKind"
+              },
+              "access_type": {
+                "type": "string",
+                "enum": [
+                  "r",
+                  "w",
+                  "rw"
+                ]
+              },
+              "alt_access_type": {
+                "type": "string",
+                "enum": [
+                  "r",
+                  "w",
+                  "rw"
+                ]
+              }
+            }
+          }
+        },
+        "modules": {
+          "type": "object",
+          "nullable": true,
+          "description": "Additional script modules keyed by relative file path",
+          "additionalProperties": {
+            "$ref": "#/components/schemas/ScriptModule"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "job_token_scopes": {
+          "type": "array",
+          "nullable": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "Scopes the token of every job of this runnable is restricted to (domain:action[:resource], e.g. oidc:write). Jobs it starts, flow steps and AI agent tools inherit the restriction. Unset, the job token carries the full permissions of the identity the job runs as; an empty list leaves it no API access beyond its own job. Omitting the field keeps the deployed value; null clears it."
+        },
+        "skip_draft_deletion": {
+          "type": "boolean",
+          "description": "When true (set by the CLI / git sync), deploying this script does not delete an existing user draft at the same path."
+        }
+      },
+      "required": [
+        "path",
+        "summary",
+        "content",
+        "language"
+      ]
+    }
+  }
+}

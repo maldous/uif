@@ -1,0 +1,1667 @@
+{
+  "version": 1,
+  "baseline": "observed-2026-11-09.json",
+  "archive_overlay": {
+    "path": "u/admin/offmenu_cerebras_metadata_audit_20261028",
+    "hash": "fbe206e5e2a4a68f",
+    "action": "archive",
+    "verified": "UI Archived This path was archived; Unarchive menu exists; history retained; no currently running job",
+    "source": "https://windmill.aldous.info/scripts/get/fbe206e5e2a4a68f?workspace=offmenu",
+    "evidence": "Only Oct28 preview/dependency jobs; no incoming literal references in70 script bodies; no schedules/triggers; no retained local consumer besides inventory",
+    "limits": "Literal scan is not proof against unknown external or dynamically constructed callers; no deletion performed"
+  },
+  "items": [
+    {
+      "type": "script",
+      "path": "u/admin/foo_root_jobs",
+      "disposition": "retain-current-transport",
+      "reason": "Required current Foo root dependency; replacement unqualified.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_delivery_dispatch",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/foo_jobs_20261027",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/household_router_send_message",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_verify_source_barcode_publication_20261029",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_source_barcode_publisher_20261029",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_verify_fixed_derived_publication_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_verify_fixed_common_publication_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_north_star_basis_publisher_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_north_star_recipe_publisher_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_north_star_national_publisher_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_north_star_publisher_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_fixed_publisher_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_provider_orchestrator_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_groq_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_publication_seed_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_publisher_inspect_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_ready_country_binding_child_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_platform_check",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_zai_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_mistral_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_openrouter_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_sql_query_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_cohere_public_help_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_remaining_provider_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_public_development_batch_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_public_development_fanout_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_gemini_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_cohere_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_openrouter_free_smoke_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_groq_free_smoke_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_cerebras_metadata_audit_20261028",
+      "disposition": "retain-archived",
+      "reason": "Reversible archive observed after baseline inventory; history retained. No consumer-clearance inference.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_together_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_cohere_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_deepseek_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_groq_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_mistral_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_gemini_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_openrouter_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_platform_checkpoint",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/ai_provider_openrouter_probe",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/duckdb_official_metadata_20261027",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/duckdb_offline_install_20261027",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/foo_confined_exec_20261027",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/foo_ssh_transport_probe_20261027",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/identity_path_check_20261027_194008_c8f4",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_current_deploy_metadata_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_fireworks_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_hf_permission_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_hf_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_huggingface_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_incident_selftest",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_rate_metadata_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_netlify_single_digest_metadata_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_north_star_frozen_manifest_inspect_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_nous_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_nvidia_public_development_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_ollama_metadata_audit_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_public_address_family_diagnostic_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_publication_reader_metadata_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_public_connection_diagnostic_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_publisher_runtime_limits_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_ready_country_dispositions_fanout_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_remaining_provider_audit_fanout_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_retained_custody_join_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_sambanova_free_smoke_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_schedule_probe",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_seed_receipt_metadata_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_stage_reviewed_projectors_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "script",
+      "path": "u/admin/offmenu_zai_free_smoke_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_skill_provenance_validation",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_skill_checkpoint_recovery",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_skill_batch_execution",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_zai_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_together_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_sambanova_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_openrouter_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_openai_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_nvidia_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_nous_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_mistral_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_huggingface__hugging_token_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_huggingface__hugging_face_read_token_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_groq_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_github_models_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_gemini_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_fireworks_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_deepseek_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_cohere_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_cerebras_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/fcf46db77fb467b1c727834d61ba0ea72fd9eb9893f9e76ccabcda9ce7f9a97a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/fb22db8956aa013d8aff213183ecf620a9926f96f8a9b483281e1cfae790a861",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f9b1294c79c90ac028b72a584123dda1ef4bc699d8e940cdc29c0631f3dcd77b",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f71cd4b69fdb3904783404dbc9edd84dbb97912eda4e76debee4b0135664d969",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f6bbb06563f35c05021b6ca738e670dfd9b96d028b7cf067e9102de550e07bcc",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f371bbb14475ae46d5022800e5e405ffb68635afb3e6fdd7f2480b396e7f57a7",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f27acaa4fe4b51b58f3d82c58e049deb1d32268bd6f52b03a34921b374c12caf",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f1780b40eef37ba3f635d075341d728701b44c004e940775700dd470af4d6095",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/f0ce8b67273f00c51e8cef6926394580835b10d1a536371750be0af7b8aa83e5",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e87e4b2708f0974abc053f281982876f5de7d7debe944af10a43c6ad6e0fee1c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e70d1c6b8e2ca7c0791fba8409c020ce15c3598b1d1464ab2f05425d79d4f7a2",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e4e0fef0aac4e218f8245e08f462555b4788d9f1e7097006763ff17f89a1f5a8",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e3943450ba9bf30b1ca8abfe28a0e98db8ace852315ce4447a18c89ec1a01e6e",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e3384e9cd17d5e8090903c4c0be4fc7a159d172961399713371f9ed907bbd53c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e10b776e5f1fdf2375d69536e568011ea6b8ae31b83953304a06ab87a0c7632d",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/e06ed08f8ca94c4153945a37f72175f049aff6c337897bb2bf4299137149290c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/dd702f4453621113bbf5e6d2931d3314f0c173ff8335e885e5222aeebb258121",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/dcf6df82f3e5bd6616a007e0544dcfa152d34366a681aca1436d589059cde6a3",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/da1262c5b319261032277ee7ad0ed81067482d101e5f143ea0ac9bb21f74a4f5",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/d8b20db7e12352941c19209a29c51ff7ae477f41d363c5c6b21d8c77249a19e3",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/d856a2298f512dcc1617de76fc248058c907b3ca9359c201d0207148d98b3856",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/d7cc01e6dccf0eab2630be7a01c63ac74ce63ffba5c711a4beeb707bc06d6784",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/d43aecc31d4904020a0b1ed7fca18e82ecdfb8178dcde8bb0b730ad64c449434",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/d3b089b0ed4d8c00b3430325d71be37d1ef3bdfd2bb1d58ca5b45c509bf29e1a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/d003a9b60afc90634b73516d2873c2539bb4ebcd4ec9d5719f22f7487edf38e9",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/cb105c2329030f462af24d08aa3fddb314d5e4ca2a8d21d4762b76cab5fa25db",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/ca4f27cea3fc70d4d94facbf2dd67f2fc36186e56fdc266bda6731a1b572f059",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/c8d16e6a57603a1af275683f1716b903ca69e1ac858e3b56b0f997cb655e877a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/c07b39cff299f14a9ca2eb2d19ea0afbf46ba2124d786842d4a7aaea9f032e72",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/bffe8e1edbfcc6e1b503ffb3936bd98c0c74b0c81c92a714245317f2554bd2cb",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/bd939da0735fd5997dd67ee959377ed7ba3ae8444e081953a72b961c04724508",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/bcf05adcc8ccc28b8471df35235c7e732fdada53158c2f73b6c4585116c8cd93",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/b9afea997497bbe705a0753e59b8d96c9d493a8ea506768a4c0f53ef74dc5d88",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/b893a14776fb471330d47c1728834660ebadd939fa537409075a3c7c229caa00",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/b457f41520b2ce5547b2172272c351be35eb02b14fd13c891cd79645bde088d0",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/b362184afddd0df444a4fd05adb17dee022304fce45950c7579c5b35cd6d148c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/a3766aa7a11f19fa740ec58dca49a65840911c16a1630eea28735a8610a0aec7",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/a330f2cbff6e8ee5bdc6baa4a700d277a469266809a0e860db915e70089acf73",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/99f03fe1c81d1e1c5a0dfff37ee0d5f31b0fd09c224cf16522028b542869fd5e",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/987fa7fdf6fda45bbe2e5a2624e82948f171e70e6399c3cc7742e9a9ab3beaa1",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/97e8d5bd763c5bb044fdcbe97d4e8b156d9682cd69b6e5bcc547e4382db30359",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/94de02066aaf3b9f644d400ebed67fb720b289a26af6eea72ed11dd56e713b66",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/93a1e8bf33d53dd054f385499fbd6283590ba17bf7fbadc425e547397decdf4a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/90e8f4d6b3bea4d7aee98f6ce80e07d6fe8f6835fcd3778fa309766297717418",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8fa6eea2fd3d14d0cd1bf04721cc687dd0aa818f634c8cfa1ed7e14e7606a41a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8f01c3ba2159c38adeda23fff995a7479123f4702a5a6462ac7086b91e73cf56",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8ebb855ddf5946d7727024508055912e43c6eb5373334d3234e43ea40bd4269e",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8d7659b651cccd744f43d2c8fee38579a3c9d930e04c9fa40524f16fc4cde57c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8c1edb226dbed614bf766a62e784fda782cecd56a90402525326208da1d1f677",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8acb61783c33b001acd48ab296b0e13730742c3a39c25ec22c8f6e43da8c7c86",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/89a8cf6aedd7ce8929fab63bed331f9b6012dea3f29ffe440ec88d9b36622468",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/87d51aff0a5efc2419964fc1e158000dc9cee8cfd34d7b026f702f40b93bb4a7",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/8522e3ab47d6e9f3315cf5b773b764bd12904f2bda25c771de8c10e08b2bb2c8",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/81a88329d9f2a614da7d405066643b7b8c221ec9412aae1eac527a00791ce6b4",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/7e408cf46a502a71e2652a017684c31a143f765309bfb8b608edb501906f23c6",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/7d15aacd3794709198c98d39c46e0bc5565106dd8af4b0af57ad4365b097c655",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/7c972580bdb184fd7254099925ffed76b9662173eb92970aa017708a212d51f5",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/7bcf49dcbad21efc959525f2126ed5c7ca9d7d2cb400366ac7d41e8a0bda1324",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/7b323448e64099dba4533d996b00e60152e0d16915bbe1c777676a7000a2c459",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/74f53b5589897e9cc927b8b555d6afe77e5fcd2224c33e6ab3f3fb9ba5233f29",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/744f9d45c6bde7c2cb6a14bc766cbcfa767afdb2b49dc65e9cdb1129708d4fbc",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/728c50d39b22243f98e02c91f2532c430f62e9b4c0e5b519fcee3c684e9b55e2",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/6f7777d4e0c803d9b5405eb27a4641f8235ddbc99d3c6da8434b6e5ce4abb0c0",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/681495fcd9c935415e3e0a59190a79f8aa45fd2da655528a6c09f5056e97e4f0",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/649001f9f8450d6a85cfc544c8998d55c6dd5f7f5bfda35db1b63aaefa857d24",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/62c0dd1430f59838dff3f54c8547294c651217dbda321c6699e731f6b461c8b6",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/6145c9304345d5ab5e6846631c402a823efce9b150461d1928b161ad9830bee4",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/5fffa333dbff3d4323c62c291c0adbe83fe98a5c60196c1ffbf5d8f11cfbfa2f",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/5fb10a95c1527d622e8d38c7a13594d2522b26be02fbad6ffcb7781acfb1c59f",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/5f6d9d36c4386fa6e2a9ee8a321576745e54baa6d27174fa6c3ed4f3e5309a7b",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/5f66a591044e122bb7fbdbbdb3c5860db24092f9a5521b31daaff0c72b2724c2",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/5d7269cecb64572bdcbcf6d3c43353afc951d7accb8dbaa59bd84b3f8dc57178",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/5bec5ab7737e458b3f078e3214cd9eeda9917675b231ac7f0ec482a746a4db6a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/535f3dd3f99ecc9b09e4348ea312018c4261025e27cfd6bb3dbea57186a73778",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/512ab0711f17c3c853821dab465f4c0f778da076baf2463022048492dc92df5e",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/4fc0c39549b4cef528e2ecd5dd700cd61b9292942301a497fc0470aead35fa5a",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/4ef0dd76f10374311b1709944d968a62fb15f21f59401156121923589e18c5d5",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/4ba38f9b328d4f6e00a19e0a586a30890747fd1d514e9cb153adbbe35fd8019c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/4a6e4ee3f0b3ed5b79fad5f210dfd19d8256e70f8b3ec5a650325d6178270fe6",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/4980863be81c8a96488bdd058e20c4f698aa9768d105c90e8bfa635200083329",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_codebuff__codebuff_api_key_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_codebuff__codebuff_api_key2_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_codebuff__codebuff_api_key3_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_provider_ollama_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/4107c6acd20ade3b11c4324d2518e6d899d47d9aa15668eecaf00ac1bfd07e72",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/40420ec2b4d299b6ed189088215e29c14c010ae4aadee78f7dabec1a0058b3d2",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/402e6520812e5787c9fc1c5f356862e0ae7fbf3d228293636560a00c56b79768",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/3a9c8e48b72ae28e8d30f4fd10baee574494821002d849cbd6a58d19f2e5ed63",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/3981e9fc19d750c4ba7ee8b42d68519dc25f23396337f8d2b525689e4eb86f0d",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/39701d367facfbd36933c0060a78719990e98f88fe07a931f8ee0b5fa412efd9",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/39033373e83f9d321d81324b73f341f3276d5ced7c9c510b0faec6b08b7d579d",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/31136c86904d2132d891cd6cf5e401b39d4969e66949d7b65f3647c7f7f86e52",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/2bc6b1fe64f93896175f8d1dac6d1cc84abffda94f66531dfa56be6c9bacf89c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/2542c1ccc0261acc3fceb60ad4631e0e01dbb0f130a380ce3449aad46a50450f",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/21e38160e9bdbd4b9476e3b62d15ad62b1bac4892d052ed5f06b43cff321d8d6",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/202d653fea55bf4947819b5fc4f400fa143570f0fb611cd6358e726c6463768c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1fba66d8aeb4f204a978975654bfe95dc4b9e0b097096a7934173d1a3ac87ef2",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1f8be4fe2124ea739b00a02b3fdba47db1724798a209beabe39ce3972f898719",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1e5b604d3182782298c273d95ba2417b24821c3dcc190870376dd3974dfb329f",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1d11a8d3097160730d73cd0d401b358a30c034fa3f79ccb1e0f07387f9e9b5b7",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1d03ab709f76953d13ba7df9cd043ebe4ce0075cdd85fae0f65f33e273b2386f",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1c1ec2bb938977ed3b7578844489ccb460bc3a82b44f94b0ea333d70757deaed",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/1be14d9d565e8b0b5bd14df4ef47f30047af081f5cdb6792b2bb5ec9cdb74c5d",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/174712bfdd99efcad292376c513e5bf29e9399918c638a4f8491450c866512c8",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/15fc926da386c2d2855d048b583301d56ae8778f4cc6a61df9691020f73d1fab",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/158facfbdf73928f98c18add9193b2e70f719f0b4ed93cb78df7cedebda535aa",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/118824b073a8659a95dc489f78deeda8a833a1dc17d6a324a07605a1197929cc",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/0e5554c1b844147e790d4989f4ce004c742bcd38a4e164a781df590a749d738b",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/0a30f5a2657740da388c4cd3c139899596a73a75bd611181248259ecd1ea182b",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/0a1bcc02964c874737eaec69eb8637d4640e057e5ae589ba302553f14b46fbf8",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/08f2c290b436b05fed6576350910744e78677c0f8fa9a3ca3d5b1e041a1c15c0",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/incidents/078457fb5244681d571c57b4770a1c858d510407c24ba2d989dcaaba72047315",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform/checkpoints/6ec481e73b0c8b27f776d9cee00df03739d86d8b12c7828a4fd32b4446c58f5c",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_platform",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/offmenu_free_provider_registry_20261028",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/intelligible_openrouter",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "resource",
+      "path": "u/admin/household_router_message_mandy_windows_20261030T214958010Z_655700b5-c188-48e7-bef9-49ee10c40bb7",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "schedule",
+      "path": "u/admin/offmenu_platform_verify_daily",
+      "disposition": "retain-disabled",
+      "reason": "Disabled by verified deployed API readback; retain configuration for rollback.",
+      "delete_authorized": false
+    },
+    {
+      "type": "schedule",
+      "path": "u/admin/offmenu_platform_health_15m",
+      "disposition": "retain-disabled",
+      "reason": "Disabled by verified deployed API readback; retain configuration for rollback.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/cerebras",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/codebuff__codebuff_api_key",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/codebuff__codebuff_api_key2",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/codebuff__codebuff_api_key3",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/cohere",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/deepseek",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/fireworks",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/gemini",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/github_models",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/groq",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/huggingface__hugging_face_read_token",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/huggingface__hugging_token",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/mistral",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/nous",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/nvidia",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/ollama",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/openai",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/openrouter",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/sambanova",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/together",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/ai_keys/zai",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/foo_ssh_key_20261027",
+      "disposition": "retain-current-transport",
+      "reason": "Required current Foo root dependency; replacement unqualified.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/intelligible_openrouter",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "variable",
+      "path": "u/admin/offmenu_netlify_api_token",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "folder",
+      "path": "household_router",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "group",
+      "path": "all",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    },
+    {
+      "type": "group",
+      "path": "wm_deployers",
+      "disposition": "hold-preserve",
+      "reason": "Consumer and recoverable source/config custody reconciliation outstanding.",
+      "delete_authorized": false
+    }
+  ]
+}
