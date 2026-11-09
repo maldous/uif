@@ -1,50 +1,279 @@
 # uif
 UIF: shared physical and virtual infrastructure, cross-project Linear integration, and full harness / full durable delivery methodology.
 
-## Directory, repository and Linear reconciliation ledger
+## Provisional reconciliation checkpoint
 
-This ledger indexes recorded reconciliation candidates under `/home/user/src`, including dated directories, `offmenu-worktrees`, and unresolved top-level or relocated items. It lives in this README.
+**174 provisional candidate action records. This is not an exhaustive or final count of remaining work.** Records mix explicitly labelled deliverables, subtasks and conditional operations. Unmatched source/custody scope and unresolved applicability can change the list or count. Five nonadditive references below preserve shared or aggregate work without counting it twice.
 
-**Inventory basis: outstanding work only.** The original 70 named records were the user-directed working baseline. Correctly completed physical entries are removed from this README even when separate product or Linear issue processing continues; their earlier records remain in Git history. Unresolved endpoints, aliases and custody remain listed. Reconciliation does not require a new global census first.
+This checkpoint replaces the former directory-only ledger with currently identifiable repository, directory, Linear and recovery-readiness work. Ordinary later feature implementation is excluded from the 174-record count. Completed physical relocations and completed startup documentation are not reopened. Earlier paths and detailed historical observations remain in [the prior directory ledger](https://github.com/maldous/uif/blob/8a6a9428712cb9f4b843eae1a1f63fc8f759b097/README.md).
 
-A permitted names-only observation at **2026-11-08T20:20:02.930717+00:00** enumerated 50 visible immediate entries: three children of dated `20*` directories and 47 children of `offmenu-worktrees`. All three dated names were already listed; sixteen OffMenu names were missing and are now individually recorded as SRC-071–086. Seven older source names were absent because their physical moves had completed, not because additional entries were missing. Further moves were underway after this snapshot. This bounded listing does not inspect hidden children or nested contents and does not establish repository identity or cleanup eligibility. [Terminal names-only observation](https://windmill.aldous.info/run/01a1bcd1-7d6a-fe97-df68-ae5789345624?workspace=offmenu).
+### Evidence and counting boundaries
 
-GitHub and Linear evidence has been checked for the named records. Recorded local branches, HEADs, paths and destinations remain distinct from remotely verified refs, commit ancestry and issue outcomes. Current ownership, dirty/untracked/ignored contents, consumers and physical closure have not been established by those remote reads. Correctly completed physical entries are omitted from this outstanding view; later source or issue work remains in its existing project records. Historical inventories and derived ancestor directories are not additional active candidates.
+- The permitted names-and-metadata snapshot observed **7,219,487 unique assets**, with zero duplicate paths, across five disjoint partitions. All 16 input hashes/counts and an independent compressed-artifact readback passed. Observation windows span 2026-11-08 23:05–23:24 UTC; this is not an atomic filesystem snapshot.
+- The immutable Linear catalog covers **1,953 unique issue identities**: 550 belonged to the five current projects and 1,403 were historical/projectless at capture. All identities have a coverage record. This does not prove semantic closure or one issue equals one task.
+- Later verified project-only changes are a separate overlay: four shared outcomes moved to current UIF and 73 CIX provenance records moved to current CIX. Those writes preserved other issue fields. Thirty-five CIX assignments remain paused; there are no unknown write outcomes. Three UXF assignments require team/project compatibility resolution. No issue was archived or deleted.
+- Project classification yields 3,077,506 single-project associations, 466,874 multiple-project cues, 1,596,556 name-only candidates, 2,078,523 unclassified records and 28 other/projectless issue references. None is an ownership, permission, completion or task-count assertion. UIF issue prefixes do not identify the owning product.
+- Raw filenames and private metadata remain in the private snapshot. The artifact SHA256 is `cecd2a9000ab50b10419e8b89c1c9daf732b0f5440b1870179fce8b8909c39ae`; its verified size is 624,114,231 bytes. The public-facing work list contains only needed project/task information.
+- Prior read holds remain held; 26,701 symlinks were recorded but not followed. One mount boundary was excluded and the expected hotfix root was absent. No source bodies, secrets or datasets were read by this snapshot. No unrestricted-home coverage claim is made.
+- A name, Done status, local commit, moved directory or new README commit does not prove accepted source publication, runtime readiness or a completed recovery outcome. Historical source/custody and current source acceptance remain separate.
 
-### How to use the ledger
+### Execution rules
 
-- Use the user-directed named baseline for accessible repository and Linear reconciliation. Amend a path or disposition only when specific evidence supports the change.
-- Record the exact repository, branch and commit, Linear issue, remaining work and final disposition. Keep unknown values explicit.
-- Preserve source and consumer bindings when deciding a disposition. Verify exact current identity, contents and consumers before a physical move or removal; a new global census is not a prerequisite for read-only reconciliation. A proposed destination is not evidence that a move occurred.
-- Keep completed or absent items out of the current outstanding index once their disposition is verified. Do not turn historical evidence or layout containers into new tasks.
-- Updating this document does not perform directory cleanup, relocation, repository integration, Linear changes or runtime changes.
+- These records identify work; they do not select execution, override a read boundary or authorize retry of a denied operation. Revalidate current GitHub/Linear ownership and exact operation state before acting.
+- Preserve source, dirty/untracked/ignored material, Git registrations, aliases, consumer/data bindings and recovery evidence. A retain decision can close a disposition without moving anything. Conditional execution requires its recorded consumer/access/review prerequisites and applicable confirmation.
+- Shared deployment discovery and toolchain/checkpoint contracts are reused by subject-specific tasks. Do not duplicate discovery, source review, dispatch or external effects. Source-action mappings retain parent/child and shared-input relationships.
+- [AGENTS.md](AGENTS.md) now documents separate Foo and cloud white-room procedures. Documentation is complete; discovery, implementation, configuration-drift checks and recovery validation below remain outstanding. Do not blindly resume old Foo sessions or assume cloud workers share Foo storage.
 
-### Outstanding candidate index
+## Candidate actions by coordination project
 
-All paths in the tables are relative to `/home/user/src/`. IDs are ledger references, not Linear issue identifiers.
+Project headings identify coordination, not ownership of every associated file. Each stable record ID remains distinct from its Linear issue ID. Conditional operations are explicitly marked.
 
-#### Dated-directory candidates
+### UIF (67 records)
+
+- **shared.skills.catalog_refresh**: Establish supported in-place skill catalog refresh behavior ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).
+- **shared.skills.constant_time_path**: Establish supported constant-time-analysis path semantics ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).
+- **shared.skills.spec_compliance_runtime**: Establish supported spec-to-code-compliance runtime or distribution ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).
+- **src-059-qualification**: Establish local configuration scope and consumers ([UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings); subtask).
+- **src-059-placement-decision**: Select final local configuration placement preserving permission behavior ([UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings); subtask).
+  - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+  - Preserve permission behavior and obtain any required confirmation for permission changes.
+- **src-062-qualification**: Establish project marker binding and lookup consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+- **src-062-placement-decision**: Select project marker placement without merging distinct profiles ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+- **src-064-qualification**: Qualify local configuration/cache entries and readers or writers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+- **src-064-placement-decision**: Select placement preserving local behavior and distinct home configuration ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+- **src-066-qualification**: Qualify notes custodian, current or historical use and consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+- **src-066-placement-decision**: Select retained notes placement without inferring obsolescence from dates ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+- **src-067-qualification**: Establish inputs workflow ownership, provenance and consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+- **src-067-placement-decision**: Select inputs placement accounting for the distinct home root ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+- **mixed-custody-source-classification**: Classify CIX/OffMenu source and evidence roles within the already-relocated mixed custody group; attach supported project-specific followups and unresolved dependencies. ([UIF-246](https://linear.app/maldous/issue/UIF-246/reconcile-mixed-project-archive-custody); deliverable).
+- **src-060-qualification**: Reconcile custody-group ownership, consumers and recovery mappings ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); subtask).
+- **src-060-placement-decision**: Select group-specific custody placement with existing project owners ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); subtask).
+  - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+  - Group-specific owners and recovery mappings remain authoritative; no whole-root move or single-project ownership is selected.
+- **retained-r067-r087-history-recovery**: Resolve exact original-history recovery for R067 and R087 while preserving their retained local source and ignored evidence. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
+- **retained-r059-evidence-custody**: Record current custodian/consumers and recoverability for R059's unique .delivery evidence after its completed worktree placement. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
+- **r192-dirty-postimage-custody**: Preserve and map the ten R192 dirty composed-publication postimages independently of source equivalence and any later selected-source action. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
+- **r193-independent-store-recovery**: Retain the independent b850 store and establish its required original-source/evidence recovery disposition; no off-host recovery is currently established by its no-remote snapshot. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
+- **uif128-exact-tip-acceptance**: Reconcile acceptance for retained a6437a4 source against the older changes-requested review and later published release corrections; identify only a real residual if one remains. ([UIF-128](https://linear.app/maldous/issue/UIF-128/implement-frozen-release-candidates-and-parallel-release-qualification); deliverable).
+- **uif128-original-history-recovery**: Establish recovery for the exact retained release-component history and local evidence. ([UIF-128](https://linear.app/maldous/issue/UIF-128/implement-frozen-release-candidates-and-parallel-release-qualification); deliverable).
+- **uif126-original-history-recovery**: Establish recovery for accepted c70fb52 component source and retained local evidence; preserve the recorded 67/90-check acceptance. ([UIF-126](https://linear.app/maldous/issue/UIF-126/align-windmill-execution-and-resource-handling-with-community-edition); deliverable).
+- **guard-policy-source-disposition**: Resolve retained guard-policy differences against the actual current requirement and selected source. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **assets-validator-composition-disposition**: Resolve the distinct 996b adoption-assets and b850 validator/schema source composition with exact current pins and acceptance. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **documentary-metadata-disposition**: Determine the current relevance and disposition of documentary metadata source 25f45442. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **lifecycle-provenance-disposition**: Resolve the retained lifecycle/provenance semantics against current intended outcomes, preserving incorporated work. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **r192-source-disposition**: Decide incorporation or justified keep/adapt/extract/supersede/reject for the ten tracked R192 composed-publication source edits. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **r070-r071-dependency-selection**: Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **r055-local-origin-disposition**: Resolve R055's retained one-commit-ahead local head versus origin before selecting source disposition. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **r058-source-equivalence**: Determine current source equivalence and any actual residual requirement for R058's divergent source. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **r068-source-disposition**: Determine R068 source disposition while retaining UIF-134's completed positive/negative helper acceptance. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+- **javascript-profile-history-recovery**: Establish original-history recovery for accepted JS profile source 92a44b1 and retained evidence. ([UIF-142](https://linear.app/maldous/issue/UIF-142/support-a-sealed-javascript-validation-and-delivery-profile); deliverable).
+- **javascript-refill-history-recovery**: Establish original-history recovery for accepted refill source 59dbf51 and retained evidence. ([UIF-159](https://linear.app/maldous/issue/UIF-159/prove-repeated-autonomous-delivery-recovery-and-eligible-refill); deliverable).
+- **canonical-v1-selected-composition**: Reconcile the exact selected canonical-V1 producer/schema/sealer/settings/assets/operator source pairs and independent reviews into one coherent source composition. ([UIF-161](https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes); deliverable).
+- **canonical-v1-current-input-qualification**: Bind fresh authoritative current inputs, exact target/operation identity and bootstrap; qualify affected consumers, seven semantic consumer proofs and original-intake evidence. ([UIF-161](https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes); deliverable).
+- **coherent-adoption-readiness**: Identify the exact selected-profile/coherent adoption and recovery evidence still missing after the PR209 source gap closed; bind current owner, original operation and scoped hold. ([UIF-130](https://linear.app/maldous/issue/UIF-130/verify-coherent-migration-recovery-and-operational-handover); deliverable).
+  - Reuse: restart-durability.
+- **client-baseline-document-integration**: Integrate the independently accepted shared capability inventory into existing canonical documentation with product-owned differences preserved. ([UIF-192](https://linear.app/maldous/issue/UIF-192/define-reusable-client-integrations-and-project-capability-gaps); deliverable).
+- **client-surface-entitlement-qualification**: Resolve still-unknown per-project client surfaces, actual account/plan entitlements and consent/recovery/lifecycle applicability through authorized evidence. ([UIF-192](https://linear.app/maldous/issue/UIF-192/define-reusable-client-integrations-and-project-capability-gaps); deliverable).
+- **recoverable-project-archive-502c2f50-3d73-42e9-bdac-25ffe9f3f7ad**: Complete supported recoverable archive and archived/not-trashed/restore readback for UIF V3. ([UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); deliverable).
+- **recoverable-project-archive-2298e2d2-558d-4e43-89e3-8d3d77d47ecd**: Complete supported recoverable archive and archived/not-trashed/restore readback for Infrastructure Deployment Programme. ([UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); deliverable).
+- **recoverable-project-archive-852dfec6-50d6-4dd8-b349-8c884fa21a12**: Complete supported recoverable archive and archived/not-trashed/restore readback for CIX — Managed service rollout. ([UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); deliverable).
+- **recoverable-project-archive-7d101ad0-1107-4cc8-ba9a-6521dd544e7c**: Complete supported recoverable archive and archived/not-trashed/restore readback for CIX — Next release. ([UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); deliverable).
+- **connector-stable-identity-map**: Identify exact obsolete and successor connector installation/configuration IDs, endpoints and supported scopes without secrets. ([UIF-211](https://linear.app/maldous/issue/UIF-211/retire-obsolete-offmenu-mcp-connector); deliverable).
+- **connector-consumer-map**: Map clients, tool bindings, automations and receipt/status/history/recovery consumers for the identified connector pair. ([UIF-211](https://linear.app/maldous/issue/UIF-211/retire-obsolete-offmenu-mcp-connector); deliverable).
+- **connector-successor-continuity**: Verify authorized successor access, least privilege and required current/historical receipt retrieval for affected consumers. ([UIF-211](https://linear.app/maldous/issue/UIF-211/retire-obsolete-offmenu-mcp-connector); deliverable).
+- **connector-retirement-rollback-plan**: Record bounded exact-connector retirement and rollback with existing accountable owners. ([UIF-211](https://linear.app/maldous/issue/UIF-211/retire-obsolete-offmenu-mcp-connector); deliverable).
+- **project-binding-candidate-reconciliation**: Reconcile the original A-assignment candidate and independent verdict before commissioning duplicate project-agnostic routing work. ([UIF-140](https://linear.app/maldous/issue/UIF-140/bind-task-source-and-custody-by-execution-role); deliverable).
+- **complete-tail-selected-profile-proof**: Establish exact source/scope/validation/review/publication support for the selected current profile before coding; reconcile the accepted later consumer pair and source/current-input qualification. ([UIF-141](https://linear.app/maldous/issue/UIF-141/validate-the-complete-delivery-path-before-coding); deliverable).
+- **frozen-release-input-readiness**: Select and approve the actual immutable release candidate and exhaustive validation contract; retain source/profile/output identities and original operation history. ([UIF-160](https://linear.app/maldous/issue/UIF-160/qualify-a-frozen-release-candidate-and-immutable-promotion); deliverable).
+- **cq-original-publication-receipts**: Recover the two original CQ publication operation/run identities and terminal receipts through an available authorized source. ([UIF-218](https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff); deliverable).
+- **shared-transport-owner-correlation**: Bind an actual authorized transport executor and supported non-secret server receive/ref-transaction correlation source; join original CQ/UIF records. ([UIF-218](https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff); deliverable).
+- **shared-publication-continuation-plan**: Prepare one evidence-supported continuation for the accepted CQ/UIF source, with exact remote commit/tree/ancestry readback and unchanged guards. ([UIF-218](https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff), [UIF-193](https://linear.app/maldous/issue/UIF-193/review-and-publish-the-scoped-uif-foundation-documentation); deliverable).
+- **standalone-harness-boundary-plan**: Reconcile actual shared source boundary, current/pending consumers, source/issue owners, existing dependencies and applicable build/test/Sonar checks; independently review the extraction plan. ([UIF-120](https://linear.app/maldous/issue/UIF-120/deliver-the-native-platform-harness-with-developmain-release-delivery); deliverable).
+- **cross-project-baseline-input-map**: Record exact selected sibling repository identities, immutable pins, roles, rights, owners and dependency/interface versions without assuming five projects means five repos. ([UIF-219](https://linear.app/maldous/issue/UIF-219/qualify-versioned-cross-project-integration-baselines); deliverable).
+- **cross-project-isolation-plan**: Define independent integration worktrees and mutable dependency/cache/output/runtime/data namespace isolation for the selected baseline. ([UIF-219](https://linear.app/maldous/issue/UIF-219/qualify-versioned-cross-project-integration-baselines); deliverable).
+- **cross-project-build-compliance-matrix**: Derive exact per-repository/cross-project commands, toolchains, environments, evidence and refusal/recovery checks from actual selected interfaces. ([UIF-219](https://linear.app/maldous/issue/UIF-219/qualify-versioned-cross-project-integration-baselines); deliverable).
+- **portal-source-ownership-inventory**: Inventory actual portal source/assets/history, deployed-site lineage, project destinations and issue/repository/source ownership before selecting migration. ([UIF-220](https://linear.app/maldous/issue/UIF-220/move-aldousinfo-into-uif-and-redesign-the-project-portal); deliverable).
+- **portfolio-source-rights-inventory**: Reconcile available legacy CV/resume versions, supporting images/descriptions, provenance, duplicates and public-sharing rights before portfolio production. ([UIF-220](https://linear.app/maldous/issue/UIF-220/move-aldousinfo-into-uif-and-redesign-the-project-portal); deliverable).
+- **restart-foo-dependency-discovery**: Discover Foo project and shared dependencies (Existing issue ownership still to map; deliverable).
+- **restart-foo-configuration-drift**: Reconcile declared Foo dependency configuration with running state (Existing issue ownership still to map; deliverable).
+- **restart-foo**: Implement clean Foo restart reconstruction (Existing issue ownership still to map; deliverable).
+  - Reuse: restart-durability.
+- **restart-cloud**: Implement isolated cloud restart reconstruction (Existing issue ownership still to map; deliverable).
+  - Reuse: restart-durability.
+- **restart-durability**: Bind durable checkpoints and execution ownership (Existing issue ownership still to map; deliverable).
+- **restart-foo-validation**: Validate Foo recovery and cloud handoff (Existing issue ownership still to map; deliverable).
+  - Reuse: restart-durability.
+- **restart-cloud-validation**: Validate cloud worker and coordinator recovery (Existing issue ownership still to map; deliverable).
+  - Reuse: restart-durability.
+- **shared-publication-execute-uif**: Publish accepted UIF source through the qualified route and verify remote identity ([UIF-218](https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff), [UIF-161](https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes); conditional execution). **Conditional.**
+
+### CQ (26 records)
+
+- **cq.alias001.codex_release**: Release the active Codex client family historical-root dependency ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.alias001.node_release**: Release the separate Node client historical-root dependency ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.alias001.other_bindings**: Resolve remaining SRC-001 saved-root and consumer bindings ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.alias001.retire**: Retire SRC-001 compatibility alias after actual consumer release ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable). **Conditional.**
+- **cq.alias002.preview_release**: Release or safely migrate the Impeccable preview historical-root dependency ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.alias002.other_bindings**: Resolve remaining SRC-002 consumer and configuration bindings ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.alias002.retire**: Retire SRC-002 compatibility alias after actual consumer release ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable). **Conditional.**
+- **cq.r181.resolve_hold**: Resolve the specific R181 TypeScript Git inspection hold ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.r181.identity_inventory**: Establish held Git identity and source/custody state once permitted ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.r181.disposition**: Record and carry out the permitted R181 preservation/disposition outcome ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable). **Conditional.**
+- **cq.r202.original_outcome**: Recover the original R202 action, target and outcome from existing evidence ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.canonical.accepted_main_plan**: Complete the accepted canonical-main and retained-root transition plan ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).
+- **cq.r180.freeze_packet**: Obtain the existing frontend owner frozen current-source packet ([UIF-212](https://linear.app/maldous/issue/UIF-212/reconcile-cq-source-and-proof-artifacts); deliverable).
+- **cq.r180.assess_packet**: Assess the frozen frontend delta and record necessary, satisfied or other source disposition ([UIF-212](https://linear.app/maldous/issue/UIF-212/reconcile-cq-source-and-proof-artifacts); deliverable).
+- **cq.handoff.reconcile_publication_state**: Reconcile current handoff publication-state corrections while preserving finite evidence ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).
+- **cq.handoff.publish_reviewed_correction**: Publish and verify the reviewed handoff/documentation correction through the qualified route ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable). **Conditional.**
+- **cq.profile.bind_exact_contract**: Bind exact CQ project, immutable source and existing read-only profile/executor contract ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).
+- **cq.profile.qualify_acquisition_isolation**: Qualify read-only source acquisition and disjoint private workspace/resource isolation ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).
+- **cq.profile.qualify_private_return**: Qualify bounded typed evidence return and deterministic current-owner review routing ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).
+- **cq.profile.qualify_denials**: Verify wrong-project/source/path/tool/rights/result denials and uncertain-admission reconciliation ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).
+- **cq.analyzer.original_pin_assessment**: Produce original-pin Sonar Python analyzer-version assessment via one eligible admission ([UIF-179](https://linear.app/maldous/issue/UIF-179/resolve-the-sonar-python-analyzer-version-contract); deliverable).
+- **cq.analyzer.owner_review**: Return the bounded source assessment for current CQ owner review ([UIF-179](https://linear.app/maldous/issue/UIF-179/resolve-the-sonar-python-analyzer-version-contract); deliverable).
+- **shared.harness.cq_normal_cycle**: Prove normal CQ intake, useful execution, independent review and accepted return ([UIF-177](https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover); deliverable).
+- **shared.harness.cq_successor_refill**: Prove normal CQ successor/refill continuation ([UIF-177](https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover); deliverable).
+- **shared.harness.cq_recovery**: Prove normal CQ recovery with preserved owner and evidence-return bindings ([UIF-177](https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover); deliverable).
+  - Reuse: restart-durability.
+- **shared-publication-execute-cq**: Publish accepted CQ source through the qualified route and verify remote identity ([UIF-218](https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff), [UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); conditional execution). **Conditional.**
+
+### CIX (19 records)
+
+- **CIX-71:historical-policy-lineage**: Record PR82’s older 44,410-byte policy separately from the accepted 61,755-byte policy retained on the recovery branch. Preserve CIX-343 and CIX-502 accepted outcomes. ([CIX-71](https://linear.app/maldous/issue/CIX-71/ops-16-maintain-the-control-register-risk-decisions-and-settings-drift); deliverable).
+- **CIX-71:historical-policy-disposition**: Assess current applicability and record a justified retain, archive or supersession disposition for PR82. No stale-policy merge or branch deletion is selected. ([CIX-71](https://linear.app/maldous/issue/CIX-71/ops-16-maintain-the-control-register-risk-decisions-and-settings-drift); deliverable).
+- **CIX-141:handoff-applicability**: Assess PR85 against current CIX delivery/review roles and the UIF boundary. Preserve the independent /proc receiving failure and zero admission; record defer, supersede or exact later qualification with reasons. Do not activate historical Symphony. ([CIX-141](https://linear.app/maldous/issue/CIX-141/eli-connect-native-symphony-delivery-to-independent-review); deliverable).
+- **CIX-507:source-target-custody**: Refresh and freeze exact source/target refs and custody, including complete reachable closure, all branch/tag identities, local-only state and external metadata. Reuse the completed naming and relocation evidence. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable).
+- **CIX-507:publication-safety**: Review the complete proposed public object/content closure for secrets, private or protected data, third-party rights, unsafe automation and size constraints. Preserve unresolved content rather than silently omitting it. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable).
+- **CIX-507:legacy-ref-preservation**: Preserve all original branch identities/history and tag objects under collision-free legacy refs with exact original-to-retained correspondence; retain divergent experiments as history unless separately selected. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable).
+- **CIX-507:candidate-composition**: Compose the reviewed lossless candidate from verified develop, resolve all shared-path collisions and preserve newer CIX gRPC/Go/protobuf closure, LTO and security/provenance boundaries. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable).
+- **CIX-507:candidate-review-and-integration**: Obtain distinct final-candidate review and established exact-head checks, then use the documented merge-only Git-flow process. This classification does not execute a merge or bypass checks. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable). **Conditional.**
+- **CIX-507:independent-recoverability**: Independently verify canonical remote objects, every retained payload, provenance and both original histories; preserve current CIX improvements and exact restoration evidence. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable).
+- **CIX-507:qualified-retirement**: Only after recoverability and current clean-state/consumer clearance, complete the specified local removal and then repository archival, never repository deletion. Reconcile already completed moves without substituting a move for the required end state. ([CIX-507](https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly); deliverable). **Conditional.**
+- **CIX-508:documents-semantic-comparison**: Compare the unique work in the 24 intact relocated roots with canonical CIX and cix-operations develop. Credit completed relocation of 60,447 entries; relocation is not semantic integration. ([CIX-508](https://linear.app/maldous/issue/CIX-508/reconcile-relocated-cix-documents-work); deliverable).
+- **CIX-508:documents-disposition**: Record issue-level source and historical-path dependency dispositions, preserving Git metadata, dirty state, native/runtime evidence, exports and the recorded broken symlink qualification. ([CIX-508](https://linear.app/maldous/issue/CIX-508/reconcile-relocated-cix-documents-work); deliverable).
+- **CIX-508:documents-reviewed-integration**: Integrate only the reviewed unique work with appropriate source/review/build/test evidence; preserve the original custody and restoration map. Do not repeat the completed relocation. ([CIX-508](https://linear.app/maldous/issue/CIX-508/reconcile-relocated-cix-documents-work); deliverable). **Conditional.**
+- **UIF-214:dirty-postimage-R185**: Establish current custody and exact dirty-postimage correspondence for frozen subject R185, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
+- **UIF-214:dirty-postimage-R186**: Establish current custody and exact dirty-postimage correspondence for frozen subject R186, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
+- **UIF-214:dirty-postimage-R187**: Establish current custody and exact dirty-postimage correspondence for frozen subject R187, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
+- **UIF-214:dirty-postimage-R188**: Establish current custody and exact dirty-postimage correspondence for frozen subject R188, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
+- **UIF-214:dirty-postimage-R189**: Establish current custody and exact dirty-postimage correspondence for frozen subject R189, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
+- **UIF-214:dirty-postimage-R190**: Establish current custody and exact dirty-postimage correspondence for frozen subject R190, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
+
+### OffMenu (55 records)
+
+- **offmenu-47-hold-qualification**: Qualify existing retained holds ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds), [UIF-154](https://linear.app/maldous/issue/UIF-154/qualify-held-input-assets-for-current-permitted-consumers); deliverable).
+- **offmenu-mixed-workspace-custody**: Resolve mixed workspace custody ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable).
+- **existing-src068-070-1**: Qualify archive whole-root disposition ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); deliverable).
+- **existing-src068-070-2**: Resolve assessment consumers and destination access ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable).
+- **existing-src068-070-3**: Relocate assessments and repair Git registration ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable). **Conditional.**
+- **existing-src068-070-4**: Bind manual-runner launcher and configuration ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable).
+- **existing-src068-070-5**: Resolve secondary database reopen binding ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable).
+- **existing-src068-070-6**: Execute data-root cutover and rollback verification ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable). **Conditional.**
+- **offmenu-country-source-custody**: Qualify retained country sources ([UIF-95](https://linear.app/maldous/issue/UIF-95/qualify-remaining-country-source-and-metadata-obligations-from), [UIF-144](https://linear.app/maldous/issue/UIF-144/qualify-retained-country-sources-for-the-selected-offline-consumer); deliverable).
+- **offmenu-navigation-disposition**: Resolve navigation requirement disposition ([UIF-97](https://linear.app/maldous/issue/UIF-97/resolve-retained-ux-chronology-and-country-progress-evidence-gaps), [UIF-146](https://linear.app/maldous/issue/UIF-146/deliver-the-current-navigation-and-country-progress-requirement); deliverable).
+- **offmenu-recipe-pack-disposition**: Review printable recipe pack requirement ([UIF-98](https://linear.app/maldous/issue/UIF-98/qualify-shopping-deficit-duration-and-collaborative-list-integration), [UIF-147](https://linear.app/maldous/issue/UIF-147/review-the-printable-cc0-recipe-pack); deliverable).
+- **offmenu-corpus-version-disposition**: Resolve corpus identity and research transfer ([UIF-102](https://linear.app/maldous/issue/UIF-102/resolve-corpus-supersession-version-identity-and-incomplete-research), [UIF-151](https://linear.app/maldous/issue/UIF-151/complete-corpus-version-identity-and-incomplete-research-transfer); deliverable).
+- **offmenu-record-provenance**: Qualify record provenance and entity roles ([UIF-103](https://linear.app/maldous/issue/UIF-103/resolve-priority-record-provenance-and-product-role-qualification-gaps), [UIF-152](https://linear.app/maldous/issue/UIF-152/deliver-source-bound-per-record-enrichment-and-provenance); deliverable).
+- **offmenu-operation-rights**: Qualify cache retention and withdrawal rights ([UIF-105](https://linear.app/maldous/issue/UIF-105/qualify-cache-isolation-and-rights-safety-and-privacy-propagation), [UIF-153](https://linear.app/maldous/issue/UIF-153/enforce-consumer-cache-isolation-retention-and-withdrawal-policy); deliverable).
+- **offmenu-identity-default-contract**: Resolve canonical identity/default contract ([UIF-109](https://linear.app/maldous/issue/UIF-109/reconcile-canonical-barcode-design-and-retained-product-identity), [UIF-156](https://linear.app/maldous/issue/UIF-156/deliver-canonical-product-identity-and-explicit-consumer-defaults); deliverable).
+- **offmenu-provider-failover-disposition**: Resolve provider failover requirement ([UIF-110](https://linear.app/maldous/issue/UIF-110/determine-residual-need-and-evidence-for-historical-provider-failover), [UIF-157](https://linear.app/maldous/issue/UIF-157/define-and-qualify-required-provider-failover-behavior); deliverable).
+- **offmenu-wp03-dirty-source**: Reconcile canonical dirty source ownership ([UIF-155](https://linear.app/maldous/issue/UIF-155/deliver-selected-retained-functional-source-slices); deliverable).
+- **offmenu-wp05**: Decide PR211 and PR136 disposition ([UIF-155](https://linear.app/maldous/issue/UIF-155/deliver-selected-retained-functional-source-slices); deliverable).
+- **offmenu-wp06**: Reconcile PR138 scanner custody ([UIF-155](https://linear.app/maldous/issue/UIF-155/deliver-selected-retained-functional-source-slices); deliverable).
+- **offmenu-wp07**: Reconcile PR139 contract stack ([UIF-155](https://linear.app/maldous/issue/UIF-155/deliver-selected-retained-functional-source-slices); deliverable).
+- **offmenu-wp08**: Reconcile PR140 source bundle ([UIF-155](https://linear.app/maldous/issue/UIF-155/deliver-selected-retained-functional-source-slices); deliverable).
+- **offmenu-help-inventory-alignment**: Align actual UI delta and help inventory ([UIF-182](https://linear.app/maldous/issue/UIF-182/inventory-offmenu-controls-features-audiences-and-help-coverage); deliverable).
+- **offmenu-developer-contract-qualification**: Resolve remaining developer interface limits ([UIF-184](https://linear.app/maldous/issue/UIF-184/document-supported-offmenu-developer-interfaces-and-executable); deliverable).
+- **offmenu-locale-requirements**: Qualify locale requirements and text coverage ([UIF-188](https://linear.app/maldous/issue/UIF-188/audit-required-locales-and-user-facing-translation-coverage); deliverable).
+- **offmenu-retained-UIF-221**: Review retained AI tooling source ([UIF-221](https://linear.app/maldous/issue/UIF-221/review-retained-ai-tooling-source); deliverable).
+- **offmenu-retained-UIF-222**: Review retained historical tooling source ([UIF-222](https://linear.app/maldous/issue/UIF-222/review-retained-historical-tooling-source); deliverable).
+- **offmenu-retained-UIF-223**: Review retained qualified-source recovery ([UIF-223](https://linear.app/maldous/issue/UIF-223/review-retained-qualified-source-recovery); deliverable).
+- **offmenu-retained-UIF-224**: Review retained stop-source-outcome branch ([UIF-224](https://linear.app/maldous/issue/UIF-224/review-retained-stop-source-outcome-branch); deliverable).
+- **offmenu-retained-UIF-225**: Review retained worker work in progress ([UIF-225](https://linear.app/maldous/issue/UIF-225/review-retained-worker-work-in-progress); deliverable).
+- **offmenu-retained-UIF-226**: Review retained app source custody ([UIF-226](https://linear.app/maldous/issue/UIF-226/review-retained-app-source-custody); deliverable).
+- **offmenu-retained-UIF-227**: Review retained source-facts diagnostics ([UIF-227](https://linear.app/maldous/issue/UIF-227/review-retained-source-facts-diagnostics); deliverable).
+- **offmenu-retained-UIF-228**: Review retained qualification-admission branch ([UIF-228](https://linear.app/maldous/issue/UIF-228/review-retained-qualification-admission-branch); deliverable).
+- **offmenu-retained-UIF-229**: Review retained Windmill platform source ([UIF-229](https://linear.app/maldous/issue/UIF-229/review-retained-windmill-platform-source); deliverable).
+- **offmenu-retained-UIF-230**: Review retained qualification-bootstrap branch ([UIF-230](https://linear.app/maldous/issue/UIF-230/review-retained-qualification-bootstrap-branch); deliverable).
+- **offmenu-retained-UIF-231**: Review retained nonblocking-review branch ([UIF-231](https://linear.app/maldous/issue/UIF-231/review-retained-nonblocking-review-branch); deliverable).
+- **offmenu-retained-UIF-232**: Review retained native-successor-consumer branch ([UIF-232](https://linear.app/maldous/issue/UIF-232/review-retained-native-successor-consumer-branch); deliverable).
+- **offmenu-retained-UIF-233**: Review retained template-rework-retention branch ([UIF-233](https://linear.app/maldous/issue/UIF-233/review-retained-template-rework-retention-branch); deliverable).
+- **offmenu-retained-UIF-234**: Review retained successor-publication branch ([UIF-234](https://linear.app/maldous/issue/UIF-234/review-retained-successor-publication-branch); deliverable).
+- **offmenu-retained-UIF-235**: Review retained repository-reconciliation branch ([UIF-235](https://linear.app/maldous/issue/UIF-235/review-retained-repository-reconciliation-branch); deliverable).
+- **offmenu-retained-UIF-236**: Review retained worker-57 source and untracked files ([UIF-236](https://linear.app/maldous/issue/UIF-236/review-retained-worker-57-source-and-untracked-files); deliverable).
+- **offmenu-retained-UIF-237**: Review retained worker00 consumer snapshot ([UIF-237](https://linear.app/maldous/issue/UIF-237/review-retained-worker00-consumer-snapshot); deliverable).
+- **offmenu-retained-UIF-238**: Review native package branch ([UIF-238](https://linear.app/maldous/issue/UIF-238/review-native-package-branch); deliverable).
+- **offmenu-custody-tracker-path-correction**: Correct nine stale custody path records ([UIF-221](https://linear.app/maldous/issue/UIF-221/review-retained-ai-tooling-source), [UIF-222](https://linear.app/maldous/issue/UIF-222/review-retained-historical-tooling-source), [UIF-223](https://linear.app/maldous/issue/UIF-223/review-retained-qualified-source-recovery), [UIF-225](https://linear.app/maldous/issue/UIF-225/review-retained-worker-work-in-progress), [UIF-226](https://linear.app/maldous/issue/UIF-226/review-retained-app-source-custody), [UIF-227](https://linear.app/maldous/issue/UIF-227/review-retained-source-facts-diagnostics), [UIF-229](https://linear.app/maldous/issue/UIF-229/review-retained-windmill-platform-source), [UIF-236](https://linear.app/maldous/issue/UIF-236/review-retained-worker-57-source-and-untracked-files), [UIF-237](https://linear.app/maldous/issue/UIF-237/review-retained-worker00-consumer-snapshot); deliverable).
+- **src-072-consumer-qualification**: Resolve collection alias consumer bindings ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask).
+  - Reuse: existing-src068-070-4.
+- **src-072-alias-retirement**: Retire collection outer compatibility alias after consumer clearance ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask). **Conditional.**
+- **src-073-consumer-qualification**: Resolve manual-actions alias consumer bindings ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask).
+  - Reuse: existing-src068-070-4.
+- **src-073-alias-retirement**: Retire manual-actions outer compatibility alias after consumer clearance ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask). **Conditional.**
+- **src-078-consumer-qualification**: Resolve alias-container alias consumer bindings ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask).
+  - Reuse: existing-src068-070-4.
+- **src-078-alias-retirement**: Retire alias-container outer compatibility alias after consumer clearance ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask). **Conditional.**
+- **uif239-publish-permitted-record**: Complete the permitted relocation and alias follow-up record ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); conditional record completion). **Conditional.**
+  - Publication remains held within its existing permission boundary; no denied detailed payload is reproduced or authorized for retry here.
+- **existing-offmenu-UIF-240-package**: Review retained instruction package ([UIF-240](https://linear.app/maldous/issue/UIF-240/review-retained-worker-instruction-package); deliverable).
+- **existing-offmenu-UIF-241-runner-snapshot**: Review retained runner snapshot ([UIF-241](https://linear.app/maldous/issue/UIF-241/review-retained-runner-setup-snapshot); deliverable).
+- **existing-offmenu-UIF-242-two-snapshots-wheatfield**: Review retained Wheatfield snapshot applicability and custody ([UIF-242](https://linear.app/maldous/issue/UIF-242/review-retained-collection-and-wheatfield-snapshots); subtask).
+  - Only Wheatfield snapshot unique material, consumers and custody/source disposition; other snapshot is a separate child.
+- **existing-offmenu-UIF-242-two-snapshots-manual-source**: Review retained manual-source snapshot applicability and custody ([UIF-242](https://linear.app/maldous/issue/UIF-242/review-retained-collection-and-wheatfield-snapshots); subtask).
+  - Only retained manual-source snapshot unique material, consumers and custody/source disposition; other snapshot is a separate child.
+- **existing-offmenu-UIF-244-four-aliases**: Resolve four historical alias mappings ([UIF-244](https://linear.app/maldous/issue/UIF-244/reconcile-historical-worker-aliases); deliverable).
+
+### ANQR (7 records)
+
+- **ANQR-R205-1**: Reconcile selected child acceptance and18 retained contract criteria against current source and existing accepted historical definitions. ([UIF-205](https://linear.app/maldous/issue/UIF-205/deliver-production-anqr-across-product-experience-services-and-managed); deliverable).
+- **ANQR-R205-2**: Select and record project-owned compiler/type versions, lock/bootstrap and exact declared check commands. ([UIF-205](https://linear.app/maldous/issue/UIF-205/deliver-production-anqr-across-product-experience-services-and-managed); deliverable).
+- **ANQR-R215-1**: Resolve exact selected component authorship, upstream import revisions and applicable notice/change obligations. ([UIF-215](https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights); deliverable).
+- **ANQR-R215-2**: Recover historical translation TXT numeric-ID to current resource-key mapping for selected corpus. ([UIF-215](https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights); deliverable).
+- **ANQR-R215-3**: Select exact source components, destination repository base/ref and transfer method. ([UIF-215](https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights); deliverable).
+- **ANQR-R215-4**: Bind current consumer and qualification prerequisites to selected source slice. ([UIF-215](https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights); deliverable).
+- **ANQR-R202-1**: Reconcile issue disposition against the already-accepted finite discovery, retaining residual rights/extraction/runtime limits without repeating the inventory. ([UIF-202](https://linear.app/maldous/issue/UIF-202/trace-v1-qr-reuse-closure); deliverable).
+
+## Five nonadditive references and unmatched scope
+
+- **shared.publication.UIF-218**: Shared publication owner is expanded into the three evidence-backed UIF-218 deliverables, not counted twice.
+  - Mapped records: cq-original-publication-receipts, shared-transport-owner-correlation, shared-publication-continuation-plan, shared-publication-execute-cq, shared-publication-execute-uif.
+- **offmenu-uif108-inventory-join**: Non-additive reconciliation rollup. Its exact asset/issue records and individually enumerated source-review tasks remain covered; unknown leaf scope is retained as an explicit coverage gap.
+  - Mapped records: src-059-qualification, src-062-qualification, src-064-qualification, src-066-qualification, src-067-qualification, mixed-custody-source-classification, src-060-qualification, canonical-v1-current-input-qualification, client-surface-entitlement-qualification, offmenu-47-hold-qualification, offmenu-mixed-workspace-custody, offmenu-developer-contract-qualification, src-072-consumer-qualification, src-073-consumer-qualification, src-078-consumer-qualification.
+  - **Still unresolved:** Remaining asset-to-owner/custody/issue associations, ambiguous or unknown filename cues, and recovery bindings not represented by these subject tasks.
+- **offmenu-uif108-linear-applicability**: Non-additive reconciliation rollup. Its exact asset/issue records and individually enumerated source-review tasks remain covered; unknown leaf scope is retained as an explicit coverage gap.
+  - Mapped records: offmenu-47-hold-qualification, offmenu-navigation-disposition, offmenu-recipe-pack-disposition, offmenu-identity-default-contract, offmenu-provider-failover-disposition.
+  - **Still unresolved:** Original issue-to-current requirement/acceptance/owner mapping outside these named leaves; all issue IDs accounted is not semantic closure.
+- **offmenu-retained-source-account**: Non-additive reconciliation rollup. Its exact asset/issue records and individually enumerated source-review tasks remain covered; unknown leaf scope is retained as an explicit coverage gap.
+  - Mapped records: offmenu-wp03-dirty-source, offmenu-wp05, offmenu-wp06, offmenu-wp07, offmenu-wp08, offmenu-retained-UIF-221, offmenu-retained-UIF-222, offmenu-retained-UIF-223, offmenu-retained-UIF-224, offmenu-retained-UIF-225, offmenu-retained-UIF-226, offmenu-retained-UIF-227, offmenu-retained-UIF-228, offmenu-retained-UIF-229, offmenu-retained-UIF-230, offmenu-retained-UIF-231, offmenu-retained-UIF-232, offmenu-retained-UIF-233, offmenu-retained-UIF-234, offmenu-retained-UIF-235, offmenu-retained-UIF-236, offmenu-retained-UIF-237, offmenu-retained-UIF-238.
+  - **Still unresolved:** Unique deltas and retained checkout subjects not yet matched to these source-review leaves; no unknown delta is marked complete.
+- **per-project-toolchain-contracts**: Nonadditive selected-project toolchain parent; explicit ANQR leaf, other selected-project contracts not yet mapped.
+  - Mapped records: ANQR-R205-2.
+  - **Still unresolved:** Do not invent one task per project or repository; discover exact remaining contracts.
+
+## Explicit unresolved coverage and cleanup work
+
+- **Modern App Surface: 406 records remain on hold.** Their historical bounded outcomes do not settle continuing UIF/USF/ANQR applicability. The complete corpus and comments were checked for explicit ANQR/QR links; the USF-327 to USF-1203 research relation is preserved. Lack of a direct blocker or keyword is not proof of irrelevance. No blanket archival is selected.
+- **Historical H4: 159 unresolved-applicability records and one contradictory terminal/residual record remain.** The 108 CIX membership decisions preserve current project provenance; 73 are verified and 35 remain paused. Assignment does not reopen bounded completion or accept parent delivery. Eighteen mapped historical scopes retain their current-owner crosswalk.
+- **Historical recovery/cleanup:** 321 Foundation/Deployment and 364 Repository/Environment records are provisional recoverable-archive candidates supported by reviewed history; USF-580 retains a precise timing/current-relevance question. Ten other explicit supersession/bounded-legacy candidates remain untouched. Recheck current dependencies and use supported recoverable archival, never infer obsolescence from status or age. The connector exposes no archive action; deletion or Canceled-status substitution is not selected.
+- **CIX semantic gaps:** eight current records remain explicitly unreviewed. Preserve their uncertainty and existing read limits; a ledger row is not authority to retry.
+- **UIF and CQ scope gaps:** unresolved portfolio/source mappings, selected-profile/toolchain leaf expansion and UIF-176 account/entitlement/capacity/recovery prerequisites need exact scope classification. Keep concrete readiness candidates visible without selecting ordinary hosting/product implementation or inventing one task per ambiguous relation.
+- **Asset and source joins:** remaining ownership/custody, original-source/delta applicability and consumer/recovery associations are not closed by filename classification or issue-identity accounting. The unmatched scope in the nonadditive references remains work.
+- **Administrative coverage:** the connected UIF workspace, four teams, 18 projects and 55 documents were inventoried. The current UIF workspace shares the historical foundation workspace identity; it is not a separate obsolete workspace. Nested-document enumeration is unsupported, and the separately referenced historical ANQR workspace is unverified. Container removal requires dependency/ownership decisions and an appropriate supported operation.
+- **Recovery readiness:** Foo dependency discovery and repository-defined configuration versus running-state drift remain unqualified. Cloud startup uses its own lighter GitHub/Linear/environment gates. Uncommitted or unpushed work may be lost; remote readback and compatible persisted orchestration evidence are required before calling work recoverable.
+
+## Existing unresolved directory subjects
+
+These **15 existing subjects** remain an index into the individual actions above, not 15 additional tasks. Paths are relative to `/home/user/src/`; repository/consumer details are retained evidence rather than a new live verification. Completed physical subjects stay omitted.
 
 | ID | Recorded path | Repository | Linear | Remaining reconciliation |
 |---|---|---|---|---|
 | SRC-001 | `2026-11-03/circularquay-dev` | maldous/CircularQuay | UIF-213 | Retain compatibility alias and common-store bindings under UIF-213; current saved-root/consumer release remains unresolved. |
 | SRC-002 | `2026-11-05/circularquay-e103-frontend-validation` | maldous/CircularQuay | UIF-213 | Retain frontend compatibility alias; UIF-212 still records an outstanding delta. Current consumers and release of the alias remain unresolved. |
 | SRC-003 | `2026-11-05/circularquay-typescript-coverage` | maldous/CircularQuay | UIF-213 | Preserve held R181 boundary; exact current repository, HEAD and metadata disposition remain unresolved. |
-
-#### Explicit outstanding candidates elsewhere in SRC
-
-| ID | Recorded path | Repository | Linear | Remaining reconciliation |
-|---|---|---|---|---|
-
-#### Original offmenu-worktrees candidates
-
-| ID | Recorded path | Repository | Linear | Remaining reconciliation |
-|---|---|---|---|---|
-
-#### SRC top-level unresolved candidates
-
-| ID | Recorded path | Repository | Linear | Remaining reconciliation |
-|---|---|---|---|---|
 | SRC-059 | `.claude` | UNKNOWN | [UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings) | Preserve the current path. UIF-243 tracks scope, custodian, consumers and physical disposition; repository identity remains unresolved. |
 | SRC-060 | `.cleanup-custody` | UNKNOWN | [UIF-217](https://linear.app/maldous/issue/UIF-217) (identified OffMenu groups), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional) (recorded USF groups) | Preserve mixed-project custody. These are group-specific recorded associations; whole-root classification and physical disposition remain unresolved. |
 | SRC-062 | `.freebuff` | UNKNOWN | [UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots) | Preserve the current path. UIF-245 tracks this root’s role, custodian, consumers, repository association and physical disposition; those classifications remain unresolved. |
@@ -54,219 +283,8 @@ All paths in the tables are relative to `/home/user/src/`. IDs are ledger refere
 | SRC-068 | `archive` | UNKNOWN | UIF-108 (documented custody association) | Preserve whole-root custody. UIF-108 documents completed personal/USF moves and restore maps; whole-root disposition and consumers remain unresolved. |
 | SRC-069 | `offmenu-assessments` | https://github.com/maldous/offmenu; individual nested composition/schema repositories retain separate source bindings | UIF-107, UIF-108, UIF-161, UIF-217 | Retain current placement pending nested-store, consumer and access qualification. Preserve R035/R042 recovery archives; proposed feature move remains unexecuted. |
 | SRC-070 | `offmenu-data` | https://github.com/maldous/offmenu as owning software; raw datasets remain external data, not committed repository contents | UIF-107, UIF-108 | Preserve protected external data in place. Manual-runner deployment/config bindings and secondary consumer semantics remain unresolved; no cutover or raw-data upload is inferred. |
-
-#### Additional OffMenu names observed at 20:20 UTC
-
-These are individually observed immediate names, not inferred repositories or reopened historical work. The original observation checked only names and presence; later item-specific findings are recorded in the rows. Values remain UNKNOWN where no specific evidence resolves them. Completed relocated contents are omitted; temporary aliases with unresolved disposition remain listed. Do not count contained children again without a distinct unresolved requirement.
-
-| ID | Observed path | Repository | Linear | Remaining reconciliation |
-|---|---|---|---|---|
 | SRC-072 | `offmenu-worktrees/offmenu-global-collection` | UNKNOWN | [UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody) | Temporary compatibility alias remains after verified relocation. Resolve remaining consumer bindings and alias disposition under UIF-239; the relocated contents are complete. |
 | SRC-073 | `offmenu-worktrees/offmenu-manual-actions` | UNKNOWN | [UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody) | Temporary compatibility alias remains after verified relocation. Resolve remaining consumer bindings and alias disposition under UIF-239; the relocated contents are complete. |
 | SRC-078 | `offmenu-worktrees/retired-compatibility-aliases-20261023` | UNKNOWN | [UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody) | Temporary compatibility alias remains after verified relocation. Resolve remaining consumer bindings and alias disposition under UIF-239; the relocated contents are complete. |
 
-### Recorded branch and disposition evidence
-
-These values describe retained evidence, not a fresh filesystem or repository check. A recorded destination may be a proposal, an existing alias target, or a completed move with separate work remaining. It is not a cleanup instruction. Receipt links, where available, identify the supporting observation.
-
-#### SRC-001 · `2026-11-03/circularquay-dev`
-
-- Recorded branch: `UNKNOWN`; HEAD: `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-initial-implementation`.
-- Destination status: Existing symlink target, not authorization to remove alias.
-- Observation: 2026-11-08T09:44:37.564155+00:00. Current state: **not reverified**.
-- Source record: `current28-root-disposition-handoff.json`.
-- [Observation receipt](https://windmill.aldous.info/run/01a1ba8c-0771-3285-821b-f09a3f8e014f?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records alias target `/home/user/src/feature/CircularQuay-initial-implementation` at `3ecffe7cdd068da7ce034543b3a88058a6aeaffa`. The historical metadata receipt does not establish current consumer release.
-
-
-#### SRC-002 · `2026-11-05/circularquay-e103-frontend-validation`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/feature/CircularQuay-e103-frontend-validation`.
-- Destination status: Existing symlink target, not authorization to remove alias.
-- Observation: 2026-11-08T09:44:37.564155+00:00. Current state: **not reverified**.
-- Source record: `current28-root-disposition-handoff.json`.
-- [Observation receipt](https://windmill.aldous.info/run/01a1ba8c-0771-3285-821b-f09a3f8e014f?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-213](https://linear.app/maldous/issue/UIF-213) records the frontend alias target; HEAD remains UNKNOWN. [UIF-212](https://linear.app/maldous/issue/UIF-212) retains a latest-delta obligation; this does not prove a physical change.
-
-
-#### SRC-003 · `2026-11-05/circularquay-typescript-coverage`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/2026-11-05/circularquay-typescript-coverage`.
-- Destination status: No qualified destination.
-- Observation: 2026-11-08T09:44:37.564155+00:00. Current state: **not reverified**.
-- Source record: `current28-root-disposition-handoff.json`.
-- [Observation receipt](https://windmill.aldous.info/run/01a1ba8c-0771-3285-821b-f09a3f8e014f?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The supplied path remains in the working baseline. No current repository or HEAD observation was obtained for this held boundary.
-
-
-#### SRC-059 · `.claude`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-- Current Linear association: [UIF-243 — Reconcile SRC local agent settings](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings), verified Backlog. Physical disposition remains outstanding; this association does not establish a source repository or a completed move.
-
-
-#### SRC-060 · `.cleanup-custody`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-217](https://linear.app/maldous/issue/UIF-217) is Backlog and records retained recovery maps/reflogs for identified OffMenu custody groups. It does not assign the entire mixed-project root to that issue.
-- [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional) also records USF recovery groups in this root. This is an existing custody association, not fresh host verification or whole-root disposition. Repository identity remains UNKNOWN.
-
-
-#### SRC-062 · `.freebuff`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
-
-
-#### SRC-064 · `.impeccable`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
-
-
-#### SRC-066 · `.remember`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
-
-
-#### SRC-067 · `.usf`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- The 09:50 record is a handoff of user-listed names, not a fresh metadata observation. No credential, configuration or repository-identity inference is made.
-- Current Linear association: [UIF-245 - Classify seven unresolved SRC roots](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots), verified Backlog. This is per-root classification tracking; role, custodian, consumers, repository association and physical disposition remain unresolved. No shared identity or completed move is inferred.
-
-
-#### SRC-068 · `archive`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `UNKNOWN`.
-- Destination status: Historical plan only unless a later completed relocation is recorded.
-- Baseline source: user-listed names relayed in the 2026-11-08 09:50 UTC handoff; no direct metadata observation claimed.
-- Source record: `current28-root-disposition-handoff.json`.
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-108](https://linear.app/maldous/issue/UIF-108) provides a custody association for completed personal/USF archives and restoration maps, not whole-root relocation approval. Those historical completions are not new tasks.
-
-
-#### SRC-069 · `offmenu-assessments`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/feature/offmenu-assessments`.
-- Destination status: Planned only; parent relocation not currently qualified.
-- Historical top-level lstat observation: 2026-11-08 04:56:33 UTC, UID/GID 1000, mode 0775, device 64512. This does not verify current contents or consumers.
-- Source record: terminal top-level lstat receipt; later 14:52 timestamp was a plan update, not a filesystem observation.
-
-- [Verified terminal lstat receipt](https://windmill.aldous.info/run/01a1b984-86a3-13ca-df37-1f1ad0c18c89?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-217](https://linear.app/maldous/issue/UIF-217) records R035/R042 recovery archives in this root. Existing UIF-107/UIF-108/UIF-161 bindings remain separate; all four issues are Backlog.
-- Historical qualification records two nested Git stores, mixed UID 0/1000 custody and five PermissionErrors. Top-level lstat does not establish descendant access or consumer closure.
-
-
-#### SRC-070 · `offmenu-data`
-
-- Recorded branch: `UNKNOWN`; HEAD: `UNKNOWN`.
-- Recorded destination: `/home/user/src/feature/offmenu-data`.
-- Destination status: Proposed destination within requested layout; operational cutover is not yet qualified or performed.
-- Historical top-level lstat observation: 2026-11-08 04:56:33 UTC, UID/GID 1000, mode 0775, device 64512. This does not verify current contents or consumers.
-- Source record: terminal top-level lstat receipt; later 14:52 timestamp was a plan update, not a filesystem observation.
-
-- [Verified terminal lstat receipt](https://windmill.aldous.info/run/01a1b984-86a3-13ca-df37-1f1ad0c18c89?workspace=offmenu).
-
-**Reconciliation finding (GitHub/Linear review, 2026-11-08 UTC):**
-
-- [UIF-107](https://linear.app/maldous/issue/UIF-107) and [UIF-108](https://linear.app/maldous/issue/UIF-108) remain Backlog. Owning software association does not turn datasets into repository source.
-- No raw-data publication, database-body access, service change or permission change is performed. GitHub metadata currently reports maldous/offmenu public; historical private-repository wording must not be used as authority to publish private custody material there.
-
-
-### Scope context
-
-Canonical repository roots and layout containers are listed for comparison. Their presence in this section does not make them outstanding reconciliation tasks.
-
-- `/home/user/src/2026-11-03`: dated_parent. Repository: maldous/CircularQuay.
-- `/home/user/src/2026-11-05`: dated_parent. Repository: maldous/CircularQuay.
-- `/home/user/src/anqr-v3`: repository_root. Repository: maldous/anqr-v3.
-- `/home/user/src/bugfix`: shared_git_flow_container.
-- `/home/user/src/CircularQuay`: repository_root. Repository: maldous/CircularQuay.
-- `/home/user/src/cix`: repository_root. Repository: cix-project/cix.
-- `/home/user/src/cix-operations`: repository_root. Repository: cix-project/cix-operations.
-- `/home/user/src/feature`: shared_git_flow_container.
-- `/home/user/src/hotfix`: shared_git_flow_container.
-- `/home/user/src/offmenu`: repository_root. Repository: maldous/offmenu.
-- `/home/user/src/uif`: repository_root. Repository: maldous/uif.
-
-### Remaining reconciliation
-
-1. Continue item-specific source, issue and custody decisions from the user-directed working baseline. The baseline is not a claim of a new host census, and a new global census is not a gate for accessible GitHub/Linear reconciliation.
-2. Preserve exact historical local pins separately from current remote tips. Source ancestry, merged PRs and Done/Canceled issues do not establish closure of dirty, untracked, ignored, evidence or consumer custody.
-3. Before any physical move, removal or directory renaming, verify only the affected current identity, contents, registration, destination and consumer postconditions through permitted access. No physical action occurred in this README update.
-4. Verify synchronization of this README in the canonical `/home/user/src/uif` checkout separately from GitHub publication. Publication does not establish that the local checkout changed.
-
-### Evidence corrections
-
-The previously repeated [6 November submission receipt](https://windmill.aldous.info/run/01a1afb5-4c79-c422-48bf-6462c9f8bbb0?workspace=offmenu) contains a nested host status of `running`, with no terminal inventory output. It is not an 8 November filesystem observation. Mislabelled observation links have been removed from the affected rows. The distinct terminal top-level lstat receipt for SRC-069/070 is linked in those rows.
-
-Remote ancestry findings use OffMenu develop `a21e68c07c09750abbb1b3b284bb74609692cb5e` and CircularQuay `feature/initial-implementation` `3ecffe7cdd068da7ce034543b3a88058a6aeaffa` at the review time. A missing exact GitHub ref/commit response is not proof of local absence. A branch-only commit count does not by itself establish a missing behavior or a need to merge.
-
-No separate `TBD.md` is used for this ledger. No directory, branch, issue status or runtime state was changed by this update. Canonical Foo checkout synchronization remains unverified.
+No directory, repository, Linear or runtime effect is caused by this README update.
