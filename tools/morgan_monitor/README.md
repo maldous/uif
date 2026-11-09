@@ -260,8 +260,10 @@ sets `executionCoverageComplete:false` and `cloudFeedConfigured:false`.
 Expected responses: new event 202 or exact duplicate 200, body
 `{accepted:true,duplicate:<boolean>,eventId:<same>,sequence:<same>}`. Any other
 response is unacknowledged, including an uncertain connection failure after a
-remote write. A retry lets the receiver prove its prior receipt. Credentials and
-raw response errors never enter diagnostics or the outbox.
+remote write. Truncated or malformed HTTP responses also remain retryable
+uncertain outcomes; they do not terminate the collector or acknowledge its event.
+A retry lets the receiver prove its prior receipt. Credentials and raw response
+errors never enter diagnostics or the outbox.
 
 ## MCP and Windmill access
 
@@ -299,6 +301,15 @@ frame bounds, fragmentation/pings, account switching, identity pins, notificatio
 suppression, and conservative allowance classification. The optional Node cross-contract check validates 24
 synthetic events against the actual receiver validator; it is explicitly skipped
 if the receiver source or Node is unavailable.
+
+`collector_receiver.py` additionally drives the real Python HTTPS request/ack
+code and durable outbox through the actual Worker handlers and SQL migrations in
+an offline Node 24 subprocess. It opens no network listener and uses only
+synthetic fixtures. Tests cover a receiver commit followed by a truncated lost
+acknowledgment, restart of both processes with their persisted SQLite stores,
+identical retry and duplicate acknowledgment, stale backlog replay, source
+failure, and outside-collector scheduled expiry with immutable history. The
+test-only SQLite adapter is not a deployed D1 or HTTPS/TLS qualification.
 
 Not established by these tests: live daemon source coverage, cloud telemetry,
 auth provisioning, actual HTTPS delivery/uncertain-receipt replay, deployed D1/MCP,

@@ -1,5 +1,6 @@
 """Offline synthetic event, persistence, retry and privacy tests."""
 import copy
+import http.client
 import io
 import json
 import os
@@ -232,6 +233,25 @@ class PersistenceTests(unittest.TestCase):
 
 
 class TransportTests(unittest.TestCase):
+    def test_http_protocol_failures_are_fixed_transport_errors(self):
+        for failure in (http.client.IncompleteRead(SENTINEL.encode(), 20),
+                        http.client.BadStatusLine(SENTINEL),
+                        http.client.LineTooLong(SENTINEL)):
+            for stage in ("open", "read"):
+                with self.subTest(failure=type(failure).__name__, stage=stage):
+                    class BrokenResponse:
+                        status = 202
+                        def __enter__(self): return self
+                        def __exit__(self, *args): return False
+                        def read(self, limit): raise failure
+                    class BrokenOpener:
+                        def open(self, request, timeout):
+                            if stage == "open": raise failure
+                            return BrokenResponse()
+                    receiver = HTTPSReceiver(receiver_config(), environment={"SYNTHETIC_TOKEN": "synthetic-test-token-not-real-32chars"}, opener=BrokenOpener())
+                    with self.assertRaisesRegex(TransportError, "^delivery_failed$"):
+                        receiver.send(make_event(observation(), 1, binding()))
+
     def test_defaults_make_no_network_calls(self):
         opener = Opener()
         receiver = HTTPSReceiver(receiver_config(False), opener=opener)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from http.client import HTTPException
 import os
 import re
 import time
@@ -93,8 +94,11 @@ class HTTPSReceiver:
                 raise TransportError("ack_mismatch")
         except TransportError:
             raise
-        except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+        except (urllib.error.URLError, OSError, ValueError, TimeoutError, HTTPException):
             # Do not emit raw remote errors, response bodies, URLs or tokens.
+            # A truncated/malformed HTTP response is an uncertain outcome: the
+            # receiver may already have committed it. Preserve the same event
+            # for durable retry rather than terminating the collection loop.
             raise TransportError("delivery_failed") from None
 
 
