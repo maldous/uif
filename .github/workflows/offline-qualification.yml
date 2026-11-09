@@ -1,0 +1,60 @@
+name: UIF offline qualification
+
+# Runs the existing source-only checks. This does not deploy or prove live recovery.
+"on":
+  pull_request:
+    branches: [develop]
+    paths:
+      - .github/workflows/offline-qualification.yml
+      - config/white-room.json
+      - config/windmill/**
+      - tools/white_room/**
+      - tools/windmill/**
+      - tests/white_room/**
+      - tests/windmill/**
+  push:
+    branches: [feature/foo-windmill-config-recreation]
+    paths:
+      - .github/workflows/offline-qualification.yml
+      - config/white-room.json
+      - config/windmill/**
+      - tools/white_room/**
+      - tools/windmill/**
+      - tests/white_room/**
+      - tests/windmill/**
+
+permissions:
+  contents: read
+
+jobs:
+  offline-qualification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact tested revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up declared Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Record tested source identity
+        run: |
+          python --version
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}
+      - name: Run Windmill unit tests
+        run: python -m unittest discover -s tests/windmill -v
+      - name: Run white-room unit tests
+        run: python -m unittest discover -s tests/white_room -v
+      - name: Validate and plan offline configuration
+        run: |
+          python tools/windmill/white_room.py validate
+          python tools/windmill/white_room.py plan
+      - name: Qualify isolated synthetic recreation
+        run: |
+          output_root="$(mktemp -d)"
+          python tools/windmill/white_room.py recreate-mock --output "$output_root/synthetic"
+      - name: Compile source and tests
+        run: python -m compileall -q tools/white_room tools/windmill tests/white_room tests/windmill
