@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Offline Foo qualification request, not deployed runner equivalence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action",
+    "job_id"
+  ],
+  "properties": {
+    "action": {
+      "enum": [
+        "submit",
+        "status"
+      ]
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "probe": {
+      "const": "identity"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "submit"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "probe"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "probe"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "action": {
+      "default": "status",
+      "description": "",
+      "originalType": "string",
+      "type": "string"
+    },
+    "job_id": {
+      "default": "",
+      "description": "",
+      "originalType": "string",
+      "type": "string"
+    },
+    "command": {
+      "default": "",
+      "description": "",
+      "originalType": "string",
+      "type": "string"
+    },
+    "cwd": {
+      "default": "/",
+      "description": "",
+      "originalType": "string",
+      "type": "string"
+    },
+    "timeout_seconds": {
+      "default": 60,
+      "description": "",
+      "type": "integer"
+    }
+  },
+  "required": [],
+  "type": "object"
+}
+

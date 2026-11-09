@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "source_kind": "reviewed-windmill-export",
+  "path": "u/admin/foo_root_jobs",
+  "language": "python3",
+  "summary": "Owner-only Foo root transport; deployed enabled source, historical summary stale",
+  "credential_reference": "u/admin/foo_ssh_key_20261027",
+  "source": {
+    "path": "config/windmill/source/foo_root_jobs.py",
+    "sha256": "ac933811fe4b250e025afb30d5be8d8a9f2afb587d18027e90fdeaa18f5e26ba"
+  },
+  "schema": {
+    "path": "config/windmill/source/foo_root_jobs.schema.json",
+    "sha256": "42e52f00e5427384abd9fd253f0c832fc88a2ac24e0a0b2fe60dde5d993843b0"
+  },
+  "lock": {
+    "path": "config/windmill/source/foo_root_jobs.lock",
+    "sha256": null
+  }
+}
