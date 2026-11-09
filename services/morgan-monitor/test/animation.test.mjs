@@ -46,13 +46,13 @@ for (const layout of ["o2", "compact"]) {
       assert.equal((svg.match(/data-scan-direction="/g) || []).length, 6);
       assert.match(svg, new RegExp(`scan-frame-0" data-scan-direction="${direction}" data-scan-target="${cell.id}" visibility="visible"`));
       const arm = svg.match(new RegExp(`class="morgan-arm scanning-arm" data-arm-side="([^"]+)" data-arm-angle="([^"]+)" data-arm-target="${cell.id}"`));
-      assert(arm, "The articulated arm aims at the verified ray target");
+      assert(arm, "The solid arm aims at the verified ray target");
       const p = axialToPixel(cell.q, cell.r), scale = 34 * 0.004725,
         shoulder = arm[1] === "left" ? -43 : 43,
         expected = Math.atan2((p.y + 34 * 0.08) / scale - 48, p.x / scale - shoulder) * 180 / Math.PI;
       assert(Math.abs(Number(arm[2]) - expected) < 1e-9);
       assert(svg.includes(`data-marker="blocked" data-marker-target="${cell.id}"`));
-      assert(svg.includes('class="arm-forearm"'));
+      assert(svg.includes('class="arm-blob"'));
       assert(!svg.includes('class="attention-line"'));
     }
   });
@@ -226,7 +226,7 @@ test("verified work has top task text, centered icon, bottom environment, and se
     assert(Number(alias[3]) < 6);
     if (environment === "Foo") {
       assert(env && Number(env[2]) > 20);
-      assert(content.includes(">Foo · UIF</text>"));
+      assert(content.includes(">UIF</text>"));
     } else {
       assert.equal(env, null);
       assert(!content.includes(">Cloud</text>"));
@@ -369,13 +369,13 @@ test("A–F has a continuous outer-weight boundary including Morgan and the bott
   }
 });
 
-test("arm articulation and alert blinking remain optional motion, with honest static markers", () => {
+test("solid directional arms and alert blinking preserve honest static markers", () => {
   const empty = renderSvg(base(), { layout: "compact" });
   assert(!empty.includes('data-marker="'));
   assert.equal((empty.match(/class="morgan-arm scanning-arm"/g) || []).length, 6);
   const blocked = renderSvg(withSlots([slot(cloud[0].id)]), { layout: "compact" });
   assert(blocked.includes('class="scan-marker blocked-marker"'));
-  assert(blocked.includes('animation:arm-articulate 2.2s'));
+  assert(blocked.includes('animation:scan-0 18s'));
   assert(blocked.includes('animation:marker-alert 1.5s'));
   assert(blocked.includes('@media(prefers-reduced-motion:reduce){.status-board *{animation:none!important;transition:none!important}}'));
   assert(!blocked.includes('class="flames"'));
@@ -385,8 +385,58 @@ test("arm articulation and alert blinking remain optional motion, with honest st
 test("work environment labels require an explicit reviewed key and never expose arbitrary strings", () => {
   const s = withSlots([{...slot("cloud-A", "running"), environmentKey:"foo_uif"}, {...slot("cloud-B", "running"), environmentKey:"cloud_scratch"}, {...slot("cloud-C", "running"), environmentKey:"/private/raw/path"}]);
   const svg = renderSvg(s, {layout:"compact"});
-  assert(cellContent(svg,"cloud-A").includes(">Foo · UIF</text>"));
-  assert(cellContent(svg,"cloud-B").includes(">Cloud scratch</text>"));
+  assert(cellContent(svg,"cloud-A").includes(">UIF</text>"));
+  assert(!cellContent(svg,"cloud-B").includes('class="environment-label"'));
   assert(!cellContent(svg,"cloud-C").includes('class="environment-label"'));
   assert(!svg.includes("/private/raw/path"));
+});
+
+
+test("only verified reviewed Git/project identity appears in bottom labels", () => {
+  for (const key of ["foo_uif", "foo_tv", "cloud_scratch", undefined, "constructor", "raw-project"]) {
+    const s = withSlots([slot("cloud-A", "running", { environmentKey: key })]);
+    const svg = renderSvg(s, { layout: "compact" }), content = cellContent(svg, "cloud-A");
+    assert.equal(content.includes('class="environment-label"'), key === "foo_uif");
+    assert(!svg.includes(">Foo · UIF</text>") && !svg.includes(">Cloud scratch</text>") && !svg.includes(">Foo</text>"));
+    if (key === "foo_uif") {
+      assert(content.includes(">UIF</text>"));
+      s.slots[0].availability = "stale";
+      assert(!cellContent(renderSvg(s), "cloud-A").includes('class="environment-label"'));
+    }
+  }
+});
+
+test("arms are single solid clock-hand paths without joints or dots", () => {
+  const svg = renderSvg(base(), { layout: "compact" });
+  const arms = [...svg.matchAll(/<g class="morgan-arm[^>]*>([\s\S]*?)<\/g>/g)];
+  assert.equal(arms.length, 12);
+  for (const [, arm] of arms) {
+    assert.equal((arm.match(/<path /g) || []).length, 1);
+    assert(arm.includes('class="arm-blob"'));
+    assert(!arm.includes("<circle") && !arm.includes('fill="none"'));
+  }
+  assert(!svg.includes("arm-forearm"));
+});
+
+test("direction-specific faces distinguish verified blocked, clear, empty, and unknown without global claims", () => {
+  const states = [
+    [slot(cloud[0].id, "blocked"), "blocked", "pointing"],
+    [slot(cloud[0].id, "running"), "clear", "friendly"],
+    [slot(cloud[0].id, null, { assignment: "unassigned" }), "empty", "resting"],
+    [slot(cloud[0].id, "completed"), "empty", "resting"],
+    [slot(cloud[0].id, "running", { availability: "stale" }), "neutral", "neutral"],
+    [slot(cloud[0].id, "unknown"), "neutral", "neutral"],
+  ];
+  for (const [worker, reaction, mode] of states) {
+    const s = withSlots([worker]), svg = renderSvg(s, { layout: "compact" });
+    assert(svg.includes(`data-scan-direction="0" data-scan-target="${reaction === "blocked" ? worker.id : ""}" visibility="visible" data-direction-reaction="${reaction}"`));
+    assert(svg.includes(`data-pose-mode="${mode}"`));
+    assert(!svg.includes('data-morgan-mode="proud"') && !svg.includes('class="flames"'));
+    if (["empty", "neutral"].includes(reaction)) assert(!svg.includes('data-marker="'));
+  }
+  const partial = withSlots([slot(cloud[0].id, "completed")]);
+  assert.equal(scanDirections(partial)[0].empty, false, "Missing Foo evidence cannot prove an empty full-layout ray");
+  assert.equal(scanDirections(base(), { layout: "compact" }).some((r) => r.empty), false);
+  const svg = renderSvg(base());
+  for (const animation of ["worried", "friendly-nod", "resting-breathe", "smile", "yawn"]) assert(svg.includes(`@keyframes ${animation}`));
 });

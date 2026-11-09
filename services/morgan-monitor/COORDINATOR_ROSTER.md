@@ -141,3 +141,11 @@ The later explicit display generation2 reserves C for the C/D packet-preparation
 worker and F for the F packet-preparation worker, with D blank. Those cloud-scratch
 workers have no verified checkout. This is a separate generation; it does not
 reuse generation1 identity claims. Lifecycle states require a new actual capture.
+
+## Project-only display labels
+
+The user's latest display choice omits host/scratch descriptions. The verified
+`foo_uif` context renders only `UIF`. `cloud_scratch` and `foo_tv` carry no
+meaningful verified Git/project name and therefore render no bottom label.
+This presentation rule does not turn missing checkout evidence into a project
+claim; the public contract remains a closed-key allowlist.

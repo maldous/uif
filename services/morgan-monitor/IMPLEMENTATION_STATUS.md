@@ -107,3 +107,17 @@ The unchanged authenticated collector request also receives403/error1010 before
 Worker validation. No user-agent spoofing, relay, alternate hostname or security
 change was attempted. A human-applied exact approved rule is the remaining
 operational route before unchanged ingestion can be qualified.
+
+## Latest visual checkpoint, 2026-11-09 06:29 UTC
+
+The user replaced jointed arms with solid clock-hand/blob arms and requested
+project-only labels. Only verified UIF is displayed; host and generic scratch
+labels are omitted. Distinct blocked/clear/explicit-empty directional faces are
+animated, while unavailable/stale directions remain neutral and global
+process-only pride/fire gates are unchanged. All98service tests pass.
+
+The current manual capture at06:27:58 records A coordination running, B awaiting
+the denied security-rule resolution, C/E/F completed, and D explicitly
+unassigned. C's direct completion report was observed at06:26:25. This is a
+dated roster2 capture, not a fresh automatic native-agent feed. Its visual
+claims expire at06:32:58 if no new actual observation replaces it.

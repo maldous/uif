@@ -23,9 +23,8 @@ export const escapeXml = (value) =>
       })[c],
   );
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-const WORK_ENVIRONMENTS = Object.freeze({
-  foo_uif: "Foo · UIF", foo_tv: "Foo · TV", cloud_scratch: "Cloud scratch",
-});
+// These keys prove a reviewed project identity, not merely an executor location.
+const WORK_PROJECTS = Object.freeze({ foo_uif: "UIF" });
 // Coordinator lifecycle is an explicit dated API/report observation, not an OS
 // process probe. It may color individual cells, never global execution claims.
 const currentClaim = (slot) => slot?.proof === "process" || (
@@ -115,13 +114,18 @@ export function scanDirections(snapshot, { cells, layout = "o2", selected = null
         const slot = slots.get(cell.id);
         return nonblocking(slot) && slot.assignment === "assigned" && ["running", "idle"].includes(slot.displayState);
       }) || null,
-      clear = Boolean(clearCell && rayCells.every((cell) => nonblocking(slots.get(cell.id))));
+      clear = Boolean(clearCell && rayCells.every((cell) => nonblocking(slots.get(cell.id)))),
+      empty = rayCells.length > 0 && rayCells.every((cell) => {
+        const slot = slots.get(cell.id);
+        return nonblocking(slot) && (slot.assignment === "unassigned" || slot.displayState === "completed");
+      });
     const cell = candidates[0] || null;
     return {
       direction, dq, dr, cell,
       target: cell?.id || null,
       distance: cell ? distance(cell.q - origin.q, cell.r - origin.r) : null,
       clear, clearCell: clear ? clearCell : null,
+      empty, emptyCell: empty ? rayCells[0] : null,
     };
   });
 }
@@ -174,11 +178,11 @@ function scanMarker(ray, size) {
   const blocked = Boolean(ray.target), target = ray.target || ray.clearCell.id;
   return `<g class="scan-marker ${blocked ? "blocked-marker" : "clear-marker"}" data-marker="${blocked ? "blocked" : "clear"}" data-marker-target="${escapeXml(target)}" transform="translate(0 ${-size * 0.77})" fill="none" stroke="${blocked ? "#b51f32" : "#24804c"}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${blocked ? '<path d="M0-3V1"/><circle cx="0" cy="4" r=".8" fill="#b51f32" stroke="none"/>' : '<path d="M-3 0l2.5 3L4-3"/>'}</g>`;
 }
-function articulatedArm(side, rotation, scanning, target) {
+function solidArm(side, rotation, scanning, target) {
   const rest = Math.atan2(32, side === "left" ? -20 : 20) * 180 / Math.PI,
     angle = rotation + rest,
     shoulder = side === "left" ? -43 : 43;
-  return `<g class="morgan-arm${scanning ? " scanning-arm" : ""}" data-arm-side="${side}" data-arm-angle="${angle}" data-arm-target="${escapeXml(scanning ? target || "" : "")}" transform="translate(${shoulder} 48) rotate(${angle - 24})"><path d="M0 0H25" fill="none" stroke="#102b9f" stroke-width="13" stroke-linecap="round"/><path d="M0 0H25" fill="none" stroke="#88aaff" stroke-width="8" stroke-linecap="round"/><g transform="translate(25 0) rotate(48)"><g class="arm-forearm"><path d="M0 0H25" fill="none" stroke="#102b9f" stroke-width="12" stroke-linecap="round"/><path d="M0 0H25" fill="none" stroke="#88aaff" stroke-width="7" stroke-linecap="round"/><circle cx="25" cy="0" r="6" fill="#a8c0ff" stroke="#102b9f" stroke-width="3"/></g></g><circle cx="25" cy="0" r="5" fill="#c5d6ff" stroke="#102b9f" stroke-width="3"/></g>`;
+  return `<g class="morgan-arm${scanning ? " scanning-arm" : ""}" data-arm-side="${side}" data-arm-angle="${angle}" data-arm-target="${escapeXml(scanning ? target || "" : "")}" transform="translate(${shoulder} 48) rotate(${angle})"><path class="arm-blob" d="M-7-5Q-10 0-7 5L39 8Q51 8 57 0Q51-8 39-8Z" fill="#88aaff" stroke="#102b9f" stroke-width="4" stroke-linejoin="round"/></g>`;
 }
 function mascotPose(state, target, size, direction = null) {
   let left = 0,
@@ -216,7 +220,18 @@ function mascotPose(state, target, size, direction = null) {
     pointingSide = useLeft ? "left" : "right";
     if (useLeft) left = angle - rest;
     else right = angle - rest;
-    if (state.mode === "pointing") mouth = "M-8 8q8-6 16 0";
+    if (state.mode === "pointing") {
+      eyes = ["M-35-12l16-7", "M19-19l16 7"];
+      mouth = "M-14 11q14-18 28 0";
+    }
+  }
+  if (state.mode === "friendly") {
+    eyes = ["M-35-12q8-12 16 0", "M19-12q8-12 16 0"];
+    mouth = "M-15 2q15 20 30 0";
+  }
+  if (state.mode === "resting") {
+    eyes = ["M-35-14q8 5 16 0", "M19-14q8 5 16 0"];
+    mouth = "M-5 4a5 7 0 1 0 10 0a5 7 0 1 0-10 0";
   }
   if (state.mode === "proud") {
     left = 105;
@@ -243,7 +258,7 @@ function mascotPose(state, target, size, direction = null) {
       state.mode === "all-stopped"
         ? '<g class="flames"><path d="M-44-85C-62-101-33-108-38-126c21 15 9 24 24 31 4-19 14-20 12-39 26 23 9 31 26 42 8-14 9-19 4-27 27 21 30 32 15 36Z" fill="#f56b24" stroke="#b51f32" stroke-width="3"/><path d="M-24-87c-10-12 5-20 4-29 15 12 3 18 17 25 3-13 14-17 13-24 15 19 10 25 5 30Z" fill="#ffd267"/></g>'
         : "";
-  return `<g class="morgan-actor ${state.mode}" data-pose-mode="${state.mode}" data-pose-target="${escapeXml(target?.id || "")}" transform="translate(0 ${-size * 0.08}) scale(${s})"><title>Morgan: ${escapeXml(state.mode.replaceAll("-", " "))}</title><path d="M-37 74l-3 30c0 14 26 14 27 1l2-25M13 80l2 25c1 13 27 13 27-1l-4-30" fill="#739aff" stroke="#102b9f" stroke-width="5"/><path d="M-39 43h78l10 33c6 27-104 27-98 0z" fill="#789eff" stroke="#102b9f" stroke-width="5"/><path d="M-13 63l12 9-12 9M9 80h14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><g transform="rotate(${tilt} 0 -12)"><g class="head-motion"><path d="M-67 41c-23-7-29-33-19-51-20-25-1-57 25-59 8-31 42-40 62-23 26-18 60-6 64 22 27 4 40 36 25 57 11 27-6 52-32 55-34 6-90 6-125-1z" fill="#8daaff" stroke="#102b9f" stroke-width="5"/><rect x="-57" y="-48" width="114" height="76" rx="23" fill="#092895"/><g fill="none" stroke="#76e2ff" stroke-width="5" stroke-linecap="round"><g transform="translate(${eyeX} ${eyeY})"><g class="eyes" clip-path="url(#board-eye-aperture)"><path d="${eyes[0]}"/><path d="${eyes[1]}"/></g></g><path d="${mouth}" stroke-width="3"/></g>${fire}</g></g>${articulatedArm("left", left, pointingSide === "left", target?.id)}${articulatedArm("right", right, pointingSide === "right", target?.id)}</g>`;
+  return `<g class="morgan-actor ${state.mode}" data-pose-mode="${state.mode}" data-pose-target="${escapeXml(target?.id || "")}" transform="translate(0 ${-size * 0.08}) scale(${s})"><title>Morgan: ${escapeXml(state.mode.replaceAll("-", " "))}</title><path d="M-37 74l-3 30c0 14 26 14 27 1l2-25M13 80l2 25c1 13 27 13 27-1l-4-30" fill="#739aff" stroke="#102b9f" stroke-width="5"/><path d="M-39 43h78l10 33c6 27-104 27-98 0z" fill="#789eff" stroke="#102b9f" stroke-width="5"/><path d="M-13 63l12 9-12 9M9 80h14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><g transform="rotate(${tilt} 0 -12)"><g class="head-motion"><path d="M-67 41c-23-7-29-33-19-51-20-25-1-57 25-59 8-31 42-40 62-23 26-18 60-6 64 22 27 4 40 36 25 57 11 27-6 52-32 55-34 6-90 6-125-1z" fill="#8daaff" stroke="#102b9f" stroke-width="5"/><rect x="-57" y="-48" width="114" height="76" rx="23" fill="#092895"/><g fill="none" stroke="#76e2ff" stroke-width="5" stroke-linecap="round"><g transform="translate(${eyeX} ${eyeY})"><g class="eyes" clip-path="url(#board-eye-aperture)"><path d="${eyes[0]}"/><path d="${eyes[1]}"/></g></g><path class="reaction-mouth" d="${mouth}" stroke-width="3"/></g>${fire}</g></g>${solidArm("left", left, pointingSide === "left", target?.id)}${solidArm("right", right, pointingSide === "right", target?.id)}</g>`;
 }
 function mascot(snapshot, cells, size, selected) {
   const state = deriveMorganMode(snapshot, { selected, cells }),
@@ -254,8 +269,10 @@ function mascot(snapshot, cells, size, selected) {
   if (scanning) {
     poses = scans.map((_, phase) => {
       const ray = scans[(phase + first) % scans.length],
-        mode = state.mode === "panicked" ? "panicked" : ray.target ? "pointing" : "neutral";
-      return `<g class="scan-frame scan-frame-${phase}" data-scan-direction="${ray.direction}" data-scan-target="${escapeXml(ray.target || "")}" visibility="${phase === 0 ? "visible" : "hidden"}">${mascotPose({ mode }, ray.cell || ray.clearCell, size, ray)}${scanMarker(ray, size)}</g>`;
+        reaction = ray.target ? "blocked" : ray.clear ? "clear" : ray.empty ? "empty" : "neutral",
+        mode = ray.target ? (state.mode === "panicked" ? "panicked" : "pointing") :
+          ray.clear ? "friendly" : ray.empty ? "resting" : "neutral";
+      return `<g class="scan-frame scan-frame-${phase}" data-scan-direction="${ray.direction}" data-scan-target="${escapeXml(ray.target || "")}" visibility="${phase === 0 ? "visible" : "hidden"}" data-direction-reaction="${reaction}">${mascotPose({ mode }, ray.cell || ray.clearCell || ray.emptyCell, size, ray)}${scanMarker(ray, size)}</g>`;
     }).join("");
   } else {
     poses = mascotPose(state, cells.find((cell) => cell.id === state.target), size);
@@ -366,7 +383,7 @@ export function renderSvg(snapshot = {}, options = {}) {
           -size * 0.10,
           size * 0.44,
         )}</g>`;
-        const environment = Object.hasOwn(WORK_ENVIRONMENTS, slot.environmentKey) ? WORK_ENVIRONMENTS[slot.environmentKey] : null;
+        const environment = Object.hasOwn(WORK_PROJECTS, slot.environmentKey) ? WORK_PROJECTS[slot.environmentKey] : null;
         if (environment)
           content += `<text class="environment-label" x="0" y="${size * 0.66}" text-anchor="middle" font-size="${size * 0.17}">${escapeXml(environment)}</text>`;
       }
@@ -404,5 +421,5 @@ export function renderSvg(snapshot = {}, options = {}) {
     typeof snapshot.revision === "string"
       ? snapshot.revision.slice(0, 12)
       : "unpublished";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" class="status-board" data-layout="${layout}" data-revision="${escapeXml(typeof snapshot.revision === "string" ? snapshot.revision : "")}" role="${options.interactive ? "group" : "img"}" aria-labelledby="board-title board-desc"><title id="board-title">Morgan public platform status</title><desc id="board-desc">Six durable cloud agent slots immediately surround Morgan. The full O2 layout reserves sixty-four Foo slots and twelve bottom history cells, newest at the left. Compact mode is selected explicitly or by fresh verified Foo allowance exhaustion. Conversation subjects are curated public summaries. Colors assert only fresh verified observations; blank capacity is not running work.</desc><defs><filter id="board-visual-shadow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation=".8"/><feOffset dx="0" dy="1.1"/><feColorMatrix type="matrix" values="0 0 0 0 .094 0 0 0 0 .204 0 0 0 0 .318 0 0 0 .24 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="board-cell-shadow" x="-45%" y="-45%" width="190%" height="190%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="1.9"/><feOffset dx="0" dy="2.7"/><feColorMatrix type="matrix" values="0 0 0 0 .094 0 0 0 0 .204 0 0 0 0 .318 0 0 0 .42 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter><clipPath id="board-eye-aperture" clipPathUnits="userSpaceOnUse"><rect class="eye-aperture" x="-48" y="-29" width="96" height="30"/></clipPath></defs><style>.status-board{font-family:Arial,Helvetica,sans-serif;color:#0751b9;background:#fff}.label,.cell-id{fill:#123d78}.cell-id{font-weight:700}.environment-label{fill:#577398}.cell:focus polygon,.cell.selected polygon{stroke:#092895;stroke-width:2.8}.cell-content{color:#0751b9}.cell-content,.group-boundaries,.board-time{filter:url(#board-visual-shadow)}.cell polygon{filter:url(#board-cell-shadow)}.blocked .cell-id,.blocked .label,.blocked .environment-label{fill:#4f1228}.head-motion{transform-box:fill-box;transform-origin:50% 65%;animation:breathe 5s ease-in-out infinite}.eye-aperture{transform-box:fill-box;transform-origin:50% 50%;animation:blink 7s ease-in-out infinite}.proud .head-motion{animation:proud 2.7s ease-in-out infinite}.pointing .head-motion,.looking .head-motion{animation:attentive 3.4s ease-in-out infinite}.thinking .head-motion{animation:attentive 2.7s ease-in-out infinite}.panicked .head-motion{animation:panic .65s ease-in-out infinite}.scanning-arm .arm-forearm{transform-box:view-box;transform-origin:0 0;animation:arm-articulate 2.2s ease-in-out infinite}.blocked-marker{animation:marker-alert 1.5s steps(1,end) infinite}.flames{transform-box:fill-box;transform-origin:50% 100%;animation:flame 1.4s ease-in-out infinite}@keyframes arm-articulate{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-8deg)}}@keyframes marker-alert{0%,55%,100%{opacity:1}70%,90%{opacity:0}}@keyframes breathe{50%{transform:translateY(-1.3px)}}@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(0)}}@keyframes proud{50%{transform:translateY(-3px) rotate(1.5deg)}}@keyframes attentive{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1.2deg)}}@keyframes flame{50%{transform:scale(1.03,.90)}}@keyframes panic{25%{transform:rotate(-3deg) translateY(-2px)}75%{transform:rotate(3deg) translateY(-1px)}}${scanAnimationCss}@media(prefers-reduced-motion:reduce){.status-board *{animation:none!important;transition:none!important}}</style><rect x="${view.x}" y="${view.y}" width="${view.width}" height="${view.height}" fill="#fff"/>${fills}<g class="group-boundaries" fill="none" stroke="#183451" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"><path d="${paths(edges.inner)}" stroke-width="2.1"/><path d="${paths(edges.outer)}" stroke-width="3.1"/><path class="cloud-boundary" d="${paths(cloudEdges)}" stroke-width="3.1"/></g>${marks}<text class="board-time" x="0" y="${view.y + view.height - 6}" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="8" fill="#516b8a">${escapeXml(time)}${escapeXml(rosterLabel)} · ${escapeXml(revision)}</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" class="status-board" data-layout="${layout}" data-revision="${escapeXml(typeof snapshot.revision === "string" ? snapshot.revision : "")}" role="${options.interactive ? "group" : "img"}" aria-labelledby="board-title board-desc"><title id="board-title">Morgan public platform status</title><desc id="board-desc">Six durable cloud agent slots immediately surround Morgan. The full O2 layout reserves sixty-four Foo slots and twelve bottom history cells, newest at the left. Compact mode is selected explicitly or by fresh verified Foo allowance exhaustion. Conversation subjects are curated public summaries. Colors assert only fresh verified observations; blank capacity is not running work.</desc><defs><filter id="board-visual-shadow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation=".8"/><feOffset dx="0" dy="1.1"/><feColorMatrix type="matrix" values="0 0 0 0 .094 0 0 0 0 .204 0 0 0 0 .318 0 0 0 .24 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="board-cell-shadow" x="-45%" y="-45%" width="190%" height="190%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="1.9"/><feOffset dx="0" dy="2.7"/><feColorMatrix type="matrix" values="0 0 0 0 .094 0 0 0 0 .204 0 0 0 0 .318 0 0 0 .42 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter><clipPath id="board-eye-aperture" clipPathUnits="userSpaceOnUse"><rect class="eye-aperture" x="-48" y="-29" width="96" height="30"/></clipPath></defs><style>.status-board{font-family:Arial,Helvetica,sans-serif;color:#0751b9;background:#fff}.label,.cell-id{fill:#123d78}.cell-id{font-weight:700}.environment-label{fill:#577398}.cell:focus polygon,.cell.selected polygon{stroke:#092895;stroke-width:2.8}.cell-content{color:#0751b9}.cell-content,.group-boundaries,.board-time{filter:url(#board-visual-shadow)}.cell polygon{filter:url(#board-cell-shadow)}.blocked .cell-id,.blocked .label,.blocked .environment-label{fill:#4f1228}.head-motion{transform-box:fill-box;transform-origin:50% 65%;animation:breathe 5s ease-in-out infinite}.eye-aperture{transform-box:fill-box;transform-origin:50% 50%;animation:blink 7s ease-in-out infinite}.proud .head-motion{animation:proud 2.7s ease-in-out infinite}.looking .head-motion{animation:attentive 3.4s ease-in-out infinite}.pointing .head-motion{animation:worried 1.9s ease-in-out infinite}.friendly .head-motion{animation:friendly-nod 2.4s ease-in-out infinite}.resting .head-motion{animation:resting-breathe 3.8s ease-in-out infinite}.friendly .reaction-mouth,.resting .reaction-mouth{transform-box:fill-box;transform-origin:50% 50%}.friendly .reaction-mouth{animation:smile 2.4s ease-in-out infinite}.resting .reaction-mouth{animation:yawn 3.8s ease-in-out infinite}.thinking .head-motion{animation:attentive 2.7s ease-in-out infinite}.panicked .head-motion{animation:panic .65s ease-in-out infinite}.blocked-marker{animation:marker-alert 1.5s steps(1,end) infinite}.flames{transform-box:fill-box;transform-origin:50% 100%;animation:flame 1.4s ease-in-out infinite}@keyframes worried{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg) translateY(-1.5px)}}@keyframes friendly-nod{50%{transform:translateY(-2.5px) rotate(1.5deg)}}@keyframes resting-breathe{50%{transform:translateY(1.5px)}}@keyframes smile{50%{transform:scale(1.12,1.15)}}@keyframes yawn{0%,100%{transform:scaleY(.7)}50%{transform:scaleY(1.15)}}@keyframes marker-alert{0%,55%,100%{opacity:1}70%,90%{opacity:0}}@keyframes breathe{50%{transform:translateY(-1.3px)}}@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(0)}}@keyframes proud{50%{transform:translateY(-3px) rotate(1.5deg)}}@keyframes attentive{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1.2deg)}}@keyframes flame{50%{transform:scale(1.03,.90)}}@keyframes panic{25%{transform:rotate(-3deg) translateY(-2px)}75%{transform:rotate(3deg) translateY(-1px)}}${scanAnimationCss}@media(prefers-reduced-motion:reduce){.status-board *{animation:none!important;transition:none!important}}</style><rect x="${view.x}" y="${view.y}" width="${view.width}" height="${view.height}" fill="#fff"/>${fills}<g class="group-boundaries" fill="none" stroke="#183451" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"><path d="${paths(edges.inner)}" stroke-width="2.1"/><path d="${paths(edges.outer)}" stroke-width="3.1"/><path class="cloud-boundary" d="${paths(cloudEdges)}" stroke-width="3.1"/></g>${marks}<text class="board-time" x="0" y="${view.y + view.height - 6}" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="8" fill="#516b8a">${escapeXml(time)}${escapeXml(rosterLabel)} · ${escapeXml(revision)}</text></svg>`;
 }
