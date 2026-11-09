@@ -3,9 +3,9 @@ UIF: shared physical and virtual infrastructure, cross-project Linear integratio
 
 ## Provisional reconciliation checkpoint
 
-**174 provisional candidate action records. This is not an exhaustive or final count of remaining work.** Records mix explicitly labelled deliverables, subtasks and conditional operations. Unmatched source/custody scope and unresolved applicability can change the list or count. Five nonadditive references below preserve shared or aggregate work without counting it twice.
+**173 provisional candidate action records. This is not an exhaustive or final count of remaining work.** Records mix explicitly labelled deliverables, subtasks and conditional operations. Unmatched source/custody scope and unresolved applicability can change the list or count. Five nonadditive references below preserve shared or aggregate work without counting it twice.
 
-This checkpoint replaces the former directory-only ledger with currently identifiable repository, directory, Linear and recovery-readiness work. Ordinary later feature implementation is excluded from the 174-record count. Completed physical relocations and completed startup documentation are not reopened. Earlier paths and detailed historical observations remain in [the prior directory ledger](https://github.com/maldous/uif/blob/8a6a9428712cb9f4b843eae1a1f63fc8f759b097/README.md).
+This checkpoint replaces the former directory-only ledger with currently identifiable repository, directory, Linear and recovery-readiness work. Ordinary later feature implementation is excluded from the 173-record count. Completed physical relocations and completed startup documentation are not reopened. Earlier paths and detailed historical observations remain in [the prior directory ledger](https://github.com/maldous/uif/blob/8a6a9428712cb9f4b843eae1a1f63fc8f759b097/README.md).
 
 ### Evidence and counting boundaries
 
@@ -164,7 +164,7 @@ Project headings identify coordination, not ownership of every associated file. 
 - **UIF-214:dirty-postimage-R189**: Establish current custody and exact dirty-postimage correspondence for frozen subject R189, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
 - **UIF-214:dirty-postimage-R190**: Establish current custody and exact dirty-postimage correspondence for frozen subject R190, joining its historical head, present locator/owner, original inventory and available hashes. Distinguish verified, partial and unknown recovery. Missing paths alone do not prove deletion or loss. ([UIF-214](https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody); deliverable).
 
-### OffMenu (55 records)
+### OffMenu (54 records)
 
 - **offmenu-47-hold-qualification**: Qualify existing retained holds ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds), [UIF-154](https://linear.app/maldous/issue/UIF-154/qualify-held-input-assets-for-current-permitted-consumers); deliverable).
 - **offmenu-mixed-workspace-custody**: Resolve mixed workspace custody ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds); deliverable).
@@ -208,7 +208,6 @@ Project headings identify coordination, not ownership of every associated file. 
 - **offmenu-retained-UIF-236**: Review retained worker-57 source and untracked files ([UIF-236](https://linear.app/maldous/issue/UIF-236/review-retained-worker-57-source-and-untracked-files); deliverable).
 - **offmenu-retained-UIF-237**: Review retained worker00 consumer snapshot ([UIF-237](https://linear.app/maldous/issue/UIF-237/review-retained-worker00-consumer-snapshot); deliverable).
 - **offmenu-retained-UIF-238**: Review native package branch ([UIF-238](https://linear.app/maldous/issue/UIF-238/review-native-package-branch); deliverable).
-- **offmenu-custody-tracker-path-correction**: Correct nine stale custody path records ([UIF-221](https://linear.app/maldous/issue/UIF-221/review-retained-ai-tooling-source), [UIF-222](https://linear.app/maldous/issue/UIF-222/review-retained-historical-tooling-source), [UIF-223](https://linear.app/maldous/issue/UIF-223/review-retained-qualified-source-recovery), [UIF-225](https://linear.app/maldous/issue/UIF-225/review-retained-worker-work-in-progress), [UIF-226](https://linear.app/maldous/issue/UIF-226/review-retained-app-source-custody), [UIF-227](https://linear.app/maldous/issue/UIF-227/review-retained-source-facts-diagnostics), [UIF-229](https://linear.app/maldous/issue/UIF-229/review-retained-windmill-platform-source), [UIF-236](https://linear.app/maldous/issue/UIF-236/review-retained-worker-57-source-and-untracked-files), [UIF-237](https://linear.app/maldous/issue/UIF-237/review-retained-worker00-consumer-snapshot); deliverable).
 - **src-072-consumer-qualification**: Resolve collection alias consumer bindings ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask).
   - Reuse: existing-src068-070-4.
 - **src-072-alias-retirement**: Retire collection outer compatibility alias after consumer clearance ([UIF-239](https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody); subtask). **Conditional.**
