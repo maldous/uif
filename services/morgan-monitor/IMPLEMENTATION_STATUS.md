@@ -56,3 +56,54 @@ New Worker/D1 semantics, public TLS, authenticated delivery, scheduled expiry,
 collector restart recovery, successful Windmill image retrieval and remote GitHub
 publication must be verified and recorded after deployment. No reboot or disruptive
 agent outage test has been performed. Never describe this checkpoint as acceptance.
+
+## Follow-up checkpoint, 2026-11-09 06:07 UTC
+
+Release55338e8 was published through the authorized GitHub connector in draft
+PR https://github.com/maldous/uif/pull/21, remote commit
+`b4571c70db7115781915ce9ca4eb3c2ebee64f3b`, exact matching content tree
+`f37f0461eef6897b514fd8d5c685ec90bf9d5f33` (see Git objects for the
+authoritative tree). No merge, commit statuses or PR-triggered Actions runs.
+
+The independent Worker, assets, isolated D1 with five migrations, exact public
+hostname and minute cron were deployed. Public probes encounter Cloudflare
+403/error1010 before the Worker. The narrowly scoped machine-endpoint Browser
+Integrity Check exception is approved by the user but the write was denied by
+authorization review; no exception was created and no bypass attempted. The
+collector and initial curated events have not started. End-to-end service
+acceptance remains blocked, with the existing TV independently operational.
+
+This follow-up source adds north-aligned aliases, stronger hex shadows, a fully
+closing shared blink aperture, and a separate manual coordinator-lifecycle proof
+with numeric roster generation. It does not call that evidence an OS process
+probe, create an automatic cloud feed or enable global execution claims.
+Generation1 is a new display mapping, not historical A–F continuity.
+No production coordinator registration or credential has been created.
+
+The dated06:05:01 compact TV capture was receiver-verified at06:05:45, with exact
+revision133b26744323,10regularcells and matching959×539 screenshot. Its current
+coordinator colors expire at06:10:01 rather than staying green indefinitely.
+The next source tests pass86Node tests; previous86collector and29existing checks
+remain applicable and are rerun before the follow-up checkpoint is committed.
+
+## Visual and environment follow-up, 2026-11-09 06:17 UTC
+
+User-directed refinements remove the large blockage cross and generic Cloud
+label, make the entire cloud-group perimeter consistently heavy, and replace
+attention arrows with articulated scanning arms. Blocker exclamations blink;
+a clear tick requires confirmed current nonblocking evidence across the visible
+ray and a still-present assigned worker. Completed/absent/stale capacity does not
+produce a tick. Actual work environments use an explicit three-key allowlist,
+not domain inference or free text. Tests now pass95service cases.
+
+Roster generation2 was explicitly assigned for current coordination/deployment,
+C's ledger-packet preparation, blank D, backend work in E, and F's completed
+ledger preparation. Cloud-scratch workers have no verified checkout and are not
+labelled Foo/UIF. Current state remains explicitly dated manual observation,
+with expiry, not an automatically qualified native-agent feed.
+
+The BIC exception remains unexecuted after final authorization-review denial.
+The unchanged authenticated collector request also receives403/error1010 before
+Worker validation. No user-agent spoofing, relay, alternate hostname or security
+change was attempted. A human-applied exact approved rule is the remaining
+operational route before unchanged ingestion can be qualified.

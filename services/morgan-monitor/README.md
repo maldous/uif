@@ -66,7 +66,9 @@ receipts are not trusted execution or rendering evidence.
 
 - A healthy metadata read is not an active worker.
 - A historical `inProgress` row does not get a new session timestamp on a poll.
-- Only fresh process-capable session evidence can create current-state colors.
+- Fresh process-capable session evidence or explicitly dated manual coordinator
+  lifecycle observations can color individual cells. Only the former can
+  establish execution coverage or all-stopped/proud global claims.
 - Complete historical coverage does not imply complete execution coverage.
 - Missing registration is unconfigured; missing evidence is unavailable, never
   silently `idle`, `unassigned`, healthy or stopped.
@@ -209,3 +211,9 @@ is not evidence that browser interaction or receiver animation works.
 At initial hosting audit, morgan.aldous.info had no explicit route and its
 wildcard destination returned522. Deployment progress is a separate dated
 checkpoint. Do not present templates or offline tests as live outcomes.
+
+The additive manual coordinator protocol is described in
+[COORDINATOR_ROSTER.md](COORDINATOR_ROSTER.md). Numeric display generations
+distinguish new mappings from historical cloud identities. A manually captured
+API/report observation is never described as an automatic cloud feed or an OS
+process measurement. No coordinator source is enabled by default.

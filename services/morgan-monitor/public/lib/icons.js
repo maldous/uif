@@ -33,6 +33,12 @@ const MAP = Object.freeze({
   status_display: "cast",
   status_updates: "monitoring",
   offmenu_sync: "transition",
+  public_deployment: "delivery",
+  browser_verification: "testing",
+  display_refinement: "graphics",
+  monitor_coordination: "monitoring",
+  monitor_service_implementation: "engineering",
+  ledger_packet_preparation: "planning",
 });
 export function iconFor(keys = []) {
   for (const key of keys) if (MAP[key]) return MAP[key];

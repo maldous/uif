@@ -10,13 +10,18 @@ export const TOPICS = Object.freeze({
   monitor_service_implementation: 'Monitor service implementation', compact_display: 'Compact display',
   layout_design: 'Layout design',
   worker_identity_mapping: 'Worker identity mapping', expressive_animation: 'Expressive animation',
+  public_deployment: 'Public deployment', browser_verification: 'Browser verification',
+  display_refinement: 'Display refinement', monitor_coordination: 'Monitor coordination',
+  ledger_packet_preparation: 'Ledger preparation',
 });
+// Reviewed environments only. Agent domain does not establish its work location.
+const ENVIRONMENT_KEYS = ['foo_uif', 'foo_tv', 'cloud_scratch'];
 export const BLOCKERS = Object.freeze({
   source_unavailable: 'Source unavailable', coverage_partial: 'Partial coverage',
   awaiting_input: 'Awaiting input', dependency_unavailable: 'Dependency unavailable',
   quota_unavailable: 'Capacity unavailable', execution_failed: 'Recorded execution failure',
 });
-const CAPABILITIES = ['registry', 'turn_history', 'process', 'service_process', 'curation', 'foo_allowance'];
+const CAPABILITIES = ['registry', 'turn_history', 'process', 'service_process', 'curation', 'foo_allowance', 'coordinator_lifecycle'];
 const STATES = ['running', 'idle', 'stopped', 'completed', 'failed', 'blocked', 'unknown'];
 const ASSIGNMENTS = ['assigned', 'unassigned', 'unavailable'];
 const MIN_DATE = Date.UTC(2000, 0, 1);
@@ -82,10 +87,10 @@ export async function loadConfig(env) {
     exact(config, ['sources']);
     if (!Array.isArray(config.sources) || config.sources.length > 16) throw new Error();
     const ids = new Set(), aliases = new Set(), tokens = new Set();
-    let curationOwners = 0, allowanceOwners = 0;
+    let curationOwners = 0, allowanceOwners = 0, coordinatorOwners = 0;
     const sources = [];
     for (const source of config.sources) {
-      exact(source, ['id', 'domain', 'aliases', 'capabilities', 'staleAfterSeconds', 'outageAfterSeconds', 'tokenEnv']);
+      exact(source, ['id', 'domain', 'aliases', 'capabilities', 'staleAfterSeconds', 'outageAfterSeconds', 'tokenEnv'], ['rosterGeneration']);
       if (!/^[a-z][a-z0-9_-]{0,47}$/.test(source.id) || ids.has(source.id) ||
           !['foo', 'cloud'].includes(source.domain) || !/^[A-Z][A-Z0-9_]{2,63}$/.test(source.tokenEnv) ||
           tokens.has(source.tokenEnv) || !integer(source.staleAfterSeconds, 30, 3600) ||
@@ -104,6 +109,12 @@ export async function loadConfig(env) {
         allowanceOwners++;
         if (source.domain !== 'foo' || allowanceOwners > 1) throw new Error();
       }
+      if (source.capabilities.includes('coordinator_lifecycle')) {
+        coordinatorOwners++;
+        if (source.domain !== 'cloud' || coordinatorOwners > 1 ||
+            !integer(source.rosterGeneration, 1, 1000000) ||
+            source.capabilities.includes('process')) throw new Error();
+      } else if (Object.hasOwn(source, 'rosterGeneration')) throw new Error();
       ids.add(source.id); tokens.add(source.tokenEnv);
       sources.push({ ...source, configHash: await hash(canonical(source)), publicAlias: `source-${sources.length + 1}` });
     }
@@ -114,11 +125,13 @@ export async function loadConfig(env) {
 /** Reject unknown fields rather than sanitizing arbitrary private payloads. */
 export function validateEvent(input, source, now, enforceClock = true) {
   exact(input, ['schemaVersion', 'sourceId', 'eventId', 'sequence', 'observedAt', 'health', 'coverage', 'sessions'],
-    ['serviceState', 'conversationTopics', 'fooAllowance']);
+    ['serviceState', 'conversationTopics', 'fooAllowance', 'rosterGeneration']);
   if (input.schemaVersion !== 1 || input.sourceId !== source.id ||
       typeof input.eventId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(input.eventId) ||
       !integer(input.sequence, 1, Number.MAX_SAFE_INTEGER) || !['ok', 'error', 'unconfigured'].includes(input.health)) reject(422, 'invalid_event');
   const observedAt = timestamp(input.observedAt, enforceClock ? now + 30000 : Infinity);
+  const coordinated = source.capabilities.includes('coordinator_lifecycle');
+  if (coordinated ? input.rosterGeneration !== source.rosterGeneration : Object.hasOwn(input, 'rosterGeneration')) reject(422, 'invalid_event');
   exact(input.coverage, ['complete', 'observed', 'total']);
   const coverage = input.coverage;
   if (typeof coverage.complete !== 'boolean' || !integer(coverage.observed, 0, 1000000) ||
@@ -127,14 +140,23 @@ export function validateEvent(input, source, now, enforceClock = true) {
       input.sessions.length > coverage.observed) reject(422, 'invalid_event');
   const aliases = new Set();
   for (const session of input.sessions) {
-    exact(session, ['alias', 'assignment', 'observedAt', 'state', 'proof', 'topicKeys', 'blockerKeys']);
+    exact(session, ['alias', 'assignment', 'observedAt', 'state', 'proof', 'topicKeys', 'blockerKeys'], ['environmentKey']);
     if (!source.aliases.includes(session.alias) || aliases.has(session.alias) ||
         !ASSIGNMENTS.includes(session.assignment) || !STATES.includes(session.state) ||
-        !['registry', 'turn_history', 'process'].includes(session.proof) ||
+        !['registry', 'turn_history', 'process', 'coordinator_lifecycle'].includes(session.proof) ||
         !source.capabilities.includes(session.proof)) reject(422, 'invalid_event');
     timestamp(session.observedAt, Math.min(observedAt + 30000, enforceClock ? now + 30000 : Infinity));
+    if (session.proof === 'coordinator_lifecycle') {
+      if (!coordinated || source.domain !== 'cloud' || !['running', 'completed', 'blocked', 'unknown'].includes(session.state)) reject(422, 'invalid_event');
+      // A manually captured native API/report observation cannot be dated into
+      // the future or imply an OS process probe. It expires like any other feed.
+      timestamp(session.observedAt, Math.min(observedAt, enforceClock ? now : Infinity));
+    }
     uniqueList(session.topicKeys, Object.keys(TOPICS), 3);
     uniqueList(session.blockerKeys, Object.keys(BLOCKERS), 3);
+    if (Object.hasOwn(session, 'environmentKey') &&
+        (session.assignment !== 'assigned' || !ENVIRONMENT_KEYS.includes(session.environmentKey))) reject(422, 'invalid_event');
+    if (session.proof === 'coordinator_lifecycle' && session.state === 'blocked' && session.blockerKeys.length === 0) reject(422, 'invalid_event');
     if (session.assignment !== 'assigned' && (session.state !== 'unknown' || session.topicKeys.length || session.blockerKeys.length)) reject(422, 'invalid_event');
     aliases.add(session.alias);
   }
@@ -300,6 +322,7 @@ export async function projectStatus(env, sources, now) {
     let executionCoverageComplete = status === 'fresh' && coverage.complete && source.aliases.length > 0;
     for (const alias of source.aliases) {
       const slot = bySlot.get(`${source.domain}-${alias}`), session = sessionMap.get(alias);
+      if (source.capabilities.includes('coordinator_lifecycle')) slot.rosterGeneration = source.rosterGeneration;
       slot.availability = status === 'fresh' ? 'unavailable' : status;
       if (!session) { executionCoverageComplete = false; continue; }
       const sessionAge = age(now, timestamp(session.observedAt), row.last_good_received_at);
@@ -310,19 +333,24 @@ export async function projectStatus(env, sources, now) {
       slot.recordedState = session.assignment === 'assigned' ? session.state : null;
       slot.availability = status === 'fresh' ? freshness(source, sessionAge) : status;
       if (session.assignment === 'unavailable') slot.availability = status === 'fresh' ? 'unavailable' : status;
-      const live = session.proof === 'process' && session.assignment !== 'unavailable' && slot.availability === 'fresh';
-      if (!live) executionCoverageComplete = false;
-      slot.displayState = live && session.assignment === 'assigned' && session.state !== 'unknown' ? session.state : null;
+      const displayEvidence = ['process', 'coordinator_lifecycle'].includes(session.proof) && session.assignment !== 'unavailable' && slot.availability === 'fresh';
+      if (!displayEvidence || session.proof !== 'process') executionCoverageComplete = false;
+      slot.displayState = displayEvidence && session.assignment === 'assigned' && session.state !== 'unknown' ? session.state : null;
       slot.topicKeys = [...session.topicKeys]; slot.blockerKeys = [...session.blockerKeys];
       slot.topics = session.topicKeys.map(key => TOPICS[key]);
       slot.blockers = session.blockerKeys.map(key => BLOCKERS[key]);
+      if (Object.hasOwn(session, 'environmentKey')) slot.environmentKey = session.environmentKey;
     }
     publicSources.push({ alias: source.publicAlias, domain: source.domain, aliases: [...source.aliases],
       capabilities: [...source.capabilities], status, lastReceivedAt: matching ? iso(row.received_at) : null,
       lastSuccessAt: good ? iso(row.last_good_received_at) : null, lastObservedAt: good ? iso(row.last_good_observed_at) : null,
       ageSeconds: seconds, staleAfterSeconds: source.staleAfterSeconds, outageAfterSeconds: source.outageAfterSeconds,
-      coverage, executionCoverageComplete, evidenceScope: source.capabilities.includes('process') ? 'process_liveness' : 'metadata_only',
+      coverage, executionCoverageComplete, evidenceScope: source.capabilities.includes('coordinator_lifecycle') ? 'coordinator_lifecycle' : source.capabilities.includes('process') ? 'process_liveness' : 'metadata_only',
       serviceState: good?.serviceState ?? null });
+    if (source.capabilities.includes('coordinator_lifecycle')) {
+      publicSources.at(-1).rosterGeneration = source.rosterGeneration;
+      publicSources.at(-1).observationMode = 'manual';
+    }
     if (source.capabilities.includes('curation')) {
       const topics = topicRecords.results.filter(topic => topic.source_id === source.id && topic.config_hash === source.configHash);
       if (topics.some(topic => !Object.hasOwn(TOPICS, topic.topic_key) || !['voice', 'chat', 'status'].includes(topic.channel))) reject(503, 'storage_unavailable');
@@ -409,14 +437,19 @@ function validatePublicSnapshot(snapshot) {
       snapshot.sources.length > 16 || !Array.isArray(snapshot.slots) || snapshot.slots.length !== 70) reject(503, 'snapshot_unavailable');
   for (const source of snapshot.sources) {
     exact(source, ['alias', 'domain', 'aliases', 'capabilities', 'status', 'lastReceivedAt', 'lastSuccessAt', 'lastObservedAt',
-      'ageSeconds', 'staleAfterSeconds', 'outageAfterSeconds', 'coverage', 'executionCoverageComplete', 'evidenceScope', 'serviceState']);
+      'ageSeconds', 'staleAfterSeconds', 'outageAfterSeconds', 'coverage', 'executionCoverageComplete', 'evidenceScope', 'serviceState'], ['rosterGeneration', 'observationMode']);
     if (!/^source-(?:[1-9]|1[0-6])$/.test(source.alias) || !['foo', 'cloud'].includes(source.domain) ||
         !availability.includes(source.status) || !validAge(source.ageSeconds) ||
         !integer(source.staleAfterSeconds, 30, 3600) || !integer(source.outageAfterSeconds, source.staleAfterSeconds + 1, 86400) ||
-        typeof source.executionCoverageComplete !== 'boolean' || !['process_liveness', 'metadata_only'].includes(source.evidenceScope) ||
+        typeof source.executionCoverageComplete !== 'boolean' || !['process_liveness', 'metadata_only', 'coordinator_lifecycle'].includes(source.evidenceScope) ||
         ![null, 'running', 'stopped', 'unknown'].includes(source.serviceState)) reject(503, 'snapshot_unavailable');
     [source.lastReceivedAt, source.lastSuccessAt, source.lastObservedAt].forEach(validTime);
     uniqueList(source.capabilities, CAPABILITIES, CAPABILITIES.length);
+    if (source.capabilities.includes('coordinator_lifecycle')) {
+      if (source.domain !== 'cloud' || !integer(source.rosterGeneration, 1, 1000000) ||
+          source.observationMode !== 'manual' || source.evidenceScope !== 'coordinator_lifecycle' ||
+          source.executionCoverageComplete !== false || source.capabilities.includes('process')) reject(503, 'snapshot_unavailable');
+    } else if (Object.hasOwn(source, 'rosterGeneration') || Object.hasOwn(source, 'observationMode')) reject(503, 'snapshot_unavailable');
     uniqueList(source.aliases, source.domain === 'cloud' ? [...'ABCDEF'] : Array.from({ length: 64 }, (_, i) => String(i + 1)), 64);
     exact(source.coverage, ['complete', 'observed', 'total']);
     if (typeof source.coverage.complete !== 'boolean' || !integer(source.coverage.observed, 0, 1000000) ||
@@ -425,11 +458,21 @@ function validatePublicSnapshot(snapshot) {
   const ids = new Set();
   for (const slot of snapshot.slots) {
     exact(slot, ['id', 'domain', 'alias', 'assignment', 'displayState', 'availability', 'recordedState', 'proof',
-      'observedAt', 'ageSeconds', 'topicKeys', 'blockerKeys', 'topics', 'blockers']);
+      'observedAt', 'ageSeconds', 'topicKeys', 'blockerKeys', 'topics', 'blockers'], ['rosterGeneration', 'environmentKey']);
     if (!/^(cloud-[A-F]|foo-(?:[1-9]|[1-5][0-9]|6[0-4]))$/.test(slot.id) || ids.has(slot.id) ||
         slot.id !== `${slot.domain}-${slot.alias}` || !ASSIGNMENTS.includes(slot.assignment) ||
         ![null, ...STATES.filter(state => state !== 'unknown')].includes(slot.displayState) || !availability.includes(slot.availability) ||
-        ![null, ...STATES].includes(slot.recordedState) || ![null, 'registry', 'turn_history', 'process'].includes(slot.proof) || !validAge(slot.ageSeconds)) reject(503, 'snapshot_unavailable');
+        ![null, ...STATES].includes(slot.recordedState) || ![null, 'registry', 'turn_history', 'process', 'coordinator_lifecycle'].includes(slot.proof) || !validAge(slot.ageSeconds)) reject(503, 'snapshot_unavailable');
+    if (Object.hasOwn(slot, 'environmentKey') &&
+        (slot.assignment !== 'assigned' || !ENVIRONMENT_KEYS.includes(slot.environmentKey))) reject(503, 'snapshot_unavailable');
+    if (Object.hasOwn(slot, 'rosterGeneration')) {
+      const owner = snapshot.sources.find(source => source.capabilities.includes('coordinator_lifecycle') && source.domain === slot.domain && source.aliases.includes(slot.alias));
+      if (!owner || slot.rosterGeneration !== owner.rosterGeneration ||
+          ![null, 'coordinator_lifecycle', 'registry', 'turn_history'].includes(slot.proof)) reject(503, 'snapshot_unavailable');
+    }
+    if (slot.proof === 'coordinator_lifecycle' && (!Object.hasOwn(slot, 'rosterGeneration') ||
+        ![null, 'running', 'completed', 'blocked'].includes(slot.displayState) ||
+        ![null, 'running', 'completed', 'blocked', 'unknown'].includes(slot.recordedState))) reject(503, 'snapshot_unavailable');
     ids.add(slot.id); validTime(slot.observedAt);
     uniqueList(slot.topicKeys, Object.keys(TOPICS), 3); uniqueList(slot.blockerKeys, Object.keys(BLOCKERS), 3);
     if (canonical(slot.topics) !== canonical(slot.topicKeys.map(key => TOPICS[key])) ||

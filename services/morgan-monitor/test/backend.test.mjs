@@ -489,3 +489,159 @@ test('generic-status migration preserves existing voice/chat rows and archive at
   assert.equal(data.conversationTopics.voice[0].key, 'review'); assert.equal(data.conversationTopics.chat[0].key, 'planning');
   assert.deepEqual(env.DB.sqlite.prepare('SELECT * FROM curated_topics_before_status ORDER BY channel').all(), before);
 });
+
+const coordinatorSource = (extra = {}) => source({ id: 'coordinator_observer', domain: 'cloud', aliases: [...'ABCDEF'],
+  capabilities: ['coordinator_lifecycle'], rosterGeneration: 1, ...extra });
+const coordinatorEvent = (extra = {}) => event({ sourceId: 'coordinator_observer', rosterGeneration: 1,
+  coverage: { complete: true, observed: 6, total: 6 }, sessions: [
+    session('A', { proof: 'coordinator_lifecycle', topicKeys: ['monitor_coordination'] }),
+    session('B', { proof: 'coordinator_lifecycle', state: 'blocked', topicKeys: ['public_deployment'], blockerKeys: ['awaiting_input'] }),
+    session('C', { proof: 'coordinator_lifecycle', state: 'completed', topicKeys: ['browser_verification'] }),
+    session('D', { proof: 'coordinator_lifecycle', state: 'completed', topicKeys: ['display_refinement'] }),
+    session('E', { proof: 'coordinator_lifecycle', topicKeys: ['monitor_service_implementation'] }),
+    session('F', { proof: 'coordinator_lifecycle', assignment: 'unassigned', state: 'unknown', topicKeys: [] }),
+  ], ...extra });
+
+test('coordinator lifecycle is explicit manual cloud evidence, not a process probe or full execution claim', async () => {
+  const env = setup([coordinatorSource()]); assert.equal((await ingest(env, coordinatorEvent())).status, 202);
+  const data = await (await get(env)).json();
+  const slot = alias => data.slots.find(item => item.id === `cloud-${alias}`);
+  assert.equal(slot('A').displayState, 'running'); assert.equal(slot('B').displayState, 'blocked');
+  assert.equal(slot('C').displayState, 'completed'); assert.equal(slot('D').displayState, 'completed');
+  assert.equal(slot('E').displayState, 'running'); assert.equal(slot('F').assignment, 'unassigned');
+  assert.equal(slot('F').displayState, null);
+  assert.equal(data.sources[0].observationMode, 'manual'); assert.equal(data.sources[0].evidenceScope, 'coordinator_lifecycle');
+  assert.equal(data.sources[0].coverage.complete, true);
+  assert.equal(data.sources[0].executionCoverageComplete, false); assert.equal(data.summary.executionCoverageComplete, false);
+  assert(data.slots.filter(item => item.domain === 'cloud').every(item => item.rosterGeneration === 1 && item.proof === 'coordinator_lifecycle'));
+  assert.equal(data.sources[0].rosterGeneration, 1);
+  assert.deepEqual(await (await get(env, `/api/snapshots/${data.revision}`)).json(), data);
+});
+
+test('coordinator registration requires one cloud owner, numeric generation and separate process authority', async () => {
+  for (const config of [
+    [coordinatorSource({ domain: 'foo', aliases: ['1'] })],
+    [coordinatorSource({ rosterGeneration: undefined })],
+    [coordinatorSource({ rosterGeneration: 'R1' })],
+    [coordinatorSource({ rosterGeneration: 0 })],
+    [coordinatorSource({ capabilities: ['coordinator_lifecycle', 'process'] })],
+    [source({ rosterGeneration: 1 })],
+    [coordinatorSource({ aliases: ['A'] }), coordinatorSource({ id: 'second', aliases: ['B'], tokenEnv: 'SECOND_TOKEN' })],
+  ]) assert.equal((await get(setup(config))).status, 503);
+});
+
+test('coordinator events cannot change generation, forge OS states, add identities or invent blocker text', async () => {
+  const changes = [
+    { rosterGeneration: 2 }, { rosterGeneration: 'R1' }, { rosterGeneration: undefined },
+    { sessions: [session('A', { proof: 'coordinator_lifecycle', state: 'stopped' })] },
+    { sessions: [session('A', { proof: 'coordinator_lifecycle', state: 'failed' })] },
+    { sessions: [session('A', { proof: 'coordinator_lifecycle', state: 'idle' })] },
+    { sessions: [session('A', { proof: 'coordinator_lifecycle', state: 'blocked', blockerKeys: [] })] },
+    { sessions: [session('A', { proof: 'coordinator_lifecycle', threadId: 'PRIVATE' })] },
+    { sessions: [session('A', { proof: 'coordinator_lifecycle', observedAt: new Date(NOW + 1).toISOString() })] },
+    { sessions: [session('A', { proof: 'process' })] },
+  ];
+  for (const change of changes) {
+    const payload = coordinatorEvent({ coverage: { complete: false, observed: 1, total: 6 }, ...change });
+    if (!change.sessions) payload.sessions = [coordinatorEvent().sessions[0]];
+    assert.equal((await ingest(setup([coordinatorSource()]), payload)).status, 422);
+  }
+  assert.equal((await ingest(setup(), event({ rosterGeneration: 1 }))).status, 422);
+});
+
+test('manual lifecycle expiry, missing rows and source errors withhold current claims', async () => {
+  const env = setup([coordinatorSource()]); await ingest(env, coordinatorEvent());
+  const stale = await (await get(env, '/api/status', NOW + 120000)).json();
+  assert(stale.slots.filter(slot => slot.domain === 'cloud').every(slot => slot.displayState === null && slot.availability === 'stale'));
+  const error = coordinatorEvent({ sequence: 2, eventId: '2', observedAt: new Date(NOW + 2000).toISOString(), health: 'error',
+    coverage: { complete: false, observed: 0, total: null }, sessions: [] });
+  await ingest(env, error, NOW + 2000);
+  const failed = await (await get(env, '/api/status', NOW + 2000)).json();
+  assert(failed.slots.filter(slot => slot.domain === 'cloud').every(slot => slot.displayState === null && slot.availability === 'error'));
+  const partial = setup([coordinatorSource()]);
+  await ingest(partial, coordinatorEvent({ coverage: { complete: false, observed: 1, total: 6 }, sessions: [coordinatorEvent().sessions[0]] }));
+  const data = await (await get(partial)).json();
+  assert.equal(data.slots.find(slot => slot.id === 'cloud-F').assignment, 'unavailable');
+  assert.equal(data.slots.find(slot => slot.id === 'cloud-F').rosterGeneration, 1);
+});
+
+test('new configured roster generation invalidates old identities without rewriting historical snapshots', async () => {
+  const env = setup([coordinatorSource()]); await ingest(env, coordinatorEvent());
+  const first = await (await get(env)).json();
+  env.SOURCE_CONFIG_JSON = JSON.stringify({ sources: [coordinatorSource({ rosterGeneration: 2 })] });
+  const waiting = await (await get(env, '/api/status', NOW + 1000)).json();
+  assert(waiting.slots.filter(slot => slot.domain === 'cloud').every(slot => slot.rosterGeneration === 2 && slot.assignment === 'unavailable' && slot.displayState === null));
+  assert.equal((await ingest(env, coordinatorEvent({ sequence: 2, eventId: '2' }), NOW + 1000)).status, 422);
+  assert.equal((await ingest(env, coordinatorEvent({ rosterGeneration: 2, sequence: 2, eventId: '2', observedAt: new Date(NOW + 1000).toISOString() }), NOW + 1000)).status, 202);
+  const second = await (await get(env, '/api/status', NOW + 1000)).json();
+  assert.equal(second.sources[0].rosterGeneration, 2); assert.notEqual(second.revision, first.revision);
+  assert.deepEqual(await (await get(env, `/api/snapshots/${first.revision}`, NOW + 1000)).json(), first);
+});
+
+test('verified environment keys are explicit public metadata independent of agent domain', async () => {
+  const env = setup([coordinatorSource({ rosterGeneration: 2 })]);
+  const payload = coordinatorEvent({ rosterGeneration: 2 });
+  payload.sessions[0].environmentKey = 'foo_uif';
+  payload.sessions[1].environmentKey = 'foo_tv';
+  payload.sessions[2].environmentKey = 'cloud_scratch';
+  payload.sessions[2].topicKeys = ['ledger_packet_preparation'];
+  assert.equal((await ingest(env, payload)).status, 202);
+  const data = await (await get(env)).json();
+  const slot = alias => data.slots.find(item => item.id === `cloud-${alias}`);
+  assert.equal(slot('A').environmentKey, 'foo_uif');
+  assert.equal(slot('B').environmentKey, 'foo_tv');
+  assert.equal(slot('C').environmentKey, 'cloud_scratch');
+  assert.deepEqual(slot('C').topics, ['Ledger preparation']);
+  assert.equal(slot('A').proof, 'coordinator_lifecycle');
+  assert.equal(data.summary.executionCoverageComplete, false);
+  assert(!Object.hasOwn(slot('D'), 'environmentKey'));
+  assert(!Object.hasOwn(slot('F'), 'environmentKey'));
+  assert(data.slots.filter(item => item.domain === 'foo').every(item => !Object.hasOwn(item, 'environmentKey')));
+  assert.deepEqual(await (await get(env, `/api/snapshots/${data.revision}`)).json(), data);
+  const rpc = await handleRequest(new Request('https://monitor.example/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 'environment', method: 'tools/call', params: { name: 'get_status', arguments: {} } }) }), env, NOW);
+  assert.deepEqual(JSON.parse((await rpc.json()).result.content[0].text).slots, data.slots);
+});
+
+test('environment input rejects free text, private fields and claims on unassigned rows', async () => {
+  for (const environmentKey of [null, '', 'Foo · UIF', 'cloud', '/private/checkout', { path: 'PRIVATE' }, ['foo_uif']]) {
+    assert.equal((await ingest(setup(), event({ sessions: [session('1', { environmentKey })] }))).status, 422);
+  }
+  for (const changes of [
+    { environmentKey: 'foo_uif', environmentLabel: 'PRIVATE' },
+    { environmentKey: 'foo_uif', path: 'PRIVATE' },
+    { environmentKey: 'foo_uif', repository: 'PRIVATE', branch: 'PRIVATE' },
+    { environmentKey: 'cloud_scratch', assignment: 'unassigned', state: 'unknown', topicKeys: [] },
+    { environmentKey: 'cloud_scratch', assignment: 'unavailable', state: 'unknown', topicKeys: [] },
+  ]) assert.equal((await ingest(setup(), event({ sessions: [session('1', changes)] }))).status, 422);
+});
+
+test('environment revisions retain dated history but missing/new-generation observations do not inherit claims', async () => {
+  const env = setup([coordinatorSource()]);
+  const payload = coordinatorEvent(); payload.sessions[0].environmentKey = 'foo_uif';
+  await ingest(env, payload);
+  const first = await (await get(env)).json();
+  const aged = await (await get(env, '/api/status', NOW + 120000)).json();
+  const agedA = aged.slots.find(slot => slot.id === 'cloud-A');
+  assert.equal(agedA.environmentKey, 'foo_uif'); assert.equal(agedA.availability, 'stale');
+  assert.equal(agedA.displayState, null); assert.equal(agedA.observedAt, new Date(NOW).toISOString());
+  const next = coordinatorEvent({ sequence: 2, eventId: '2', observedAt: new Date(NOW + 1000).toISOString() });
+  await ingest(env, next, NOW + 1000);
+  const noClaim = await (await get(env, '/api/status', NOW + 1000)).json();
+  assert(!Object.hasOwn(noClaim.slots.find(slot => slot.id === 'cloud-A'), 'environmentKey'));
+  assert.notEqual(first.revision, noClaim.revision);
+  assert.deepEqual(await (await get(env, `/api/snapshots/${first.revision}`)).json(), first);
+  env.SOURCE_CONFIG_JSON = JSON.stringify({ sources: [coordinatorSource({ rosterGeneration: 2 })] });
+  const newGeneration = await (await get(env, '/api/status', NOW + 2000)).json();
+  assert(newGeneration.slots.filter(slot => slot.domain === 'cloud').every(slot =>
+    slot.rosterGeneration === 2 && slot.assignment === 'unavailable' && !Object.hasOwn(slot, 'environmentKey')));
+});
+
+test('immutable snapshot environment fields remain strictly allowlisted', async () => {
+  const env = setup(); await ingest(env, event({ sessions: [session('1', { environmentKey: 'foo_uif' })] }));
+  const snapshot = await (await get(env)).json();
+  foo(snapshot).environmentKey = { private: 'PRIVATE' };
+  env.DB.sqlite.prepare('UPDATE public_snapshots SET payload = ? WHERE revision = ?').run(JSON.stringify(snapshot), snapshot.revision);
+  const response = await get(env, `/api/snapshots/${snapshot.revision}`);
+  assert.equal(response.status, 503); assert.equal((await response.json()).error, 'snapshot_unavailable');
+});

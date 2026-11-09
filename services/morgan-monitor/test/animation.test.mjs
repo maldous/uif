@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DIRECTIONS, capacityLayout, compactLayout, axialToPixel, distance } from "../public/lib/layout.js";
+import { DIRECTIONS, capacityLayout, compactLayout, axialToPixel, distance, boundaries } from "../public/lib/layout.js";
 import { deriveMorganMode, scanDirections, renderSvg } from "../public/lib/render.js";
 
 const base = () => ({
@@ -45,15 +45,15 @@ for (const layout of ["o2", "compact"]) {
       const svg = renderSvg(s, { layout });
       assert.equal((svg.match(/data-scan-direction="/g) || []).length, 6);
       assert.match(svg, new RegExp(`scan-frame-0" data-scan-direction="${direction}" data-scan-target="${cell.id}" visibility="visible"`));
-      const line = svg.match(new RegExp(`data-attention-target="${cell.id}"[^>]*><path d="M([^ ]+) ([^L]+)L([^ ]+) ([^"]+)"`));
-      assert(line, "A visible ray has an attention line");
-      const [x1, y1, x2, y2] = line.slice(1).map(Number), p = axialToPixel(cell.q, cell.r);
-      for (const [x, y] of [[x1, y1], [x2, y2]]) {
-        assert(Math.abs(x * p.y - y * p.x) < 1e-8, "Line is collinear with the target");
-        assert(x * p.x + y * p.y > 0, "Line points toward, not away from, the target");
-      }
-      assert(Math.hypot(x2, y2) > Math.hypot(x1, y1));
-      assert(Math.hypot(x2, y2) < Math.hypot(p.x, p.y));
+      const arm = svg.match(new RegExp(`class="morgan-arm scanning-arm" data-arm-side="([^"]+)" data-arm-angle="([^"]+)" data-arm-target="${cell.id}"`));
+      assert(arm, "The articulated arm aims at the verified ray target");
+      const p = axialToPixel(cell.q, cell.r), scale = 34 * 0.004725,
+        shoulder = arm[1] === "left" ? -43 : 43,
+        expected = Math.atan2((p.y + 34 * 0.08) / scale - 48, p.x / scale - shoulder) * 180 / Math.PI;
+      assert(Math.abs(Number(arm[2]) - expected) < 1e-9);
+      assert(svg.includes(`data-marker="blocked" data-marker-target="${cell.id}"`));
+      assert(svg.includes('class="arm-forearm"'));
+      assert(!svg.includes('class="attention-line"'));
     }
   });
   test(`${layout}: four distinct blocker directions panic without fire; one to three only point`, () => {
@@ -156,7 +156,7 @@ test("fire and pride retain complete fresh execution coverage gates regardless o
   assert(!renderSvg(complete("running")).includes('class="flames"'));
 });
 
-test("idle cells show only their alias; active soft green and blocked red use a large separated cross", () => {
+test("idle cells show only their alias; active soft green and blocked red retain task icons without crosses", () => {
   const s = withSlots([
     slot("cloud-A", "idle"),
     slot("cloud-B", "running", { assignment: "unassigned" }),
@@ -173,11 +173,10 @@ test("idle cells show only their alias; active soft green and blocked red use a 
   assert.equal((svg.match(/fill="#e2f3e7"/g) || []).length, 1);
   assert.equal((svg.match(/fill="#ed6a7e"/g) || []).length, 1);
   const blocked = cellContent(svg, "cloud-D");
-  assert(blocked.includes('class="blocked-cross"'));
-  assert(blocked.includes('stroke-width="3.4000000000000004"'));
+  assert(!svg.includes('class="blocked-cross"'));
   assert(blocked.includes('class="label task-title"'));
   assert(blocked.includes('class="task-icon"'));
-  assert(blocked.includes('class="environment-label"'));
+  assert(!blocked.includes('class="environment-label"'));
   assert(blocked.includes("Engineering"));
 });
 
@@ -206,7 +205,7 @@ test("static-compatible SVG shadows, smaller Morgan, and history text without vi
 test("verified work has top task text, centered icon, bottom environment, and separate small alias", () => {
   const s = withSlots([
     slot("cloud-A", "running", { project: "Never infer this project" }),
-    slot("foo-39", "blocked"),
+    slot("foo-39", "blocked", { environmentKey: "foo_uif" }),
     slot("cloud-B", "running", { proof: "registry" }),
     slot("cloud-C", null),
   ]);
@@ -219,14 +218,20 @@ test("verified work has top task text, centered icon, bottom environment, and se
     const title = content.match(/class="label task-title" x="([^"]+)" y="([^"]+)"/);
     const alias = content.match(/class="cell-id" x="([^"]+)" y="([^"]+)"[^>]*font-size="([^"]+)"/);
     const env = content.match(/class="environment-label" x="([^"]+)" y="([^"]+)"/);
-    assert(title && alias && env);
+    assert(title && alias);
     assert(Number(title[2]) < -10);
-    assert(Number(alias[1]) < -20);
+    assert.equal(Number(alias[1]), 0);
+    assert(Number(alias[2]) < -20);
+    assert(Number(alias[2]) < Number(title[2]));
     assert(Number(alias[3]) < 6);
-    assert(Number(env[2]) > 20);
-    assert(content.includes(`>${environment}</text>`));
+    if (environment === "Foo") {
+      assert(env && Number(env[2]) > 20);
+      assert(content.includes(">Foo · UIF</text>"));
+    } else {
+      assert.equal(env, null);
+      assert(!content.includes(">Cloud</text>"));
+    }
     assert(content.includes('class="task-icon"'));
-    assert(content.indexOf('class="task-title"') < 0); // compound class is intentional
   }
   for (const id of ["cloud-B", "cloud-C"]) {
     const content = cellContent(svg, id);
@@ -234,4 +239,154 @@ test("verified work has top task text, centered icon, bottom environment, and se
     assert(!content.includes('class="task-icon"'));
     assert(!content.includes('class="environment-label"'));
   }
+});
+
+
+test("every worker alias uses the same padded north interior in blank and occupied cells", () => {
+  const s = withSlots([
+    slot("cloud-A", "running"), slot("cloud-B", "idle"),
+    slot("cloud-C", "blocked"), { ...slot("foo-39", "running"), environmentKey: "foo_uif" },
+  ]);
+  for (const layout of ["o2", "compact"]) {
+    const svg = renderSvg(s, { layout });
+    const aliases = [...svg.matchAll(/<text class="cell-id" x="([^"]+)" y="([^"]+)"[^>]*font-size="([^"]+)"/g)];
+    assert.equal(aliases.length, layout === "compact" ? 6 : 70);
+    for (const [, x, y, fontSize] of aliases) {
+      assert.equal(Number(x), 0);
+      assert(Math.abs(Number(y) + 23.12) < 1e-9);
+      assert(Number(y) - Number(fontSize) > -34 + 4, "The alias has padding below the north vertex");
+    }
+    const occupied = cellContent(svg, "cloud-A");
+    const alias = occupied.match(/class="cell-id"[^>]*y="([^"]+)"[^>]*font-size="([^"]+)"/);
+    const title = occupied.match(/class="label task-title"[^>]*y="([^"]+)"[^>]*font-size="([^"]+)"/);
+    assert(Number(title[1]) - Number(title[2]) > Number(alias[1]) + Number(alias[2]) * 0.3 + 1);
+  }
+});
+
+test("hex shadows are visibly stronger while text keeps the lighter static-compatible filter", () => {
+  const svg = renderSvg(base());
+  const cellFilter = svg.match(/<filter id="board-cell-shadow"[\s\S]*?<\/filter>/)[0];
+  assert(cellFilter.includes('stdDeviation="1.9"'));
+  assert(cellFilter.includes('dy="2.7"'));
+  assert(cellFilter.includes('.42 0"'));
+  assert(svg.includes('.cell polygon{filter:url(#board-cell-shadow)}'));
+  assert(svg.includes('.cell-content,.group-boundaries,.board-time{filter:url(#board-visual-shadow)}'));
+});
+
+test("blink uses a single fully closing aperture without flattening eye strokes or leaving a loop seam", () => {
+  const svg = renderSvg(base());
+  assert.equal((svg.match(/<clipPath id="board-eye-aperture"/g) || []).length, 1);
+  assert.equal((svg.match(/class="eye-aperture"/g) || []).length, 1);
+  assert.equal((svg.match(/class="eyes" clip-path="url\(#board-eye-aperture\)"/g) || []).length, 6);
+  assert(svg.includes('.eye-aperture{transform-box:fill-box;transform-origin:50% 50%;animation:blink 7s ease-in-out infinite}'));
+  assert(svg.includes('@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(0)}}'));
+  assert(!svg.includes('.eyes{transform'));
+  assert(!svg.includes('scaleY(.12)'));
+  for (let phase = 0; phase < 6; phase++) {
+    const keyframes = svg.match(new RegExp(`@keyframes scan-${phase}\\{((?:[^{}]|\\{[^{}]*\\})*)\\}`))[1];
+    assert(keyframes.startsWith(`0%{visibility:${phase === 0 ? "visible" : "hidden"}}`));
+    assert(keyframes.endsWith(`100%{visibility:${phase === 0 ? "visible" : "hidden"}}`));
+  }
+});
+
+
+test("coordinator lifecycle colors individual generation-bound cells without global execution claims", () => {
+  const s = withSlots([slot("cloud-A", "running"), slot("cloud-B", "blocked"), slot("cloud-C", "completed")]);
+  for (const item of s.slots) { item.proof = "coordinator_lifecycle"; item.domain = "cloud"; item.rosterGeneration = 1; }
+  s.summary.executionCoverageComplete = true;
+  const svg = renderSvg(s, { layout: "compact" });
+  assert(svg.includes('fill="#e2f3e7"'));
+  assert(svg.includes('fill="#ed6a7e"'));
+  assert(svg.includes('Roster 1'));
+  assert(!cellContent(svg, "cloud-C").includes('class="task-icon"'));
+  assert.equal(deriveMorganMode(s, { layout: "compact" }).mode, "pointing");
+  s.slots = s.slots.filter(item => item.id !== "cloud-B");
+  assert.equal(deriveMorganMode(s, { layout: "compact" }).mode, "neutral");
+  for (const item of s.slots) item.displayState = "stopped";
+  assert.equal(deriveMorganMode(s, { layout: "compact" }).mode, "neutral");
+  const stoppedSvg = renderSvg(s, { layout: "compact" });
+  assert(!stoppedSvg.includes('fill="#ed6a7e"'));
+  s.slots[0].displayState = "running"; delete s.slots[0].rosterGeneration;
+  assert(!renderSvg(s, { layout: "compact" }).includes('fill="#e2f3e7"'));
+});
+
+
+test("clear ticks require confirmed evidence for every visible worker on the ray", () => {
+  const c = cloud[0], d = DIRECTIONS[0];
+  const s = withSlots([slot(c.id, "running")]);
+  assert.equal(scanDirections(s, { layout: "compact" })[0].clear, true);
+  assert.equal(scanDirections(s)[0].clear, false, "Absent Foo capacity cannot prove clear");
+  assert(renderSvg(s, { layout: "compact" }).includes(`data-marker="clear" data-marker-target="${c.id}"`));
+  const rayCells = capacityLayout().filter((cell) => ["cloud", "foo"].includes(cell.group) && onRay(cell, d));
+  s.slots = rayCells.map((cell, index) => slot(cell.id, index ? null : "running", index ? { assignment: "unassigned" } : {}));
+  assert.equal(scanDirections(s)[0].clear, true);
+  for (const mutation of [
+    (v) => v.availability = "stale",
+    (v) => v.proof = "registry",
+    (v) => { v.assignment = "assigned"; v.displayState = "unknown"; },
+    (v) => { v.assignment = "assigned"; v.displayState = "stopped"; },
+    (v) => { v.assignment = "assigned"; v.displayState = "blocked"; },
+    (v) => v.assignment = "unavailable",
+  ]) {
+    const changed = structuredClone(s); mutation(changed.slots.at(-1));
+    assert.equal(scanDirections(changed)[0].clear, false);
+  }
+  s.slots.forEach((v) => { v.assignment = "unassigned"; v.displayState = null; });
+  assert.equal(scanDirections(s)[0].clear, false, "Empty confirmed capacity does not receive a tick");
+});
+
+test("coordinator clear and alert markers require current supported lifecycle claims", () => {
+  const c = cloud[0];
+  for (const state of ["running", "completed", "blocked", "unknown"]) {
+    const s = withSlots([slot(c.id, state, { domain: "cloud", proof: "coordinator_lifecycle", rosterGeneration: 2 })]);
+    const ray = scanDirections(s, { layout: "compact" })[0];
+    assert.equal(ray.clear, state === "running");
+    assert.equal(Boolean(ray.target), state === "blocked");
+    for (const change of [(v) => v.availability = "stale", (v) => delete v.rosterGeneration, (v) => v.domain = "foo"]) {
+      const changed = structuredClone(s); change(changed.slots[0]);
+      const invalid = scanDirections(changed, { layout: "compact" })[0];
+      assert.equal(invalid.clear, false);
+      assert.equal(invalid.target, null);
+    }
+  }
+});
+
+test("A–F has a continuous outer-weight boundary including Morgan and the bottom status cells", () => {
+  for (const layout of ["o2", "compact"]) {
+    const svg = renderSvg(base(), { layout });
+    const border = svg.match(/<path class="cloud-boundary" d="([^"]+)" stroke-width="([^"]+)"/);
+    assert(border);
+    assert.equal(Number(border[2]), 3.1);
+    const cells = layout === "compact" ? compactLayout() : capacityLayout();
+    const expected = boundaries(cells.filter((c) => c.group === "cloud")).outer;
+    const path = expected.map((e) => `M${e.a.x.toFixed(4)} ${e.a.y.toFixed(4)}L${e.b.x.toFixed(4)} ${e.b.y.toFixed(4)}`).join("");
+    assert.equal(border[1], path);
+    assert.equal(expected.length, 24);
+    assert.equal((svg.match(/<polygon /g) || []).length, layout === "compact" ? 10 : 83);
+    assert(!svg.includes('class="attention-line"'));
+    assert(!svg.includes('class="blocked-cross"'));
+    assert(!svg.includes(">Cloud</text>"));
+  }
+});
+
+test("arm articulation and alert blinking remain optional motion, with honest static markers", () => {
+  const empty = renderSvg(base(), { layout: "compact" });
+  assert(!empty.includes('data-marker="'));
+  assert.equal((empty.match(/class="morgan-arm scanning-arm"/g) || []).length, 6);
+  const blocked = renderSvg(withSlots([slot(cloud[0].id)]), { layout: "compact" });
+  assert(blocked.includes('class="scan-marker blocked-marker"'));
+  assert(blocked.includes('animation:arm-articulate 2.2s'));
+  assert(blocked.includes('animation:marker-alert 1.5s'));
+  assert(blocked.includes('@media(prefers-reduced-motion:reduce){.status-board *{animation:none!important;transition:none!important}}'));
+  assert(!blocked.includes('class="flames"'));
+});
+
+
+test("work environment labels require an explicit reviewed key and never expose arbitrary strings", () => {
+  const s = withSlots([{...slot("cloud-A", "running"), environmentKey:"foo_uif"}, {...slot("cloud-B", "running"), environmentKey:"cloud_scratch"}, {...slot("cloud-C", "running"), environmentKey:"/private/raw/path"}]);
+  const svg = renderSvg(s, {layout:"compact"});
+  assert(cellContent(svg,"cloud-A").includes(">Foo · UIF</text>"));
+  assert(cellContent(svg,"cloud-B").includes(">Cloud scratch</text>"));
+  assert(!cellContent(svg,"cloud-C").includes('class="environment-label"'));
+  assert(!svg.includes("/private/raw/path"));
 });

@@ -137,10 +137,13 @@ function inspect() {
       "Evidence type",
       {
         process: "Process liveness",
+        coordinator_lifecycle: "Coordinator observation (manual)",
         registry: "Historical registry metadata",
         turn_history: "Historical turn metadata",
       }[slot.proof] || "Public metadata",
     );
+  if (Number.isSafeInteger(slot?.rosterGeneration))
+    html += pair("Display roster", `Generation ${slot.rosterGeneration}; not a historical identity claim`);
   html += "</dl>";
   if (slot?.topics?.length)
     html +=
