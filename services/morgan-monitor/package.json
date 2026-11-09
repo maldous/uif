@@ -1,0 +1,17 @@
+{
+  "name": "uif-morgan-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:backend": "node --test test/backend.test.mjs",
+    "check:backend": "node --check worker.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:frontend": "node --test test/frontend.test.mjs",
+    "preview": "node test/preview.mjs",
+    "check": "node --check worker.mjs && node --check public/app.js && node --check public/lib/render.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Morgan · Public platform status</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <nav class="toolbar" aria-label="Board controls">
+      <a
+        class="home"
+        href="https://aldous.info/"
+        aria-label="aldous.info portfolio"
+        >Morgan</a
+      >
+      <div class="layouts" role="group" aria-label="Layout">
+        <button id="layout-full" aria-pressed="true">O2 wide fold</button
+        ><button id="layout-focus" aria-pressed="false">Assigned focus</button>
+      </div>
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button id="zoom-out" aria-label="Zoom out">−</button
+        ><output id="zoom-label" aria-live="off">100%</output
+        ><button id="zoom-in" aria-label="Zoom in">+</button
+        ><button id="fit">Fit</button>
+      </div>
+      <button id="download">Save SVG</button
+      ><span id="layout-mode" role="status"></span>
+    </nav>
+    <div id="connection" class="connection" role="status">
+      Connecting to public status…
+    </div>
+    <main>
+      <section id="stage" aria-label="Public status honeycomb">
+        <div id="board"></div>
+      </section>
+      <aside id="inspector" aria-label="Selected cell details">
+        <div class="inspector-heading">
+          <h1 id="detail-title">Platform overview</h1>
+          <button id="clear-selection" hidden aria-label="Clear selection">
+            ×
+          </button>
+        </div>
+        <div id="detail-body"></div>
+        <p class="privacy">
+          Only deliberately curated public summaries are shown. No transcripts,
+          conversation links, private session titles or raw diagnostics.
+        </p>
+      </aside>
+    </main>
+    <footer>
+      <div class="legend">
+        <span><i class="swatch cloud"></i>Cloud A–F</span
+        ><span><i class="swatch foo"></i>Foo 1–64</span
+        ><span><i class="swatch voice"></i>Voice subjects</span
+        ><span><i class="swatch chat"></i>Chat subjects</span>
+      </div>
+      <span id="feed-time">No successful feed check yet</span
+      ><span id="revision"></span>
+    </footer>
+    <div id="announcement" class="sr-only" aria-live="polite"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

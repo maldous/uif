@@ -1,0 +1,27 @@
+{
+  // Reviewed deployment TEMPLATE ONLY. No live database, domain or secret exists
+  // by virtue of this file. Provisioning and public billing require qualification.
+  "name": "morgan-monitor",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-09",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "morgan-monitor",
+    "database_id": "REPLACE_WITH_APPROVED_D1_ID",
+    "migrations_dir": "migrations"
+  }],
+  "vars": { "SOURCE_CONFIG_JSON": "{\"sources\":[]}" },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+  }
+  // No route is declared. A separately reviewed morgan.aldous.info binding is
+  // required. Preserve apex, wildcard, cq, windmill and the existing TV service.
+  // Source tokenEnv entries reference separately provisioned Worker secrets.
+  // Never put tokens in vars, source control, the public catalog or frontend.
+}

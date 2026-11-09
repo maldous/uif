@@ -1,0 +1,386 @@
+import {
+  layoutFor,
+  axialToPixel,
+  vertices,
+  bounds,
+  boundaries,
+  historyFor,
+  shouldCompact,
+  DIRECTIONS,
+  distance,
+} from "./layout.js";
+import { iconFor, iconSvg } from "./icons.js";
+export const escapeXml = (value) =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&apos;",
+      })[c],
+  );
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const short = (value, n = 42) => String(value ?? "").slice(0, n);
+function lines(text, max = 13, count = 3) {
+  const words = short(text, 100).split(/\s+/),
+    out = [];
+  let current = "";
+  for (const word of words) {
+    if (!word) continue;
+    if ((current + " " + word).trim().length > max && current) {
+      out.push(current);
+      current = word;
+    } else current = (current + " " + word).trim();
+  }
+  if (current) out.push(current);
+  return out
+    .slice(0, count)
+    .map((line, i) =>
+      i === count - 1 && out.length > count
+        ? line.slice(0, max - 1) + "…"
+        : line,
+    );
+}
+function textLines(
+  text,
+  x,
+  y,
+  {
+    size = 7,
+    max = 13,
+    count = 3,
+    lineHeight = 9,
+    anchor = "middle",
+    className = "label",
+  } = {},
+) {
+  return lines(text, max, count)
+    .map(
+      (line, i) =>
+        `<text class="${className}" x="${x}" y="${y + i * lineHeight}" text-anchor="${anchor}" font-size="${size}">${escapeXml(line)}</text>`,
+    )
+    .join("");
+}
+export function executionComplete(snapshot) {
+  const sources = snapshot.sources || [];
+  return (
+    snapshot.summary?.executionCoverageComplete === true &&
+    sources.length > 0 &&
+    sources.every((s) => s.status === "fresh") &&
+    sources
+      .filter((s) => s.aliases?.length > 0)
+      .every((s) => s.executionCoverageComplete === true)
+  );
+}
+/** One nearest verified blocker on each exact axial ray, in stable grid order. */
+export function scanDirections(snapshot, { cells, layout = "o2", selected = null } = {}) {
+  const visible = cells || layoutFor(snapshot, { layout, selected }),
+    origin = visible.find((cell) => cell.group === "morgan") || { q: 0, r: 0 },
+    slots = new Map((snapshot.slots || []).map((slot) => [slot.id, slot]));
+  return DIRECTIONS.map(([dq, dr], direction) => {
+    const candidates = visible
+      .filter((cell) => {
+        const slot = slots.get(cell.id),
+          q = cell.q - origin.q,
+          r = cell.r - origin.r,
+          steps = distance(q, r);
+        return (
+          ["cloud", "foo"].includes(cell.group) &&
+          slot?.assignment === "assigned" &&
+          slot.availability === "fresh" &&
+          slot.proof === "process" &&
+          ["blocked", "failed"].includes(slot.displayState) &&
+          Number.isInteger(steps) && steps > 0 &&
+          q === dq * steps && r === dr * steps
+        );
+      })
+      .sort((a, b) =>
+        distance(a.q - origin.q, a.r - origin.r) -
+          distance(b.q - origin.q, b.r - origin.r) ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+      );
+    const cell = candidates[0] || null;
+    return {
+      direction, dq, dr, cell,
+      target: cell?.id || null,
+      distance: cell ? distance(cell.q - origin.q, cell.r - origin.r) : null,
+    };
+  });
+}
+export function deriveMorganMode(snapshot, { selected = null, cells, layout = "o2" } = {}) {
+  const assigned = (snapshot.slots || []).filter(
+      (s) => s.assignment === "assigned",
+    ),
+    fresh = (s) => s.availability === "fresh" && s.proof === "process";
+  const complete = executionComplete(snapshot),
+    stopped =
+      assigned.length > 0 &&
+      complete &&
+      assigned.every(
+        (s) => fresh(s) && s.displayState === "stopped",
+      );
+  if (stopped) return { mode: "all-stopped", target: null };
+  const visible = cells || layoutFor(snapshot, { layout, selected }),
+    blockers = scanDirections(snapshot, { cells: visible }).filter((ray) => ray.target);
+  if (blockers.length)
+    return { mode: blockers.length > 3 ? "panicked" : "pointing", target: blockers[0].target };
+  if (
+    assigned.length > 0 &&
+    complete &&
+    assigned.every((s) => fresh(s) && s.displayState === "running")
+  )
+    return { mode: "proud", target: null };
+  const own = snapshot.morganActivity;
+  const at = Date.parse(own?.observedAt),
+    now = Date.parse(snapshot.generatedAt);
+  const canLookAt = (id) =>
+    visible.some((cell) => cell.id === id) &&
+    assigned.some((s) => s.id === id && fresh(s));
+  if (
+    own?.verified === true &&
+    Number.isFinite(at) &&
+    Number.isFinite(now) &&
+    at <= now + 5000 &&
+    now - at <= 120000
+  ) {
+    if (own.mode === "thinking") return { mode: "thinking", target: null };
+    if (own.mode === "looking" && canLookAt(own.targetSlotId))
+      return { mode: "looking", target: own.targetSlotId };
+  }
+  if (selected && canLookAt(selected))
+    return { mode: "looking", target: selected };
+  return { mode: "neutral", target: null };
+}
+function attentionLine(target, size) {
+  if (!target) return "";
+  const p = axialToPixel(target.q, target.r, size),
+    length = Math.hypot(p.x, p.y),
+    ux = p.x / length, uy = p.y / length,
+    start = size * 0.59, end = length - size * 0.62,
+    x = end * ux, y = end * uy,
+    wing = size * 0.10, back = size * 0.16;
+  return `<g class="attention-line" data-attention-target="${escapeXml(target.id)}" fill="none" stroke="#a6233c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M${start * ux} ${start * uy}L${x} ${y}"/><path d="M${x - back * ux - wing * uy} ${y - back * uy + wing * ux}L${x} ${y}L${x - back * ux + wing * uy} ${y - back * uy - wing * ux}"/></g>`;
+}
+function mascotPose(state, target, size, direction = null) {
+  let left = 0,
+    right = 0,
+    eyeX = 0,
+    eyeY = 0,
+    tilt = 0,
+    mouth = "M-7 5H7",
+    eyes = ["M-34-14h15", "M19-14h15"];
+  const looking = target || (direction && { q: direction.dq, r: direction.dr });
+  if (looking) {
+    const p = axialToPixel(looking.q, looking.r, size),
+      length = Math.hypot(p.x, p.y);
+    eyeX = (p.x / length) * 5;
+    eyeY = (p.y / length) * 3.5;
+    tilt = (p.y / length) * 3;
+  }
+  if (state.mode === "panicked") {
+    left = 145;
+    right = -145;
+    eyes = [
+      "M-33-15a6 8 0 1 0 12 0a6 8 0 1 0-12 0",
+      "M21-15a6 8 0 1 0 12 0a6 8 0 1 0-12 0",
+    ];
+    mouth = "M-6 5a6 8 0 1 0 12 0a6 8 0 1 0-12 0";
+  }
+  if (target && ["pointing", "panicked"].includes(state.mode)) {
+    const p = axialToPixel(target.q, target.r, size),
+      scale = size * 0.004725,
+      useLeft = p.x < 0,
+      pivotX = useLeft ? -43 : 43,
+      angle = Math.atan2((p.y + size * 0.08) / scale - 48, p.x / scale - pivotX) * 180 / Math.PI,
+      rest = Math.atan2(32, useLeft ? -20 : 20) * 180 / Math.PI;
+    if (useLeft) left = angle - rest;
+    else right = angle - rest;
+    if (state.mode === "pointing") mouth = "M-8 8q8-6 16 0";
+  }
+  if (state.mode === "proud") {
+    left = 105;
+    right = -105;
+    eyes = ["M-35-10q8-13 16 0", "M19-10q8-13 16 0"];
+    mouth = "M-12 3q12 17 24 0";
+  }
+  if (state.mode === "thinking") {
+    left = -160;
+    tilt = -5;
+    mouth = "M-3 6q6-2 9 1";
+  }
+  if (state.mode === "all-stopped") {
+    left = 150;
+    right = -150;
+    eyes = [
+      "M-33-15a6 7 0 1 0 12 0a6 7 0 1 0-12 0",
+      "M21-15a6 7 0 1 0 12 0a6 7 0 1 0-12 0",
+    ];
+    mouth = "M-8 4a8 9 0 1 0 16 0a8 9 0 1 0-16 0";
+  }
+  const s = size * 0.004725,
+    fire =
+      state.mode === "all-stopped"
+        ? '<g class="flames"><path d="M-44-85C-62-101-33-108-38-126c21 15 9 24 24 31 4-19 14-20 12-39 26 23 9 31 26 42 8-14 9-19 4-27 27 21 30 32 15 36Z" fill="#f56b24" stroke="#b51f32" stroke-width="3"/><path d="M-24-87c-10-12 5-20 4-29 15 12 3 18 17 25 3-13 14-17 13-24 15 19 10 25 5 30Z" fill="#ffd267"/></g>'
+        : "";
+  return `<g class="morgan-actor ${state.mode}" data-pose-mode="${state.mode}" data-pose-target="${escapeXml(target?.id || "")}" transform="translate(0 ${-size * 0.08}) scale(${s})"><title>Morgan: ${escapeXml(state.mode.replaceAll("-", " "))}</title><path d="M-37 74l-3 30c0 14 26 14 27 1l2-25M13 80l2 25c1 13 27 13 27-1l-4-30" fill="#739aff" stroke="#102b9f" stroke-width="5"/><path d="M-39 43h78l10 33c6 27-104 27-98 0z" fill="#789eff" stroke="#102b9f" stroke-width="5"/><path d="M-13 63l12 9-12 9M9 80h14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><g transform="rotate(${tilt} 0 -12)"><g class="head-motion"><path d="M-67 41c-23-7-29-33-19-51-20-25-1-57 25-59 8-31 42-40 62-23 26-18 60-6 64 22 27 4 40 36 25 57 11 27-6 52-32 55-34 6-90 6-125-1z" fill="#8daaff" stroke="#102b9f" stroke-width="5"/><rect x="-57" y="-48" width="114" height="76" rx="23" fill="#092895"/><g fill="none" stroke="#76e2ff" stroke-width="5" stroke-linecap="round"><g transform="translate(${eyeX} ${eyeY})"><g class="eyes"><path d="${eyes[0]}"/><path d="${eyes[1]}"/></g></g><path d="${mouth}" stroke-width="3"/></g>${fire}</g></g><g transform="translate(-43 48) rotate(${left})"><path d="M-6-3C-18 10-28 21-20 32c6 9 16 3 21-6L10 8Z" fill="#88aaff" stroke="#102b9f" stroke-width="5"/></g><g transform="translate(43 48) rotate(${right})"><path d="M6-3C18 10 28 21 20 32c-6 9-16 3-21-6L-10 8Z" fill="#88aaff" stroke="#102b9f" stroke-width="5"/></g></g>`;
+}
+function mascot(snapshot, cells, size, selected) {
+  const state = deriveMorganMode(snapshot, { selected, cells }),
+    scans = scanDirections(snapshot, { cells }),
+    first = Math.max(0, scans.findIndex((ray) => ray.target)),
+    scanning = ["neutral", "pointing", "panicked"].includes(state.mode);
+  let poses;
+  if (scanning) {
+    poses = scans.map((_, phase) => {
+      const ray = scans[(phase + first) % scans.length],
+        mode = state.mode === "panicked" ? "panicked" : ray.target ? "pointing" : "neutral";
+      return `<g class="scan-frame scan-frame-${phase}" data-scan-direction="${ray.direction}" data-scan-target="${escapeXml(ray.target || "")}" visibility="${phase === 0 ? "visible" : "hidden"}">${attentionLine(ray.cell, size)}${mascotPose({ mode }, ray.cell, size, ray)}</g>`;
+    }).join("");
+  } else {
+    poses = mascotPose(state, cells.find((cell) => cell.id === state.target), size);
+  }
+  return `<g class="morgan-scan" data-morgan-mode="${state.mode}" data-pointing-target="${escapeXml(state.target || "")}" data-scan-directions="${scanning ? 6 : 0}">${poses}</g>`;
+}
+// Every frozen SVG and reduced-motion view keeps phase zero: a real blocker,
+// if present, otherwise a neutral ambient glance. CSS changes only the pose.
+const scanAnimationCss = DIRECTIONS.map((_, phase) => {
+  const from = phase * 100 / 6, to = (phase + 1) * 100 / 6;
+  return `.scan-frame-${phase}{animation:scan-${phase} 18s steps(1,end) infinite}@keyframes scan-${phase}{${phase ? "0%{visibility:hidden}" : ""}${from}%{visibility:visible}${to}%{visibility:hidden}}`;
+}).join("");
+const COLORS = {
+  cloud: "#f5f9ff",
+  foo: "#fff",
+  history: "#edf5ff",
+  morgan: "#fff",
+};
+export function renderSvg(snapshot = {}, options = {}) {
+  const width = clamp(Number(options.width) || 1600, 320, 4096),
+    height = clamp(Number(options.height) || 1000, 240, 4096),
+    size = 34;
+  const selected =
+      typeof options.selected === "string" ? options.selected : null,
+    layout = options.layout === "compact" || shouldCompact(snapshot)
+      ? "compact"
+      : options.layout === "focus"
+        ? "focus"
+        : "o2";
+  const history = historyFor(snapshot);
+  const cells = layoutFor(snapshot, { layout, selected }).map((cell) => ({
+      ...cell,
+      boundaryGroup:
+        cell.group === "history"
+          ? history[cell.topicIndex]?.channel || "history"
+          : cell.group,
+    })),
+    box = bounds(cells, size),
+    pad = 20,
+    footer = 26,
+    view = {
+      x: box.minX - pad,
+      y: box.minY - pad,
+      width: box.maxX - box.minX + 2 * pad,
+      height: box.maxY - box.minY + 2 * pad + footer,
+    };
+  const slots = new Map((snapshot.slots || []).map((s) => [s.id, s]));
+  let fills = "",
+    marks = "";
+  for (const cell of cells) {
+    const p = axialToPixel(cell.q, cell.r, size),
+      slot = slots.get(cell.id),
+      topic = cell.group === "history" ? history[cell.topicIndex] : null;
+    const fresh = slot?.availability === "fresh",
+      blocked =
+        fresh &&
+        slot?.proof === "process" &&
+        slot?.assignment === "assigned" &&
+        ["blocked", "failed", "stopped"].includes(slot?.displayState),
+      working =
+        fresh &&
+        slot?.proof === "process" &&
+        slot?.assignment === "assigned" &&
+        slot?.displayState === "running";
+    const fill = blocked ? "#ed6a7e" : working ? "#e2f3e7" : COLORS[cell.group];
+    const polygon = vertices(p.x, p.y, size)
+      .map((v) => `${v.x.toFixed(4)},${v.y.toFixed(4)}`)
+      .join(" ");
+    let label =
+      cell.group === "morgan"
+        ? "Morgan"
+        : cell.group === "cloud"
+          ? `Cloud agent ${cell.alias}`
+          : cell.group === "foo"
+            ? `Foo slot ${cell.alias}`
+            : topic
+              ? `${topic.channel === "voice" ? "Voice" : "Chat"} subject: ${topic.text}`
+              : `History ${cell.historyLabel}: topic capacity`;
+    if (slot?.availability && slot.availability !== "fresh")
+      label += `; ${slot.availability === "unconfigured" ? "source not configured" : slot.availability}`;
+    if (slot?.displayState && fresh) label += `; ${slot.displayState}`;
+    const attrs = options.interactive
+      ? ` role="button" tabindex="0" aria-label="${escapeXml(label)}"`
+      : "";
+    fills += `<g class="cell ${cell.group}${selected === cell.id ? " selected" : ""}" data-cell-id="${escapeXml(cell.id)}" data-group="${cell.group}"${attrs}><title>${escapeXml(label)}</title><polygon points="${polygon}" fill="${fill}" stroke="#bfd0e6" stroke-width=".8"/></g>`;
+    let content = "";
+    if (cell.group === "morgan")
+      content = mascot(snapshot, cells, size, selected);
+    else if (cell.group === "cloud" || cell.group === "foo") {
+      // A small, separate alias never competes with the task heading or icon.
+      content += `<text class="cell-id" x="${-size * 0.62}" y="${size * 0.08}" text-anchor="middle" font-size="${size * 0.17}">${escapeXml(cell.alias)}</text>`;
+      const hasWork = slot?.assignment === "assigned" && fresh &&
+        slot.proof === "process" &&
+        ["running", "blocked", "failed", "stopped", "completed"].includes(slot.displayState);
+      if (hasWork) {
+        content += textLines((slot.topics || [])[0] || "", 0, -size * 0.46, {
+          size: size * 0.17,
+          max: 14,
+          count: 2,
+          lineHeight: size * 0.21,
+          className: "label task-title",
+        });
+        content += `<g class="task-icon">${iconSvg(
+          iconFor(slot.topicKeys || []),
+          -size * 0.22,
+          -size * 0.10,
+          size * 0.44,
+        )}</g>`;
+        if (blocked) {
+          const a = size * 0.23, top = -size * 0.09, bottom = size * 0.37,
+            cross = `M${-a} ${top}L${a} ${bottom}M${a} ${top}L${-a} ${bottom}`;
+          content += `<g class="blocked-cross" transform="translate(${size * 0.53} 0)" aria-label="${escapeXml(slot.displayState)}" fill="none" stroke-linecap="round"><path d="${cross}" stroke="#fff" stroke-width="${size * 0.16}"/><path d="${cross}" stroke="#9b1430" stroke-width="${size * 0.10}"/></g>`;
+        }
+        content += `<text class="environment-label" x="0" y="${size * 0.66}" text-anchor="middle" font-size="${size * 0.17}">${cell.group === "cloud" ? "Cloud" : "Foo"}</text>`;
+      }
+    } else if (topic) {
+      content += textLines(topic.text, 0, -size * 0.22, {
+        size: size * 0.21,
+        max: 13,
+        count: 3,
+        lineHeight: size * 0.25,
+      });
+    }
+    marks += `<g class="cell-content${blocked ? " blocked" : working ? " working" : ""}" data-content-cell="${escapeXml(cell.id)}" transform="translate(${p.x} ${p.y})" pointer-events="none">${content}</g>`;
+  }
+  const edges = boundaries(cells, size),
+    paths = (items) =>
+      items
+        .map(
+          (e) =>
+            `M${e.a.x.toFixed(4)} ${e.a.y.toFixed(4)}L${e.b.x.toFixed(4)} ${e.b.y.toFixed(4)}`,
+        )
+        .join("");
+  const date = Date.parse(snapshot.generatedAt),
+    time = Number.isFinite(date)
+      ? new Date(date)
+          .toISOString()
+          .replace("T", " ")
+          .replace(/\.\d+Z$/, " UTC")
+      : "No observation time";
+  const revision =
+    typeof snapshot.revision === "string"
+      ? snapshot.revision.slice(0, 12)
+      : "unpublished";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${view.x} ${view.y} ${view.width} ${view.height}" class="status-board" data-layout="${layout}" data-revision="${escapeXml(typeof snapshot.revision === "string" ? snapshot.revision : "")}" role="${options.interactive ? "group" : "img"}" aria-labelledby="board-title board-desc"><title id="board-title">Morgan public platform status</title><desc id="board-desc">Six durable cloud agent slots immediately surround Morgan. The full O2 layout reserves sixty-four Foo slots and twelve bottom history cells, newest at the left. Compact mode is selected explicitly or by fresh verified Foo allowance exhaustion. Conversation subjects are curated public summaries. Colors assert only fresh verified observations; blank capacity is not running work.</desc><defs><filter id="board-visual-shadow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation=".8"/><feOffset dx="0" dy="1.1"/><feColorMatrix type="matrix" values="0 0 0 0 .094 0 0 0 0 .204 0 0 0 0 .318 0 0 0 .24 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><style>.status-board{font-family:Arial,Helvetica,sans-serif;color:#0751b9;background:#fff}.label,.cell-id{fill:#123d78}.cell-id{font-weight:700}.environment-label{fill:#577398}.cell:focus polygon,.cell.selected polygon{stroke:#092895;stroke-width:2.8}.cell-content{color:#0751b9}.cell-content,.cell polygon,.group-boundaries,.board-time{filter:url(#board-visual-shadow)}.blocked .cell-id,.blocked .label,.blocked .environment-label{fill:#4f1228}.head-motion{transform-box:fill-box;transform-origin:50% 65%;animation:breathe 5s ease-in-out infinite}.eyes{transform-box:fill-box;transform-origin:50% 50%;animation:blink 7s linear infinite}.proud .head-motion{animation:proud 2.7s ease-in-out infinite}.pointing .head-motion,.looking .head-motion{animation:attentive 3.4s ease-in-out infinite}.thinking .head-motion{animation:attentive 2.7s ease-in-out infinite}.panicked .head-motion{animation:panic .65s ease-in-out infinite}.flames{transform-box:fill-box;transform-origin:50% 100%;animation:flame 1.4s ease-in-out infinite}@keyframes breathe{50%{transform:translateY(-1.3px)}}@keyframes blink{0%,44%,48%,100%{transform:scaleY(1)}46%{transform:scaleY(.12)}}@keyframes proud{50%{transform:translateY(-3px) rotate(1.5deg)}}@keyframes attentive{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1.2deg)}}@keyframes flame{50%{transform:scale(1.03,.90)}}@keyframes panic{25%{transform:rotate(-3deg) translateY(-2px)}75%{transform:rotate(3deg) translateY(-1px)}}${scanAnimationCss}@media(prefers-reduced-motion:reduce){.status-board *{animation:none!important;transition:none!important}}</style><rect x="${view.x}" y="${view.y}" width="${view.width}" height="${view.height}" fill="#fff"/>${fills}<g class="group-boundaries" fill="none" stroke="#183451" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"><path d="${paths(edges.inner)}" stroke-width="2.1"/><path d="${paths(edges.outer)}" stroke-width="3.1"/></g>${marks}<text class="board-time" x="0" y="${view.y + view.height - 6}" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="8" fill="#516b8a">${escapeXml(time)} · ${escapeXml(revision)}</text></svg>`;
+}

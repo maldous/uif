@@ -1,0 +1,19 @@
+# TEMPLATE ONLY: not installed, enabled, or started. Replace both placeholders.
+# This is a user-level service; do not install as a system/root unit.
+[Unit]
+Description=Private read-only Morgan metadata collector
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/REPLACE/WITH/APPROVED/UIF/CHECKOUT
+ExecStart=/usr/bin/python3 -m tools.morgan_monitor run --config /REPLACE/WITH/PRIVATE/CONFIG.json
+Restart=on-failure
+RestartSec=30
+UMask=0077
+NoNewPrivileges=true
+# No token, EnvironmentFile, credential creation, source mutation, or TV change.
+# Provide approved source token environment variables separately if authorized.
+
+[Install]
+WantedBy=default.target
