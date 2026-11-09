@@ -27,3 +27,25 @@ Project source snapshots marked owner-reported require current owner reconciliat
 ## Remaining boundary
 
 qualify_reviewed_source, its actual handoff schema and the selected source-outcome consumer must be checked together before temporary output is accepted. Existing reviewed-source support does not prove arbitrary subagent-output acceptance. Any correction belongs to its existing runtime owner with UIF-161 impact/review evidence, not a second implementation in this repository.
+
+## Client-capability inventory evidence
+
+- Existing obligation: [UIF-192](https://linear.app/maldous/issue/UIF-192), UUID `46dddb37-1497-4be5-8874-812f4f86932b`. This remains an aggregate partial requirement; only the finite inventory has been independently accepted.
+- Source: `maldous/offmenu` commit `3540b2d4d5f4e96a518a63c832ccd6c3db809686`, tree `62efa45bb564affe4f1f1b2388bbb3447a14482c`. This is a named inventory baseline, not an installed/runtime pin.
+- Frozen inventory SHA256: `1f52e20702f1faab8c82ddf9fb3688ef25bfa8cc9e456284386267fba0c1e76d`.
+- Independent review SHA256: `852b899a535a5a8f304ba78b820ffc0af7143191e797e57e9dd22db8a96ab66d`; [durable finite review record](https://linear.app/maldous/issue/UIF-192/define-reusable-client-integrations-and-project-capability-gaps), comment `617ee572-e937-490d-a7af-26477584bc6a`.
+- [Original submission](https://windmill.aldous.info/run/01a1ae0d-ab59-a4c5-163d-56af76bf8362?workspace=offmenu) and [terminal metadata/hash receipt](https://windmill.aldous.info/run/01a1ae0d-e68d-6d21-af54-723203ea5f1e?workspace=offmenu). Bounded source assertions passed; the hardcoded seven count is inaccurate because the script has six assert statements. No test suite, provider behavior or service activation was verified.
+
+| Source member | SHA256 |
+| --- | --- |
+| `apps/web/server/service-config.mjs` | `bf79c76108caf4754950e89c1af52a43ef8d7ebaef4e47c839b8d8a2e9369bc7` |
+| `apps/web/server/service-observability.mjs` | `5d40fa700e3e5814a2476b65cb920992c16ab0d9931770d9d2009e7cc778c3b0` |
+| `apps/web/server/auth-runtime.mjs` | `b136b1879793e547f491cc4fb4605fb22fd91f9d499e4c5d32852cdb8dc6195d` |
+| `apps/web/server/handler.mjs` | `8e753d34a86cf463c45c386f6a9381a1d78e36373076f1545403d0164428d480` |
+| `apps/web/src/services-model.js` | `05d3279638586ad890de104504b40466f13cbdd1bbb87d4091f1962c77ed1ff9` |
+| `apps/web/src/services-ui.js` | `0db7f4719d4244ce28bf8e26763ac477f948d21aa3be4f31c95aeb49ecd397f4` |
+| `docs/third-party-client.md` | `885cf6371c4f7c0a41cdf61ac5aec66f9a902b29902f01b5f6a98207e6b21ff2` |
+| `docs/maintainer.md` | `1cdebe739dd6c1429d7582656f74c4c3610501bb965ed23d37c4c1ffea70bb6c` |
+| `netlify.toml` | `e577c36d93dae84b3c36c46e51e79138e187d2e492593ad34ec0ab0d9e77c3ac` |
+
+Existing OffMenu developer-reference work remains with [UIF-184](https://linear.app/maldous/issue/UIF-184); CQ observability remains with [UIF-172](https://linear.app/maldous/issue/UIF-172), and CQ hosting/provisioning remains with [UIF-176](https://linear.app/maldous/issue/UIF-176) and its maintained RELEASE guidance. These are ownership links, not newly created blocking dependencies or permission for cross-project source edits.
