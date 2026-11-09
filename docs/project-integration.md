@@ -29,3 +29,43 @@ USF and old UIF/TID physical-infrastructure proposals retain original names, ide
 ## Current issue-key policy
 
 All new current product delivery issues belong to the UIF team and use UIF keys, while retaining the correct product project. The selected current CIX transfer is in progress, not completed. Preserve UUIDs, old-key mappings, comments, evidence, dependencies and affected consumer references; historical CIX keys remain provenance. Do not bulk-rewrite the 389-issue inventory. Administrative effects require exact owner readback and consumer-impact reconciliation.
+
+## Client capabilities and project-specific applicability
+
+UIF records reusable capability patterns and their limits. It does not require every product to adopt the same vendor, browser feature or telemetry policy. Reuse a maintained component only after binding the consuming product, selected source, client surface, purpose, rights, consent where applicable, configuration schema and update owner. Keep evidence of source presence, configuration, deployment, entitlement and observed behavior separate.
+
+### Accepted source baseline
+
+The finite OffMenu inventory uses commit `3540b2d4d5f4e96a518a63c832ccd6c3db809686`, tree `62efa45bb564affe4f1f1b2388bbb3447a14482c`. Nine source/document files were independently checked against SHA256 and Git blob identity. This is the accepted inventory baseline, not a claim that it is today's installed source or the current writable checkout.
+
+The source surfaces inspected are browser and server JavaScript. A bounded tracked-path scan found no Android directory or Kotlin/Gradle paths at that pin. Native Android support and actual mobile behavior remain unqualified. Additional locale requirements and provider entitlements remain explicit unknowns until sourced.
+
+### Maintained patterns
+
+| Capability | Existing OffMenu source and configuration names | Reusable boundary and evidence limit |
+| --- | --- | --- |
+| Diagnostics | `apps/web/server/service-observability.mjs`, `service-config.mjs`; `THIRD_PARTY_CONFIG.client.diagnostics.enabled`, `SENTRY_DSN`, `SERVICE_GLOBAL_SETTINGS` | Same-origin authenticated reports, explicit diagnostic consent, allowlisted codes, bounded body/rate and filtered server transport. The custom Sentry envelope is not a full browser SDK, replay, provider entitlement, retention policy or verified live service. |
+| Consent and feedback | `apps/web/src/services-model.js`, `services-ui.js`, `docs/third-party-client.md`; `client.consent.siteId`, `cookiePolicyId`, `tcfEnabled`, `policyLanguage`, `client.feedback.productId`, `boardUrl` | Separate device choices and fixed iubenda/Sleekplan loaders. Optional OffMenu browser categories default off. Withdrawal removes injected UI/scripts; remaining in-memory vendor state may require reload. Copy neither vendor identifiers nor tenant configuration. |
+| Advertising | Existing service model/UI/config; `client.ads.client`, `slot`, `approved` | AdSense source requires approved configuration, local advertising choice, TCF enabled and a qualifying TCF decision; personalized advertising has additional conditional consent. This does not prove provider/site approval and is not a requirement for another product to serve ads. |
+| Analytics | Existing service model/UI/config; `client.analytics.purposeId` and enabled configuration | Zaraz source requires local choice and matching vendor-purpose consent. Its exposed tracking interface accepts only coarse allowlisted actions, not arbitrary properties. This is separate from required audit, native telemetry and commercial metering. |
+| CSP and data projection | `serviceCSP` in `service-config.mjs` and `apps/web/server/handler.mjs` | Keep project-owned origin allowlists, safe public metadata projection and separate consent/state. A CSP permission is not proof of consent, script loading or collection. Do not transplant another project's origin list. |
+| Hosting and authentication | `netlify.toml`, handler and `apps/web/server/auth-runtime.mjs`; `OFFMENU_AUTH_MODE` | Source preserves existing Netlify/Better Auth selection and rejects unsupported modes; the Better Auth failure path does not silently fall back. Source wiring does not establish deployment or identity interoperability. Cloudflare and Netlify Identity presentation labels are unconditionally reported as configured, even with an empty environment, so those labels establish neither plan nor entitlement nor actual operation. |
+
+Only configuration field names are recorded here. No tenant IDs, DSN values, keys, secrets, private client configurations or customer data belong in this baseline.
+
+### Product distinctions and update ownership
+
+- **UIF:** maintain this shared capability/evidence model and selected applicability through the existing client-capability obligation. Do not copy product implementation or introduce a generic activation layer.
+- **OffMenu:** existing source/UI/client/admin owners retain the V1 preference model, consent lifecycle, optional browser defaults and vendor-specific implementation. Its developer-reference owner retains the declared-schema versus actual-response-envelope gap. The observed OpenAPI description under-specifies envelopes; strict schema invalidation was not established because required fields were absent and extra properties were allowed.
+- **CircularQuay:** the sole CQ coordinator retains native observability and hosting obligations. Native metrics have a distinct default-on contract, explicit disable must prevent initialization, and telemetry is not customer-billable. Optional browser diagnostics, replay, analytics and advertising still require their own justified applicability and rights. OffMenu browser defaults do not silently replace CQ's native policy. These are retained CQ requirements and owner readbacks, not new CQ runtime verification by this inventory.
+- **CIX and ANQR:** this finite inventory provides no new product-specific capability qualification. Do not assign OffMenu vendors, native/browser defaults or runtime outcomes to them without their own selected evidence and owners.
+
+For optional third-party collection, advertising, replay or analytics, default to no collection until purpose, consent, rights and entitlement are qualified. This is not a replacement for a separately specified native telemetry or audit contract. No provider activation, purchase, subscription, external collection, deployment or production action follows from this documentation.
+
+### Evidence and continuation
+
+Use the inventory's immutable source and original review references in [Evidence references](evidence.md#client-capability-inventory-evidence). Existing tests were identified, not executed. The metadata receipt contains six assert statements despite its hardcoded seven label; record only passed bounded source assertions, not a seven-test suite or runtime verification.
+
+Future selected source changes must compare the actual consuming revision, declared schema and observed response independently. Historical acceptance is provenance, not proof of a feature at a later pin. Preserve accepted finite work when an aggregate remains incomplete.
+
+Canonical documentation integration is a documentation outcome. Product follow-through remains in its existing obligations, with exact acceptance, evidence and update ownership. Deferred BAU is not a prerequisite for this documentation-only outcome. The accepted foundation source was published separately at `c8efa916a4bd98c4b59d24c774ff6510f2bd1a32`; that source checkpoint does not establish integration into develop or runtime adoption. The inventory does not confer admission, publication or activation authority.
