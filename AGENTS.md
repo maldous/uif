@@ -1,3 +1,12 @@
+# Shared UIF worker directions
+
+At every startup, including independent Foo work, read
+[the shared worker policy](docs/agents/uif-worker-policy.md) and
+[its local version manifest](docs/agents/uif-worker-policy.json).
+Apply them with this repository's project-specific instructions, not instead of them.
+
+Read the existing UIF recovery and dependency contracts below. Native reasoning and MCP deterministic execution are distinct from the Foo-local Codex durable domain described there. Apply Foo-specific checks only to work that actually depends on those components.
+
 # UIF agent instructions
 
 ## Scope and operating boundary

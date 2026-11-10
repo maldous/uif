@@ -1,0 +1,61 @@
+{
+  "observation_date": "2026-11-10",
+  "scope_source": "config/white-room.json five projects; CIX uses two distinct repositories",
+  "policy_version": "1.0.0",
+  "policy_sha256": "8a905f5482d1e7f05868571a49756f36cde5f9cf8571e4049fcca95bc64fe9b5",
+  "repositories": [
+    {
+      "repository": "maldous/uif",
+      "candidate_base": "adbca6df668dca605b915e99665020e81ef80f06",
+      "observed_remote_develop": "adbca6df668dca605b915e99665020e81ef80f06",
+      "base_current_at_observation": true,
+      "prior_agent_bytes_preserved": true,
+      "source_adoption": "isolated candidate only"
+    },
+    {
+      "repository": "maldous/offmenu",
+      "candidate_base": "a21e68c07c09750abbb1b3b284bb74609692cb5e",
+      "observed_remote_develop": "a21e68c07c09750abbb1b3b284bb74609692cb5e",
+      "base_current_at_observation": true,
+      "prior_agent_bytes_preserved": true,
+      "source_adoption": "isolated candidate only"
+    },
+    {
+      "repository": "cix-project/cix",
+      "candidate_base": "e7ea2923e9f81d2812ea3cb893edd925e51548ed",
+      "observed_remote_develop": "e7ea2923e9f81d2812ea3cb893edd925e51548ed",
+      "base_current_at_observation": true,
+      "prior_agent_bytes_preserved": true,
+      "source_adoption": "isolated candidate only"
+    },
+    {
+      "repository": "cix-project/cix-operations",
+      "candidate_base": "c070893c0dae3cc58efc13baecadd29b24b2132d",
+      "observed_remote_develop": "645d972f16da7f61fc508ff4bdbb19431ebed319",
+      "base_current_at_observation": false,
+      "prior_agent_bytes_preserved": true,
+      "source_adoption": "isolated candidate only"
+    },
+    {
+      "repository": "maldous/CircularQuay",
+      "candidate_base": "faf8e0242847d9a0026139762d6558ecd39debac",
+      "observed_remote_develop": "faf8e0242847d9a0026139762d6558ecd39debac",
+      "base_current_at_observation": true,
+      "prior_agent_bytes_preserved": true,
+      "source_adoption": "isolated candidate only"
+    },
+    {
+      "repository": "maldous/anqr-v3",
+      "candidate_base": "1bc471ad5eacd09013bf91450e36b28104487b12",
+      "observed_remote_develop": "cd2b0d8be42fd099f43b05cee306a186b4fcecde",
+      "base_current_at_observation": false,
+      "prior_agent_bytes_preserved": true,
+      "source_adoption": "isolated candidate only"
+    }
+  ],
+  "source_materialization_blocker": "Bounded CIX-operations exact-commit fetch was denied: network access to https://github.com:443 blocked by policy. Chained ANQR fetch was not attempted. No alternate materialization route used.",
+  "additional_scope": "USF-v3 and UXF top-level candidate paths absent; no further active repository established; no archives traversed.",
+  "runtime_changes": false,
+  "publication_attempted": false,
+  "canonical_checkout_modified": false
+}
