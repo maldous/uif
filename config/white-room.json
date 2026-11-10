@@ -17,7 +17,7 @@
       }
     },
     "circularquay": {
-      "repository": null,
+      "repository": "maldous/CircularQuay",
       "discovery_complete": {
         "foo": false,
         "cloud": false
