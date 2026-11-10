@@ -237,7 +237,7 @@ test('HTTP protocol limits body sizes, methods, unknown APIs and MCP writes', as
     headers: { 'Content-Type': 'application/json', ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify(message) }), env, NOW);
   const listed = await (await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' })).json();
   assert.deepEqual(listed.result.tools.map(t => t.name), ['get_status', 'render_status']);
-  assert.deepEqual(listed.result.tools[1].inputSchema.properties.layout.enum, ['o2', 'hexagon', 'focus', 'compact']);
+  assert.deepEqual(listed.result.tools[1].inputSchema.properties.layout.enum, ['full', 'compact', 'auto', 'o2', 'hexagon', 'focus']);
   assert(listed.result.tools.every(t => t.annotations.readOnlyHint));
   assert.equal((await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'https://evil.invalid')).status, 403);
   const read = await (await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'get_status', arguments: {} } })).json();
@@ -645,3 +645,4 @@ test('immutable snapshot environment fields remain strictly allowlisted', async 
   const response = await get(env, `/api/snapshots/${snapshot.revision}`);
   assert.equal(response.status, 503); assert.equal((await response.json()).error, 'snapshot_unavailable');
 });
+

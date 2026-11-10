@@ -9,7 +9,9 @@
     "test": "node --test test/*.test.mjs",
     "test:frontend": "node --test test/frontend.test.mjs",
     "preview": "node test/preview.mjs",
-    "check": "node --check worker.mjs && node --check public/app.js && node --check public/lib/render.js"
+    "check": "node --check worker.mjs && node --check public/lib/session-runtime.js && node --check scripts/prepare-runtime-observation.mjs && node --check scripts/prepare-coordinator-activity-observation.mjs && node --check public/app.js && node --check public/lib/render.js && node --check public/approved-app.js && node --check public/lib/approved-graph.js && node --check public/lib/approved-geometry.js && node --check public/lib/approved-assets.js && node --check approved-static-source.mjs",
+    "build:approved-static": "node scripts/build-approved-static.mjs",
+    "preview:approved": "node test/approved-preview.mjs"
   },
   "engines": {
     "node": ">=24"

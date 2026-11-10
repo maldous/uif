@@ -1,3 +1,6 @@
+import { CLIENT_RENDER_SOURCE } from './client-render-source.mjs';
+import { APPROVED_STATIC } from './approved-static-source.mjs';
+import { runtimeEvidence, isRuntimeProjection } from './public/lib/session-runtime.js';
 /** Independent, read-only public projection. Ingest is authenticated per source.
  * No source discovery, OAuth inheritance, execution control, or deployment here.
  */
@@ -18,10 +21,11 @@ export const TOPICS = Object.freeze({
 const ENVIRONMENT_KEYS = ['foo_uif', 'foo_tv', 'cloud_scratch'];
 export const BLOCKERS = Object.freeze({
   source_unavailable: 'Source unavailable', coverage_partial: 'Partial coverage',
-  awaiting_input: 'Awaiting input', dependency_unavailable: 'Dependency unavailable',
+  awaiting_approval: 'Awaiting approval', awaiting_input: 'Awaiting input', dependency_unavailable: 'Dependency unavailable',
   quota_unavailable: 'Capacity unavailable', execution_failed: 'Recorded execution failure',
 });
-const CAPABILITIES = ['registry', 'turn_history', 'process', 'service_process', 'curation', 'foo_allowance', 'coordinator_lifecycle'];
+const CAPABILITIES = ['registry', 'turn_history', 'process', 'service_process', 'curation', 'foo_allowance', 'coordinator_lifecycle', 'session_runtime'];
+const PROJECTS = ['Cloud', 'UIF', 'ANQR', 'CIX', 'OM', 'CQ'];
 const STATES = ['running', 'idle', 'stopped', 'completed', 'failed', 'blocked', 'unknown'];
 const ASSIGNMENTS = ['assigned', 'unassigned', 'unavailable'];
 const MIN_DATE = Date.UTC(2000, 0, 1);
@@ -33,7 +37,7 @@ const SECURITY_HEADERS = {
   'Referrer-Policy': 'no-referrer',
   // Deterministic SVG contains an inline stylesheet. Scripts remain external-
   // only, and CSS cannot load arbitrary network images/fonts or connect out.
-  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
@@ -79,6 +83,15 @@ async function tokenEqual(provided, expected) {
   return crypto.subtle.verify('HMAC', key, signed, new TextEncoder().encode(provided));
 }
 
+function projectCell(binding) {
+  if (!PROJECTS.includes(binding.project) || !['durable', 'primary', 'overflow'].includes(binding.kind) ||
+      (binding.kind === 'durable' ? Object.hasOwn(binding, 'index') : !integer(binding.index, 1, 6))) reject(422, 'invalid_event');
+  return binding.kind === 'durable' ? `durable-${binding.project}` : `${binding.project}-${binding.kind}-${binding.index}`;
+}
+function runtime(session) {
+  try { return runtimeEvidence(session); } catch { reject(422, 'invalid_event'); }
+}
+
 /** Operator-reviewed config only. Registration cannot come from an ingest body. */
 export async function loadConfig(env) {
   try {
@@ -86,11 +99,11 @@ export async function loadConfig(env) {
     const config = JSON.parse(env.SOURCE_CONFIG_JSON);
     exact(config, ['sources']);
     if (!Array.isArray(config.sources) || config.sources.length > 16) throw new Error();
-    const ids = new Set(), aliases = new Set(), tokens = new Set();
+    const ids = new Set(), aliases = new Set(), tokens = new Set(), projectCells = new Set(), activityProjects = new Set();
     let curationOwners = 0, allowanceOwners = 0, coordinatorOwners = 0;
     const sources = [];
     for (const source of config.sources) {
-      exact(source, ['id', 'domain', 'aliases', 'capabilities', 'staleAfterSeconds', 'outageAfterSeconds', 'tokenEnv'], ['rosterGeneration']);
+      exact(source, ['id', 'domain', 'aliases', 'capabilities', 'staleAfterSeconds', 'outageAfterSeconds', 'tokenEnv'], ['rosterGeneration', 'runtimeGeneration', 'projectBindings', 'activityBindings']);
       if (!/^[a-z][a-z0-9_-]{0,47}$/.test(source.id) || ids.has(source.id) ||
           !['foo', 'cloud'].includes(source.domain) || !/^[A-Z][A-Z0-9_]{2,63}$/.test(source.tokenEnv) ||
           tokens.has(source.tokenEnv) || !integer(source.staleAfterSeconds, 30, 3600) ||
@@ -115,6 +128,32 @@ export async function loadConfig(env) {
             !integer(source.rosterGeneration, 1, 1000000) ||
             source.capabilities.includes('process')) throw new Error();
       } else if (Object.hasOwn(source, 'rosterGeneration')) throw new Error();
+      if (Object.hasOwn(source, 'activityBindings')) {
+        // Native work is config-bound project evidence, never a session slot.
+        if (!source.capabilities.includes('coordinator_lifecycle') || source.capabilities.length !== 1 ||
+            source.aliases.length !== 0 || source.staleAfterSeconds !== 120 || source.outageAfterSeconds !== 600 ||
+            !Array.isArray(source.activityBindings) || source.activityBindings.length < 1 || source.activityBindings.length > PROJECTS.length) throw new Error();
+        for (const binding of source.activityBindings) {
+          exact(binding, ['project', 'kind']);
+          if (!PROJECTS.includes(binding.project) || binding.kind !== 'native_worker' || activityProjects.has(binding.project)) throw new Error();
+          activityProjects.add(binding.project);
+        }
+      }
+      if (source.capabilities.includes('session_runtime')) {
+        // Runtime authority is deliberately separate from process, allowance,
+        // curation and historical lifecycle sources. A reviewed new generation
+        // fences all prior observations through the existing config hash.
+        if (source.capabilities.length !== 1 || !integer(source.runtimeGeneration, 1, 1000000) ||
+            source.staleAfterSeconds !== 120 || source.outageAfterSeconds !== 600 ||
+            !Array.isArray(source.projectBindings) || source.projectBindings.length > source.aliases.length) throw new Error();
+        const boundAliases = new Set();
+        for (const binding of source.projectBindings) {
+          exact(binding, ['alias', 'project', 'kind'], ['index']);
+          const cell = projectCell(binding);
+          if (!source.aliases.includes(binding.alias) || boundAliases.has(binding.alias) || projectCells.has(cell)) throw new Error();
+          boundAliases.add(binding.alias); projectCells.add(cell);
+        }
+      } else if (Object.hasOwn(source, 'runtimeGeneration') || Object.hasOwn(source, 'projectBindings')) throw new Error();
       ids.add(source.id); tokens.add(source.tokenEnv);
       sources.push({ ...source, configHash: await hash(canonical(source)), publicAlias: `source-${sources.length + 1}` });
     }
@@ -125,25 +164,46 @@ export async function loadConfig(env) {
 /** Reject unknown fields rather than sanitizing arbitrary private payloads. */
 export function validateEvent(input, source, now, enforceClock = true) {
   exact(input, ['schemaVersion', 'sourceId', 'eventId', 'sequence', 'observedAt', 'health', 'coverage', 'sessions'],
-    ['serviceState', 'conversationTopics', 'fooAllowance', 'rosterGeneration']);
+    ['serviceState', 'conversationTopics', 'fooAllowance', 'rosterGeneration', 'runtimeGeneration', 'activities']);
   if (input.schemaVersion !== 1 || input.sourceId !== source.id ||
       typeof input.eventId !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(input.eventId) ||
       !integer(input.sequence, 1, Number.MAX_SAFE_INTEGER) || !['ok', 'error', 'unconfigured'].includes(input.health)) reject(422, 'invalid_event');
   const observedAt = timestamp(input.observedAt, enforceClock ? now + 30000 : Infinity);
+  const sampled = source.capabilities.includes('session_runtime');
+  if (sampled ? input.runtimeGeneration !== source.runtimeGeneration : Object.hasOwn(input, 'runtimeGeneration')) reject(422, 'invalid_event');
+  if (sampled) timestamp(input.observedAt, enforceClock ? now : Infinity);
   const coordinated = source.capabilities.includes('coordinator_lifecycle');
   if (coordinated ? input.rosterGeneration !== source.rosterGeneration : Object.hasOwn(input, 'rosterGeneration')) reject(422, 'invalid_event');
+  const activitySource = Object.hasOwn(source, 'activityBindings');
+  if (activitySource) {
+    timestamp(input.observedAt, enforceClock ? now : Infinity);
+    if (!Array.isArray(input.activities) || input.activities.length > source.activityBindings.length) reject(422, 'invalid_event');
+    const projects = new Set();
+    for (const activity of input.activities) {
+      exact(activity, ['project', 'state', 'observedAt', 'topicKeys', 'blockerKeys']);
+      if (!source.activityBindings.some(binding => binding.project === activity.project) || projects.has(activity.project) ||
+          !['running', 'completed', 'blocked', 'unknown'].includes(activity.state)) reject(422, 'invalid_event');
+      timestamp(activity.observedAt, Math.min(observedAt, enforceClock ? now : Infinity));
+      uniqueList(activity.topicKeys, Object.keys(TOPICS), 3);
+      uniqueList(activity.blockerKeys, Object.keys(BLOCKERS), 3);
+      if ((activity.state === 'blocked') !== (activity.blockerKeys.length > 0)) reject(422, 'invalid_event');
+      projects.add(activity.project);
+    }
+    if (input.health !== 'ok' && input.activities.length) reject(422, 'invalid_event');
+  } else if (Object.hasOwn(input, 'activities')) reject(422, 'invalid_event');
   exact(input.coverage, ['complete', 'observed', 'total']);
   const coverage = input.coverage;
   if (typeof coverage.complete !== 'boolean' || !integer(coverage.observed, 0, 1000000) ||
       !(coverage.total === null || integer(coverage.total, coverage.observed, 1000000)) ||
       !Array.isArray(input.sessions) || input.sessions.length > source.aliases.length ||
       input.sessions.length > coverage.observed) reject(422, 'invalid_event');
+  if ((sampled || activitySource) && (coverage.complete !== false || coverage.total !== null || coverage.observed !== input.sessions.length)) reject(422, 'invalid_event');
   const aliases = new Set();
   for (const session of input.sessions) {
-    exact(session, ['alias', 'assignment', 'observedAt', 'state', 'proof', 'topicKeys', 'blockerKeys'], ['environmentKey']);
+    exact(session, ['alias', 'assignment', 'observedAt', 'state', 'proof', 'topicKeys', 'blockerKeys'], ['environmentKey', 'runtime']);
     if (!source.aliases.includes(session.alias) || aliases.has(session.alias) ||
         !ASSIGNMENTS.includes(session.assignment) || !STATES.includes(session.state) ||
-        !['registry', 'turn_history', 'process', 'coordinator_lifecycle'].includes(session.proof) ||
+        !['registry', 'turn_history', 'process', 'coordinator_lifecycle', 'session_runtime'].includes(session.proof) ||
         !source.capabilities.includes(session.proof)) reject(422, 'invalid_event');
     timestamp(session.observedAt, Math.min(observedAt + 30000, enforceClock ? now + 30000 : Infinity));
     if (session.proof === 'coordinator_lifecycle') {
@@ -156,6 +216,12 @@ export function validateEvent(input, source, now, enforceClock = true) {
     uniqueList(session.blockerKeys, Object.keys(BLOCKERS), 3);
     if (Object.hasOwn(session, 'environmentKey') &&
         (session.assignment !== 'assigned' || !ENVIRONMENT_KEYS.includes(session.environmentKey))) reject(422, 'invalid_event');
+    if (session.proof === 'session_runtime') {
+      const evidence = runtime(session.runtime);
+      timestamp(session.observedAt, Math.min(observedAt, enforceClock ? now : Infinity));
+      if (!sampled || session.assignment !== 'assigned' || session.state !== evidence.state ||
+          canonical(session.blockerKeys) !== canonical(evidence.blockerKeys) || Object.hasOwn(session, 'environmentKey')) reject(422, 'invalid_event');
+    } else if (Object.hasOwn(session, 'runtime')) reject(422, 'invalid_event');
     if (session.proof === 'coordinator_lifecycle' && session.state === 'blocked' && session.blockerKeys.length === 0) reject(422, 'invalid_event');
     if (session.assignment !== 'assigned' && (session.state !== 'unknown' || session.topicKeys.length || session.blockerKeys.length)) reject(422, 'invalid_event');
     aliases.add(session.alias);
@@ -181,6 +247,30 @@ export function validateEvent(input, source, now, enforceClock = true) {
     timestamp(input.fooAllowance.observedAt, Math.min(observedAt, enforceClock ? now : Infinity));
   }
   return input;
+}
+
+/** Offline publication preparation only: no DB, network, credentials or writes.
+ * The integrator must execute promptly and keep sequence ownership serialized. */
+export async function prepareRuntimeObservation(sourceConfig, input, now = Date.now()) {
+  return prepareObservation(sourceConfig, input, now, false);
+}
+export async function prepareCoordinatorActivityObservation(sourceConfig, input, now = Date.now()) {
+  return prepareObservation(sourceConfig, input, now, true);
+}
+async function prepareObservation(sourceConfig, input, now, activity) {
+  if (!integer(now, MIN_DATE, Number.MAX_SAFE_INTEGER)) reject(422, 'invalid_preparation_time');
+  const sources = await loadConfig({ SOURCE_CONFIG_JSON: JSON.stringify(sourceConfig) });
+  const source = sources.find(source => source.id === input?.sourceId);
+  if (!source || (activity ? !source.activityBindings : !source.capabilities.includes('session_runtime'))) reject(422, activity ? 'activity_source_required' : 'runtime_source_required');
+  const event = validateEvent(input, source, now);
+  const oldest = Math.min(timestamp(event.observedAt), ...event.sessions.map(session => timestamp(session.observedAt)), ...(event.activities || []).map(item => timestamp(item.observedAt)));
+  if (now - oldest > 60000) reject(422, activity ? 'activity_sample_too_old' : 'runtime_sample_too_old');
+  const payload = canonical(event), digest = await hash(payload);
+  return { sourceId: source.id, sequence: event.sequence, eventId: event.eventId, configHash: source.configHash,
+    payloadSha256: digest, preparedAt: iso(now), publishBefore: iso(oldest + 60000),
+    // Exact existing observations INSERT column order, including optional allowance.
+    columns: ['source_id', 'sequence', 'event_id', 'payload_sha256', 'observed_at', 'received_at', 'health', 'config_hash', 'payload', 'allowance_observed_at'],
+    params: [source.id, event.sequence, event.eventId, digest, timestamp(event.observedAt), now, event.health, source.configHash, payload, null] };
 }
 
 function validAllowancePair(state, canRunAgents) {
@@ -299,7 +389,9 @@ export async function projectStatus(env, sources, now) {
   const slots = [...'ABCDEF'].map(alias => blankSlot('cloud', alias)).concat(
     Array.from({ length: 64 }, (_, i) => blankSlot('foo', String(i + 1))));
   const bySlot = new Map(slots.map(slot => [slot.id, slot]));
-  const publicSources = [];
+  const publicSources = [], projectAssociations = [], projectActivities = [];
+  const hasRuntime = sources.some(source => source.capabilities.includes('session_runtime'));
+  const hasActivity = sources.some(source => Object.hasOwn(source, 'activityBindings'));
   let conversationTopics = { voice: [], chat: [], status: [], availability: 'unconfigured', lastObservedAt: null };
   let fooAllowance = { state: 'unavailable', canRunAgents: null, verified: false, availability: 'unconfigured',
     observedAt: null, ageSeconds: null, staleAfterSeconds: null, outageAfterSeconds: null };
@@ -310,7 +402,8 @@ export async function projectStatus(env, sources, now) {
     if (row?.last_good_config_hash === source.configHash && row.last_good_payload) {
       // Validate durable payload again after migrations/manual restoration. A
       // malformed row degrades the whole API to a safe error, never raw output.
-      good = validateEvent(JSON.parse(row.last_good_payload), source, now, false);
+      try { good = validateEvent(JSON.parse(row.last_good_payload), source, now, source.capabilities.includes('session_runtime') || Object.hasOwn(source, 'activityBindings')); }
+      catch { reject(503, 'storage_unavailable'); }
     }
     const seconds = good ? age(now, row.last_good_observed_at, row.last_good_received_at) :
       matching && row.health !== 'unconfigured' ? age(now, row.observed_at, row.received_at) : null;
@@ -323,6 +416,7 @@ export async function projectStatus(env, sources, now) {
     for (const alias of source.aliases) {
       const slot = bySlot.get(`${source.domain}-${alias}`), session = sessionMap.get(alias);
       if (source.capabilities.includes('coordinator_lifecycle')) slot.rosterGeneration = source.rosterGeneration;
+      if (source.capabilities.includes('session_runtime')) slot.runtimeGeneration = source.runtimeGeneration;
       slot.availability = status === 'fresh' ? 'unavailable' : status;
       if (!session) { executionCoverageComplete = false; continue; }
       const sessionAge = age(now, timestamp(session.observedAt), row.last_good_received_at);
@@ -333,23 +427,46 @@ export async function projectStatus(env, sources, now) {
       slot.recordedState = session.assignment === 'assigned' ? session.state : null;
       slot.availability = status === 'fresh' ? freshness(source, sessionAge) : status;
       if (session.assignment === 'unavailable') slot.availability = status === 'fresh' ? 'unavailable' : status;
-      const displayEvidence = ['process', 'coordinator_lifecycle'].includes(session.proof) && session.assignment !== 'unavailable' && slot.availability === 'fresh';
+      const displayEvidence = ['process', 'coordinator_lifecycle', 'session_runtime'].includes(session.proof) && session.assignment !== 'unavailable' && slot.availability === 'fresh';
       if (!displayEvidence || session.proof !== 'process') executionCoverageComplete = false;
       slot.displayState = displayEvidence && session.assignment === 'assigned' && session.state !== 'unknown' ? session.state : null;
       slot.topicKeys = [...session.topicKeys]; slot.blockerKeys = [...session.blockerKeys];
       slot.topics = session.topicKeys.map(key => TOPICS[key]);
       slot.blockers = session.blockerKeys.map(key => BLOCKERS[key]);
       if (Object.hasOwn(session, 'environmentKey')) slot.environmentKey = session.environmentKey;
+      if (session.proof === 'session_runtime') {
+        slot.runtime = runtime(session.runtime).runtime;
+        const binding = source.projectBindings.find(binding => binding.alias === alias);
+        if (binding && displayEvidence && session.assignment === 'assigned') {
+          projectAssociations.push({ slotId: slot.id, project: binding.project, kind: binding.kind,
+            ...(binding.kind === 'durable' ? {} : { index: binding.index }), verified: true,
+            observedAt: slot.observedAt, runtimeGeneration: source.runtimeGeneration });
+        }
+      }
     }
     publicSources.push({ alias: source.publicAlias, domain: source.domain, aliases: [...source.aliases],
       capabilities: [...source.capabilities], status, lastReceivedAt: matching ? iso(row.received_at) : null,
       lastSuccessAt: good ? iso(row.last_good_received_at) : null, lastObservedAt: good ? iso(row.last_good_observed_at) : null,
       ageSeconds: seconds, staleAfterSeconds: source.staleAfterSeconds, outageAfterSeconds: source.outageAfterSeconds,
-      coverage, executionCoverageComplete, evidenceScope: source.capabilities.includes('coordinator_lifecycle') ? 'coordinator_lifecycle' : source.capabilities.includes('process') ? 'process_liveness' : 'metadata_only',
+      coverage, executionCoverageComplete, evidenceScope: source.capabilities.includes('session_runtime') ? 'session_runtime' : source.capabilities.includes('coordinator_lifecycle') ? 'coordinator_lifecycle' : source.capabilities.includes('process') ? 'process_liveness' : 'metadata_only',
       serviceState: good?.serviceState ?? null });
     if (source.capabilities.includes('coordinator_lifecycle')) {
       publicSources.at(-1).rosterGeneration = source.rosterGeneration;
       publicSources.at(-1).observationMode = 'manual';
+    }
+    if (source.capabilities.includes('session_runtime')) {
+      publicSources.at(-1).runtimeGeneration = source.runtimeGeneration;
+      publicSources.at(-1).observationMode = 'sampled';
+    }
+    if (Object.hasOwn(source, 'activityBindings')) {
+      publicSources.at(-1).activityBindings = source.activityBindings.map(binding => ({ project: binding.project, kind: binding.kind }));
+      for (const activity of good?.activities || []) {
+        if (status !== 'fresh' || freshness(source, age(now, timestamp(activity.observedAt), row.last_good_received_at)) !== 'fresh') continue;
+        projectActivities.push({ project: activity.project, kind: 'native_worker', verified: true,
+          observedAt: iso(timestamp(activity.observedAt)), rosterGeneration: source.rosterGeneration, state: activity.state,
+          topicKeys: [...activity.topicKeys], topics: activity.topicKeys.map(key => TOPICS[key]),
+          blockerKeys: [...activity.blockerKeys], blockers: activity.blockerKeys.map(key => BLOCKERS[key]) });
+      }
     }
     if (source.capabilities.includes('curation')) {
       const topics = topicRecords.results.filter(topic => topic.source_id === source.id && topic.config_hash === source.configHash);
@@ -386,7 +503,7 @@ export async function projectStatus(env, sources, now) {
       executionCoverageComplete: publicSources.some(s => s.aliases.length > 0) &&
         publicSources.filter(s => s.aliases.length > 0).every(s => s.executionCoverageComplete) &&
         slots.every(slot => slot.availability !== 'unconfigured') },
-    sources: publicSources, slots, conversationTopics, fooAllowance };
+    sources: publicSources, slots, conversationTopics, fooAllowance, ...(hasRuntime ? { projectAssociations } : {}), ...(hasActivity ? { projectActivities } : {}) };
 }
 
 function revisionContent(snapshot) {
@@ -401,16 +518,21 @@ function revisionContent(snapshot) {
 async function saveSnapshot(env, sources, now) {
   const snapshot = await projectStatus(env, sources, now);
   snapshot.revision = await hash(canonical(revisionContent(snapshot)));
+  validatePublicSnapshot(snapshot);
   await env.DB.prepare('INSERT OR IGNORE INTO public_snapshots (revision, created_at, payload) VALUES (?, ?, ?)')
     .bind(snapshot.revision, now, canonical(snapshot)).run();
   return snapshot;
 }
 async function savedSnapshot(env, revision) {
   if (!/^[0-9a-f]{64}$/.test(revision)) reject(404, 'snapshot_not_found');
-  const row = await env.DB.prepare('SELECT payload FROM public_snapshots WHERE revision = ?').bind(revision).first();
+  const row = await env.DB.prepare('SELECT payload, created_at FROM public_snapshots WHERE revision = ?').bind(revision).first();
   if (!row) reject(404, 'snapshot_not_found');
   const snapshot = JSON.parse(row.payload);
-  try { validatePublicSnapshot(snapshot); } catch { reject(503, 'snapshot_unavailable'); }
+  try {
+    validatePublicSnapshot(snapshot);
+    if (snapshot.sources.some(source => source.capabilities.includes('session_runtime') || Object.hasOwn(source, 'activityBindings')) &&
+        timestamp(snapshot.generatedAt) !== row.created_at) reject(503, 'snapshot_unavailable');
+  } catch { reject(503, 'snapshot_unavailable'); }
   // Check content integrity before returning a stored artifact. Only this Worker
   // writes snapshots, after the positive public projection above.
   if (snapshot.revision !== revision || await hash(canonical(revisionContent(snapshot))) !== revision) reject(503, 'snapshot_unavailable');
@@ -420,9 +542,10 @@ async function savedSnapshot(env, revision) {
 /** Revalidate persisted artifacts too: excluded clock fields must never become
  * an unchecked object/string escape hatch in an otherwise verified revision. */
 function validatePublicSnapshot(snapshot) {
+  if (!isRuntimeProjection(snapshot)) reject(503, 'snapshot_unavailable');
   // Old immutable revisions remain valid historical artifacts. Do not inject
   // allowance evidence into them or reinterpret their existing content hash.
-  exact(snapshot, ['schemaVersion', 'generatedAt', 'receiver', 'summary', 'sources', 'slots', 'conversationTopics', 'revision'], ['fooAllowance']);
+  exact(snapshot, ['schemaVersion', 'generatedAt', 'receiver', 'summary', 'sources', 'slots', 'conversationTopics', 'revision'], ['fooAllowance', 'projectAssociations', 'projectActivities']);
   const validAge = value => value === null || integer(value, 0, Number.MAX_SAFE_INTEGER);
   const validTime = value => value === null || Number.isFinite(timestamp(value));
   const availability = ['fresh', 'stale', 'outage', 'unconfigured', 'unavailable', 'error'];
@@ -435,21 +558,38 @@ function validatePublicSnapshot(snapshot) {
       !integer(snapshot.summary.configuredSources, 0, 16) || !integer(snapshot.summary.reportingSources, 0, 16) ||
       typeof snapshot.summary.executionCoverageComplete !== 'boolean' || !Array.isArray(snapshot.sources) ||
       snapshot.sources.length > 16 || !Array.isArray(snapshot.slots) || snapshot.slots.length !== 70) reject(503, 'snapshot_unavailable');
+  const sourceAliases = new Set(), ownedSlots = new Set();
   for (const source of snapshot.sources) {
     exact(source, ['alias', 'domain', 'aliases', 'capabilities', 'status', 'lastReceivedAt', 'lastSuccessAt', 'lastObservedAt',
-      'ageSeconds', 'staleAfterSeconds', 'outageAfterSeconds', 'coverage', 'executionCoverageComplete', 'evidenceScope', 'serviceState'], ['rosterGeneration', 'observationMode']);
+      'ageSeconds', 'staleAfterSeconds', 'outageAfterSeconds', 'coverage', 'executionCoverageComplete', 'evidenceScope', 'serviceState'], ['rosterGeneration', 'observationMode', 'runtimeGeneration', 'activityBindings']);
     if (!/^source-(?:[1-9]|1[0-6])$/.test(source.alias) || !['foo', 'cloud'].includes(source.domain) ||
         !availability.includes(source.status) || !validAge(source.ageSeconds) ||
         !integer(source.staleAfterSeconds, 30, 3600) || !integer(source.outageAfterSeconds, source.staleAfterSeconds + 1, 86400) ||
-        typeof source.executionCoverageComplete !== 'boolean' || !['process_liveness', 'metadata_only', 'coordinator_lifecycle'].includes(source.evidenceScope) ||
+        typeof source.executionCoverageComplete !== 'boolean' || !['process_liveness', 'metadata_only', 'coordinator_lifecycle', 'session_runtime'].includes(source.evidenceScope) ||
         ![null, 'running', 'stopped', 'unknown'].includes(source.serviceState)) reject(503, 'snapshot_unavailable');
     [source.lastReceivedAt, source.lastSuccessAt, source.lastObservedAt].forEach(validTime);
     uniqueList(source.capabilities, CAPABILITIES, CAPABILITIES.length);
+    if (sourceAliases.has(source.alias)) reject(503, 'snapshot_unavailable');
+    sourceAliases.add(source.alias);
+    for (const alias of source.aliases) {
+      const id = `${source.domain}-${alias}`;
+      if (ownedSlots.has(id)) reject(503, 'snapshot_unavailable');
+      ownedSlots.add(id);
+    }
     if (source.capabilities.includes('coordinator_lifecycle')) {
       if (source.domain !== 'cloud' || !integer(source.rosterGeneration, 1, 1000000) ||
           source.observationMode !== 'manual' || source.evidenceScope !== 'coordinator_lifecycle' ||
           source.executionCoverageComplete !== false || source.capabilities.includes('process')) reject(503, 'snapshot_unavailable');
-    } else if (Object.hasOwn(source, 'rosterGeneration') || Object.hasOwn(source, 'observationMode')) reject(503, 'snapshot_unavailable');
+    } else if (Object.hasOwn(source, 'rosterGeneration') ||
+        (!source.capabilities.includes('session_runtime') && Object.hasOwn(source, 'observationMode'))) reject(503, 'snapshot_unavailable');
+    if (source.capabilities.includes('session_runtime')) {
+      if (source.capabilities.length !== 1 || !integer(source.runtimeGeneration, 1, 1000000) ||
+          source.observationMode !== 'sampled' || source.evidenceScope !== 'session_runtime' ||
+          source.executionCoverageComplete !== false || source.serviceState !== null ||
+          source.staleAfterSeconds !== 120 || source.outageAfterSeconds !== 600 ||
+          source.coverage.complete !== false || source.coverage.total !== null ||
+          (source.lastObservedAt !== null && timestamp(source.lastObservedAt) > timestamp(snapshot.generatedAt))) reject(503, 'snapshot_unavailable');
+    } else if (Object.hasOwn(source, 'runtimeGeneration') || source.evidenceScope === 'session_runtime') reject(503, 'snapshot_unavailable');
     uniqueList(source.aliases, source.domain === 'cloud' ? [...'ABCDEF'] : Array.from({ length: 64 }, (_, i) => String(i + 1)), 64);
     exact(source.coverage, ['complete', 'observed', 'total']);
     if (typeof source.coverage.complete !== 'boolean' || !integer(source.coverage.observed, 0, 1000000) ||
@@ -458,11 +598,11 @@ function validatePublicSnapshot(snapshot) {
   const ids = new Set();
   for (const slot of snapshot.slots) {
     exact(slot, ['id', 'domain', 'alias', 'assignment', 'displayState', 'availability', 'recordedState', 'proof',
-      'observedAt', 'ageSeconds', 'topicKeys', 'blockerKeys', 'topics', 'blockers'], ['rosterGeneration', 'environmentKey']);
+      'observedAt', 'ageSeconds', 'topicKeys', 'blockerKeys', 'topics', 'blockers'], ['rosterGeneration', 'environmentKey', 'runtimeGeneration', 'runtime']);
     if (!/^(cloud-[A-F]|foo-(?:[1-9]|[1-5][0-9]|6[0-4]))$/.test(slot.id) || ids.has(slot.id) ||
         slot.id !== `${slot.domain}-${slot.alias}` || !ASSIGNMENTS.includes(slot.assignment) ||
         ![null, ...STATES.filter(state => state !== 'unknown')].includes(slot.displayState) || !availability.includes(slot.availability) ||
-        ![null, ...STATES].includes(slot.recordedState) || ![null, 'registry', 'turn_history', 'process', 'coordinator_lifecycle'].includes(slot.proof) || !validAge(slot.ageSeconds)) reject(503, 'snapshot_unavailable');
+        ![null, ...STATES].includes(slot.recordedState) || ![null, 'registry', 'turn_history', 'process', 'coordinator_lifecycle', 'session_runtime'].includes(slot.proof) || !validAge(slot.ageSeconds)) reject(503, 'snapshot_unavailable');
     if (Object.hasOwn(slot, 'environmentKey') &&
         (slot.assignment !== 'assigned' || !ENVIRONMENT_KEYS.includes(slot.environmentKey))) reject(503, 'snapshot_unavailable');
     if (Object.hasOwn(slot, 'rosterGeneration')) {
@@ -473,10 +613,41 @@ function validatePublicSnapshot(snapshot) {
     if (slot.proof === 'coordinator_lifecycle' && (!Object.hasOwn(slot, 'rosterGeneration') ||
         ![null, 'running', 'completed', 'blocked'].includes(slot.displayState) ||
         ![null, 'running', 'completed', 'blocked', 'unknown'].includes(slot.recordedState))) reject(503, 'snapshot_unavailable');
+    if (Object.hasOwn(slot, 'runtimeGeneration')) {
+      const owner = snapshot.sources.find(source => source.capabilities.includes('session_runtime') && source.domain === slot.domain && source.aliases.includes(slot.alias));
+      if (!owner || slot.runtimeGeneration !== owner.runtimeGeneration || ![null, 'session_runtime'].includes(slot.proof)) reject(503, 'snapshot_unavailable');
+    }
+    if (slot.proof === 'session_runtime') {
+      const evidence = runtime(slot.runtime);
+      const owner = snapshot.sources.find(source => source.domain === slot.domain && source.aliases.includes(slot.alias));
+      if (!Object.hasOwn(slot, 'runtimeGeneration') || slot.assignment !== 'assigned' ||
+          slot.recordedState !== evidence.state || canonical(slot.blockerKeys) !== canonical(evidence.blockerKeys) ||
+          Object.hasOwn(slot, 'environmentKey') || slot.observedAt === null ||
+          timestamp(slot.observedAt) > timestamp(snapshot.generatedAt) || !owner?.lastObservedAt ||
+          timestamp(slot.observedAt) > timestamp(owner.lastObservedAt) ||
+          slot.displayState !== (slot.availability === 'fresh' && owner.status === 'fresh' && evidence.state !== 'unknown' ? evidence.state : null) ||
+          (slot.availability === 'fresh' && (owner.status !== 'fresh' ||
+            timestamp(snapshot.generatedAt) - timestamp(slot.observedAt) >= owner.staleAfterSeconds * 1000))) reject(503, 'snapshot_unavailable');
+    } else if (Object.hasOwn(slot, 'runtime')) reject(503, 'snapshot_unavailable');
     ids.add(slot.id); validTime(slot.observedAt);
     uniqueList(slot.topicKeys, Object.keys(TOPICS), 3); uniqueList(slot.blockerKeys, Object.keys(BLOCKERS), 3);
     if (canonical(slot.topics) !== canonical(slot.topicKeys.map(key => TOPICS[key])) ||
         canonical(slot.blockers) !== canonical(slot.blockerKeys.map(key => BLOCKERS[key]))) reject(503, 'snapshot_unavailable');
+  }
+  if (Object.hasOwn(snapshot, 'projectAssociations')) {
+    if (!Array.isArray(snapshot.projectAssociations) || snapshot.projectAssociations.length > 70) reject(503, 'snapshot_unavailable');
+    const boundSlots = new Set(), boundCells = new Set();
+    for (const binding of snapshot.projectAssociations) {
+      exact(binding, ['slotId', 'project', 'kind', 'verified', 'observedAt', 'runtimeGeneration'], ['index']);
+      const cell = projectCell(binding), slot = snapshot.slots.find(slot => slot.id === binding.slotId);
+      const owner = snapshot.sources.find(source => source.domain === slot?.domain && source.aliases.includes(slot?.alias));
+      if (!slot || !owner || binding.verified !== true || boundSlots.has(binding.slotId) || boundCells.has(cell) ||
+          slot.proof !== 'session_runtime' || slot.assignment !== 'assigned' || slot.availability !== 'fresh' || owner.status !== 'fresh' ||
+          binding.runtimeGeneration !== slot.runtimeGeneration || binding.runtimeGeneration !== owner.runtimeGeneration ||
+          binding.observedAt !== slot.observedAt || timestamp(binding.observedAt) > timestamp(snapshot.generatedAt) ||
+          timestamp(snapshot.generatedAt) - timestamp(binding.observedAt) >= owner.staleAfterSeconds * 1000) reject(503, 'snapshot_unavailable');
+      boundSlots.add(binding.slotId); boundCells.add(cell);
+    }
   }
   exact(snapshot.conversationTopics, ['voice', 'chat', 'availability', 'lastObservedAt'], ['status']);
   if (!availability.includes(snapshot.conversationTopics.availability)) reject(503, 'snapshot_unavailable');
@@ -507,24 +678,30 @@ function validatePublicSnapshot(snapshot) {
 }
 
 function renderOptions(value = {}) {
-  exact(value, [], ['width', 'height', 'selected', 'revision', 'layout']);
+  exact(value, [], ['width', 'height', 'selected', 'revision', 'layout', 'theme']);
   if ((value.width !== undefined && !integer(value.width, 320, 4096)) ||
       (value.height !== undefined && !integer(value.height, 240, 2160)) ||
-      (value.selected !== undefined && !/^(cloud-[A-F]|foo-(?:[1-9]|[1-5][0-9]|6[0-4]))$/.test(value.selected)) ||
+      (value.selected !== undefined && !/^(cloud-[A-F]|foo-(?:[1-9]|[1-5][0-9]|6[0-4])|(?:durable|summary)-(?:Cloud|UIF|ANQR|CIX|OM|CQ)|(?:Cloud|UIF|ANQR|CIX|OM|CQ)-(?:primary|overflow)-[1-6]|overall|railway-[1-6])$/.test(value.selected)) ||
       (value.revision !== undefined && !/^[0-9a-f]{64}$/.test(value.revision)) ||
-      (value.layout !== undefined && !['o2', 'hexagon', 'focus', 'compact'].includes(value.layout))) reject(422, 'invalid_options');
+      (value.layout !== undefined && !['full', 'compact', 'auto', 'o2', 'hexagon', 'focus'].includes(value.layout)) ||
+      (value.theme !== undefined && !['light', 'dark'].includes(value.theme))) reject(422, 'invalid_options');
   return value;
 }
 async function svg(snapshot, options) {
-  const { renderSvg } = await import('./public/lib/render.js');
-  return renderSvg(snapshot, options);
+  const { renderApprovedGraph } = await import('./public/lib/approved-graph.js');
+  const allowance = snapshot.fooAllowance;
+  const mode = options.layout === 'compact' || (options.layout === 'auto' && allowance?.verified &&
+    allowance.availability === 'fresh' && allowance.state === 'exhausted' && allowance.canRunAgents === false) ? 'compact' : 'full';
+  // A revision is an immutable capture. Browser freshness uses the present clock;
+  // deterministic SVG/MCP renders use that revision's clock and recorded evidence.
+  return renderApprovedGraph(snapshot, { ...options, mode, theme: options.theme ?? 'light', now: Date.parse(snapshot.generatedAt) });
 }
 async function rendered(snapshot, options) {
   const text = await svg(snapshot, options);
-  const renderedLayout = text.match(/^<svg\b[^>]*\bdata-layout="(o2|hexagon|focus|compact)"/)?.[1];
+  const renderedLayout = text.match(/^<svg\b[^>]*\bdata-layout="(full|compact)"/)?.[1];
   if (!renderedLayout) reject(503, 'renderer_unavailable');
   return { text, metadata: { revision: snapshot.revision, renderSha256: await hash(text),
-    requestedLayout: options.layout ?? 'o2', renderedLayout } };
+    requestedLayout: options.layout ?? 'full', renderedLayout, theme: options.theme ?? 'light' } };
 }
 async function mcp(request, env, sources, now) {
   if (request.headers.has('Origin') && request.headers.get('Origin') !== new URL(request.url).origin) reject(403, 'origin_forbidden');
@@ -541,10 +718,10 @@ async function mcp(request, env, sources, now) {
   if (message.method === 'tools/list') return done({ tools: [
     { name: 'get_status', description: 'Read public, allowlisted monitoring metadata and freshness. No private session details.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-    { name: 'render_status', description: 'Render the same public monitoring projection as deterministic SVG. Explicit compact selects the MCP presentation only; it does not assert allowance exhaustion.',
+    { name: 'render_status', description: 'Render the same public monitoring projection as deterministic SVG. Full and compact select the approved graph presentation only; auto follows verified allowance exhaustion. Neither layout asserts execution health.',
       inputSchema: { type: 'object', properties: { width: { type: 'integer', minimum: 320, maximum: 4096 },
-        height: { type: 'integer', minimum: 240, maximum: 2160 }, selected: { type: 'string', pattern: '^(cloud-[A-F]|foo-([1-9]|[1-5][0-9]|6[0-4]))$' },
-        revision: { type: 'string', pattern: '^[0-9a-f]{64}$' }, layout: { type: 'string', enum: ['o2', 'hexagon', 'focus', 'compact'] } }, additionalProperties: false },
+        height: { type: 'integer', minimum: 240, maximum: 2160 }, selected: { type: 'string', pattern: '^(cloud-[A-F]|foo-([1-9]|[1-5][0-9]|6[0-4])|(durable|summary)-(Cloud|UIF|ANQR|CIX|OM|CQ)|(Cloud|UIF|ANQR|CIX|OM|CQ)-(primary|overflow)-[1-6]|overall|railway-[1-6])$' },
+        revision: { type: 'string', pattern: '^[0-9a-f]{64}$' }, layout: { type: 'string', enum: ['full', 'compact', 'auto', 'o2', 'hexagon', 'focus'] }, theme: { type: 'string', enum: ['light', 'dark'] } }, additionalProperties: false },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
   ] });
   if (message.method === 'tools/call') {
@@ -587,8 +764,8 @@ export async function handleRequest(request, env, now = Date.now()) {
       if (path === '/render.svg') {
         const options = {};
         for (const [key, value] of url.searchParams) {
-          if (Object.hasOwn(options, key) || !['width', 'height', 'selected', 'revision', 'layout'].includes(key)) reject(422, 'invalid_options');
-          options[key] = ['selected', 'revision', 'layout'].includes(key) ? value : Number(value);
+          if (Object.hasOwn(options, key) || !['width', 'height', 'selected', 'revision', 'layout', 'theme'].includes(key)) reject(422, 'invalid_options');
+          options[key] = ['selected', 'revision', 'layout', 'theme'].includes(key) ? value : Number(value);
         }
         const immutable = url.searchParams.has('revision') ? status : await savedSnapshot(env, status.revision);
         const output = await rendered(immutable, renderOptions(options));
@@ -596,12 +773,23 @@ export async function handleRequest(request, env, now = Date.now()) {
           'X-Morgan-Snapshot-Revision': output.metadata.revision,
           'X-Morgan-Render-SHA256': output.metadata.renderSha256,
           'X-Morgan-Requested-Layout': output.metadata.requestedLayout,
-          'X-Morgan-Rendered-Layout': output.metadata.renderedLayout } });
+          'X-Morgan-Rendered-Layout': output.metadata.renderedLayout,
+          'X-Morgan-Theme': output.metadata.theme } });
       }
       return response(status);
     }
     if (path.startsWith('/api/') || path.startsWith('/v1/')) reject(404, 'not_found');
     if (!['GET', 'HEAD'].includes(request.method)) reject(405, 'method_not_allowed');
+    // Exact allowlist generated from reviewed local files. No runtime file lookup
+    // or path interpolation; existing unrelated assets remain on their binding.
+    if (Object.hasOwn(APPROVED_STATIC, path)) {
+      const asset = APPROVED_STATIC[path];
+      return new Response(request.method === 'HEAD' ? null : asset.body,
+        { headers: { ...SECURITY_HEADERS, 'Content-Type': asset.contentType } });
+    }
+    // Preserve the legacy renderer route for existing clients and tests.
+    if (path === '/lib/render.js') return new Response(request.method === 'HEAD' ? null : CLIENT_RENDER_SOURCE,
+      { headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/javascript; charset=utf-8' } });
     if (!env.ASSETS) reject(503, 'assets_unavailable');
     const asset = await env.ASSETS.fetch(request);
     const headers = new Headers(asset.headers);
@@ -629,3 +817,4 @@ export default {
   fetch: (request, env) => handleRequest(request, env),
   scheduled: (_controller, env) => evaluateScheduled(env),
 };
+

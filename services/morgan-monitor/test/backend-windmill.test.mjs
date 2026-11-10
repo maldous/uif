@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { main } from '../windmill/morgan_public_render.ts';
-import { renderSvg } from '../public/lib/render.js';
+import { renderApprovedGraph as renderSvg } from '../public/lib/approved-graph.js';
 
 const resource = { renderUrl: 'https://morgan.aldous.info/render.svg' };
 const revision = 'a'.repeat(64);
@@ -72,7 +72,7 @@ test('Windmill returns the exact current deterministic renderer SVG including re
       { key: 'compact_display', text: 'Compact display', observedAt: '2026-11-09T05:21:09.000Z' },
       { key: 'layout_design', text: 'Layout design', observedAt: '2026-11-09T05:21:09.000Z' },
     ] } };
-  for (const layout of ['compact', 'o2', 'hexagon', 'focus']) {
+  for (const layout of ['compact', 'full', 'o2', 'hexagon', 'focus']) {
     const rendered = renderSvg(snapshot, { layout, width: 1600, height: 1000 });
     const digest = createHash('sha256').update(rendered).digest('hex');
     const mock = t.mock.method(globalThis, 'fetch', async () => response(rendered, { headers: {
@@ -83,3 +83,4 @@ test('Windmill returns the exact current deterministic renderer SVG including re
     mock.mock.restore();
   }
 });
+

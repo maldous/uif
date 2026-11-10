@@ -1,0 +1,21 @@
+{
+  "observed_date": "2026-11-09",
+  "source": "Windmill read_workspace_item, version=deployed, workspace_id=offmenu, path=u/admin/foo_root_jobs",
+  "isDraft": false,
+  "extraPerms": {},
+  "source_sha256": "ac933811fe4b250e025afb30d5be8d8a9f2afb587d18027e90fdeaa18f5e26ba",
+  "schema_sha256": "42e52f00e5427384abd9fd253f0c832fc88a2ac24e0a0b2fe60dde5d993843b0",
+  "declared_dependencies": [
+    "paramiko==5.1.0",
+    "wmill==1.850.0"
+  ],
+  "resolved_dependency_lock": null,
+  "windmill_version_hash": null,
+  "limits": [
+    "Connector does not return resolved lock or deployed version hash",
+    "Pinned source is a custody export, not independently qualified replacement",
+    "Historical disabled summary conflicts with ENABLED=True source; preserve facts separately",
+    "Host protocol source not exported; denied boundary respected",
+    "Public SSH host key is a verification pin, not a private credential"
+  ]
+}
