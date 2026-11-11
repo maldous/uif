@@ -90,7 +90,7 @@
         {
           "criterion": "Startup cost measured",
           "disposition": "Bounded historical runtime observation and later accepted phase-split work credited.",
-          "limit": "A 93.98-second evidence-arrival window and one timestamp per service do not establish individual cold-start elapsed times."
+          "limit": "A 93.98-second reported runtime-evidence window and one timestamp per service do not establish individual cold-start elapsed times."
         },
         {
           "criterion": "Slowest services identified",
