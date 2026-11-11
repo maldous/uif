@@ -1,0 +1,178 @@
+{
+  "schema": "uif-reconciled-historical-criteria/v1",
+  "record_date": "2026-11-12",
+  "scope": "UIF owner-approved bounded ledger evidence dispositions",
+  "provenance": {
+    "source_repository": "maldous/uif",
+    "source_base": "4dd34e4ab0466030fca50ccfc784c61e8fe0d00c",
+    "policy_version": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
+    "reviewed_evidence_artifact": "uif-ledger-criterion-evidence-dispositions-20261111.json",
+    "reviewed_evidence_sha256": "bd53ccf2ebbf2333cd79f27cb9d85431f59f160dbbf3dbdc139fd88984cc8237",
+    "evidence_recorded_at_utc": "2026-11-11T23:16:41.346Z"
+  },
+  "counting": {
+    "original_inventory_records": 213,
+    "original_UIF_readiness_records": 73,
+    "original_ledger_discovery_records": 34,
+    "interpretation": "Original inventory counts, not counts of records still open.",
+    "new_records": 0,
+    "original_ids_preserved": true
+  },
+  "records": [
+    {
+      "original_id": "ledger-usf1144-evidence-reconciliation",
+      "original_planned_routing_key": "ledger-discovery-20261111-014",
+      "issue": "USF-1144",
+      "issue_url": "https://linear.app/maldous/issue/USF-1144/correct-census-readiness-semantic-audit-mapping-planning-and",
+      "disposition": "bounded_history_reconciled",
+      "owner_decision": "The original status/withdrawal contradiction is reconciled by later bounded acceptance and maintainer supersession. No current justified residual is established in the exact reviewed evidence.",
+      "programme_verdict": "V2_SEMANTIC_AUTHORITY_AND_COMPILER_INCOMPLETE",
+      "programme_ready": false,
+      "chronology": [
+        {
+          "at_utc": "2026-07-11T15:39:31.955Z",
+          "issue": "USF-1144",
+          "comment_uuid": "bcf9c5c5-aae9-4863-9e9b-0d80c7832d7e",
+          "meaning": "Bounded census machinery/audit acceptance; source-disposition coverage remained incomplete."
+        },
+        {
+          "at_utc": "2026-07-11T23:49:47.251Z",
+          "issue": "USF-1144",
+          "comment_uuid": "2d3d4182-8509-4df9-8c98-9c456882da78",
+          "meaning": "Earlier completion explicitly withdrawn and issue reopened; structural applicability required evidence-grounded correction."
+        },
+        {
+          "at_utc": "2026-07-13T09:15:51.068Z",
+          "issue": "USF-1143",
+          "comment_uuid": "522db1ad-6859-4ac1-a610-7894b51a9f1c",
+          "meaning": "Maintainer ledger accepts the later bounded census/audit correction while retaining the programme INCOMPLETE verdict."
+        },
+        {
+          "at_utc": "2026-07-13T09:16:03.639Z",
+          "issue": "USF-1144",
+          "source": "stateHistory",
+          "meaning": "Later Done interval begins after bounded maintainer acceptance; no mutation operation receipt was exposed."
+        },
+        {
+          "at_utc": "2026-07-15T11:24:22.948Z",
+          "issue": "USF-1156",
+          "comment_uuid": "4ed0f650-f9dd-46ec-b19b-0570b2f091fd",
+          "meaning": "Legacy pickup summary superseded by semantic authority; any successor scope requires the current digest-bound contract."
+        },
+        {
+          "at_utc": "2026-07-23T04:31:42.980Z",
+          "source": "P-USF-7 project metadata",
+          "meaning": "Completed programme retained as historical delivery evidence, not an active backlog."
+        }
+      ],
+      "retained_limits": [
+        "Withdrawal remains valid historical evidence; later bounded acceptance does not turn the withdrawn verdict into semantic readiness.",
+        "Original reopen/final-Done mutation operation IDs were not exposed; comment UUIDs and state timestamps are not mutation receipt IDs.",
+        "PR360 was reported queued for auto-merge pending CI; its actual merge/full source SHA was not independently verified.",
+        "No current live contract packet or assigned substantive semantic owner justifying a residual was established by these reads.",
+        "A future concrete residual must be justified against the current contract and routed to its actual owner; historical counts alone create no work."
+      ]
+    },
+    {
+      "original_id": "ledger-usf580-criterion-disposition",
+      "original_planned_routing_key": "ledger-discovery-20261111-025",
+      "issue": "USF-580",
+      "issue_url": "https://linear.app/maldous/issue/USF-580/compose-service-inventory-and-startup-cost",
+      "disposition": "partial_pending_current_applicability",
+      "owner_decision": "Record criterion-level dispositions and credit historical/phase-split evidence. Retain unresolved timing and current-applicability limits without selecting measurement work.",
+      "criteria": [
+        {
+          "criterion": "Service inventory",
+          "disposition": "Historical inventory discovery credited.",
+          "limit": "Static service-like scans, parsed Compose inventories and runtime evidence entries have different count domains."
+        },
+        {
+          "criterion": "Startup cost measured",
+          "disposition": "Bounded historical runtime observation and later accepted phase-split work credited.",
+          "limit": "A 93.98-second evidence-arrival window and one timestamp per service do not establish individual cold-start elapsed times."
+        },
+        {
+          "criterion": "Slowest services identified",
+          "disposition": "Exact per-service elapsed ranking remains unproved in the reviewed evidence.",
+          "limit": "Slowest-command ranking and evidence arrival order are not per-service elapsed rankings."
+        },
+        {
+          "criterion": "Mandatory services identified/timed",
+          "disposition": "Historical accounting/proof boundary retained; current mandatory-service map and per-service mandatory timings remain unknown.",
+          "limit": "The referenced completeness matrix was not returned by the exact title search; absence was not established."
+        },
+        {
+          "criterion": "Warm-service reuse",
+          "disposition": "Design/evaluation evidence credited.",
+          "limit": "No implementation, adoption or speedup was established; a new warm-reuse benchmark is not selected."
+        },
+        {
+          "criterion": "No removals without no-regression proof",
+          "disposition": "Existing assurance boundary preserved.",
+          "limit": "No service removal, profile mutation or substitute proof path is selected."
+        }
+      ],
+      "credited_provenance": [
+        {
+          "issue": "USF-384",
+          "comment_uuid": "0b0e5d0c-6468-4958-ab5b-d70aee600351",
+          "at_utc": "2026-07-06T23:27:23.939Z",
+          "scope": "Warm-command baseline and separate cold temporary install; command ranking only."
+        },
+        {
+          "issue": "USF-580",
+          "document_uuid": "12670615-b2c5-4a55-80b2-5c9ed3f00d61",
+          "document_url": "https://linear.app/maldous/document/usf-580-execution-evidence-56e31d099130",
+          "historical_run": "qa-run-2026-07-06T15-06-30-097Z",
+          "scope": "Reused historical inventory and runtime evidence, not freshly regenerated for this disposition."
+        },
+        {
+          "issue": "USF-962",
+          "reported_short_pins": [
+            "08c846d",
+            "faaddb3"
+          ],
+          "scope": "Documented non-destructive preflight and temporary-project smoke/cleanup."
+        },
+        {
+          "issue": "USF-1001",
+          "comment_uuid": "d9609553-59e6-4b33-95be-17617a36d4ed",
+          "at_utc": "2026-07-08T03:47:48.122Z",
+          "reported_short_pin": "49201f8",
+          "scope": "Accepted config/port/startup-wait/teardown phase timing and repository validation; no measured speedup/readiness claim."
+        },
+        {
+          "issues": [
+            "USF-586",
+            "USF-590",
+            "USF-766"
+          ],
+          "scope": "Design/evaluation and provider/environment/reset/cleanup/validator assurance requirements."
+        }
+      ],
+      "current_applicability": {
+        "historical_programme": "P-USF-3 completed and retained as history",
+        "selected_current_environment_or_provider_contract": "unknown",
+        "current_mandatory_service_map": "unknown",
+        "current_contract_or_timing_owner": "unknown",
+        "current_residual": "Conditional only on an actual current owner identifying an exact still-applicable criterion."
+      },
+      "retained_limits": [
+        "Missing per-service timing/ranking proof is not marked passed.",
+        "Reported short historical source pins and original runtime receipt files were not independently source-byte verified in this evidence review.",
+        "Current owner and applicable contract must be established before any substantive timing or optimisation work.",
+        "Any later coupled effect remains subject to the existing product-owner working/readiness hold."
+      ],
+      "missing_timing_proof_passed": false,
+      "new_measurement_work_selected": false
+    }
+  ],
+  "effects": {
+    "source_disposition_only": true,
+    "issue_or_archive_mutations": false,
+    "runtime_or_protected_adoption": false,
+    "readiness_or_implementation_completion_claim": false,
+    "new_measurements": false
+  }
+}
