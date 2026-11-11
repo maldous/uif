@@ -33,6 +33,10 @@ class PolicyTests(unittest.TestCase):
     def test_valid(self):
         self.assertEqual(self.check(), [])
 
+    def test_stale_version(self):
+        self.edit_manifest('version', '1.1.0')
+        self.assertIn('Invalid version', self.check())
+
     def test_tamper(self):
         (self.root / module.POLICY_PATH).write_text('changed\n')
         self.assertIn('Policy hash mismatch', self.check())
