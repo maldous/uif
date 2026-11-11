@@ -8,9 +8,11 @@ Cloud role has no Git configuration or repository binding. Additional Foo Codex 
 restored allowance and current ownership checks. These are operating requirements,
 not proof of provisioning, availability or universal adoption.
 
-Read the [dated adoption checkpoint](docs/agents/adoption-2026-11-11.md) to
-distinguish intended policy, published candidates, accepted develop source and
-unverified runtime adoption. Revalidate its observations before relying on them.
+Read the [owner-driven alignment checkpoint](docs/agents/owner-alignment-2026-11-11.md)
+for the later source baseline and remaining adoption distinctions. The earlier
+[adoption checkpoint](docs/agents/adoption-2026-11-11.md) is historical evidence,
+not a current work queue or control-state instruction. Revalidate dated
+observations before relying on them.
 
 # Shared UIF worker directions
 
