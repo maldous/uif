@@ -157,6 +157,17 @@ class RecreationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 r.recreate(self.root, self.bundle, target, self.transport, lambda *args: True, self.journal)
         self.assertEqual(self.server.calls, [])
+    def test_active_foo_target_rejected_before_side_effects(self):
+        bindings = []
+        def bind(*args):
+            bindings.append(args)
+            return True
+        with self.assertRaisesRegex(ValueError, 'preserved workspaces forbidden'):
+            r.recreate(self.root, self.bundle, 'foo', self.transport, bind, self.journal)
+        self.assertEqual(self.server.calls, [])
+        self.assertEqual(bindings, [])
+        self.assertFalse(self.journal.exists())
+        self.assertFalse(Path(str(self.journal) + '.receipt.json').exists())
     def test_missing_artifact_and_path_escape(self):
         self.bundle['source'] = {'path': '../outside', 'sha256': '0' * 64}
         with self.assertRaises(ValueError):
