@@ -51,3 +51,28 @@ selected checkout/source adoption in the existing coordination record. A sent
 handoff or merged source does not establish a running worker, available tools,
 Foo session readiness, recovered ownership, BAU or continuous delivery. Missing
 owner/capability evidence remains explicit and does not block unrelated work.
+
+## Subsequent clarification in policy 1.2.3
+
+Policy 1.2.3 retains the six existing durable cloud roles and Morgan's Foo Codex
+session orchestration. It adds task-based MCP preference, economical model and
+effort selection, UIF accountability for shared integrations across Foo/cloud,
+and bidirectional parent/product independence. These are operating requirements,
+not assertions that tooling, model settings or infrastructure were deployed.
+
+The existing product owners supplied these bounded observations; this update
+reconciles their reports without repeating their audits:
+
+| Product | Owner-reported source | Evidence and remaining limit |
+| --- | --- | --- |
+| CIX product | develop `12a62a4c7f94d43848e32aa7cf6352f7fbe37d99` | Local build-input/manifests and dry build inspected; no required UIF dependency found. Compilation, provider loading and runtime untested; operations custody remains separate. |
+| ANQR | develop `23c875e7870b5512133440c0e583e75f47163072` | Source/test imports are local or Node built-ins. No emitted build/start/deploy route; adapters remain synthetic. |
+| Circular Quay | reviewed candidate `103d4271cb006b3fb52a949ea815ff057f3dc9b0` | Static local build/delivery findings; Windmill is selected integration. Four current documentation passages need optional-lane wording through the existing integration owner; runtime untested. |
+| OffMenu | baseline `349dbf9ff37d5bf9de15695d70391234b0f6f8ee` | CLI/imports work without UIF; 36 core tests pass and 12 optional Stokowski tests skip. Full web/deployed/BAU proof remains absent; shared packaging still needs UIF-owned separation. |
+
+These reports do not establish reverse independence of the shared UIF runtime,
+five-project policy rollout, or full product runtime acceptance. Product owners
+retain their source/documentation corrections; UIF owns the shared-infrastructure
+correction and BAU proof. Preserve exact historical pins and valid optional
+integration. Distribute identical accepted policy bytes and record actual
+acknowledgments separately from publication and execution adoption.
