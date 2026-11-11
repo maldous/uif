@@ -224,6 +224,13 @@ atomic claim, a live lease or evidence that duplicate dispatch is prevented.
 This desired coordination contract does not assert a deployed shared allocator
 or prescribe an unreviewed locking or scheduling implementation.
 
+Keep interim cloud and Foo allocations disjoint. Preserve existing ledger task
+identities and their reconciliation links when moving work into Linear. Foo-local
+locks do not establish cloud ownership, and independent cloud claims must not
+require Foo to be available. Shared claim authority and effect fencing across
+both lanes need separate implementation and qualification; connector status
+updates alone do not provide them.
+
 Before a later authorized start or restoration, establish whether UIF is
 actually in BAU mode on Foo and use its supported controls for the requested
 transition. Observe useful pickup, execution, review, publication and refill,
