@@ -1,6 +1,6 @@
 {
   "schema": "uif-reconciled-historical-criteria/v1",
-  "record_date": "2026-11-12",
+  "record_date": "2026-11-11",
   "scope": "UIF owner-approved bounded ledger evidence dispositions",
   "provenance": {
     "source_repository": "maldous/uif",
