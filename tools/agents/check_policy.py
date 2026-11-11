@@ -22,7 +22,7 @@ def check(root, expected_policy, expected_repository=None):
         policy = (root / POLICY_PATH).read_bytes()
         agents = (root / 'AGENTS.md').read_text()
         fixed = {'schema': 'uif-worker-policy-manifest-v1',
-                 'policy_id': 'uif-worker-policy', 'version': '1.2.2',
+                 'policy_id': 'uif-worker-policy', 'version': '1.2.3',
                  'policy_path': POLICY_PATH, 'maintenance_repository': 'maldous/uif',
                  'maintenance_path': POLICY_PATH, 'distribution': 'reviewed-local-copy'}
         for key, value in fixed.items():
