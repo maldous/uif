@@ -1,3 +1,17 @@
+## Fixed operating role
+
+This repository belongs to the UIF dedicated project role. Read the fixed project agents and general Cloud role
+section in the local shared worker policy at startup and pass its version/hash to
+children. Project cloud Git, CPU and storage are independent of Foo; optional MCP
+execution must bind the correct host, project, worktree and branch. The general
+Cloud role has no Git configuration or repository binding. Additional Foo Codex sessions require
+restored allowance and current ownership checks. These are operating requirements,
+not proof of provisioning, availability or universal adoption.
+
+Read the [dated adoption checkpoint](docs/agents/adoption-2026-11-11.md) to
+distinguish intended policy, published candidates, accepted develop source and
+unverified runtime adoption. Revalidate its observations before relying on them.
+
 # Shared UIF worker directions
 
 At every startup, including independent Foo work, read
@@ -102,3 +116,4 @@ Validate the implemented procedure, under the applicable authorization, against:
 Demonstrate preservation of recoverable work, use of current accepted state, absence of duplicate admission/stale replay, correct ownership transfer, and applicable dependency validation. Explicitly distinguish passed, failed, blocked, unknown, and not-run checks. Record observed remote commits and operation outcomes separately from intended actions.
 
 Do not simulate or perform disruptive recovery tests against live services without authorization. Documentation, a proposed test plan, or focused unit tests are not proof of deployed recovery. Report remaining implementation and validation work without claiming it already exists.
+
