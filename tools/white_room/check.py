@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from subprocess import SubprocessError
 
 STATES = {'compliant', 'drifted', 'failed', 'blocked', 'unknown', 'not-applicable'}
 
@@ -25,7 +26,7 @@ def index(items):
         result[key] = item
     return result
 
-def evaluate(contract, evidence, profile, project, now=None):
+def evaluate(contract, evidence, profile, project, now=None, *, checkout=None):
     """Compare caller-supplied evidence; freshness is not authenticity or a lease."""
     now = now or datetime.now(timezone.utc)
     if contract['version'] != 1 or evidence['version'] != 1:
@@ -84,6 +85,19 @@ def evaluate(contract, evidence, profile, project, now=None):
             row(key, 'compliant', 'fresh supplied evidence matches declaration')
     # Omission never turns unknown checkpoint/ownership/effects into permission.
     context = evidence.get('recovery', {})
+    if checkout is not None:
+        if not isinstance(context, dict):
+            raise ValueError('recovery evidence must be an object')
+        selected_commit = context.get('selected_commit')
+        registered = [item for item in checkout['worktrees'] if item['path'] == checkout['root']]
+        if not selected_commit:
+            row('checkout', 'unknown', 'evidence has no selected commit for the local checkout')
+        elif (checkout['head'] != selected_commit or len(registered) != 1
+              or registered[0]['head'] != checkout['head']
+              or registered[0]['branch_ref'] != 'refs/heads/' + checkout['branch']):
+            row('checkout', 'drifted', 'local HEAD or worktree registration differs from the selected source')
+        else:
+            row('checkout', 'compliant', 'local HEAD and worktree registration agree with the selected commit')
     needed = ('repository', 'accepted_commit', 'selected_commit', 'issue', 'owner',
               'ownership_epoch', 'authoritative_owner', 'authoritative_epoch',
               'remote_read_at', 'ownership_expires_at', 'workspace_isolated',
@@ -144,10 +158,17 @@ def main():
     parser.add_argument('--evidence', type=Path, required=True)
     parser.add_argument('--profile', choices=['cloud', 'foo'], required=True)
     parser.add_argument('--project', required=True)
+    parser.add_argument('--checkout', type=Path, help='compare the selected commit to this local Git checkout')
     args = parser.parse_args()
     try:
-        result = evaluate(json.loads(args.contract.read_text(), parse_constant=reject_constant), json.loads(args.evidence.read_text(), parse_constant=reject_constant), args.profile, args.project)
-    except (ValueError, KeyError, TypeError, OSError) as exc:
+        contract = json.loads(args.contract.read_text(), parse_constant=reject_constant)
+        evidence = json.loads(args.evidence.read_text(), parse_constant=reject_constant)
+        checkout = None
+        if args.checkout is not None:
+            from inventory import inventory
+            checkout = inventory(args.checkout)
+        result = evaluate(contract, evidence, args.profile, args.project, checkout=checkout)
+    except (ValueError, KeyError, TypeError, OSError, SubprocessError) as exc:
         print(json.dumps({'error': type(exc).__name__, 'preflight_passed': False}))
         return 2
     print(json.dumps(result, indent=2))

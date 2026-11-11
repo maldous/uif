@@ -12,6 +12,26 @@ DECLARATIONS = {'AGENTS.md', 'pyproject.toml', 'package.json', 'package-lock.jso
                 'uv.lock', 'requirements.txt', 'Cargo.toml', 'Cargo.lock', 'go.mod',
                 'go.sum', 'mix.exs', 'mix.lock', 'compose.yaml', 'docker-compose.yml'}
 
+def registered_worktrees(porcelain):
+    worktrees = []
+    for record in porcelain.rstrip('\0').split('\0\0'):
+        fields = {}
+        for line in record.split('\0'):
+            key, _, value = line.partition(' ')
+            fields[key] = value
+        if not fields.get('worktree'):
+            raise ValueError('missing worktree path')
+        worktrees.append({
+            'path': fields['worktree'],
+            'head': fields.get('HEAD'),
+            'branch_ref': fields.get('branch'),
+            'detached': 'detached' in fields,
+            'bare': 'bare' in fields,
+            'locked': 'locked' in fields,
+            'prunable': 'prunable' in fields,
+        })
+    return worktrees
+
 def inventory(root):
     root = Path(root).resolve(strict=True)
     env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
@@ -56,12 +76,14 @@ def inventory(root):
             'root': str(root), 'head': git('rev-parse', 'HEAD').strip(),
             'branch': git('symbolic-ref', '--quiet', '--short', 'HEAD').strip(),
             'dirty': None, 'dirty_state': 'unknown',
+            'git_common_dir': git('rev-parse', '--path-format=absolute', '--git-common-dir').rstrip('\n'),
+            'worktrees': registered_worktrees(git('worktree', 'list', '--porcelain', '-z')),
             'local_refs': git('for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/').splitlines(),
             'declaration_paths': declarations, 'remote_verified': False,
             'discovery_complete': False,
             'limitations': ['No remote authentication or freshness inferred from tracking refs.',
                            'No worktree status/diff, file bodies, environment values, credentials or data read.',
-                           'Worktrees, unpushed work and external services require further reconciliation.']}
+                           'Worktree registrations are metadata. Checkout status, unpushed work and external services require further reconciliation.']}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
