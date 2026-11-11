@@ -55,7 +55,7 @@ def payload(root, bundle):
 
 
 def validate_target(target):
-    if not isinstance(target, str) or not re.fullmatch('[a-z][a-z0-9_-]{2,63}', target) or target in ('offmenu', 'admins'):
+    if not isinstance(target, str) or not re.fullmatch('[a-z][a-z0-9_-]{2,63}', target) or target in ('foo', 'offmenu', 'admins'):
         raise ValueError('explicit isolated target required; preserved workspaces forbidden')
 
 
