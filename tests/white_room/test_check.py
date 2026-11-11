@@ -98,6 +98,37 @@ class Recovery(unittest.TestCase):
         self.evidence['contract_sha256']=digest(self.contract)
         self.evidence['observations'][0]['actual']={'enabled':1}
         self.assertBlocked()
+    def test_version_must_be_integer_one(self):
+        for document in (self.contract, self.evidence):
+            for invalid_version in (True, 1.0):
+                with self.subTest(document=document is self.contract, version=invalid_version):
+                    document['version'] = invalid_version
+                    self.evidence['contract_sha256'] = digest(self.contract)
+                    with self.assertRaises(ValueError):
+                        self.run_check()
+                    document['version'] = 1
+
+    def test_recovery_issue_and_owner_require_nonblank_strings(self):
+        for key in ('issue', 'owner'):
+            for invalid_identity in (7, True, '  '):
+                with self.subTest(key=key, identity=invalid_identity):
+                    self.setUp()
+                    context = self.evidence['recovery']
+                    context[key] = context['published_checkpoint'][key] = invalid_identity
+                    if key == 'owner':
+                        context['authoritative_owner'] = invalid_identity
+                    result = self.run_check()
+                    self.assertFalse(result['preflight_passed'])
+                    self.assertIn('identity', {row['id'] for row in result['checks']})
+
+    def test_discovery_completion_requires_boolean_map(self):
+        for invalid_discovery in ([], {'cloud': 'true'}):
+            with self.subTest(discovery=invalid_discovery):
+                self.contract['projects']['uif']['discovery_complete'] = invalid_discovery
+                self.evidence['contract_sha256'] = digest(self.contract)
+                with self.assertRaises(ValueError):
+                    self.run_check()
+
     def test_invalid_freshness_refused(self):
         self.contract['requirements'][0]['max_age_seconds']=float('nan')
         with self.assertRaises(ValueError): self.run_check()

@@ -29,8 +29,10 @@ def index(items):
 def evaluate(contract, evidence, profile, project, now=None, *, checkout=None):
     """Compare caller-supplied evidence; freshness is not authenticity or a lease."""
     now = now or datetime.now(timezone.utc)
-    if contract['version'] != 1 or evidence['version'] != 1:
-        raise ValueError('unsupported version')
+    for document in (contract, evidence):
+        version = document['version']
+        if type(version) is not int or version != 1:
+            raise ValueError('unsupported version')
     if profile not in ('cloud', 'foo') or project not in contract['projects']:
         raise ValueError('unknown profile or project')
     repository = contract['projects'][project].get('repository')
@@ -52,7 +54,10 @@ def evaluate(contract, evidence, profile, project, now=None, *, checkout=None):
     if evidence.get('profile') != profile or evidence.get('project') != project:
         row('target-binding', 'drifted', 'evidence targets another executor or project')
     selected = contract['projects'][project]
-    if selected.get('discovery_complete', {}).get(profile) is not True:
+    discovery = selected.get('discovery_complete', {})
+    if not isinstance(discovery, dict) or any(type(value) is not bool for value in discovery.values()):
+        raise ValueError('invalid discovery completion map')
+    if discovery.get(profile) is not True:
         row('discovery', 'unknown', 'applicable dependency discovery is incomplete')
     for key, req in requirements.items():
         if profile not in req['profiles'] or project not in req['projects']:
@@ -85,9 +90,9 @@ def evaluate(contract, evidence, profile, project, now=None, *, checkout=None):
             row(key, 'compliant', 'fresh supplied evidence matches declaration')
     # Omission never turns unknown checkpoint/ownership/effects into permission.
     context = evidence.get('recovery', {})
+    if not isinstance(context, dict):
+        raise ValueError('recovery evidence must be an object')
     if checkout is not None:
-        if not isinstance(context, dict):
-            raise ValueError('recovery evidence must be an object')
         selected_commit = context.get('selected_commit')
         registered = [item for item in checkout['worktrees'] if item['path'] == checkout['root']]
         if not selected_commit:
@@ -114,7 +119,11 @@ def evaluate(contract, evidence, profile, project, now=None, *, checkout=None):
         import re
         valid_commit = isinstance(context['accepted_commit'], str) and bool(re.fullmatch('[a-f0-9]{40}', context['accepted_commit']))
         require(valid_commit and context['selected_commit'] == context['accepted_commit'], 'source', 'selected source is not current accepted source')
-        require(bool(context['issue']) and bool(context['owner']) and type(context['ownership_epoch']) is int and context['ownership_epoch'] >= 1, 'identity', 'missing issue/owner/epoch')
+        valid_identity = all(isinstance(context[key], str) and context[key].strip()
+                             for key in ('issue', 'owner'))
+        epoch = context['ownership_epoch']
+        require(valid_identity and type(epoch) is int and epoch >= 1, 'identity',
+                'expected nonempty issue and owner strings and a positive integer epoch')
         require(context['owner'] == context['authoritative_owner'] and type(context['authoritative_epoch']) is int and context['ownership_epoch'] == context['authoritative_epoch'], 'owner', 'ownership does not match authoritative record')
         try:
             fresh = 0 <= (now - timestamp(context['remote_read_at'])).total_seconds() <= 300
