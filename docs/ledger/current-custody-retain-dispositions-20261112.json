@@ -1,0 +1,456 @@
+{
+  "schema": "uif-current-custody-retain-addendum/v1",
+  "checkpoint_date": "2026-11-12",
+  "scope": "Eight separately owner-adopted no-effect existing-custody/unavailable-legacy-recovery dispositions. This addendum does not rewrite the primary 39-record snapshot.",
+  "provenance": {
+    "review_artifact_basename": "uif-current8-custody-retain-review-20261112.json",
+    "review_artifact_sha256": "0be9bbad43eadd20979b8d7f6358b4828bd460fecb4cf08495378f159f14c205",
+    "review_recorded_at_utc": "2026-11-12T01:54:59.984472+00:00",
+    "review_stage_limit": "The input proposed separate owner adjudication; the later root task adopts all eight per-row decisions. Its old candidate/adoption-pending wording is not this source decision.",
+    "direction_basis": "Trusted Morgan relay through the existing UIF owner, expressed as a paraphrase rather than a verbatim user quote.",
+    "accepted_source_base": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+    "policy_version": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459"
+  },
+  "primary_snapshot": {
+    "artifact_basename": "legacy-unavailable-dispositions-20261112.json",
+    "local_preparation_commit": "6d363d35148550122be1ae56cdf7464f2fc574e3",
+    "tree": "d3e6d892c142f821dc05de3ab357b017ddce70f4",
+    "published_PR": 37,
+    "published_PR_url": "https://github.com/maldous/uif/pull/37",
+    "published_head": "054f1632c20928c71d555a8169e0a1ead3fe5276",
+    "published_parent": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+    "state_at_owner_handoff": "Published PR candidate; merge/approval pending, not merged accepted source.",
+    "publication_observation": "Owner handoff only; this addendum performs no PR read, merge or retry.",
+    "primary_JSON_and_39_annotations_unchanged": true
+  },
+  "owner_adoption": {
+    "decision_owner": "Existing UIF accountable owner and canonical integration writer",
+    "adopted_original_ids": [
+      "retained-r059-evidence-custody",
+      "r192-dirty-postimage-custody",
+      "r193-independent-store-recovery",
+      "uif217-r055-independent-custody",
+      "uif217-r058-independent-custody",
+      "uif217-r068-independent-custody",
+      "uif217-r070-independent-custody",
+      "uif217-r071-independent-custody"
+    ],
+    "adopted_count": 8,
+    "adjudication_pending": false,
+    "separate_source_review_and_publication_pending": true,
+    "original_recovery_or_backup_fulfillment_claimed": false
+  },
+  "accounting_addendum": {
+    "review_domain": 107,
+    "supersedes_only_original_ids": [
+      "retained-r059-evidence-custody",
+      "r192-dirty-postimage-custody",
+      "r193-independent-store-recovery",
+      "uif217-r055-independent-custody",
+      "uif217-r058-independent-custody",
+      "uif217-r068-independent-custody",
+      "uif217-r070-independent-custody",
+      "uif217-r071-independent-custody"
+    ],
+    "superseded_treatment": "These eight current custody/recovery rows were within the prior partial/current-requirement bookkeeping pending separate owner disposition. Their passive disposition is now adopted; actual selected current contracts and controls are not superseded.",
+    "owner_dispositioned": {
+      "previous_source_accepted_bounded_fulfilled": 1,
+      "owner_adopted_bounded_retain": 5,
+      "owner_adopted_retired_legacy_unavailable": 34,
+      "owner_adopted_mixed_custody_legacy_recovery_unavailable": 8,
+      "total": 48
+    },
+    "remaining": {
+      "partial_or_current_requirement": 13,
+      "engineering": 12,
+      "actual_current_shared_joins": 34,
+      "total": 59
+    },
+    "other_product_readiness_records_outside_assessment": 106,
+    "meaning": "Forty-eight owner-dispositioned records are not 48 technical, recovery or merged-source successes. Only one bounded fulfillment was previously source-accepted at the accepted base; primary 39 source is pending PR37 merge and these eight decisions are pending separate publication.",
+    "original_action_ids": 213,
+    "nonadditive_reference_ids": 11,
+    "primary_top_level_counts_not_rewritten": true,
+    "new_task_ids": 0
+  },
+  "records": [
+    {
+      "original_id": "retained-r059-evidence-custody",
+      "original_routing_identity": "uif-ledger-20261111-017",
+      "historical_objective": "Record current custodian/consumers and recoverability for R059's unique .delivery evidence after its completed worktree placement. (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving identifiable evidence in existing custody/placement without ownership or permission changes; record custodian/consumers and recoverability as unknown. Do not claim placement recovered evidence or created backup.",
+      "retained_provenance": "Unique ignored/.delivery evidence remained distinct from the completed worktree placement. No named current runtime/reader or selected use is established in the inspected retained inputs.",
+      "historical_recovery_unavailable": "Original custodian/consumer/history/restore proof remains unknown/unavailable; no new capture or evidence-body search.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 89
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/16",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "r192-dirty-postimage-custody",
+      "original_routing_identity": "uif-ledger-20261111-018",
+      "historical_objective": "Preserve and map the ten R192 dirty composed-publication postimages independently of source equivalence and any later selected-source action. (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving dirty postimages unchanged in existing custody. No overwrite, cleanup, new copy, source-incorporation or ten-new-task claim; record original mapping unavailable.",
+      "retained_provenance": "Ten historical dirty composed-publication postimages were a separate preservation/mapping subject; equivalence never authorized discarding originals. No active present consumer or selected mutation of those originals is evidenced here.",
+      "historical_recovery_unavailable": "Original ten-postimage byte/map/recovery bridge unavailable; mapping must not be claimed complete.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 90
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/17",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "r193-independent-store-recovery",
+      "original_routing_identity": "uif-ledger-20261111-019",
+      "historical_objective": "Retain the independent b850 store and establish its required original-source/evidence recovery disposition; no off-host recovery is currently established by its no-remote snapshot. (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving independent store in existing custody. Explicitly state no off-host recovery established; no invented backup task, remote creation, transfer, restoration or asset-absence claim.",
+      "retained_provenance": "Independent b850 store had a no-remote historical snapshot; no off-host recovery was established. No current selected consumer or backup/restore contract requiring a new operation is independently evidenced.",
+      "historical_recovery_unavailable": "Original-source/evidence recovery proof unavailable; no remote or off-host backup is inferred.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 91
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/18",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "uif217-r055-independent-custody",
+      "original_routing_identity": "uif-ledger-20261111-067",
+      "historical_objective": "Reconcile R055 original-history and independent local evidence custody (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving source/local-only commit and ignored evidence under existing owner/custody; no reset/delete/force operation. A later actual selected mutation still invokes current preservation/permission checks.",
+      "retained_provenance": "Recorded R055 local95a216fa was one unpublished commit ahead of origincde01895. This is bounded historical provenance, not a current consumer/lease or proof of present availability.",
+      "historical_recovery_unavailable": "Original-history/independent local evidence bridge unavailable; do not regenerate original IDs/objects or claim equality/recovery.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 145
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/66",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "uif217-r058-independent-custody",
+      "original_routing_identity": "uif-ledger-20261111-068",
+      "historical_objective": "Reconcile R058 original-history and independent local evidence custody (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving R058 copy/evidence in existing custody unchanged. No remerge, replacement, deletion, source-equivalence or backup claim.",
+      "retained_provenance": "R058 historical divergence/equivalence assessment and independent evidence custody are separate. No current use of the original local evidence/copy is established by the inspected inputs.",
+      "historical_recovery_unavailable": "Exact original-history/local evidence recovery proof unavailable; equivalence or restoration not asserted.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 146
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/67",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "uif217-r068-independent-custody",
+      "original_routing_identity": "uif-ledger-20261111-069",
+      "historical_objective": "Reconcile R068 original-history and independent local evidence custody (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving R068 source/evidence under existing custody; preserve accepted component history without replay or new helper/backup task.",
+      "retained_provenance": "Existing UIF134 helper acceptance remains credited; it neither recovered original R068 history nor established a current original-copy consumer.",
+      "historical_recovery_unavailable": "Independent original-history/local evidence recovery packet unavailable; do not reopen completed helper work or claim custody recovered from helper tests.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 147
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/68",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "uif217-r070-independent-custody",
+      "original_routing_identity": "uif-ledger-20261111-070",
+      "historical_objective": "Reconcile R070 original-history and independent local evidence custody (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving R070 original/local evidence unchanged; current selected acquisition implementation must use its own qualified source, not a reconstructed historical receipt.",
+      "retained_provenance": "R070 acquisition-helper composition was distinct from original local custody. Current helper/source engineering is real but no use/recovery contract for this original retained copy/evidence is established here.",
+      "historical_recovery_unavailable": "Original-copy/history/local evidence bridge unavailable; current component import/dependency correctness must not be conflated with old custody recovery.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 148
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/69",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    },
+    {
+      "original_id": "uif217-r071-independent-custody",
+      "original_routing_identity": "uif-ledger-20261111-071",
+      "historical_objective": "Reconcile R071 original-history and independent local evidence custody (UIF-217; deliverable).",
+      "disposition": "retained_existing_custody_legacy_recovery_unavailable",
+      "owner_adopted": true,
+      "decision": "Retain any surviving R071 material unchanged in existing custody; no duplicate helper work, cleanup, original-copy recovery or off-host backup claim.",
+      "retained_provenance": "Equivalent R071 helper patches in retained5b8 source are credited component provenance; they are not original-copy custody or backup evidence. No current consumer of the old independent local evidence is established.",
+      "historical_recovery_unavailable": "Original-history/independent evidence recovery proof unavailable; source equivalence does not make it recovered.",
+      "standing_current_protection": "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized.",
+      "current_owner": "Existing UIF disposition/canonical writer; existing actual project/custody owners retain assets/rights; no new owner or lease.",
+      "source_citations": [
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 149
+        },
+        {
+          "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+          "path": "README.md",
+          "line": 49,
+          "rule": "A retain decision can close a disposition without moving anything; preserve source/dirty/untracked/ignored/custody/bindings/evidence."
+        },
+        {
+          "artifact_basename": "uif-ledger-allocation-20261111.json",
+          "JSON_pointer": "/records/70",
+          "fields": [
+            "recorded_owner_constraints",
+            "task_constraints",
+            "existing_work_to_recover",
+            "required_result"
+          ],
+          "artifact_sha256": "0512d14a415d646ace4bfd2119f8206adefeb31ba9b3724d90560f9271cce7ca"
+        }
+      ],
+      "superseded_state": "Separate owner adjudication of passive retention and unavailable history was pending in the reviewed input; that pending treatment is superseded by this adopted disposition.",
+      "preserved_unknowns": {
+        "current_custodian_or_consumer_qualified": false,
+        "current_asset_presence_or_absence_verified": false,
+        "historical_mapping_or_original_bytes_recovered": false,
+        "backup_or_restore_proven": false,
+        "new_backup_contract_inferred": false,
+        "consumer_limit": "This is absence of an identified current requirement in these bounded retained inputs, not proof that no consumer exists anywhere, and not a current asset census.",
+        "backup_requirement_limit": "Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced."
+      }
+    }
+  ],
+  "preserved_limits": [
+    "Retain identifiable surviving source and evidence in existing custody, permissions and placement. No move, copy, merge, reset, cleanup, ownership transfer or export is selected.",
+    "Custodian, consumer and current use remain unknown rather than falsely qualified. No absence of a consumer or asset anywhere is established.",
+    "This disposition does not prove backup, off-host durability, restored bytes, original mapping, source equivalence or historical recovery.",
+    "Missing old evidence does not create a new backup/reconstruction contract. Any independently evidenced current selected use, rights, retention or recoverability contract still applies.",
+    "Specific denied reads/effects and actual current shared-operation owner/readiness controls remain unchanged.",
+    "No search, asset/capture discovery, host/MCP/Linear operation, runtime, permission, security or archive effect was performed for this source preparation.",
+    "The primary PR37 payload, primary 39 annotations and primary top-level count snapshot are retained byte-for-byte apart from these eight separate README block additions."
+  ]
+}
