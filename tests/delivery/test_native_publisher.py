@@ -16,8 +16,8 @@ from uif.native_publisher import (
     NativePublisher, PreparedCandidate, PreparedPublication, PreparedPullRequest, claim_binding, durable,
     process_start, read_optional, readiness_envelope, supervise,
 )
-from uif.publication import PublisherReceiptPaths, accepted_result, fingerprint, record_digest, wire
-from uif.source import SourceHold
+from uif.publication import PublisherCommand, PublisherReceiptPaths, accepted_result, fingerprint, record_digest, wire
+from uif.source import SourceHold, file_digest
 
 
 class NativePublisherTests(RPCFixture):
@@ -391,3 +391,63 @@ class NativePublisherTests(RPCFixture):
                                          self.host).head, self.merge)
         self.assertEqual(self.invoke(), observed)
         self.assertEqual([entry[0] for entry in self.writes()], ["PUT"])
+
+
+    def test_caller_deadline_preserves_original_supervisor_cleanup_and_receipt(self):
+        self.setup_final()
+        launcher = self.root / "delayed-publisher"
+        attempts = self.root / "delayed-attempts"
+        receipt_path = Path(self.host.paths.invocation(self.request))
+        source = str(Path(__file__).resolve().parents[2] / "src")
+        launcher.write_text(
+            "#!/usr/bin/python3\n"
+            "import json, os, subprocess, sys, time\n"
+            "from pathlib import Path\n"
+            f"sys.path.insert(0, {source!r})\n"
+            "from uif.native_publisher import NativePublisher\n"
+            "from uif.publication import PublisherReceiptPaths, wire\n"
+            "from uif.source import SourceHold\n"
+            "class DelayedRPC:\n"
+            "    def publish(self, *args, **kwargs):\n"
+            "        child = subprocess.Popen(['/bin/sleep', '4'])\n"
+            f"        with open({str(attempts)!r}, 'a') as log:\n"
+            "            log.write(json.dumps([os.getpid(), child.pid]) + '\\n')\n"
+            "        time.sleep(4)\n"
+            "        raise AssertionError('disposable worker should time out')\n"
+            "    def observe_merge(self, *args, **kwargs):\n"
+            "        raise SourceHold('fixture has no merge')\n"
+            f"paths = PublisherReceiptPaths(Path({str(self.host.paths.accepted_root)!r}), "
+            f"Path({str(self.host.paths.claim_root)!r}))\n"
+            f"host = NativePublisher(paths, {self.closure!r}, {self.pr.repository_id}, os.getuid(), "
+            "DelayedRPC(), timeout=2)\n"
+            "sys.stdout.buffer.write(wire(host.handle(sys.stdin.buffer.read())))\n"
+        )
+        launcher.chmod(0o700)
+        command = PublisherCommand(launcher, file_digest(launcher), self.closure, self.host.paths, timeout=1)
+        with self.assertRaisesRegex(SourceHold, "uif_publisher_outcome_unknown"):
+            command.call(self.request.envelope(observe=False))
+
+        deadline = time.monotonic() + 6
+        record = None
+        while time.monotonic() < deadline:
+            record = read_optional(receipt_path, uid=os.getuid())
+            if (record is not None and record["terminal"] is not None
+                    and not Path("/proc", str(record["intent"]["supervisor_pid"])).exists()):
+                break
+            time.sleep(0.02)
+        self.assertIsNotNone(record)
+        self.assertIsNotNone(record["terminal"], "the original supervisor did not persist its terminal receipt")
+        terminal = record["terminal"]
+        self.assertEqual(terminal["outcome"], "timed_out")
+        self.assertTrue(terminal["direct_child_reaped"])
+        self.assertTrue(terminal["waitpid_echild"])
+        self.assertTrue(terminal["child_tree_gone"])
+        child_pids, = attempts.read_text().splitlines()
+        for pid in json.loads(child_pids):
+            self.assertFalse(Path("/proc", str(pid)).exists())
+
+        observed = replace(command, timeout=5).call(self.request.envelope(observe=True))
+        self.assertEqual(observed["invocation_id"], self.request.invocation_id)
+        self.assertEqual(observed["receipt"], {"body": record, "sha256": record_digest(record)})
+        self.assertEqual(attempts.read_text().splitlines(), [child_pids])
+        self.assertEqual(self.writes(), [])

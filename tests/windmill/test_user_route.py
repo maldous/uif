@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 
 from uif import host_jobs as host
 
@@ -172,6 +172,98 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((result["status"], result["job_succeeded"], result["incident"]), ("failed", False, "unconfirmed"))
         self.assertEqual(exchange.call_args.args[1], req)
         self.assertEqual(calls, [front.ROUTE, self.front_config["credential_reference"]])
+
+    def proof_fixture(self):
+        first, second = (self.run_request(job=job) for job in ("proof-running", "proof-before-start"))
+        registration = front.wire(self.front_config).decode()
+        scope = front._ProofScope(
+            "u/fixture-proof", front.sha(registration.encode()), self.descriptor, 100, 200,
+            ((first["job_id"], first["request_sha256"], ("run", "status", "cancel")),
+             (second["job_id"], second["request_sha256"], ("status", "cancel"))),
+        )
+        env = dict(WM_WORKSPACE="foo", WM_PERMISSIONED_AS=scope.permissioned_as,
+                   BASE_INTERNAL_URL="https://fixture.invalid", WM_TOKEN="synthetic-token")
+        return first, second, registration, scope, env
+
+    @staticmethod
+    def front_args(req):
+        return {key: req[key] for key in ("action", "job_id", "request_sha256", "command",
+                                         "mode", "timeout_seconds", "resources") if key in req}
+
+    def test_exact_proof_receipts_skip_post_and_ordinary_receipts_still_post(self):
+        first, second, registration, scope, env = self.proof_fixture()
+        for original, actions in ((first, ("run", "status", "cancel")), (second, ("status", "cancel"))):
+            for action in actions:
+                req = original if action == "run" else self.observe(original, action)
+                for outcome in ("failed", "timed_out", "cancelled"):
+                    with self.subTest(job=req["job_id"], action=action, outcome=outcome):
+                        response = self.jobs._binding(original) | dict(
+                            status=outcome, child_tree_gone=True, lease_id="original-lease",
+                            exit_code=1, reconcile_required=False,
+                        )
+                        variable = Mock(side_effect=[registration, "synthetic-credential"] * 2)
+                        with (patch.dict(os.environ, env, clear=True),
+                              patch.dict("sys.modules", {"wmill": SimpleNamespace(get_variable=variable)}),
+                              patch.object(front.time, "time", return_value=150),
+                              patch.object(front, "exchange", return_value=response) as exchange,
+                              patch.object(front, "build_opener") as opener):
+                            opener.return_value.open.return_value = MagicMock()
+                            with patch.object(front, "_PROOF_SCOPE", scope):
+                                proof = front.main(**self.front_args(req))
+                            opener.assert_not_called()
+                            ordinary = front.main(**self.front_args(req))
+                            opener.assert_called_once()
+                            opener.return_value.open.assert_called_once()
+                        self.assertEqual(proof, dict(ordinary, incident="suppressed:qualification"))
+                        self.assertIsNone(ordinary["incident"])
+                        post = opener.return_value.open.call_args.args[0]
+                        self.assertEqual(post.get_method(), "POST")
+                        self.assertEqual(post.full_url, "https://fixture.invalid/api/w/foo/resources/create")
+                        self.assertEqual(front.decode(post.data)["value"]["status"], outcome)
+                        self.assertEqual([call.args[1] for call in exchange.call_args_list], [req, req])
+
+    def test_proof_scope_rejects_mismatches_before_any_transport(self):
+        first, second, _, scope, env = self.proof_fixture()
+        status = self.observe(first)
+        cases = (
+            (status, dict(env, WM_WORKSPACE="other"), 150, "workspace_binding"),
+            (status, dict(env, WM_PERMISSIONED_AS="u/other"), 150, "proof_actor"),
+            (status, dict(env, WM_PERMISSIONED_AS=""), 150, "proof_actor"),
+            (status, env, 99, "proof_window"),
+            (status, env, 200, "proof_window"),
+            (dict(status, job_id="unlisted"), env, 150, "proof_request"),
+            (dict(status, request_sha256=second["request_sha256"]), env, 150, "proof_request"),
+            (second, env, 150, "proof_request"),
+            (dict(first, command="printf different"), env, 150, "request_digest"),
+            (dict(first, resources=dict(first["resources"], cpu_millis=101)), env, 150, "request_digest"),
+            (dict(status, command="printf hello"), env, 150, "observation_parameters"),
+        )
+        for req, environ, now, reason in cases:
+            with (self.subTest(reason=reason), patch.dict(os.environ, environ, clear=True),
+                  patch.dict("sys.modules", {"wmill": None}),
+                  patch.object(front.time, "time", return_value=now),
+                  patch.object(front, "_PROOF_SCOPE", scope),
+                  patch.object(front, "exchange") as exchange,
+                  patch.object(front, "build_opener") as opener):
+                with self.assertRaisesRegex(ValueError, reason):
+                    front.main(**self.front_args(req))
+                exchange.assert_not_called()
+                opener.assert_not_called()
+
+    def test_proof_route_drift_holds_before_credentials_or_ssh(self):
+        first, _, registration, scope, env = self.proof_fixture()
+        variable = Mock(return_value=registration + "\n")
+        with (patch.dict(os.environ, env, clear=True),
+              patch.dict("sys.modules", {"wmill": SimpleNamespace(get_variable=variable)}),
+              patch.object(front.time, "time", return_value=150),
+              patch.object(front, "_PROOF_SCOPE", scope),
+              patch.object(front, "exchange") as exchange,
+              patch.object(front, "build_opener") as opener):
+            with self.assertRaisesRegex(ValueError, "proof_route"):
+                front.main(**self.front_args(self.observe(first)))
+        variable.assert_called_once_with(front.ROUTE)
+        exchange.assert_not_called()
+        opener.assert_not_called()
 
     def test_wrong_receipt_identity_is_held_with_no_second_call(self):
         req = self.run_request()

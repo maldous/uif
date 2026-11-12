@@ -15,13 +15,20 @@ import os
 from pathlib import Path
 import re
 import subprocess
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, TemporaryFile
+from threading import Thread
 from typing import Literal, Protocol
 from uuid import UUID
 
 from .ledger import RowKey, TERMINAL_LINKS
 from .source import SourceHold, exact_path, file_digest, oid
 from .stokowski import LedgerAdmission, PolledIssue, UIF
+
+
+PUBLISHER_MAX_WORK_SECONDS = 600
+PUBLISHER_CLEANUP_SECONDS = 2
+# The default caller wait also allows for launcher startup and durable writes.
+PUBLISHER_CALL_SECONDS = PUBLISHER_MAX_WORK_SECONDS + PUBLISHER_CLEANUP_SECONDS + 30
 
 
 def require(condition, reason):
@@ -201,7 +208,7 @@ class PublisherCommand:
     closure_sha256: str
     paths: PublisherReceiptPaths
     fixed_args: tuple[str, ...] = ()
-    timeout: int = 25
+    timeout: int = PUBLISHER_CALL_SECONDS
 
     def call(self, envelope):
         path = exact_path(self.executable)
@@ -212,13 +219,28 @@ class PublisherCommand:
         payload = wire(envelope)
         require(len(payload) <= 16_384, "uif_publisher_request_size")
         try:
-            result = subprocess.run(
-                [str(path), *self.fixed_args], input=payload, capture_output=True, start_new_session=True,
-                env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}, cwd="/",
-                timeout=self.timeout, check=True,
-            )
-            require(len(result.stdout) <= 65_536, "uif_publisher_response_size")
-            return json.loads(result.stdout, object_pairs_hook=unique_json_object)
+            # The registered launcher owns the effect and its original journal.
+            # A caller deadline must never SIGKILL it before it can reap its
+            # worker and persist the terminal receipt. File-backed streams can
+            # outlive this wait without blocking a detached launcher on pipes.
+            with TemporaryFile() as request_file, TemporaryFile() as response_file:
+                request_file.write(payload)
+                request_file.seek(0)
+                process = subprocess.Popen(
+                    [str(path), *self.fixed_args], stdin=request_file, stdout=response_file,
+                    stderr=subprocess.DEVNULL, start_new_session=True,
+                    env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}, cwd="/",
+                )
+                try:
+                    status = process.wait(timeout=self.timeout)
+                finally:
+                    if process.returncode is None:
+                        Thread(target=process.wait, daemon=True).start()
+                require(status == 0, "uif_publisher_outcome_unknown")
+                response_file.seek(0)
+                raw = response_file.read(65_537)
+                require(len(raw) <= 65_536, "uif_publisher_response_size")
+                return json.loads(raw, object_pairs_hook=unique_json_object)
         except (subprocess.SubprocessError, OSError, ValueError) as error:
             raise SourceHold("uif_publisher_outcome_unknown") from error
 

@@ -6,7 +6,7 @@
   "owner_registration": {"path": "/etc/uif-stokowski/owner-runtime.json", "sha256": null},
   "capacity": {
     "path": null,
-    "sha256": "a416ee6e5dab2b2b98dc973f8b905648b4a9a4f0195ba804a91e7f12862b9f8b"
+    "sha256": "754d6ed54068fcfc24b8450d9e61437f7d84a7c180a8227423f8d32b5d0a5df9"
   },
   "capacity_policy": {"path": null, "sha256": null},
   "descriptor_sha256": null,

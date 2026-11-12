@@ -10,6 +10,7 @@ import math
 import os
 import re
 import time
+from typing import NamedTuple
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -28,6 +29,20 @@ RECEIPT_FIELDS = {
     "runner_sha256", "status", "reconcile_required", "child_tree_gone", "lease_id",
     "exit_code", "reason", "log_bytes", "logs_truncated", "heartbeat_at",
 }
+
+
+class _ProofScope(NamedTuple):
+    permissioned_as: str
+    route_sha256: str
+    descriptor_sha256: str
+    not_before: int
+    expires: int
+    requests: tuple[tuple[str, str, tuple[str, ...]], ...]
+
+
+# Set only in the separately owner-reviewed, proof-only script source.
+# This is a source literal, never a Windmill argument, variable or resource.
+_PROOF_SCOPE: _ProofScope | None = None
 
 
 def wire(data):
@@ -107,6 +122,21 @@ def request(cfg, action, job_id, request_sha256, command, mode, timeout_seconds,
     body.update(action=action, request_sha256=request_sha256)
     require(len(wire(body)) <= MAX_WIRE, "request_size")
     return body
+
+
+def _proof_request(scope, action, job_id, request_sha256, command, mode, timeout_seconds, resources):
+    require(scope.permissioned_as and os.environ.get("WM_PERMISSIONED_AS") == scope.permissioned_as,
+            "proof_actor")
+    require(0 < scope.not_before <= time.time() < scope.expires, "proof_window")
+    require(matches(PIN, scope.route_sha256) and matches(PIN, scope.descriptor_sha256)
+            and len(scope.requests) == 2 and scope.requests[0][0] != scope.requests[1][0]
+            and all(matches(ID, job) and matches(PIN, digest) and actions
+                    and set(actions) <= {"run", "status", "cancel"}
+                    for job, digest, actions in scope.requests), "proof_binding")
+    require(any(job_id == job and request_sha256 == digest and action in actions
+                for job, digest, actions in scope.requests), "proof_request")
+    return request({"descriptor_sha256": scope.descriptor_sha256}, action, job_id, request_sha256,
+                   command, mode, timeout_seconds, resources)
 
 
 def exchange(cfg, req, secret):
@@ -209,12 +239,20 @@ def record_incident(result):
 def main(action: str, job_id: str, request_sha256: str, command: str = None, mode: str = None,
          timeout_seconds: int = None, resources: dict = None) -> dict:
     require(os.environ.get("WM_WORKSPACE") == WORKSPACE, "workspace_binding")
+    scope = _PROOF_SCOPE
+    if scope is not None:
+        req = _proof_request(scope, action, job_id, request_sha256, command, mode, timeout_seconds, resources)
     import wmill
 
     registration = wmill.get_variable(ROUTE)
     require(isinstance(registration, str), "route_unavailable")
     cfg = route(decode(registration.encode()))
-    req = request(cfg, action, job_id, request_sha256, command, mode, timeout_seconds, resources)
+    if scope is None:
+        req = request(cfg, action, job_id, request_sha256, command, mode, timeout_seconds, resources)
+    else:
+        require(sha(registration.encode()) == scope.route_sha256
+                and cfg["descriptor_sha256"] == scope.descriptor_sha256, "proof_route")
+        require(time.time() < scope.expires, "proof_window")
     try:
         result = receipt(cfg, req, exchange(cfg, req, wmill.get_variable(cfg["credential_reference"])))
     except Exception:
@@ -224,9 +262,12 @@ def main(action: str, job_id: str, request_sha256: str, command: str = None, mod
                     reconcile_required=True, job_succeeded=False)
     incident = None
     if result["status"] in {"failed", "timed_out", "cancelled"}:
-        try:
-            record_incident(result)
-        except Exception:
-            incident = "unconfirmed"
+        if scope is None:
+            try:
+                record_incident(result)
+            except Exception:
+                incident = "unconfirmed"
+        else:
+            incident = "suppressed:qualification"
     return dict(result, job_succeeded=result["status"] == "succeeded"
                 and result.get("reconcile_required") is False, incident=incident)

@@ -17,7 +17,7 @@ from .supervisor import POLICY as SUPERVISOR_POLICY, _trusted, load_capacity
 SCHEMA = "uif-shared-job-admission/1"
 NAMESPACE = "uif-foo-user-job/1"
 REGISTRATION = Path("/etc/uif-stokowski/shared-job-admission.json")
-CAPACITY_SHA256 = "a416ee6e5dab2b2b98dc973f8b905648b4a9a4f0195ba804a91e7f12862b9f8b"
+CAPACITY_SHA256 = "754d6ed54068fcfc24b8450d9e61437f7d84a7c180a8227423f8d32b5d0a5df9"
 MAX_WIRE = 65536
 MAX_REQUEST = 2 * MAX_WIRE + 1024
 BINDING_FIELDS = {

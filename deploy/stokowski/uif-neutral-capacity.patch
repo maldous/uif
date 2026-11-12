@@ -66,7 +66,7 @@
              return {'id':task_id,'binding':binding,'fingerprint':fingerprint,'status':'running','reused':False}
 
      def cancel(self,task_id):
-@@ -215,14 +251,52 @@
+@@ -215,14 +251,53 @@
              if row[0] not in ('finished','failed'):
                  db.execute('UPDATE leases SET status=? WHERE id=?',('cancel_requested',task_id));self._event(db,task_id,'cancel_requested')
 
@@ -120,7 +120,8 @@
                  return
 -            if row[0]=='cancel_requested' and outcome=='succeeded':raise AdmissionError('cancelled_task_cannot_succeed')
 -            db.execute('UPDATE leases SET status=?,outcome=? WHERE id=?',('finished' if outcome in ('succeeded','stopped') else 'failed',outcome,task_id))
-+            if status == 'cancel_requested' and outcome == 'succeeded':
++            # For neutral leases, the controller verifies the settled terminal proof.
++            if not neutral and status == 'cancel_requested' and outcome == 'succeeded':
 +                raise AdmissionError('cancelled_task_cannot_succeed')
 +            if neutral:
 +                self._event(db, task_id, receipt_event)

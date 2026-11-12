@@ -215,6 +215,62 @@ class SharedJobTests(TestCase):
             events = database.execute("SELECT event FROM events WHERE id=?", (lease,)).fetchall()
         self.assertEqual(events.count(("neutral_stopped_receipt:" + finish["receipt_sha256"],)), 1)
 
+    def test_late_cancel_releases_original_authenticated_success(self):
+        lease = self.call("admit")["lease_id"]
+        self.assertEqual(self.call("start", request=self.work)["observation"]["state"], "running")
+        finish = self.witness(lease, outcome="succeeded")
+        stopped_path = self.receipts / (lease + ".json")
+        cancel = self.broker.cancel
+
+        def cancel_after_pool_transition(request):
+            original, = self.pool.status()
+            self.assertEqual((original["id"], original["status"]), (lease, "cancel_requested"))
+            return cancel(request)
+
+        with patch.object(self.broker, "cancel", side_effect=cancel_after_pool_transition):
+            late = self.call("cancel", request=self.work)
+        self.assertEqual(late["status"], "cancel_requested")
+        self.assertEqual(late["observation"]["outcome"], "succeeded")
+        self.assertTrue(late["observation"]["containment_stopped"])
+        with self.assertRaisesRegex(SourceHold, "stopped_receipt"):
+            self.call("finish", **{**finish, "receipt_sha256": "1" * 64})
+        self.assertFalse(stopped_path.exists())
+        self.assertEqual(self.pool.status()[0]["status"], "cancel_requested")
+
+        finish_neutral = self.adapter.pool.finish_neutral
+
+        def finish_after_stopped(*args):
+            self.assertTrue(stopped_path.is_file())
+            return finish_neutral(*args)
+
+        with patch.object(self.adapter.pool, "finish_neutral", side_effect=finish_after_stopped):
+            released = self.call("finish", **finish)
+        self.assertEqual((released["status"], released["lease_id"], released["receipt_sha256"]),
+                         ("finished", lease, finish["receipt_sha256"]))
+        self.assertTrue(stopped_path.is_file())
+        self.assertEqual(self.call("finish", **finish), released)
+        status = self.call("status")
+        self.assertEqual((status["outcome"], status["receipt_sha256"]),
+                         ("succeeded", finish["receipt_sha256"]))
+        original, = self.pool.status()
+        self.assertEqual((original["id"], original["outcome"]), (lease, "succeeded"))
+        self.assertEqual([action for action, _ in self.broker.actions], ["start", "cancel", "observe", "observe"])
+        with sqlite3.connect(self.database) as database:
+            events = database.execute("SELECT event FROM events WHERE id=? ORDER BY rowid", (lease,)).fetchall()
+        self.assertEqual(events[-3:], [("cancel_requested",),
+                         ("neutral_stopped_receipt:" + finish["receipt_sha256"],), ("reconciled_succeeded",)])
+
+    def test_native_cancel_still_refuses_success_and_neutral_finish(self):
+        lease = self.native("native-one", 500)["id"]
+        self.pool.cancel(lease)
+        with self.assertRaisesRegex(self.capacity.AdmissionError, "cancelled_task_cannot_succeed"):
+            self.pool.finish(lease, True, "succeeded")
+        with self.assertRaisesRegex(self.capacity.AdmissionError, "lease_lane_mismatch"):
+            self.pool.finish_neutral(lease, True, "succeeded", "1" * 64)
+        self.assertEqual(self.pool.status()[0]["status"], "cancel_requested")
+        self.pool.finish(lease, True, "cancelled")
+        self.assertEqual(self.pool.status()[0]["outcome"], "cancelled")
+
     def test_capacity_is_shared_in_both_directions_and_keeps_native_provider_limit(self):
         self.assertEqual(self.native("native-one", 500)["status"], "running")
         self.assertEqual(self.call("admit")["status"], "refused")

@@ -21,7 +21,8 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 import time
 
 from .publication import (
-    PublicationRequest, PublisherReceiptPaths, accepted_result, digest, fingerprint,
+    PUBLISHER_CLEANUP_SECONDS, PUBLISHER_MAX_WORK_SECONDS, PublicationRequest,
+    PublisherReceiptPaths, accepted_result, digest, fingerprint,
     record_digest, require, unique_json_object, uuid, wire,
 )
 from .publication_rpc import (
@@ -249,7 +250,7 @@ def supervise(work, inner, *, timeout):
     finally:
         try:
             if child is not None and child > 0 and not gone:
-                deadline = time.monotonic() + 2
+                deadline = time.monotonic() + PUBLISHER_CLEANUP_SECONDS
                 while not gone and time.monotonic() < deadline:
                     stop_children()
                     status, gone = reap(child)
@@ -504,7 +505,8 @@ class NativePublisher:
         require(type(self.uid) is int and self.uid > 0 and self.uid == os.getuid() == os.geteuid()
                 and digest(self.closure_sha256)
                 and type(self.repository_id) is int and self.repository_id > 0
-                and type(self.timeout) is int and 0 < self.timeout <= 600, "uif_publisher_host_registration")
+                and type(self.timeout) is int and 0 < self.timeout <= PUBLISHER_MAX_WORK_SECONDS,
+                "uif_publisher_host_registration")
 
     @contextmanager
     def owner_lock(self):
