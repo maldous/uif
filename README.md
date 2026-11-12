@@ -51,6 +51,41 @@ The checkpoint can be used now without waiting for each listed task to finish. T
 - Shared deployment discovery and toolchain/checkpoint contracts are reused by subject-specific tasks. Do not duplicate discovery, source review, dispatch or external effects. Source-action mappings retain parent/child and shared-input relationships.
 - [AGENTS.md](AGENTS.md) now documents separate Foo and cloud white-room procedures. Documentation is complete; discovery, implementation, configuration-drift checks and recovery validation below remain outstanding. Do not blindly resume old Foo sessions or assume cloud workers share Foo storage.
 
+## Owner disposition checkpoint, 2026-11-12
+
+The [owner-adopted disposition record](docs/ledger/legacy-unavailable-dispositions-20261112.json)
+records 34 retired legacy-unavailable requirements and five fulfilled bounded
+retain-in-place decisions. The historical objectives below remain visible;
+retired history is unfulfilled, not recovered or equivalent. Missing old
+captures, receipts or maps are no longer gates for current delivery, and their
+old counts create no new tasks. Current requirements and specific denials remain.
+
+Earlier evidence checkpoints and capture-dependent wording remain historical
+provenance for the retired components. They do not reinstate a capture search
+or block a newly authorized current delivery.
+
+This is dated bookkeeping against accepted source
+8fa48aa56ab1383f7b4df267fbd1da47f7996071. Only one bounded record was previously
+source-accepted as fulfilled at that base. The five new retain decisions and 34
+legacy dispositions are owner-adopted; exact source review/publication of this
+checkpoint is pending. Original inventory identities remain unchanged.
+
+| State in the 107-record assessment domain | Count |
+| --- | ---: |
+| Previously source-accepted bounded fulfillment | 1 |
+| Owner-adopted bounded retain decisions, pending publication | 5 |
+| Owner-adopted retired legacy-unavailable dispositions, unfulfilled history | 34 |
+| Partial/current requirements | 21 |
+| Engineering | 12 |
+| Actual current shared joins | 34 |
+
+The other 106 product-readiness records are outside this assessment. All 213
+action IDs and 11 nonadditive references are retained. This is not an assertion
+that all inventory records remain open or that historical goals were achieved.
+Actual current shared operations retain their owner, permission and relevant
+counterpart working/readiness requirements. The five paired SRC qualifications
+remain partial; no physical, permission or ownership change was performed.
+
 ## Candidate actions by coordination project
 
 Project headings identify coordination, not ownership of every associated file. Each stable record ID remains distinct from its Linear issue ID. Conditional operations are explicitly marked.
@@ -65,22 +100,27 @@ Project headings identify coordination, not ownership of every associated file. 
 - **src-059-placement-decision**: Select final local configuration placement preserving permission behavior ([UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
   - Preserve permission behavior and obtain any required confirmation for permission changes.
+  - Current owner decision (2026-11-12): **fulfilled bounded retain-in-place disposition**, with no move, merge, permission change or ownership transfer. The paired qualification remains partial; see the [decision and source citations](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **src-062-qualification**: Establish project marker binding and lookup consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-062-placement-decision**: Select project marker placement without merging distinct profiles ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+  - Current owner decision (2026-11-12): **fulfilled bounded retain-in-place disposition**, with no move, merge, permission change or ownership transfer. The paired qualification remains partial; see the [decision and source citations](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **src-064-qualification**: Qualify local configuration/cache entries and readers or writers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-064-placement-decision**: Select placement preserving local behavior and distinct home configuration ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+  - Current owner decision (2026-11-12): **fulfilled bounded retain-in-place disposition**, with no move, merge, permission change or ownership transfer. The paired qualification remains partial; see the [decision and source citations](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **src-066-qualification**: Qualify notes custodian, current or historical use and consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-066-placement-decision**: Select retained notes placement without inferring obsolescence from dates ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+  - Current owner decision (2026-11-12): **fulfilled bounded retain-in-place disposition**, with no move, merge, permission change or ownership transfer. The paired qualification remains partial; see the [decision and source citations](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **src-067-qualification**: Establish inputs workflow ownership, provenance and consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-067-placement-decision**: Select inputs placement accounting for the distinct home root ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
+  - Current owner decision (2026-11-12): **fulfilled bounded retain-in-place disposition**, with no move, merge, permission change or ownership transfer. The paired qualification remains partial; see the [decision and source citations](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **mixed-custody-source-classification**: Classify CIX/OffMenu source and evidence roles within the already-relocated mixed custody group; attach supported project-specific followups and unresolved dependencies. ([UIF-246](https://linear.app/maldous/issue/UIF-246/reconcile-mixed-project-archive-custody); deliverable).
 - **src-060-qualification**: Reconcile custody-group ownership, consumers and recovery mappings ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); subtask).
 - **src-060-placement-decision**: Select group-specific custody placement with existing project owners ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); subtask).
@@ -90,20 +130,31 @@ Project headings identify coordination, not ownership of every associated file. 
 - **r192-dirty-postimage-custody**: Preserve and map the ten R192 dirty composed-publication postimages independently of source equivalence and any later selected-source action. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
 - **r193-independent-store-recovery**: Retain the independent b850 store and establish its required original-source/evidence recovery disposition; no off-host recovery is currently established by its no-remote snapshot. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
 - **uif128-exact-tip-acceptance**: Reconcile acceptance for retained a6437a4 source against the older changes-requested review and later published release corrections; identify only a real residual if one remains. ([UIF-128](https://linear.app/maldous/issue/UIF-128/implement-frozen-release-candidates-and-parallel-release-qualification); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **uif128-original-history-recovery**: Establish recovery for the exact retained release-component history and local evidence. ([UIF-128](https://linear.app/maldous/issue/UIF-128/implement-frozen-release-candidates-and-parallel-release-qualification); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **uif126-original-history-recovery**: Establish recovery for accepted c70fb52 component source and retained local evidence; preserve the recorded 67/90-check acceptance. ([UIF-126](https://linear.app/maldous/issue/UIF-126/align-windmill-execution-and-resource-handling-with-community-edition); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **guard-policy-source-disposition**: Resolve retained guard-policy differences against the actual current requirement and selected source. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **assets-validator-composition-disposition**: Resolve the distinct 996b adoption-assets and b850 validator/schema source composition with exact current pins and acceptance. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **documentary-metadata-disposition**: Determine the current relevance and disposition of documentary metadata source 25f45442. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
   - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **lifecycle-provenance-disposition**: Resolve the retained lifecycle/provenance semantics against current intended outcomes, preserving incorporated work. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **r192-source-disposition**: Decide incorporation or justified keep/adapt/extract/supersede/reject for the ten tracked R192 composed-publication source edits. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **r070-r071-dependency-selection**: Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **r055-local-origin-disposition**: Resolve R055's retained one-commit-ahead local head versus origin before selecting source disposition. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **r058-source-equivalence**: Determine current source equivalence and any actual residual requirement for R058's divergent source. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **r068-source-disposition**: Determine R068 source disposition while retaining UIF-134's completed positive/negative helper acceptance. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **javascript-profile-history-recovery**: Establish original-history recovery for accepted JS profile source 92a44b1 and retained evidence. ([UIF-142](https://linear.app/maldous/issue/UIF-142/support-a-sealed-javascript-validation-and-delivery-profile); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **javascript-refill-history-recovery**: Establish original-history recovery for accepted refill source 59dbf51 and retained evidence. ([UIF-159](https://linear.app/maldous/issue/UIF-159/prove-repeated-autonomous-delivery-recovery-and-eligible-refill); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **canonical-v1-selected-composition**: Reconcile the exact selected canonical-V1 producer/schema/sealer/settings/assets/operator source pairs and independent reviews into one coherent source composition. ([UIF-161](https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes); deliverable).
 - **canonical-v1-current-input-qualification**: Bind fresh authoritative current inputs, exact target/operation identity and bootstrap; qualify affected consumers, seven semantic consumer proofs and original-intake evidence. ([UIF-161](https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes); deliverable).
 - **coherent-adoption-readiness**: Identify the exact selected-profile/coherent adoption and recovery evidence still missing after the PR209 source gap closed; bind current owner, original operation and scoped hold. ([UIF-130](https://linear.app/maldous/issue/UIF-130/verify-coherent-migration-recovery-and-operational-handover); deliverable).
@@ -148,7 +199,9 @@ Project headings identify coordination, not ownership of every associated file. 
 - **uif217-r070-independent-custody**: Reconcile R070 original-history and independent local evidence custody ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
 - **uif217-r071-independent-custody**: Reconcile R071 original-history and independent local evidence custody ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
 - **retained-r067-history-recovery**: Resolve exact original-history recovery for R067 while preserving its retained local source and ignored evidence. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **retained-r087-history-recovery**: Resolve exact original-history recovery for R087 while preserving its retained local source and ignored evidence. ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); deliverable).
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 
 ### CQ (26 records)
 
@@ -284,42 +337,55 @@ The candidate-to-action reconciliation folds the lexical-group subtask into the 
 - **ledger-asset-identity-join**: Build the exact captured-asset identity and ownership register ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional), [UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); outstanding discovery).
   - Outcome: Qualify unresolved root/custody associations, including the 228 unresolved lexical groups, and join exact repository, owner, consumer and issue evidence. Record supported, conflicting and unknown identities. Admit the 82 historical locator chains only to the extent supported.
   - Boundary: Use narrower token, overlay and historical-census outcomes as inputs, not duplicate tasks. No asset, group or path count is an ownership or task count; the immutable snapshot stays unchanged.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-unresolved-issue-tokens**: Resolve the twelve unresolved current-prefix issue tokens ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); outstanding discovery).
   - Outcome: Establish exact original/current issue correspondence or a supported unresolved disposition for the twelve candidates affecting 1,357 captured records.
   - Boundary: A lookup failure does not prove deletion; do not create issues or infer project ownership from a prefix.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-project-overlay-recompute**: Recompute associations with the verified post-capture project overlay ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); held prior denial).
   - Outcome: Apply the 77 verified project-only changes and separately recorded UIF-247 association to a versioned derived view, quantifying exact affected identities without changing the original catalog.
   - Boundary: The earlier execution was denied and did not run. This entry does not authorize a retry or alternative route.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-conflict-signature-review**: Reconcile multiple-project conflict signatures in the derived asset view ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); held prior denial).
   - Outcome: Review distinct conflicting repository, issue-project and custody cues and produce evidence-backed conflict or unresolved dispositions.
   - Boundary: This is separate from applying project-membership changes. The prior analysis was denied and remains unexecuted; no retry is selected.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-historical-census-crosswalk**: Join the recovered historical census to current custody and source obligations ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); outstanding discovery).
   - Outcome: Join the 713 exact historical identities to accepted current repository, custody, consumer and source-review records, preserving exclusions and different capture times.
   - Boundary: 647 names, 246 roots and 18 review bindings are inputs, not interchangeable denominators or new tasks. Historical bytes/schema/cardinality are already verified.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-retained-checkout-crosswalk**: Reconcile the thirty-two retained checkout identities and custody maps ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); outstanding discovery).
   - Outcome: Recover full original row, HEAD, branch/common-store and custody correspondence for the 32 known names and recorded short HEADs; reconcile the separate branch queue by exact identity.
   - Boundary: Credit recovered names and completed moves. Four registry matches remain candidates; the ten-row queue does not prove the full 32-copy bridge. Do not reopen row237 or completed retirements.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-coverage-exclusions-account**: Account for historical exclusions and held evidence in the coverage register ([UIF-107](https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); outstanding discovery).
   - Outcome: Record the affected identities, missing evidence and coverage impact of the 13 historical inaccessible subtrees and later holds, linking any already owned release/inspection task.
   - Boundary: This is coverage accounting, not a duplicate of the existing R181 hold-resolution task or authority to retry a held read.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-uif216-source-crosswalk**: Complete the frozen source-subject to disposition crosswalk ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); outstanding discovery).
   - Outcome: Map all 38 frozen source memberships to exact deltas, completed acceptance, existing disposition outcomes or explicit unresolved evidence. Reuse the eleven newly supported nonadditive relationships.
   - Boundary: Existing source-disposition actions remain counted once; broad guard-policy/lifecycle families are not one task per file. R200 remains held.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-uif217-custody-crosswalk**: Complete the frozen custody-subject to outcome crosswalk ([UIF-217](https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement); outstanding discovery).
   - Outcome: Map all 101 frozen custody memberships to completed, source-satisfied, separately owned or unresolved custody outcomes with exact copy and recovery evidence.
   - Boundary: Placement is not custody acceptance. Preserve the existing five additions, R067/R087 children, completed retirements and distinct same-HEAD copies.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-canonical89-relation-map**: Recover and reconcile the canonical89 relation evidence ([UIF-139](https://linear.app/maldous/issue/UIF-139/deliver-remaining-offmenu-outcomes-through-the-native-platform); outstanding discovery).
   - Outcome: Recover the original authoritative relation evidence and resolve the 12 ambiguous and seven unmapped relations to exact current requirement/owner/acceptance outcomes or explicit missing evidence.
   - Boundary: Bounded saved, repository, issue and delivery-directory lookups are completed without locating the named coverage artifact. The 19 relations are not 19 identified delivery tasks.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-current-requirement-crosswalk**: Reconcile the original issue census with the later current-project catalog ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional), [UIF-139](https://linear.app/maldous/issue/UIF-139/deliver-remaining-offmenu-outcomes-through-the-native-platform); outstanding discovery).
   - Outcome: Establish the original 513-issue to later 550-current-project requirement, acceptance, owner and dependency crosswalk, preserving exact identities and later verified overlays.
   - Boundary: Reuse bounded project reviews; do not repeat completed reviews or equate issue membership with product acceptance.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-h2-current-applicability**: Decide continuing applicability of the held Modern App Surface records ([UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional), [UIF-215](https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights); outstanding discovery).
   - Outcome: Record current UIF/USF/ANQR applicability and dependency dispositions for all 406 held records, reusing the six groups, 2,377 historical assertions and 18 explicit historical policy choices.
   - Boundary: Historical acceptance remains accepted. Do not repeat decided historical choices, infer no relevance from keywords or perform blanket archival.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-h4-current-applicability**: Resolve the remaining historical H4 applicability classifications ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance); outstanding discovery).
   - Outcome: Complete evidence-backed current ownership, relevance and disposition for the 159 unresolved historical applicability records, with accepted historical outcomes and existing owner mappings retained.
   - Boundary: Keep this separate from the specific contradictory record and project-membership effects. Do not resume the interrupted worker or retry denied operations.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-usf1144-evidence-reconciliation**: Record the reconciled USF-1144 withdrawal, later bounded acceptance and supersession ([USF-1144](https://linear.app/maldous/issue/USF-1144/correct-census-readiness-semantic-audit-mapping-planning-and); bounded evidence reconciliation recorded, original inventory ID retained).
   - Outcome: The reviewed chronology reconciles the original status contradiction; no current justified residual is established in that exact evidence. Preserve the programme verdict **INCOMPLETE**, not READY, and the comment UUID chronology in the [structured disposition](docs/ledger/reconciled-historical-criteria-20261112.json).
   - Boundary: This records a bounded reconciliation, not programme readiness or a PR360 merge. No issue or archive effect is selected; historical missing-resource counts do not create new obligations.
@@ -351,30 +417,38 @@ The candidate-to-action reconciliation folds the lexical-group subtask into the 
   - Outcome: Record current dependencies, retained provenance and target-specific dispositions for the 321 historical Foundation/Deployment records before any selected recoverable archival.
   - Boundary: Reuse completed historical reviews. Existing project archive effects stay in their existing actions; do not equate the current UIF workspace with an obsolete separate workspace.
   - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-repository-environment-dispositions**: Reconcile current relevance of the historical Repository and Environment records ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); outstanding discovery).
   - Outcome: Resolve current dependency/retention/disposition for the 364 historical recoverable-archive candidates, preserving exact bounded acceptance and current reuse evidence.
   - Boundary: The separate USF-580 criterion is owned by its own discovery record. Historical completion is not alone authority for a present archive effect.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-usf580-criterion-disposition**: Record USF-580 criterion dispositions; current applicability remains pending ([USF-580](https://linear.app/maldous/issue/USF-580/compose-service-inventory-and-startup-cost); partial evidence reconciliation, original inventory ID retained).
   - Outcome: Credit the bounded historical inventory/startup observations and later phase-timing work in the [structured disposition](docs/ledger/reconciled-historical-criteria-20261112.json). Exact per-service timing/ranking, the current mandatory-service map and the current contract owner remain unknown; missing timing proof is not passed.
   - Boundary: Preserve the partial record without selecting new measurements or a warm-reuse benchmark. Route only a justified, currently applicable evidence delta to its actual owner under existing readiness holds.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-legacy-ten-dispositions**: Confirm current disposition of the ten explicit legacy candidates ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance); outstanding discovery).
   - Outcome: Reconcile current dependencies and retained evidence for the ten explicit supersession or bounded-legacy candidates and record justified recoverable disposition.
   - Boundary: These ten are already identified candidates, not new feature work. Preserve superseding evidence; no archive effect is selected by this classification.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-cix-paused-project-dispositions**: Resolve the thirty-five paused CIX project-assignment dispositions ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance); held assignment scope).
   - Outcome: Reconcile the six known-not-applied interrupted outcomes, 28 unattempted plans and the denied CIX-311 operation with current scope; complete only permitted project-only effects with unchanged-field readback.
   - Boundary: No unknown outcome remains. This entry does not resume the interrupted agent or authorize retry of CIX-311. Assignment is not source acceptance.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-uxf-project-compatibility**: Resolve the three UXF team and project compatibility dispositions ([UXF-1](https://linear.app/maldous/issue/UXF-1/establish-reusable-experience-authority-and-independently-assured), [UXF-5](https://linear.app/maldous/issue/UXF-5/bind-experience-contracts-to-exact-usable-implementation-packs), [UXF-6](https://linear.app/maldous/issue/UXF-6/provide-independent-rendered-experience-conformance-for-consuming); outstanding discovery).
   - Outcome: Establish the supported, authorized project/team arrangement for the three shared outcomes and complete permitted project association with preserved issue identities, history and state.
   - Boundary: UXF-5 was known not applied after a compatibility error; the other two were unattempted. Do not silently change protected team ownership or broaden project permissions.
 - **ledger-document-descendant-coverage**: Establish supported document-descendant coverage ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance); blocked enumeration capability).
   - Outcome: Identify a supported, authorized way to account for document descendants and reconcile their exact identities and relevant current obligations, or record a precise confirmed coverage limit.
   - Boundary: All 55 known document bodies are already reviewed. Do not retry the unsupported parentDocument parameter or equate schema rejection with no descendants.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-historical-anqr-coverage**: Establish the historical ANQR workspace coverage and custody boundary ([UIF-215](https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights), [UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance); blocked workspace coverage).
   - Outcome: Verify authorized access, exact workspace identity, relevant inventories, ownership and reciprocal dependency/recovery links for the separately referenced historical ANQR workspace.
   - Boundary: The current ANQR project is not that workspace. Current tools expose no workspace list/switch; do not invent unseen issue counts or bypass access.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-administrative-delta-reconciliation**: Reconcile post-capture administrative inventory changes ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance); outstanding discovery).
   - Outcome: Account for known or permitted observed team/project/document/milestone/resource and relation changes through the agreed quiescent checkpoint, with explicit observation times and unavailable scope.
   - Boundary: Reuse the existing inventory and verified overlays. A whoami identity read does not prove freshness, and no arbitrary repeated whole-workspace census is introduced as a delivery gate.
+  - Current owner disposition (2026-11-12): **retired_legacy_unavailable**; the historical objective remains unfulfilled. See the [retired requirement, current remainder and preserved holds](docs/ledger/legacy-unavailable-dispositions-20261112.json).
 - **ledger-recoverable-archive-interface**: Establish a supported recoverable archive and restoration interface ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance), [UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); blocked archive capability).
   - Outcome: Qualify the available authorized archive/not-trashed/restore surface for selected issue and container kinds; retain exact unsupported operations and required permissions.
   - Boundary: Target relevance/disposition belongs to the existing target records. Current connector exposes no archive action; deletion or Canceled status is not a substitute.

@@ -1,0 +1,853 @@
+{
+  "schema": "uif-owner-adopted-legacy-dispositions/v1",
+  "checkpoint_date": "2026-11-12",
+  "scope": "Thirty-four no-effect retired legacy-unavailable dispositions and five bounded no-change retain decisions under existing original IDs.",
+  "provenance": {
+    "accepted_source": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+    "reviewed_assessment_artifact": "uif-ledger-legacy-unavailable-final-v4-8fa48aa-20261112.json",
+    "reviewed_assessment_sha256": "34d67b24ee4e388c9def03b37261ea37b44dca0ae7b2298e72f65f5e56d2c47d",
+    "reviewed_assessment_recorded_at_utc": "2026-11-12T01:38:36.528721+00:00",
+    "policy_version": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
+    "direction_basis": "Trusted Morgan relay paraphrase through the existing UIF owner, not a verbatim user quote. Missing historical material is no longer a prerequisite for current reconciliation.",
+    "adjudication_stage": "The later root task individually adopts all 34 legacy retirements and all five retain decisions. Earlier candidate or pending-adjudication wording in the immutable assessment is not the active owner decision recorded here."
+  },
+  "owner_adoption": {
+    "decision_owner": "Existing UIF accountable owner and canonical integration writer",
+    "legacy_retirements_adopted": 34,
+    "bounded_retain_decisions_adopted": 5,
+    "adjudication_pending": false,
+    "source_review_and_publication_pending": true,
+    "source_acceptance_limit": "At the accepted base, only one bounded record was previously source-accepted as fulfilled. The 39 owner decisions recorded in this new snapshot are pending exact source review/publication."
+  },
+  "bookkeeping": {
+    "original_action_ids": 213,
+    "nonadditive_reference_ids": 11,
+    "original_UIF_section_records": 73,
+    "original_discovery_records": 34,
+    "review_domain": 107,
+    "other_product_readiness_records_outside_assessment": 106,
+    "status_counts": {
+      "previous_source_accepted_bounded_fulfilled": 1,
+      "owner_adopted_bounded_retain_pending_publication": 5,
+      "owner_adopted_retired_legacy_unavailable": 34,
+      "partial_or_current_requirement": 21,
+      "engineering": 12,
+      "actual_current_shared_joins": 34
+    },
+    "meaning": "These are nonoverlapping bookkeeping states in the 107-record review domain, not a recovered-history count, runtime selection or new backlog. All 213 original action IDs and 11 references remain.",
+    "legacy_retirement_is_fulfillment": false,
+    "new_action_ids": 0
+  },
+  "legacy_dispositions": [
+    {
+      "original_id": "uif128-exact-tip-acceptance",
+      "original_routing_identity": "uif-ledger-20261111-020",
+      "historical_objective": "Reconcile acceptance for retained a6437a4 source against the older changes-requested review and later published release corrections; identify only a real residual if one remains. (UIF-128; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Exact historical a6437a4 acceptance/review/correction join",
+      "remaining_current_requirement": "Known old changes-requested history and later correction references remain provenance; current release acceptance belongs to the currently selected immutable source/profile, not resurrected a643.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "uif128-original-history-recovery",
+      "original_routing_identity": "uif-ledger-20261111-021",
+      "historical_objective": "Establish recovery for the exact retained release-component history and local evidence. (UIF-128; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original retained release-component history/local-evidence restoration",
+      "remaining_current_requirement": "Preserve any surviving current source/evidence in place; current release source and publication checks remain separate.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "uif126-original-history-recovery",
+      "original_routing_identity": "uif-ledger-20261111-022",
+      "historical_objective": "Establish recovery for accepted c70fb52 component source and retained local evidence; preserve the recorded 67/90-check acceptance. (UIF-126; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original c70fb52 component/source and local-evidence recovery",
+      "remaining_current_requirement": "Current Windmill declaration/grant/backend qualification remains real under current owner; this disposition supplies none.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "documentary-metadata-disposition",
+      "original_routing_identity": "uif-ledger-20261111-025",
+      "historical_objective": "Determine the current relevance and disposition of documentary metadata source 25f45442. (UIF-216; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Exact permitted25f45442 artifact locator/full source identity",
+      "remaining_current_requirement": "A concrete current documentary requirement, if actually selected, uses current available canonical source/owner; no deniedR200export or new legacy reconstruction gate.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "lifecycle-provenance-disposition",
+      "original_routing_identity": "uif-ledger-20261111-026",
+      "historical_objective": "Resolve the retained lifecycle/provenance semantics against current intended outcomes, preserving incorporated work. (UIF-216; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Retained historical lifecycle/provenance source delta and old acceptance joins",
+      "remaining_current_requirement": "Current task lifecycle, uncertainty, ownership and provenance contracts still require actual source/qualified evidence in existing BAU engineering.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "r192-source-disposition",
+      "original_routing_identity": "uif-ledger-20261111-027",
+      "historical_objective": "Decide incorporation or justified keep/adapt/extract/supersede/reject for the ten tracked R192 composed-publication source edits. (UIF-216; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Ten historical R192 composed-publication source postimages/delta acceptance",
+      "remaining_current_requirement": "Any surviving postimages stay preserved under separate custody row; current publication correctness remains an actual engineering requirement.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "r055-local-origin-disposition",
+      "original_routing_identity": "uif-ledger-20261111-029",
+      "historical_objective": "Resolve R055's retained one-commit-ahead local head versus origin before selecting source disposition. (UIF-216; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Exact original local/origin comparison and unpublished R055 delta",
+      "remaining_current_requirement": "Any surviving local-only commit/evidence is preserved; no reset/delete/force operation. Current code requirements use current selected source.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "r058-source-equivalence",
+      "original_routing_identity": "uif-ledger-20261111-030",
+      "historical_objective": "Determine current source equivalence and any actual residual requirement for R058's divergent source. (UIF-216; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Historical divergent R058 source equivalence/acceptance packet",
+      "remaining_current_requirement": "Preserve surviving history; any present functional defect must be evidenced against the actual current selected contract.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "r068-source-disposition",
+      "original_routing_identity": "uif-ledger-20261111-031",
+      "historical_objective": "Determine R068 source disposition while retaining UIF-134's completed positive/negative helper acceptance. (UIF-216; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Historical R068 source selection/publication disposition",
+      "remaining_current_requirement": "Current acquisition/role API must work in current source; independent retained custody is not waived.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "javascript-profile-history-recovery",
+      "original_routing_identity": "uif-ledger-20261111-032",
+      "historical_objective": "Establish original-history recovery for accepted JS profile source 92a44b1 and retained evidence. (UIF-142; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original accepted92a44b1 JS-profile history/local evidence",
+      "remaining_current_requirement": "Any current selected JS profile still needs actual current source/toolchain/checks; no surviving source/evidence deletion.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "javascript-refill-history-recovery",
+      "original_routing_identity": "uif-ledger-20261111-033",
+      "historical_objective": "Establish original-history recovery for accepted refill source 59dbf51 and retained evidence. (UIF-159; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original accepted59dbf51 refill history/local evidence",
+      "remaining_current_requirement": "Current normal refill/ownership/fencing remains existing engineering scope with actual receipts.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "retained-r067-history-recovery",
+      "original_routing_identity": "uif-ledger-20261111-072",
+      "historical_objective": "Resolve exact original-history recovery for R067 while preserving its retained local source and ignored evidence. (UIF-217; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Exact R067 original-history recovery bridge",
+      "remaining_current_requirement": "Preserve any surviving source/ignored evidence; this is no cleanup authorization or off-host recovery claim.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "retained-r087-history-recovery",
+      "original_routing_identity": "uif-ledger-20261111-073",
+      "historical_objective": "Resolve exact original-history recovery for R087 while preserving its retained local source and ignored evidence. (UIF-217; deliverable).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Exact R087 original-history recovery bridge",
+      "remaining_current_requirement": "Preserve any surviving source/ignored evidence; do not claim original bytes restored.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-asset-identity-join",
+      "original_routing_identity": "ledger-discovery-20261111-001",
+      "historical_objective": "Build the exact captured-asset identity and ownership register (UIF-108, UIF-217; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original captured7.2m-asset/root/custody/issue identity join and missing maps",
+      "remaining_current_requirement": "Current selected assets must still have actual source/owner/rights evidence before use/change; old unknown associations create no new duties.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-unresolved-issue-tokens",
+      "original_routing_identity": "ledger-discovery-20261111-002",
+      "historical_objective": "Resolve the twelve unresolved current-prefix issue tokens (UIF-108; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Twelve captured issue-token correspondence records affecting1357 old rows",
+      "remaining_current_requirement": "Actual current tasks use stable current ledger/owner identity; no token-derived ownership or fabricated issue.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-project-overlay-recompute",
+      "original_routing_identity": "ledger-discovery-20261111-003",
+      "historical_objective": "Recompute associations with the verified post-capture project overlay (UIF-108; held prior denial).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Post-capture77project overlay plus UIF247 join to original snapshot",
+      "remaining_current_requirement": "Specific prior denied analysis remains unexecuted/no retry; current project associations are not changed or inferred from this retirement.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      },
+      "specific_boundary_retained": "Original denied/unexecuted analysis/export/effect or held read remains not retried. Legacy retirement is no-effect accounting, not authorization to bypass or perform it."
+    },
+    {
+      "original_id": "ledger-conflict-signature-review",
+      "original_routing_identity": "ledger-discovery-20261111-004",
+      "historical_objective": "Reconcile multiple-project conflict signatures in the derived asset view (UIF-108; held prior denial).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original captured conflicting repository/project/custody cue view",
+      "remaining_current_requirement": "Specific denied operation and no-bypass rule remain; current selected assets need current qualified identity, not old map reconstruction.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      },
+      "specific_boundary_retained": "Original denied/unexecuted analysis/export/effect or held read remains not retried. Legacy retirement is no-effect accounting, not authorization to bypass or perform it."
+    },
+    {
+      "original_id": "ledger-historical-census-crosswalk",
+      "original_routing_identity": "ledger-discovery-20261111-005",
+      "historical_objective": "Join the recovered historical census to current custody and source obligations (UIF-108; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "713historical census identities to original custody/source acceptance joins",
+      "remaining_current_requirement": "Historical schema/count verification credited; no equality to present assets or current functional acceptance asserted.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-retained-checkout-crosswalk",
+      "original_routing_identity": "ledger-discovery-20261111-006",
+      "historical_objective": "Reconcile the thirty-two retained checkout identities and custody maps (UIF-107, UIF-108; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original32checkout fullHEAD/branch/common-store/relocation correspondence",
+      "remaining_current_requirement": "Preserve any surviving current checkout/source/local work; normal selected-repository checks still apply to actual current operations.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-coverage-exclusions-account",
+      "original_routing_identity": "ledger-discovery-20261111-007",
+      "historical_objective": "Account for historical exclusions and held evidence in the coverage register (UIF-107, UIF-108; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Historical13inaccessible subtrees, exclusions and original coverage details",
+      "remaining_current_requirement": "Held reads/symlinks/data boundaries remain unwaived; actual current protected access requires its own authority.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      },
+      "specific_boundary_retained": "Original denied/unexecuted analysis/export/effect or held read remains not retried. Legacy retirement is no-effect accounting, not authorization to bypass or perform it."
+    },
+    {
+      "original_id": "ledger-uif216-source-crosswalk",
+      "original_routing_identity": "ledger-discovery-20261111-008",
+      "historical_objective": "Complete the frozen source-subject to disposition crosswalk (UIF-216; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Frozen38source-membership/delta-to-acceptance crosswalk",
+      "remaining_current_requirement": "Current control source/guard/backend correctness is real and remains with existing engineering; R200denied preview is not retried.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      },
+      "specific_boundary_retained": "Original denied/unexecuted analysis/export/effect or held read remains not retried. Legacy retirement is no-effect accounting, not authorization to bypass or perform it."
+    },
+    {
+      "original_id": "ledger-uif217-custody-crosswalk",
+      "original_routing_identity": "ledger-discovery-20261111-009",
+      "historical_objective": "Complete the frozen custody-subject to outcome crosswalk (UIF-217; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Frozen101custody membership/copy/history/restore map",
+      "remaining_current_requirement": "Existing current retained assets, rights and recoverable local work must be preserved if present; no101newtasks or cleanup.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-canonical89-relation-map",
+      "original_routing_identity": "ledger-discovery-20261111-010",
+      "historical_objective": "Recover and reconcile the canonical89 relation evidence (UIF-139; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Missing canonical89artifact and12ambiguous+7unmapped historical relations",
+      "remaining_current_requirement": "Any actual current OffMenu/UIF outcome requires current source/owner/hold proof separately; no product readiness or completion claimed.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-current-requirement-crosswalk",
+      "original_routing_identity": "ledger-discovery-20261111-011",
+      "historical_objective": "Reconcile the original issue census with the later current-project catalog (UIF-108, UIF-139; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original513-to550current-project catalogue/capture membership bridge",
+      "remaining_current_requirement": "Current selected obligation/owner/source must be explicit; neither old membership nor status creates new work.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-h2-current-applicability",
+      "original_routing_identity": "ledger-discovery-20261111-012",
+      "historical_objective": "Decide continuing applicability of the held Modern App Surface records (UIF-108, UIF-215; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original406held ModernAppSurface record/applicability map",
+      "remaining_current_requirement": "Actual selected ANQR/USF/UIF source/rights/consumer requirements remain with their current owners;406does not become a mandatory modern backlog.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-h4-current-applicability",
+      "original_routing_identity": "ledger-discovery-20261111-013",
+      "historical_objective": "Resolve the remaining historical H4 applicability classifications (UIF-116; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original159remaining historical applicability subjects/accepted packet",
+      "remaining_current_requirement": "A current concrete dependency must be independently evidenced; old unknown map does not create one.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-foundation-deployment-dispositions",
+      "original_routing_identity": "ledger-discovery-20261111-023",
+      "historical_objective": "Reconcile current relevance of the historical Foundation and Deployment issues (UIF-116, UIF-158; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original frozen321-IDmanifest equality and missing per-subject accepted semantic/source packet",
+      "remaining_current_requirement": "Observed321=242Foundation+79Infrastructure retention credit remains bounded; technical acceptance is unknown, no archive effect or original-set equality claimed.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-repository-environment-dispositions",
+      "original_routing_identity": "ledger-discovery-20261111-024",
+      "historical_objective": "Reconcile current relevance of the historical Repository and Environment records (UIF-116, UIF-108; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original364historical recoverable-archive candidate source/relevance evidence",
+      "remaining_current_requirement": "Current existing containers/assets and any actual selected archive/source use still require their own current rights/owner/recoverability checks.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-usf580-criterion-disposition",
+      "original_routing_identity": "ledger-discovery-20261111-025",
+      "historical_objective": "Record USF-580 criterion dispositions; current applicability remains pending (USF-580; partial evidence reconciliation, original inventory ID retained).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Missing original service elapsed/ranking and mandatory-service accounting proof/current legacy contract",
+      "remaining_current_requirement": "Historical/phase evidence remains credited and missing timing proof not passed. Any actually selected current timing requirement needs its current owner/evidence; do not invent it.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": "When an actual coupled outcome is established",
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-legacy-ten-dispositions",
+      "original_routing_identity": "ledger-discovery-20261111-026",
+      "historical_objective": "Confirm current disposition of the ten explicit legacy candidates (UIF-116; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original tenlegacy candidate applicability/supersession source packet",
+      "remaining_current_requirement": "Known historical acceptance/supersession retained; any actual current dependency must be shown, not generated from count.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-cix-paused-project-dispositions",
+      "original_routing_identity": "ledger-discovery-20261111-027",
+      "historical_objective": "Resolve the thirty-five paused CIX project-assignment dispositions (UIF-116; held assignment scope).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original35paused administrative assignment plans/capture mapping",
+      "remaining_current_requirement": "Sixknownnotapplied/28unattempted/CIX311denied facts retained; no retry of denied CIX311 or current project mutations. Current CIX operations still need actual owner/rights/working-ready proof.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      },
+      "specific_boundary_retained": "Original denied/unexecuted analysis/export/effect or held read remains not retried. Legacy retirement is no-effect accounting, not authorization to bypass or perform it."
+    },
+    {
+      "original_id": "ledger-document-descendant-coverage",
+      "original_routing_identity": "ledger-discovery-20261111-029",
+      "historical_objective": "Establish supported document-descendant coverage (UIF-116; blocked enumeration capability).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Historical workspace descendant-enumeration completeness beyond55known reviewed documents",
+      "remaining_current_requirement": "Do not claim documents deleted or full coverage. Actual current canonical document edits use exact current IDs/authority, not universal historical descendant completeness.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-historical-anqr-coverage",
+      "original_routing_identity": "ledger-discovery-20261111-030",
+      "historical_objective": "Establish the historical ANQR workspace coverage and custody boundary (UIF-215, UIF-116; blocked workspace coverage).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Separately referenced historical ANQR workspace inventory/custody bridge",
+      "remaining_current_requirement": "Current ANQR project/source/rights remain separate and actual current product operations retain owner/readiness/access controls.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    },
+    {
+      "original_id": "ledger-administrative-delta-reconciliation",
+      "original_routing_identity": "ledger-discovery-20261111-031",
+      "historical_objective": "Reconcile post-capture administrative inventory changes (UIF-116; outstanding discovery).",
+      "disposition": "retired_legacy_unavailable",
+      "owner_adopted": true,
+      "retired_requirement": "Original post-capture administrative inventory/change bridge",
+      "remaining_current_requirement": "Current selected administrative effects still require exact target/owner/permissions/current outcome; no wholesale census or fabricated operation receipts.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "preserved_unknowns": [
+        "The historical objective remains unfulfilled; unavailable history and original outcomes are not reconstructed or recovered.",
+        "Source equivalence, incorporation, current technical acceptance and prior-effect completion are not inferred.",
+        "Neither current asset absence nor original-operation absence is inferred."
+      ],
+      "current_operation_hold": {
+        "applies_to_actual_current_coupled_outcome": true,
+        "blocks_no_effect_legacy_retirement": false
+      }
+    }
+  ],
+  "retain_decisions": [
+    {
+      "original_id": "src-059-placement-decision",
+      "original_routing_identity": "uif-ledger-20261111-005",
+      "historical_objective": "Select final local configuration placement preserving permission behavior (UIF-243; subtask).",
+      "disposition": "fulfilled_bounded_retain_in_place_decision",
+      "owner_adopted": true,
+      "decision": "Retain present placement, permission behavior, distinct home profiles and existing ownership. Select no move, merge, permission change or ownership transfer.",
+      "remaining_current_requirement": "Preserve retained present placement/permissions and distinct profiles. Underlying corresponding qualification record remains partial: actual custodian/lookup consumers/project scope unknown. Any later relocation/use/permissions change must meet current selected controls.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "underlying_qualification": {
+        "original_id": "src-059-qualification",
+        "status": "partial",
+        "limit": "Custodian, project association, lookup consumers, technical behavior and recoverability are not qualified by this no-change placement decision."
+      },
+      "source_citations": {
+        "accepted_base": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+        "path": "README.md",
+        "general_rule_line": 49,
+        "conditional_rule_lines": [
+          65,
+          66,
+          67
+        ],
+        "conditional_rule": "Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move."
+      },
+      "preserved_unknowns": [
+        "The placement decision is fulfilled without a host effect; the separate qualification outcome remains partial.",
+        "Any later use, relocation, rights, permission or ownership change still needs its actual current authority and qualified inputs."
+      ]
+    },
+    {
+      "original_id": "src-062-placement-decision",
+      "original_routing_identity": "uif-ledger-20261111-007",
+      "historical_objective": "Select project marker placement without merging distinct profiles (UIF-245; subtask).",
+      "disposition": "fulfilled_bounded_retain_in_place_decision",
+      "owner_adopted": true,
+      "decision": "Retain present placement, permission behavior, distinct home profiles and existing ownership. Select no move, merge, permission change or ownership transfer.",
+      "remaining_current_requirement": "Preserve retained present placement/permissions and distinct profiles. Underlying corresponding qualification record remains partial: actual custodian/lookup consumers/project scope unknown. Any later relocation/use/permissions change must meet current selected controls.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "underlying_qualification": {
+        "original_id": "src-062-qualification",
+        "status": "partial",
+        "limit": "Custodian, project association, lookup consumers, technical behavior and recoverability are not qualified by this no-change placement decision."
+      },
+      "source_citations": {
+        "accepted_base": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+        "path": "README.md",
+        "general_rule_line": 49,
+        "conditional_rule_lines": [
+          70,
+          71
+        ],
+        "conditional_rule": "Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move."
+      },
+      "preserved_unknowns": [
+        "The placement decision is fulfilled without a host effect; the separate qualification outcome remains partial.",
+        "Any later use, relocation, rights, permission or ownership change still needs its actual current authority and qualified inputs."
+      ]
+    },
+    {
+      "original_id": "src-064-placement-decision",
+      "original_routing_identity": "uif-ledger-20261111-009",
+      "historical_objective": "Select placement preserving local behavior and distinct home configuration (UIF-245; subtask).",
+      "disposition": "fulfilled_bounded_retain_in_place_decision",
+      "owner_adopted": true,
+      "decision": "Retain present placement, permission behavior, distinct home profiles and existing ownership. Select no move, merge, permission change or ownership transfer.",
+      "remaining_current_requirement": "Preserve retained present placement/permissions and distinct profiles. Underlying corresponding qualification record remains partial: actual custodian/lookup consumers/project scope unknown. Any later relocation/use/permissions change must meet current selected controls.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "underlying_qualification": {
+        "original_id": "src-064-qualification",
+        "status": "partial",
+        "limit": "Custodian, project association, lookup consumers, technical behavior and recoverability are not qualified by this no-change placement decision."
+      },
+      "source_citations": {
+        "accepted_base": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+        "path": "README.md",
+        "general_rule_line": 49,
+        "conditional_rule_lines": [
+          74,
+          75
+        ],
+        "conditional_rule": "Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move."
+      },
+      "preserved_unknowns": [
+        "The placement decision is fulfilled without a host effect; the separate qualification outcome remains partial.",
+        "Any later use, relocation, rights, permission or ownership change still needs its actual current authority and qualified inputs."
+      ]
+    },
+    {
+      "original_id": "src-066-placement-decision",
+      "original_routing_identity": "uif-ledger-20261111-011",
+      "historical_objective": "Select retained notes placement without inferring obsolescence from dates (UIF-245; subtask).",
+      "disposition": "fulfilled_bounded_retain_in_place_decision",
+      "owner_adopted": true,
+      "decision": "Retain present placement, permission behavior, distinct home profiles and existing ownership. Select no move, merge, permission change or ownership transfer.",
+      "remaining_current_requirement": "Preserve retained present placement/permissions and distinct profiles. Underlying corresponding qualification record remains partial: actual custodian/lookup consumers/project scope unknown. Any later relocation/use/permissions change must meet current selected controls.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "underlying_qualification": {
+        "original_id": "src-066-qualification",
+        "status": "partial",
+        "limit": "Custodian, project association, lookup consumers, technical behavior and recoverability are not qualified by this no-change placement decision."
+      },
+      "source_citations": {
+        "accepted_base": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+        "path": "README.md",
+        "general_rule_line": 49,
+        "conditional_rule_lines": [
+          78,
+          79
+        ],
+        "conditional_rule": "Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move."
+      },
+      "preserved_unknowns": [
+        "The placement decision is fulfilled without a host effect; the separate qualification outcome remains partial.",
+        "Any later use, relocation, rights, permission or ownership change still needs its actual current authority and qualified inputs."
+      ]
+    },
+    {
+      "original_id": "src-067-placement-decision",
+      "original_routing_identity": "uif-ledger-20261111-013",
+      "historical_objective": "Select inputs placement accounting for the distinct home root (UIF-245; subtask).",
+      "disposition": "fulfilled_bounded_retain_in_place_decision",
+      "owner_adopted": true,
+      "decision": "Retain present placement, permission behavior, distinct home profiles and existing ownership. Select no move, merge, permission change or ownership transfer.",
+      "remaining_current_requirement": "Preserve retained present placement/permissions and distinct profiles. Underlying corresponding qualification record remains partial: actual custodian/lookup consumers/project scope unknown. Any later relocation/use/permissions change must meet current selected controls.",
+      "remaining_current_owner": "Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created.",
+      "underlying_qualification": {
+        "original_id": "src-067-qualification",
+        "status": "partial",
+        "limit": "Custodian, project association, lookup consumers, technical behavior and recoverability are not qualified by this no-change placement decision."
+      },
+      "source_citations": {
+        "accepted_base": "8fa48aa56ab1383f7b4df267fbd1da47f7996071",
+        "path": "README.md",
+        "general_rule_line": 49,
+        "conditional_rule_lines": [
+          82,
+          83
+        ],
+        "conditional_rule": "Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move."
+      },
+      "preserved_unknowns": [
+        "The placement decision is fulfilled without a host effect; the separate qualification outcome remains partial.",
+        "Any later use, relocation, rights, permission or ownership change still needs its actual current authority and qualified inputs."
+      ]
+    }
+  ],
+  "preserved_limits": [
+    "All original historical objectives remain visible. Retired legacy-unavailable history is not fulfilled, recovered, source-equivalent, incorporated, technically accepted or effect-complete.",
+    "Further capture search, history reconstruction, recreated IDs or manifests are not prerequisites. Old counts and unknown mappings create no new tasks.",
+    "Specific denied reads or effects remain denied/unexecuted and are not retried or bypassed. Current rights, ownership, privacy and custody controls are unchanged.",
+    "Actual current coupled operations retain their existing counterpart working/readiness holds. No-effect historical accounting is not a release of those current operation holds.",
+    "The five retain decisions perform no move, merge, permission change or ownership transfer; the five paired qualification records remain partial.",
+    "Current shared integration, source acceptance, backend correctness, actual grants and uncertain-effect reconciliation remain with their existing owners and currently selected contracts.",
+    "This dated source snapshot does not establish missing current assets, absence of an old effect, protected adoption, source recovery or runtime readiness.",
+    "No raw private paths, source bodies, issue bodies, settings values, datasets or full historical catalogues are reproduced."
+  ]
+}
