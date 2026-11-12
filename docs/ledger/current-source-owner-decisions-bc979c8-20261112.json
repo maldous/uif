@@ -148,7 +148,7 @@
     "count_changes_before_acceptance_and_merge": 0
   },
   "holds": {
-    "neutral_ec6_packet": "unchanged; approved installation separately paused on an automatic approval-review failure before staging",
+    "neutral_ec6_packet": "approved ec6 packet unchanged; five accounts and original Pool transfer staged and verified; finite proof authentication blocked before admission; temporary key/sudo access withdrawn; persistent route not enabled",
     "five_epoch1_restart_rows": "unknown original effect; held; ready=0",
     "live_Stokowski": "held",
     "ledger_pickup_refill": "held",
