@@ -14,6 +14,11 @@ for the later source baseline and remaining adoption distinctions. The earlier
 not a current work queue or control-state instruction. Revalidate dated
 observations before relying on them.
 
+Read the [Windmill workspace guidance](docs/agents/windmill-workspace.md) before
+selecting an MCP route. Keep the connected workspace, fixed wrappers, historical
+receipts and isolated recreation targets distinct; runtime bindings still need
+their own qualified evidence.
+
 # Shared UIF worker directions
 
 At every startup, including independent Foo work, read

@@ -5,7 +5,21 @@ started, stopped, reconfigured or migrated. Do not reuse them after the configur
 freshness window as admission evidence. UIF-247 remains the broader bootstrap
 outcome: https://linear.app/maldous/issue/UIF-247/unify-cross-project-agent-bootstrap-contracts
 
-## Actual interfaces and configuration
+## Current routing checkpoint, 2026-11-12
+
+The coordinator's fresh connection inventory reports only workspace `foo`, display
+name `Foo`, for the current generic Foo Workspace caller. Use the
+[Windmill workspace guidance](../agents/windmill-workspace.md) for its endpoint,
+generic call shape and separation from the fixed `offmenu` wrapper. That wrapper
+has no workspace argument and is not repaired or qualified by this documentation.
+
+The November 9 observations below remain historical evidence. In particular,
+their tool alias, workspace, identity receipts, worker snapshot and unit state
+are not current admission evidence. Source/configuration/validator migration
+assessment remains with its existing recovery coordinator/integrator; this
+documentation does not adopt that migration or establish live readiness.
+
+## Historical interfaces and configuration, 2026-11-09
 
 - Remote UIF develop initially e09a66585c2091fbb86b353c5bd630a62450aff8
   contained only AGENTS.md and README.md. The separate README owner subsequently
@@ -45,7 +59,7 @@ outcome: https://linear.app/maldous/issue/UIF-247/unify-cross-project-agent-boot
   an independently configured GitHub API grant. Do not copy cloud credentials to
   Foo or call local availability full publication continuity.
 
-## Project dependency discovery
+## Historical project dependency discovery, 2026-11-09
 
 Read-only canonical checkout inventory, before the independent UIF sync:
 
@@ -67,7 +81,7 @@ services, quota evidence, active Git runners/webhooks, exact installed lockfiles
 checkpoint state, pending external operations and authoritative ownership/fencing
 remain unqualified. No raw data/database bodies or credential values were read.
 
-## Validation boundary
+## Historical validation boundary, 2026-11-09
 
 The same synthetic comparison suite runs in an isolated cloud workspace and a
 new user-owned temporary directory on Foo through the actual root MCP transport.
