@@ -1,0 +1,152 @@
+{
+  "schema": "uif-prepared-partial-evidence/v1",
+  "record_date": "2026-11-12",
+  "scope": "Source-safe recording for review of eight prepared partials under their original ledger IDs; no final qualification or closure.",
+  "source": {
+    "repository": "maldous/uif",
+    "accepted_base": "ecfe399acaf8c013a1fa2a68e2879a1fc330b687",
+    "policy_version": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
+    "completion_inventory_artifact": "uif-ledger-completion-inventory-ecfe399-20261112.json",
+    "completion_inventory_sha256": "894d295b64a214405a9a66144cc4003358fb8ff25e8a6482f0463be65f01c3b6",
+    "completion_inventory_recorded_at_utc": "2026-11-12T01:04:43.205661+00:00"
+  },
+  "inventory": {
+    "original_action_records": 213,
+    "original_UIF_section_records": 73,
+    "original_ledger_discovery_records": 34,
+    "nonadditive_references": 11,
+    "interpretation": "Retained inventory counts, not a count of records still open.",
+    "original_ids_and_order_preserved": true,
+    "recording_units": 8,
+    "new_records": 0,
+    "new_full_record_closures": 0
+  },
+  "receipt_artifacts": {
+    "SRC": {
+      "basename": "uif-ledger-src-metadata-dispositions-20261111.json",
+      "sha256": "6941459bf977a3db6ad8794b0006d85ba804c2f7eb70df767be86f47fa73e581"
+    },
+    "SRC_receipts": {
+      "basename": "uif-ledger-src-metadata-receipts-20261111.json",
+      "sha256": "6f55c5c8b2aa81b2b175df7a982d5c4bb120a89b91e9a8429f3c2efc4331c6f6"
+    },
+    "foundation_evidence": {
+      "basename": "uif-ledger-foundation-disposition-evidence-20261111.json",
+      "sha256": "14d738c7c70ecdb6e0cacef5e652c26b138f826587a1a617a8f4117721c8f945"
+    },
+    "foundation_owner": {
+      "basename": "uif-ledger-foundation-owner-disposition-20261112.json",
+      "sha256": "55759e74ae9ba6c6c9e5f45ca1cc95ba185890901b7a97e152c824ab84572af1"
+    },
+    "archive": {
+      "basename": "uif-ledger-recoverable-archive-interface-20261112.json",
+      "sha256": "444366b3aaaffa8dade83fbec1cf8541f28c37e142bbb2f5edc4766684e1afb2"
+    }
+  },
+  "records": [
+    {
+      "original_id": "src-059-qualification",
+      "original_routing_key": "uif-ledger-20261111-004",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "SRC",
+        "SRC_receipts"
+      ],
+      "bounded_result": "Ordinary-user bounded metadata preparation verified the nonempty local configuration subject and compared its scope with the home counterpart. No settings values were read.",
+      "exact_remaining_dependency": "Existing configuration custodian must establish intended project scope, current lookup consumers and permission-behavior requirements through permitted evidence."
+    },
+    {
+      "original_id": "src-062-qualification",
+      "original_routing_key": "uif-ledger-20261111-006",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "SRC",
+        "SRC_receipts"
+      ],
+      "bounded_result": "Bounded marker-root metadata and the separate home-scope comparison were recorded. Marker value, project identity and lookup behavior were not inferred.",
+      "exact_remaining_dependency": "Existing per-root custodian must supply the actual project/repository association and documented lookup consumers without merging distinct profiles or disclosing values."
+    },
+    {
+      "original_id": "src-064-qualification",
+      "original_routing_key": "uif-ledger-20261111-008",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "SRC",
+        "SRC_receipts"
+      ],
+      "bounded_result": "Bounded configuration/cache and child-entry metadata were recorded with a separate home-scope comparison. Values and live behavior were not read or inferred.",
+      "exact_remaining_dependency": "Existing custodian must identify current readers/writers, lookup rules and project scope; metadata presence does not qualify a current application binding."
+    },
+    {
+      "original_id": "src-066-qualification",
+      "original_routing_key": "uif-ledger-20261111-010",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "SRC",
+        "SRC_receipts"
+      ],
+      "bounded_result": "Bounded notes/log/save-workflow metadata was recorded. Bodies and process values were not read; dates and names were not treated as evidence of obsolescence.",
+      "exact_remaining_dependency": "Existing notes custodian must establish current or retained historical consumers, intended use and recoverability before a separate placement disposition."
+    },
+    {
+      "original_id": "src-067-qualification",
+      "original_routing_key": "uif-ledger-20261111-012",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "SRC",
+        "SRC_receipts"
+      ],
+      "bounded_result": "Bounded inputs-workflow metadata and separate home scope were recorded. A retained locator cue did not establish repository, project ownership or readiness.",
+      "exact_remaining_dependency": "Existing inputs custodian must supply source/workflow provenance and actual consumers, and establish any real project dependency before coupled work."
+    },
+    {
+      "original_id": "documentary-metadata-disposition",
+      "original_routing_key": "uif-ledger-20261111-025",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "SRC",
+        "SRC_receipts"
+      ],
+      "bounded_result": "Saved evidence was reconciled to documentary subject 25f45442 and its existing source-disposition ownership. The exact permitted input request was prepared.",
+      "exact_remaining_dependency": "Existing source custodian must provide the exact allowed retained artifact locator and full source identity. No denied preview or alternate export route is selected.",
+      "limit": "Documentary relevance is not code implementation, source incorporation or protected adoption."
+    },
+    {
+      "original_id": "ledger-foundation-deployment-dispositions",
+      "original_routing_key": "ledger-discovery-20261111-023",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "foundation_evidence",
+        "foundation_owner"
+      ],
+      "bounded_result": "Existing UIF owner credited metadata/provenance retention for 321 currently observed terminal subjects: 242 Foundation subjects (240 Done and two terminal Duplicate) plus 79 Infrastructure Canceled subjects. Identity, placement, relations, provenance and historical review credit remain retained.",
+      "exact_remaining_dependency": "Original frozen 321-ID equality and current per-subject technical applicability/source acceptance remain unknown. The existing custodian may supply the frozen identity manifest and accepted semantic/source-disposition packet for the exact remaining join.",
+      "limit": "Matching counts and terminal states do not establish technical acceptance, final qualification or authority to archive. No full catalogue is reproduced here."
+    },
+    {
+      "original_id": "ledger-recoverable-archive-interface",
+      "original_routing_key": "ledger-discovery-20261111-032",
+      "status": "prepared_partial",
+      "receipt_refs": [
+        "archive"
+      ],
+      "bounded_result": "Current connector schemas and official issue/team-archive documentation were reconciled. The exposed project read/update schemas contain no archive/restore mutator; this does not prove all authenticated UI/operator routes unavailable.",
+      "exact_remaining_dependency": "The existing administrative owner must identify a supported authenticated operator/restore surface and qualify the exact selected target's archive-versus-trash state, permissions and recoverability/readback. No such operator or round-trip receipt is qualified here.",
+      "documentation_refs": [
+        "https://linear.app/docs/delete-archive-issues",
+        "https://linear.app/docs/default-team-pages"
+      ],
+      "limit": "Issue/team-archive documentation does not establish selected project-target operation. No deletion, status substitution, team-wide auto-archive change, new credential or private endpoint is selected."
+    }
+  ],
+  "shared_limits": [
+    "All eight records retain their original definitions, outcomes, boundaries and allocation identities. Their prepared evidence is not final qualification, full closure or runtime admission.",
+    "Custodian and actual consumer gaps for the five SRC subjects remain open; zero SRC closures are recorded.",
+    "Any actual product-coupled subject retains the existing relevant-product working/readiness hold. This checkpoint releases no shared-held record.",
+    "No recensus, full catalogue, new generic backlog, task lease, worker or session is created.",
+    "No raw paths or subject filenames, settings values, signed links, private issue bodies, source payloads or datasets are included.",
+    "No implementation, configuration, runner or canonical-policy change, issue mutation, placement, archive, runtime, security or deployment effect is selected.",
+    "Receipt basenames and hashes identify retained evidence; they do not establish publication of its private contents."
+  ]
+}

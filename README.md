@@ -61,19 +61,24 @@ Project headings identify coordination, not ownership of every associated file. 
 - **shared.skills.constant_time_path**: Establish supported constant-time-analysis path semantics ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).
 - **shared.skills.spec_compliance_runtime**: Establish supported spec-to-code-compliance runtime or distribution ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).
 - **src-059-qualification**: Establish local configuration scope and consumers ([UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings); subtask).
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-059-placement-decision**: Select final local configuration placement preserving permission behavior ([UIF-243](https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
   - Preserve permission behavior and obtain any required confirmation for permission changes.
 - **src-062-qualification**: Establish project marker binding and lookup consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-062-placement-decision**: Select project marker placement without merging distinct profiles ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
 - **src-064-qualification**: Qualify local configuration/cache entries and readers or writers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-064-placement-decision**: Select placement preserving local behavior and distinct home configuration ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
 - **src-066-qualification**: Qualify notes custodian, current or historical use and consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-066-placement-decision**: Select retained notes placement without inferring obsolescence from dates ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
 - **src-067-qualification**: Establish inputs workflow ownership, provenance and consumers ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **src-067-placement-decision**: Select inputs placement accounting for the distinct home root ([UIF-245](https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots); subtask).
   - Only if relocation is selected, preserve contents/metadata, qualify consumers/recovery, execute and verify. A retain decision can close without a move.
 - **mixed-custody-source-classification**: Classify CIX/OffMenu source and evidence roles within the already-relocated mixed custody group; attach supported project-specific followups and unresolved dependencies. ([UIF-246](https://linear.app/maldous/issue/UIF-246/reconcile-mixed-project-archive-custody); deliverable).
@@ -90,6 +95,7 @@ Project headings identify coordination, not ownership of every associated file. 
 - **guard-policy-source-disposition**: Resolve retained guard-policy differences against the actual current requirement and selected source. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **assets-validator-composition-disposition**: Resolve the distinct 996b adoption-assets and b850 validator/schema source composition with exact current pins and acceptance. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **documentary-metadata-disposition**: Determine the current relevance and disposition of documentary metadata source 25f45442. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **lifecycle-provenance-disposition**: Resolve the retained lifecycle/provenance semantics against current intended outcomes, preserving incorporated work. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **r192-source-disposition**: Decide incorporation or justified keep/adapt/extract/supersede/reject for the ten tracked R192 composed-publication source edits. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
 - **r070-r071-dependency-selection**: Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation. ([UIF-216](https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies); deliverable).
@@ -344,6 +350,7 @@ The candidate-to-action reconciliation folds the lexical-group subtask into the 
 - **ledger-foundation-deployment-dispositions**: Reconcile current relevance of the historical Foundation and Deployment issues ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance), [UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); outstanding discovery).
   - Outcome: Record current dependencies, retained provenance and target-specific dispositions for the 321 historical Foundation/Deployment records before any selected recoverable archival.
   - Boundary: Reuse completed historical reviews. Existing project archive effects stay in their existing actions; do not equate the current UIF workspace with an obsolete separate workspace.
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **ledger-repository-environment-dispositions**: Reconcile current relevance of the historical Repository and Environment records ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance), [UIF-108](https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional); outstanding discovery).
   - Outcome: Resolve current dependency/retention/disposition for the 364 historical recoverable-archive candidates, preserving exact bounded acceptance and current reuse evidence.
   - Boundary: The separate USF-580 criterion is owned by its own discovery record. Historical completion is not alone authority for a present archive effect.
@@ -371,6 +378,7 @@ The candidate-to-action reconciliation folds the lexical-group subtask into the 
 - **ledger-recoverable-archive-interface**: Establish a supported recoverable archive and restoration interface ([UIF-116](https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance), [UIF-158](https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation); blocked archive capability).
   - Outcome: Qualify the available authorized archive/not-trashed/restore surface for selected issue and container kinds; retain exact unsupported operations and required permissions.
   - Boundary: Target relevance/disposition belongs to the existing target records. Current connector exposes no archive action; deletion or Canceled status is not a substitute.
+  - Evidence checkpoint: [Prepared partial evidence](docs/ledger/prepared-uif-evidence-20261112.json); qualification remains open.
 - **ledger-final-acceptance-deduplication**: Complete the final parent-child and independently closable acceptance audit (Cross-project ledger coordination; outstanding discovery).
   - Outcome: Audit the complete accepted discovery results and existing readiness actions for duplicate outcomes, exact subject scope, shared evidence, conditional operations and nonadditive parents.
   - Boundary: This is the final cross-ledger acceptance join, not redoing completed bounded audits or inflating filenames, labels, issue counts or acceptance dimensions.
