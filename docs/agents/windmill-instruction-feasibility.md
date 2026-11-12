@@ -15,6 +15,14 @@ does not prove current schema deployment, policy loading, enforcement or runtime
 health. The existing recovery owner retains source/configuration/validator
 migration assessment. This change adds guidance only.
 
+For active shared source, use workspace `foo` at
+`https://windmill.aldous.info/api/mcp/w/foo/mcp`. The generic Foo Workspace
+root identity check returned UID 0, host `foo` and working directory `/`.
+The isolated recreation workspace remains an explicit, separately selected
+target. Its identifier is currently unset. The identity check supplies no
+approval for credential changes, connector release or job admission.
+[Root identity receipt](https://windmill.aldous.info/run/01a1cd9c-839a-13ec-c548-389b23952286?workspace=foo)
+
 ## Historical interface observations, 2026-11-10
 
 The connected Foo MCP `get_instructions(subject="script", language="python3")`

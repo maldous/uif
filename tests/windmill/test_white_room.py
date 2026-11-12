@@ -16,12 +16,19 @@ spec.loader.exec_module(w)
 
 class ContractTests(unittest.TestCase):
     def test_checked_in_contract(self):
-        self.assertIsNone(w.validate()['workspace']['id'])
+        config = w.validate()
+        self.assertEqual(config['workspace']['id'], 'foo')
+        self.assertIsNone(config['recreation_workspace']['id'])
+        self.assertIsNone(w.plan()['recreation_workspace']['id'])
+        self.assertEqual(config['target_transport']['endpoint'], 'https://windmill.aldous.info/api/mcp/w/foo/mcp')
+        self.assertIsNone(config['credential']['reference'])
+        self.assertFalse(config['live_recreation_verified'])
         self.assertEqual(len(w.load('dispositions.json')['items']), 236)
 
     def test_mutations_fail_closed(self):
         for file, change in [
-            ('desired.json', lambda x: x['preserve_transport'].update(workspace='foo')),
+            ('desired.json', lambda x: x['target_transport'].update(workspace='offmenu')),
+            ('desired.json', lambda x: x['recreation_workspace'].update(id='foo')),
             ('desired.json', lambda x: x['source'].update(mock_sha256='0' * 64)),
             ('desired.json', lambda x: x['schema'].update(sha256='0' * 64)),
             ('desired.json', lambda x: x['credential'].update(new_destination_authorized=True)),
