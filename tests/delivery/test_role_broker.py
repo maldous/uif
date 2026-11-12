@@ -659,6 +659,7 @@ class NeutralBrokerTests(unittest.TestCase):
         job = self.runner / binding["job_id"]
         job.mkdir(mode=0o700)
         broker._create(job / "intent.json", binding)
+        broker._create(job / "request.json", work)
         slot = broker.slot_for_lease(lease)
         request = broker.NeutralLaunchRequest(broker.NEUTRAL_SCHEMA, binding, slot, broker._digest(binding),
                                               broker._digest(work), broker._digest(pool_binding), self.cpus)
@@ -723,6 +724,31 @@ class NeutralBrokerTests(unittest.TestCase):
             with self.assertRaisesRegex(broker.LaunchHold, "neutral_launch_lease"):
                 broker._check_original(cfg, directory, request)
 
+    def test_start_requires_byte_exact_original_runner_request(self):
+        request, directory, work, _, cfg, lock, job = self.fixture()
+        original = job / "request.json"
+        original.unlink()
+        with lock.open("rb") as held, patch.object(broker, "_publish_reservation") as reserve, \
+                patch.object(broker, "_cgroup", return_value=self.root / "absent-cgroup"), \
+                patch.object(broker.os, "fork", side_effect=AssertionError("unexpected fork")) as fork:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            with self.subTest("missing original"), self.assertRaisesRegex(
+                    broker.LaunchHold, "neutral_launch_original_request"):
+                broker._handle(cfg, "start", request.slot)
+            broker._create(original, {**work, "command": "printf different"})
+            with self.subTest("different command"), self.assertRaisesRegex(
+                    broker.LaunchHold, "neutral_launch_original_request"):
+                broker._handle(cfg, "start", request.slot)
+            original.write_bytes(broker._wire(work) + b"\n")
+            self.assertEqual(broker._json(original.read_bytes()), work)
+            with self.subTest("same object with different bytes"), self.assertRaisesRegex(
+                    broker.LaunchHold, "neutral_launch_original_request"):
+                broker._handle(cfg, "start", request.slot)
+            reserve.assert_not_called()
+            fork.assert_not_called()
+            original.write_bytes((directory / "request.json").read_bytes())
+            self.assertEqual(broker._check_original(cfg, directory, request)[0], work)
+
     def test_plan_keeps_exact_shell_scope_and_read_write_overlap(self):
         request, directory, work, role, cfg, lock, job = self.fixture()
         from contextlib import ExitStack
@@ -758,8 +784,18 @@ class NeutralBrokerTests(unittest.TestCase):
             self.assertFalse(stopped.release_safe)
             self.assertIsNone(stopped.stopped_evidence)
             receipt = dict(request.binding, lease_id=request.key.lease_id, status="cancelled",
-                           child_tree_gone=True, reconcile_required=False, exit_code=None)
-            broker._create(job / "receipt.json", receipt)
+                           child_tree_gone=True, exit_code=None)
+            receipt_path = job / "receipt.json"
+            for reconcile in ({}, {"reconcile_required": True}, {"reconcile_required": 0}):
+                with self.subTest(reconcile=reconcile):
+                    broker._create(receipt_path, {**receipt, **reconcile})
+                    unsettled = broker._handle(cfg, "observe", request.slot)
+                    self.assertTrue(unsettled.containment_stopped)
+                    self.assertFalse(unsettled.release_safe)
+                    self.assertIsNone(unsettled.stopped_evidence)
+                receipt_path.unlink()
+            receipt["reconcile_required"] = False
+            broker._create(receipt_path, receipt)
             observed = broker._handle(cfg, "observe", request.slot)
             self.assertTrue(observed.release_safe)
             self.assertEqual(observed.stopped_evidence["runner_receipt_sha256"], broker._digest(receipt))

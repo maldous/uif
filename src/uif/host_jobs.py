@@ -4,6 +4,8 @@ The process supervision and resource checks derive from retained runner blob
 862dcd4401f3844f927c7da3ca1285cbcb808964. The existing external capacity
 authority owns reservations. Local files retain original operation evidence.
 """
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
@@ -258,67 +260,121 @@ class HostJobs:
             return dict(basic, status="unknown", reconcile_required=True)
         require(all(original.get(k) == v for k, v in basic.items())
                 and (binding is None or binding == original), "original_binding_conflict")
-        try:
-            result = decode(_read(directory / "receipt.json", self.uid))
-        except FileNotFoundError:
-            result = dict(basic, status="unknown", reconcile_required=True)
-        require(all(result.get(k) == v for k, v in basic.items()), "receipt_binding")
-        if result["status"] == "running" and time.time() - result.get("heartbeat_at", 0) > 15:
-            result = dict(result, status="unknown", reconcile_required=True)
-        if req["action"] == "status" and result["status"] not in TERMINAL:
-            try:
-                observed = self.authority.call("status", original)
-                expected = lease_id(original)
-                if observed.get("lease_id") == expected and not result.get("lease_id"):
-                    result = dict(result, lease_id=expected)
-                if result["status"] == "running" and (observed.get("lease_id") != expected
-                        or observed.get("status") not in ("running", "cancel_requested")):
-                    result = dict(result, status="unknown", reconcile_required=True)
-            except (OSError, ValueError, subprocess.SubprocessError):
-                result = dict(result, status="unknown", reconcile_required=True)
+        result = self._receipt(directory, original)
+        if req["action"] == "status":
+            return self._status(directory, original, basic, result)
         if req["action"] == "cancel" and result["status"] not in TERMINAL:
+            marker = directory / "cancel.json"
             try:
-                _create(directory / "cancel.json", basic)
+                _create(marker, basic)
             except FileExistsError:
-                require(decode(_read(directory / "cancel.json", self.uid)) == basic, "cancel_binding")
-            else:
-                lease = result.get("lease_id")
-                if lease == lease_id(original):
-                    try:
-                        work = self._original_request(directory, original)
-                        acknowledgement = self.authority.call("cancel", original, request=work)
-                        require(acknowledgement.get("status") == "cancel_requested"
-                                and acknowledgement.get("lease_id") == lease, "cancel_uncertain")
-                    except (OSError, ValueError, subprocess.SubprocessError):
-                        pass
+                require(decode(_read(marker, self.uid)) == basic, "cancel_binding")
+            observed = self._status(directory, original, basic, result)
+            if observed["status"] in TERMINAL:
+                return observed
             return dict(basic, status="cancellation_requested", reconcile_required=True)
-        if result["status"] in TERMINAL and result.get("lease_id"):
-            try:
-                release = decode(_read(directory / "release.json", self.uid))
-                self._released(release, result, original)
-            except FileNotFoundError:
-                if req["action"] != "status" or not self._recover_release(directory, result, original):
-                    return dict(result, reconcile_required=True)
-            except (OSError, ValueError):
-                return dict(result, reconcile_required=True)
+        return self._project_release(directory, result, original)
+
+    @contextmanager
+    def _receipt_lock(self, directory):
+        fd = os.open(directory / "receipt.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+        try:
+            info = os.fstat(fd)
+            require(stat.S_ISREG(info.st_mode) and info.st_uid == self.uid and info.st_nlink == 1
+                    and not info.st_mode & 0o077, "receipt_lock_custody")
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            yield
+        finally:
+            os.close(fd)
+
+    def _receipt(self, directory, binding):
+        try:
+            raw = _read(directory / "receipt.json", self.uid)
+            result = decode(raw)
+        except FileNotFoundError:
+            return dict(binding, status="unknown", reconcile_required=True, child_tree_gone=False)
+        require(raw == wire(result) and all(result.get(k) == v for k, v in binding.items())
+                and result.get("lease_id") in (None, lease_id(binding)), "receipt_binding")
         return result
 
-    def _recover_release(self, directory, receipt, binding):
-        target = directory / "release.json"
-        try:
-            observed = self.authority.call("status", binding)
-            self._released(observed, receipt, binding)
-            outcome = "failed" if receipt["status"] == "timed_out" else receipt["status"]
-            pool_status = "finished" if outcome == "succeeded" else "failed"
-            require((observed.get("pool_status"), observed.get("outcome")) == (pool_status, outcome),
-                    "release_outcome")
+    def _project_release(self, directory, receipt, binding):
+        if receipt["status"] == "running" and time.time() - receipt.get("heartbeat_at", 0) > 15:
+            return dict(receipt, status="unknown", reconcile_required=True)
+        if receipt["status"] in TERMINAL and receipt.get("lease_id"):
             try:
-                _create(target, observed)
-            except FileExistsError:
-                self._released(decode(_read(target, self.uid)), receipt, binding)
-            return True
+                self._released(decode(_read(directory / "release.json", self.uid)), receipt, binding)
+            except (OSError, ValueError):
+                return dict(receipt, reconcile_required=True)
+        return receipt
+
+    @staticmethod
+    def _held(observed, lease):
+        return observed.get("lease_id") == lease and observed.get("status") in ("running", "cancel_requested")
+
+    def _cancel(self, directory, binding, lease):
+        work = self._original_request(directory, binding)
+        acknowledgement = self.authority.call("cancel", binding, request=work)
+        require(acknowledgement.get("status") == "cancel_requested"
+                and acknowledgement.get("lease_id") == lease, "cancel_uncertain")
+
+    def _observed_terminal(self, directory, observed, binding):
+        observation = observed.get("observation")
+        return self._terminal(directory, observation, binding) if isinstance(observation, dict) else None
+
+    def _status(self, directory, binding, basic, current):
+        lease = lease_id(binding)
+        try:
+            with self._receipt_lock(directory):
+                current = self._receipt(directory, binding)
+                if current["status"] == "refused" or os.path.lexists(directory / "release.json"):
+                    return self._project_release(directory, current, binding)
+                observed = self.authority.call("status", binding)
+                if observed.get("status") == "finished":
+                    self._recover_release(directory, current, binding, observed)
+                    return current
+                if not self._held(observed, lease):
+                    return dict(current, status="unknown" if current["status"] == "running" else current["status"],
+                                reconcile_required=True)
+                terminal = self._observed_terminal(directory, observed, binding)
+                if terminal is not None:
+                    # Keep exact settled bytes across finish retries. Only
+                    # the controller can independently authorize the release.
+                    if current["status"] in TERMINAL:
+                        require(current.get("lease_id") == lease
+                                and all(current.get(k) == v for k, v in terminal.items()), "terminal_receipt_conflict")
+                    else:
+                        current = dict(current, **terminal, lease_id=lease)
+                        _replace(directory / "receipt.json", current)
+                    return self._finish(directory, current, binding)
+                marker = directory / "cancel.json"
+                if current["status"] not in TERMINAL and os.path.lexists(marker):
+                    require(decode(_read(marker, self.uid)) == basic, "cancel_binding")
+                    self._cancel(directory, binding, lease)
+                return self._project_release(directory, dict(current, lease_id=lease), binding)
         except (OSError, ValueError, subprocess.SubprocessError):
-            return False
+            return dict(current, status="unknown" if current["status"] == "running" else current["status"],
+                        reconcile_required=True)
+
+    def _recover_release(self, directory, receipt, binding, observed):
+        require(receipt["status"] in TERMINAL and receipt.get("child_tree_gone") is True
+                and receipt.get("lease_id") == lease_id(binding), "release_unsettled_receipt")
+        self._released(observed, receipt, binding)
+        outcome = "failed" if receipt["status"] == "timed_out" else receipt["status"]
+        pool_status = "finished" if outcome == "succeeded" else "failed"
+        require((observed.get("pool_status"), observed.get("outcome")) == (pool_status, outcome),
+                "release_outcome")
+        _create(directory / "release.json", observed)
+
+    def _finish(self, directory, record, binding):
+        try:
+            finished = self.authority.call("finish", binding, lease_id=record["lease_id"],
+                                           receipt_sha256=sha(wire(record)), outcome=record["status"],
+                                           child_tree_gone=True)
+            self._released(finished, record, binding)
+            _create(directory / "release.json", finished)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return dict(record, reconcile_required=True)
+        return record
 
     @staticmethod
     def _released(release, record, binding):
@@ -370,6 +426,8 @@ class HostJobs:
         action = "cancel" if (directory / "cancel.json").exists() else "start"
         deadline = time.monotonic() + request["timeout_seconds"] + 20
         next_heartbeat = time.monotonic() + 2
+        next_cancel = time.monotonic() + (2 if action == "cancel" else 0)
+        cancel_retries = 2
         observed_uncertain = False
         try:
             reply = self.authority.call(action, binding, request=request)
@@ -396,6 +454,19 @@ class HostJobs:
                 continue
             if state not in ("prepared", "running") or time.monotonic() >= deadline:
                 break
+            marker = directory / "cancel.json"
+            if cancel_retries and time.monotonic() >= next_cancel and os.path.lexists(marker):
+                cancel_retries -= 1
+                next_cancel = time.monotonic() + 2
+                try:
+                    original = {key: binding[key] for key in
+                                ("workspace", "descriptor_sha256", "job_id", "request_sha256", "namespace")}
+                    with self._receipt_lock(directory):
+                        require(decode(_read(marker, self.uid)) == original, "cancel_binding")
+                        if self._receipt(directory, binding)["status"] not in TERMINAL:
+                            self._cancel(directory, binding, lease)
+                except (OSError, ValueError, subprocess.SubprocessError):
+                    pass
             if time.monotonic() >= next_heartbeat:
                 heartbeat()
                 next_heartbeat = time.monotonic() + 2
@@ -423,24 +494,29 @@ class HostJobs:
                     and len(set(cpus)) == len(cpus) and set(cpus) <= os.sched_getaffinity(0),
                     "authority_cpu_binding")
             def heartbeat():
-                record["heartbeat_at"] = time.time()
-                _replace(receipt, record)
+                try:
+                    with self._receipt_lock(directory):
+                        current = self._receipt(directory, binding)
+                        if current["status"] not in TERMINAL:
+                            record["heartbeat_at"] = time.time()
+                            _replace(receipt, record)
+                except BlockingIOError:
+                    pass
 
             record.update(status="running")
             heartbeat()
-            record.update(self._broker_turn(directory, binding, lease, heartbeat))
-            _replace(receipt, record)
+            outcome = self._broker_turn(directory, binding, lease, heartbeat)
         except (OSError, ValueError, subprocess.SubprocessError):
-            record.update(status="unknown", reconcile_required=True)
-            _replace(receipt, record)
-            return record
-        if record["child_tree_gone"]:
-            try:
-                finished = self.authority.call("finish", binding, lease_id=lease,
-                                               receipt_sha256=sha(wire(record)), outcome=record["status"],
-                                               child_tree_gone=True)
-                self._released(finished, record, binding)
-                _create(directory / "release.json", finished)
-            except (OSError, ValueError, subprocess.SubprocessError):
-                return dict(record, reconcile_required=True)
-        return record
+            outcome = dict(status="unknown", reconcile_required=True, child_tree_gone=False)
+        try:
+            with self._receipt_lock(directory):
+                current = self._receipt(directory, binding)
+                if current["status"] in TERMINAL:
+                    return self._project_release(directory, current, binding)
+                record.update(outcome)
+                _replace(receipt, record)
+                if record["child_tree_gone"]:
+                    return self._finish(directory, record, binding)
+                return record
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return dict(record, status="unknown", reconcile_required=True, child_tree_gone=False)

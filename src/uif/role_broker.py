@@ -416,7 +416,7 @@ def _check_original(cfg, directory, request):
     return work, limits
 
 
-def _registered_runner(cfg, request, filename):
+def _read_registered_runner(cfg, request, filename):
     role = cfg["roles"]["neutral"]
     fd = _open_projection_root(_path(role["runner_control"]) / request.binding["job_id"],
                                custody_root=role["runner_control"], custody_uid=role["runner_uid"])
@@ -426,10 +426,9 @@ def _registered_runner(cfg, request, filename):
         entry = _open_beneath(fd, filename, os.O_RDONLY | os.O_NONBLOCK)
         with os.fdopen(entry, "rb") as stream:
             _regular(stream.fileno(), role["runner_uid"], 0o077)
-            data = stream.read(MAX_RECORD + 1)
+            return stream.read(MAX_RECORD + 1)
     finally:
         os.close(fd)
-    return _json(data), sha256(data).hexdigest()
 
 
 def _neutral_limits(binding, role):
@@ -470,11 +469,20 @@ def _check_neutral(cfg, directory, request, *, cancelling=False):
     if tuple(role["cpu_ids"]) != request.cpu_ids or not set(request.cpu_ids) <= os.sched_getaffinity(0):
         raise LaunchHold("neutral_launch_cpu_eligibility")
     limits = _neutral_limits(binding, role)
-    intent, digest = _registered_runner(cfg, request, "intent.json")
-    if digest != request.intent_sha256 or intent != binding:
+    intent = _read_registered_runner(cfg, request, "intent.json")
+    if sha256(intent).hexdigest() != request.intent_sha256 or _json(intent) != binding:
         raise LaunchHold("neutral_launch_original_intent")
     uid = cfg["controller_uid"]
-    record = _record(directory / "request.json", uid, request.request_file_sha256)
+    sealed = _read(directory / "request.json", uid)
+    if sha256(sealed).hexdigest() != request.request_file_sha256:
+        raise LaunchHold("role_launch_digest")
+    try:
+        original = _read_registered_runner(cfg, request, "request.json")
+    except FileNotFoundError as exc:
+        raise LaunchHold("neutral_launch_original_request") from exc
+    if original != sealed:
+        raise LaunchHold("neutral_launch_original_request")
+    record = _json(sealed)
     body = dict(protocol="foo-user-exec-v1", workspace="foo", job_id=binding["job_id"],
                 descriptor_sha256=binding["descriptor_sha256"], mode=binding["mode"],
                 timeout_seconds=binding["timeout_seconds"], resources=binding["resources"])
@@ -1547,16 +1555,18 @@ def _neutral_observation(cfg, directory, request, result):
             or any(type(value) is not int or value < 0 for value in counts.values())
             or any(type(value) is not bool for value in truncated.values())):
         raise LaunchHold("neutral_launch_log_witness")
-    intent, intent_sha = _registered_runner(cfg, request, "intent.json")
+    intent_bytes = _read_registered_runner(cfg, request, "intent.json")
+    intent, intent_sha = _json(intent_bytes), sha256(intent_bytes).hexdigest()
     if intent != request.binding or intent_sha != request.intent_sha256:
         raise LaunchHold("neutral_launch_original_intent")
     try:
-        runner, _ = _registered_runner(cfg, request, "receipt.json")
+        runner = _json(_read_registered_runner(cfg, request, "receipt.json"))
     except FileNotFoundError:
         runner = None
     evidence = None
     if (runner is not None and runner.get("lease_id") == request.key.lease_id
             and runner.get("status") == outcome and runner.get("child_tree_gone") is True
+            and runner.get("reconcile_required") is False
             and runner.get("exit_code") == result.exit_code
             and (result.state == "refused-before-fork" or (
                 runner.get("log_bytes") == counts and runner.get("logs_truncated") == truncated))

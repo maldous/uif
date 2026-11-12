@@ -357,7 +357,7 @@ print(json.dumps(dict(schema=value['schema'], binding_sha256=hashlib.sha256(raw)
             with self.assertRaisesRegex(host.Hold, "authority_pin"):
                 authority.call("admit", binding)
 
-    def test_known_original_lease_cancel_marks_intent_once_without_release(self):
+    def test_known_original_lease_can_redeliver_cancel_without_release(self):
         req = self.run_request()
         self.jobs.authority = self.authority
         with patch.object(self.jobs, "_broker_turn", return_value=dict(status="unknown", child_tree_gone=False,
@@ -366,10 +366,10 @@ print(json.dumps(dict(schema=value['schema'], binding_sha256=hashlib.sha256(raw)
         for _ in range(2):
             cancelled = self.jobs.handle(self.observe(req, "cancel"))
             self.assertEqual(cancelled["status"], "cancellation_requested")
-        self.assertEqual([call[0] for call in self.authority.calls], ["admit", "cancel"])
+        self.assertEqual([call[0] for call in self.authority.calls], ["admit", "status", "cancel", "status", "cancel"])
         self.assertEqual(self.authority.calls[-1][1:], (self.jobs._binding(req), {"request": req}))
         self.assertEqual(self.jobs.handle(self.observe(req)), original)
-        self.assertEqual(self.authority.calls[-1][0], "status")
+        self.assertEqual([call[0] for call in self.authority.calls[-2:]], ["status", "cancel"])
 
     def test_reused_admission_is_observation_only(self):
         req = self.run_request()
@@ -480,3 +480,117 @@ print(json.dumps(dict(schema=value['schema'], binding_sha256=hashlib.sha256(raw)
         self.assertFalse((self.control / request["job_id"] / "stdout.log").exists())
         self.assertEqual(self.jobs.handle(request), result)
         self.assertEqual(calls, ["admit", "start", "finish"])
+
+    def test_busy_cancel_remains_pending_until_same_lease_delivery(self):
+        req = self.run_request()
+        binding = self.jobs._binding(req)
+        calls = []
+        busy = True
+
+        def call(action, original, **details):
+            self.assertEqual(original, binding)
+            calls.append(action)
+            if action == "cancel" and busy:
+                raise host.Hold("operation_busy")
+            return self.authority.call(action, original, **details)
+
+        self.jobs.authority = SimpleNamespace(call=call)
+        with patch.object(self.jobs, "_broker_turn", return_value=dict(
+            status="unknown", child_tree_gone=False, reconcile_required=True,
+        )):
+            self.jobs.handle(req)
+        self.assertEqual(self.jobs.handle(self.observe(req, "cancel"))["status"], "cancellation_requested")
+        busy = False
+        self.assertEqual(self.jobs.handle(self.observe(req, "cancel"))["status"], "cancellation_requested")
+        self.assertEqual(calls, ["admit", "status", "cancel", "status", "cancel"])
+        self.assertEqual(self.authority.calls[-1], ("cancel", binding, {"request": req}))
+
+    def test_status_settles_original_when_first_finish_never_committed(self):
+        req = self.run_request()
+        result, actions = self.recover_stopped(req, lost_poll=False)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertFalse(result["reconcile_required"])
+        self.assertEqual(actions, ["admit", "start", "finish", "status", "finish"])
+
+    def test_status_settles_original_after_lost_poll(self):
+        req = self.run_request()
+        result, actions = self.recover_stopped(req, lost_poll=True)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertFalse(result["reconcile_required"])
+        self.assertEqual(actions, ["admit", "start", "status", "status", "finish"])
+
+    def test_conflicting_terminal_observation_does_not_refinish(self):
+        result, actions = self.recover_stopped(self.run_request(), lost_poll=False, conflict=True)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertTrue(result["reconcile_required"])
+        self.assertEqual(actions, ["admit", "start", "finish", "status"])
+
+    def recover_stopped(self, req, *, lost_poll, conflict=False):
+        directory = self.control / req["job_id"]
+        binding = self.jobs._binding(req)
+        calls = []
+        terminal = dict(
+            state="exited-clean", containment_stopped=True, request_sha256="a" * 64,
+            receipt_sha256="b" * 64, outcome="succeeded", exit_code=0,
+            log_bytes={"stdout": 0, "stderr": 0}, logs_truncated={"stdout": False, "stderr": False},
+        )
+
+        def call(action, original, **details):
+            self.assertEqual(original, binding)
+            calls.append(action)
+            if action == "start":
+                for name in ("stdout", "stderr"):
+                    (directory / (name + ".log")).touch()
+                observation = dict(state="running", request_sha256="a" * 64) if lost_poll else terminal
+                return dict(status="running", lease_id=host.lease_id(binding), observation=observation)
+            if action == "status":
+                if lost_poll and calls.count("status") == 1:
+                    raise TimeoutError
+                observed = dict(terminal, outcome="failed", exit_code=17) if conflict else terminal
+                return dict(status="running", lease_id=host.lease_id(binding), observation=observed)
+            if action == "finish" and not lost_poll and calls.count("finish") == 1:
+                raise TimeoutError
+            return self.authority.call(action, original, **details)
+
+        self.jobs.authority = SimpleNamespace(call=call)
+        original = self.jobs.handle(req)
+        self.assertTrue(original["reconcile_required"])
+        result = self.jobs.handle(self.observe(req))
+        self.assertEqual(self.jobs.handle(req), result)
+        stored = host.decode((directory / "receipt.json").read_bytes())
+        if conflict:
+            self.assertEqual(dict(stored, reconcile_required=True), result)
+            self.assertFalse((directory / "release.json").exists())
+        else:
+            self.assertEqual(self.jobs.handle(self.observe(req)), result)
+            self.assertEqual(stored, result)
+        return result, calls
+
+    def test_running_writer_cannot_replace_a_receipt_settled_by_status(self):
+        req = self.run_request()
+        binding = self.jobs._binding(req)
+        terminal = dict(
+            state="exited-clean", containment_stopped=True, request_sha256="a" * 64,
+            receipt_sha256="b" * 64, outcome="succeeded", exit_code=0,
+            log_bytes={"stdout": 0, "stderr": 0}, logs_truncated={"stdout": False, "stderr": False},
+        )
+
+        def call(action, original, **details):
+            if action == "status":
+                return dict(status="running", lease_id=host.lease_id(binding), observation=terminal)
+            return self.authority.call(action, original, **details)
+
+        def interrupted_turn(directory, _binding, _lease, heartbeat):
+            for name in ("stdout", "stderr"):
+                (directory / (name + ".log")).touch()
+            settled = self.jobs.handle(self.observe(req))
+            self.assertEqual(settled["status"], "succeeded")
+            heartbeat()
+            self.assertEqual(host.decode((directory / "receipt.json").read_bytes()), settled)
+            return dict(status="unknown", child_tree_gone=False, reconcile_required=True)
+
+        self.jobs.authority = SimpleNamespace(call=call)
+        with patch.object(self.jobs, "_broker_turn", side_effect=interrupted_turn):
+            result = self.jobs.handle(req)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertEqual([entry[0] for entry in self.authority.calls], ["admit", "finish"])
