@@ -1,0 +1,230 @@
+{
+  "schema": "uif-current-independent-source-progress/1",
+  "date": "2026-11-12",
+  "scope": "Five existing original ledger identities: four partial source-progress credits and one narrow publication-event fulfillment proposal. This is documentation for independent review, not a new queue, source implementation, runtime authority or accepted count change.",
+  "checkpoint": {
+    "repository": "maldous/uif",
+    "accepted_base": "4253e9d6f1a60dfc7301da23ff3fbd58f6fe457d",
+    "policy_version": "1.2.4",
+    "policy_sha256": "4b88a8be6d6f4d8bbd721a1f22bd3d47250d5391be220b5ed77011249e226fa9",
+    "README_sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+    "original_action_ids": 213,
+    "nonadditive_reference_ids": 11,
+    "README_unchanged": true,
+    "candidate_state": "prepared_pending_independent_full_candidate_review_and_owner_publication_merge"
+  },
+  "evidence": {
+    "current_source_attestation": {
+      "source": "Trusted Morgan acceptance relayed by the existing UIF owner; not a new source inspection or test run by this documentation author.",
+      "complete_commit_tree_manifest_identities_available_here": true,
+      "exact_source_bytes_and_packet_available_here": false,
+      "availability_limit": "Complete immutable identities are supplied by Morgan through the UIF owner; they are attested, not locally byte-verified. The earlier exact-commit GitHub MCP lookup returned 404. A Library source bundle sender exists, but the official helper download failed twice, with the second attempt also failing despite authorized network access, before file installation. No source bytes are verified here and no transfer is retried by this author.",
+      "accepted_scope": "All 40 control pins, 24 package pins and 34 tests, including isolated legacy and ledger coding/review entrypoint proof, are reported accepted. The prior import gap is reported corrected in 176c237.",
+      "credit_level": "Attested current source acceptance only; exact row-to-source mapping and accepted publication scope remain to be recorded for the four source outcomes. Live bindings are not prerequisites for source acceptance.",
+      "commit": "176c237e1a6bce2e8057d0c21424e4f76f59fb1f",
+      "tree": "a6bbf1612938574a3ebd0499a478a46f7361ba28",
+      "manifest_sha256": "fcf3e46043a3a5886daef8a591ac55cb7e9554e04c5fd318fce7476ac53fd15c",
+      "independent_review_reference": {
+        "artifact_basename": "review.md",
+        "custody": "Existing independent reviewer/coordinator retains the ledger-launcher-176c237 review artifact.",
+        "review_sha256_supplied": false
+      },
+      "expected_source_archive": {
+        "sha256": "188092f4fa580dbd6426bd5789bc1b2047e0ac49656df3125388ee9c079f739b",
+        "bytes": 662694,
+        "received_or_installed_here": false,
+        "locally_byte_verified": false,
+        "limit": "Expected archive identity only; no received bundle or source-file verification is claimed. Transfer URLs and Library identifiers are omitted."
+      }
+    },
+    "prior_offline_credit": {
+      "commit": "af488c19e942aa061e485134d91f61327fff9bc9",
+      "tree": "fb43c6cefd4f08c37bb12d56fb09d600aa3e742a",
+      "patch_sha256": "165c6f88038c3dfdb3e6c4557f5f9ba011182982e41d68ee6be1d6141f518d63",
+      "identity_provenance": "Existing local uif-af488c19-review-mapping-receipt-20261112.json; this earlier receipt predates the subsequent acceptance attestation.",
+      "subsequent_acceptance_provenance": "Trusted Morgan update relayed by the UIF owner, not inferred from the earlier receipt's requested-review state.",
+      "reported_offline_test_counts": [
+        266,
+        56,
+        29,
+        14
+      ],
+      "scope": "Prior offline evidence accepted except the import gap, now reported fixed in 176. Windmill/GitHub coverage was synthetic; Pool/Git coverage used actual disposable instances. This is not live Windmill/GitHub, production or BAU proof."
+    },
+    "accepted_current_source_publication": {
+      "pull_request": "https://github.com/maldous/uif/pull/42",
+      "commit": "89e0f761c4efb8ae32b66f37e6c33e068355d0d0",
+      "tree": "cacfe2ea5b8935426ee829dd7ab1a999c773d7c4",
+      "source": "Accepted docs/current-source-role-map-20261112.json and existing publisher/Morgan remote-identity receipt. No new remote read in this unit.",
+      "limit": "Earlier current-source publication and remote identity only; not publication of 176c237, original uncertain effects, production adoption or all future source."
+    },
+    "merged_publications": [
+      {
+        "pull_request": "https://github.com/maldous/uif/pull/38",
+        "merge_commit": "de9e0f2f2ef43b45eb2291f340fa9404096311eb",
+        "scope": "Five current foundation documents only.",
+        "paths": [
+          "docs/adr/0001-foundation-repository.md",
+          "docs/architecture.md",
+          "docs/evidence.md",
+          "docs/operating-procedure.md",
+          "docs/project-integration.md"
+        ]
+      },
+      {
+        "pull_request": "https://github.com/maldous/uif/pull/44",
+        "merge_commit": "ab77119f261b19e3b1f9832e462c7ae3fc47f274",
+        "scope": "Bounded current source-selection assessment; original source outcomes remain partial.",
+        "paths": [
+          "docs/ledger/current-source-selection-dispositions-20261112.json",
+          "docs/ledger/current-source-selection-dispositions-20261112.md"
+        ]
+      },
+      {
+        "pull_request": "https://github.com/maldous/uif/pull/45",
+        "merge_commit": "fc7564c6adb5ce5ad51a266a1bd561c777ef4fd9",
+        "scope": "Typed original-ledger policy 1.2.4 and matching manifest/checker.",
+        "paths": [
+          "docs/agents/uif-worker-policy.md",
+          "docs/agents/uif-worker-policy.json",
+          "tools/agents/check_policy.py"
+        ]
+      },
+      {
+        "pull_request": "https://github.com/maldous/uif/pull/46",
+        "merge_commit": "4253e9d6f1a60dfc7301da23ff3fbd58f6fe457d",
+        "scope": "Current source-role mapping; no installation or full source-outcome closure.",
+        "paths": [
+          "docs/current-source-role-map-20261112.json",
+          "docs/current-source-role-map-20261112.md"
+        ]
+      }
+    ],
+    "publication_verification_scope": "Existing qualified GitHub MCP publication and remote identity were verified by the current publisher/owner. This author checked only the supplied accepted commits' local ancestry and first-parent file scopes at the selected base.",
+    "narrow_scope_review": "The existing independent scope reviewer accepts that shared-publication-execute-uif denotes a selected current source publication event, not every future UIF source or installation. No explicit same-event binding extends that event to 176. Full documentation-candidate review and acceptance/merge remain pending."
+  },
+  "records": [
+    {
+      "original_id": "guard-policy-source-disposition",
+      "original_routing_key": "uif-ledger-20261111-023",
+      "issue_source": "https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies",
+      "state": "partial_with_attested_current_source_acceptance_credit",
+      "current_credit": "Credit the reported 176 legacy/ledger coding-review entrypoint acceptance and preserved control pins as current guard-policy/source progress beyond the earlier issue-only identity limitation.",
+      "remaining_source_requirement": "The existing source owner supplies the exact accepted 176 source-to-row map, affected guard/identity/consumer bindings and accepted publication scope. No source bytes or per-file equality are inferred here.",
+      "next_owner": "Existing source integrator and independent reviewer; UIF records exact accepted source/publication scope.",
+      "full_original_outcome_fulfilled": false,
+      "live_binding_or_installation_gate_for_source_acceptance": false
+    },
+    {
+      "original_id": "assets-validator-composition-disposition",
+      "original_routing_key": "uif-ledger-20261111-024",
+      "issue_source": "https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies",
+      "state": "partial_with_attested_current_source_acceptance_credit",
+      "current_credit": "Credit the reported accepted current composition with 40 control and 24 package pins and isolated entrypoint tests. Preserve the distinction between the historical adoption-assets and validator/schema sources.",
+      "remaining_source_requirement": "Bind the selected current assets/validator/schema roles and their exact pins to the accepted source map and published scope. The attestation does not establish historical byte equivalence or an exhaustive asset disposition.",
+      "next_owner": "Existing composition/source owner and independent reviewer.",
+      "full_original_outcome_fulfilled": false,
+      "live_binding_or_installation_gate_for_source_acceptance": false
+    },
+    {
+      "original_id": "r070-r071-dependency-selection",
+      "original_routing_key": "uif-ledger-20261111-028",
+      "issue_source": "https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies",
+      "state": "partial_with_attested_current_source_acceptance_credit",
+      "current_credit": "Credit accepted offline composition/disposable Pool and Git proof and the reported 176 import correction. Preserve R071's retained equivalent 5b8 representation and the original R070 acquisition/clone_current_workspace requirement without reopening history.",
+      "remaining_source_requirement": "Record exact accepted acquisition/import/reader-to-consumer and validation mapping in the selected current source and its accepted publication scope. No unavailable historical reconstruction or live binding is required for source acceptance.",
+      "next_owner": "Existing source/dependency integrator and independent reviewer.",
+      "full_original_outcome_fulfilled": false,
+      "live_binding_or_installation_gate_for_source_acceptance": false
+    },
+    {
+      "original_id": "canonical-v1-selected-composition",
+      "original_routing_key": "uif-ledger-20261111-034",
+      "issue_source": "https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes",
+      "state": "partial_with_attested_current_source_acceptance_credit",
+      "current_credit": "Credit the newly attested accepted coherent source and isolated legacy/ledger coding-review entrypoint proof, including the reported import fix. Earlier accepted source/publication provenance remains valid within its own scope.",
+      "remaining_source_requirement": "Supply the exact producer/schema/sealer/settings/assets/operator source-role map and immutable accepted 176 publication scope. This source-only remainder does not require production registration, custody, runtime or live effects.",
+      "next_owner": "Existing canonical source integrator and independent reviewer.",
+      "full_original_outcome_fulfilled": false,
+      "live_binding_or_installation_gate_for_source_acceptance": false
+    },
+    {
+      "original_id": "shared-publication-execute-uif",
+      "original_routing_key": "uif-ledger-20261111-066",
+      "issue_sources": [
+        "https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff",
+        "https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes"
+      ],
+      "state": "proposed_bounded_selected_publication_event_fulfilled_pending_candidate_acceptance_merge",
+      "original_wording": "Publish accepted UIF source through the qualified route and verify remote identity; conditional execution.",
+      "proposed_owner_adjudication": "Fulfill this selected current UIF publication-event outcome using actual merged PR38/44/45/46 and the earlier current-source branch/PR42 remote identity verified by the qualified publisher. These are executed publication results, not a prepared-source promise.",
+      "scope_judgment": "The narrow event interpretation is independently accepted; the full candidate and this proposed source disposition remain pending independent review and owner acceptance/merge.",
+      "not_part_of_this_publication_event": "Prepared/attested 176 source remains separately to be published for the four partial source outcomes. No exact evidence binds all future source to this original event.",
+      "preserved_limits": [
+        "Original uncertain CQ/UIF publication outcomes remain unknown, with no replay or completion claim.",
+        "No global transport/native-service/BAU/installation or future-publication acceptance follows.",
+        "This proposal creates no new publication operation, permission, task or duplicate writer."
+      ],
+      "candidate_review_owner": "Existing UIF owner and independent documentation-candidate reviewer.",
+      "accepted_new_closure_at_this_checkpoint": false
+    }
+  ],
+  "accounting": {
+    "current_accepted": {
+      "dispositioned": 56,
+      "remaining": 51,
+      "remaining_categories": {
+        "partial_current": 13,
+        "engineering": 12,
+        "shared": 26
+      }
+    },
+    "four_source_progress_credits_add_closures": 0,
+    "publication_proposal_if_accepted_and_merged_only": {
+      "additional_bounded_event_fulfillment": 1,
+      "dispositioned": 57,
+      "remaining": 50,
+      "remaining_categories": {
+        "partial_current": 12,
+        "engineering": 12,
+        "shared": 26
+      }
+    },
+    "current_count_movement_by_this_prepared_candidate": 0,
+    "original_action_ids": 213,
+    "nonadditive_reference_ids": 11
+  },
+  "untouched_outcomes": {
+    "engineering_scope": "All 12 original engineering records remain partial. This credit concerns four source rows only; the rest retain their exact source, input, cloud recovery or selected Foo/live/conditional requirements. They are not all Stokowski implementation work.",
+    "other_eight_engineering_ids": [
+      "canonical-v1-current-input-qualification",
+      "coherent-adoption-readiness",
+      "standalone-harness-boundary-plan",
+      "restart-foo",
+      "restart-cloud",
+      "restart-durability",
+      "restart-foo-validation",
+      "restart-cloud-validation"
+    ],
+    "final_audit_ids_not_closed": [
+      "ledger-final-acceptance-deduplication",
+      "ledger-final-integrated-publication"
+    ],
+    "archive_ids_not_closed": [
+      "recoverable-project-archive-502c2f50-3d73-42e9-bdac-25ffe9f3f7ad",
+      "recoverable-project-archive-2298e2d2-558d-4e43-89e3-8d3d77d47ecd",
+      "ledger-recoverable-archive-interface"
+    ],
+    "unselected_ids_still_unfulfilled_without_extra_BAU_gate": [
+      "src-059-qualification",
+      "src-062-qualification",
+      "src-064-qualification",
+      "src-066-qualification",
+      "src-067-qualification",
+      "portfolio-source-rights-inventory"
+    ],
+    "shared_effect_holds": 26,
+    "separate_protected_packet": "The neutral ec6 packet is reported independently accepted; protected approval remains pending. It is not touched, adopted or authorized by this source-credit document."
+  },
+  "effects": "Exactly two new documentation files prepared locally. No existing document/README/source change, network or publication operation, new worker/test, issue mutation, source payload retrieval, runtime/installation/protected action or hold release."
+}
