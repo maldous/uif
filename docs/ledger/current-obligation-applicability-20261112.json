@@ -1,0 +1,272 @@
+{
+  "schema": "uif-current-obligation-applicability/v1",
+  "checkpoint_date": "2026-11-12",
+  "accepted_base": "8e6acaf8cb451be7848e78c2f2bdd230d7238510",
+  "scope": "Nine original rows only; bounded applicability/disposition checkpoint, no substituted delivery and no full-row closure.",
+  "sources": {
+    "accepted_ledger": "README.md",
+    "retained_partial": "docs/ledger/prepared-uif-evidence-20261112.json",
+    "accepted_placement_and_legacy": "docs/ledger/legacy-unavailable-dispositions-20261112.json",
+    "accepted_custody": "docs/ledger/current-custody-retain-dispositions-20261112.json",
+    "current_linked_requirement_readback": {
+      "UIF-243": {
+        "id": "UIF-243",
+        "updatedAt": "2026-11-08T22:10:55.461Z",
+        "status": "Backlog",
+        "assignee": null,
+        "read_tool": "linear_get_issue",
+        "scope": "Current linked requirement read only; not a backlog allocation or issue mutation"
+      },
+      "UIF-245": {
+        "id": "UIF-245",
+        "updatedAt": "2026-11-08T22:44:04.466Z",
+        "status": "Backlog",
+        "assignee": null,
+        "read_tool": "linear_get_issue",
+        "scope": "Current linked requirement read only; not a backlog allocation or issue mutation"
+      },
+      "UIF-158": {
+        "id": "UIF-158",
+        "updatedAt": "2026-11-06T23:17:31.378Z",
+        "status": "Backlog",
+        "assignee": null,
+        "read_tool": "linear_get_issue",
+        "scope": "Current linked requirement read only; not a backlog allocation or issue mutation"
+      },
+      "UIF-116": {
+        "id": "UIF-116",
+        "updatedAt": "2026-11-06T23:17:20.591Z",
+        "status": "Backlog",
+        "assignee": null,
+        "read_tool": "linear_get_issue",
+        "scope": "Current linked requirement read only; not a backlog allocation or issue mutation"
+      }
+    }
+  },
+  "records": [
+    {
+      "original_id": "src-059-qualification",
+      "kind": "existing-root-qualification",
+      "current_evidence": {
+        "target": "/home/user/src/.claude",
+        "linked_requirement": "UIF-243",
+        "known": "Prior bounded filesystem metadata and accepted retain-in-place decision; values and bodies unread.",
+        "selected_consumer": "No selected current UIF build, White Room, service or delivery consumer is established in the checked source/evidence. This is not proof that no host tool or product uses the root.",
+        "current_use": "unknown; not declared obsolete, absent, historical-only or safe to remove"
+      },
+      "owner_disposition": {
+        "state": "retain_unselected_scope_with_qualification_unknown",
+        "decision": "Preserve existing placement, ownership, permission behavior and separate home profiles. Do not require unavailable historical captures or speculative consumer declarations before unrelated current UIF delivery.",
+        "not_new_placement_credit": true,
+        "full_original_qualification_fulfilled": false
+      },
+      "remaining_fact": "Settings scope, actual caller and project/home lookup precedence",
+      "when_fact_is_required": "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite.",
+      "next_actor": "UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures.",
+      "immediate_external_request_required": false,
+      "denial_or_effect": "No access denial or external effect was attempted by this assessment."
+    },
+    {
+      "original_id": "src-062-qualification",
+      "kind": "existing-root-qualification",
+      "current_evidence": {
+        "target": "/home/user/src/.freebuff",
+        "linked_requirement": "UIF-245",
+        "known": "Prior bounded filesystem metadata and accepted retain-in-place decision; values and bodies unread.",
+        "selected_consumer": "No selected current UIF build, White Room, service or delivery consumer is established in the checked source/evidence. This is not proof that no host tool or product uses the root.",
+        "current_use": "unknown; not declared obsolete, absent, historical-only or safe to remove"
+      },
+      "owner_disposition": {
+        "state": "retain_unselected_scope_with_qualification_unknown",
+        "decision": "Preserve existing placement, ownership, permission behavior and separate home profiles. Do not require unavailable historical captures or speculative consumer declarations before unrelated current UIF delivery.",
+        "not_new_placement_credit": true,
+        "full_original_qualification_fulfilled": false
+      },
+      "remaining_fact": "Project-marker association and actual resolver",
+      "when_fact_is_required": "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite.",
+      "next_actor": "UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures.",
+      "immediate_external_request_required": false,
+      "denial_or_effect": "No access denial or external effect was attempted by this assessment."
+    },
+    {
+      "original_id": "src-064-qualification",
+      "kind": "existing-root-qualification",
+      "current_evidence": {
+        "target": "/home/user/src/.impeccable",
+        "linked_requirement": "UIF-245",
+        "known": "Prior bounded filesystem metadata and accepted retain-in-place decision; values and bodies unread.",
+        "selected_consumer": "No selected current UIF build, White Room, service or delivery consumer is established in the checked source/evidence. This is not proof that no host tool or product uses the root.",
+        "current_use": "unknown; not declared obsolete, absent, historical-only or safe to remove"
+      },
+      "owner_disposition": {
+        "state": "retain_unselected_scope_with_qualification_unknown",
+        "decision": "Preserve existing placement, ownership, permission behavior and separate home profiles. Do not require unavailable historical captures or speculative consumer declarations before unrelated current UIF delivery.",
+        "not_new_placement_credit": true,
+        "full_original_qualification_fulfilled": false
+      },
+      "remaining_fact": "Configuration/cache readers and writers, and project/home scope",
+      "when_fact_is_required": "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite.",
+      "next_actor": "UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures.",
+      "immediate_external_request_required": false,
+      "denial_or_effect": "No access denial or external effect was attempted by this assessment."
+    },
+    {
+      "original_id": "src-066-qualification",
+      "kind": "existing-root-qualification",
+      "current_evidence": {
+        "target": "/home/user/src/.remember",
+        "linked_requirement": "UIF-245",
+        "known": "Prior bounded filesystem metadata and accepted retain-in-place decision; values and bodies unread.",
+        "selected_consumer": "No selected current UIF build, White Room, service or delivery consumer is established in the checked source/evidence. This is not proof that no host tool or product uses the root.",
+        "current_use": "unknown; not declared obsolete, absent, historical-only or safe to remove"
+      },
+      "owner_disposition": {
+        "state": "retain_unselected_scope_with_qualification_unknown",
+        "decision": "Preserve existing placement, ownership, permission behavior and separate home profiles. Do not require unavailable historical captures or speculative consumer declarations before unrelated current UIF delivery.",
+        "not_new_placement_credit": true,
+        "full_original_qualification_fulfilled": false
+      },
+      "remaining_fact": "Notes custodian and actual current use or retained-only declaration",
+      "when_fact_is_required": "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite.",
+      "next_actor": "UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures.",
+      "immediate_external_request_required": false,
+      "denial_or_effect": "No access denial or external effect was attempted by this assessment."
+    },
+    {
+      "original_id": "src-067-qualification",
+      "kind": "existing-root-qualification",
+      "current_evidence": {
+        "target": "/home/user/src/.usf",
+        "linked_requirement": "UIF-245",
+        "known": "Prior bounded filesystem metadata and accepted retain-in-place decision; values and bodies unread.",
+        "selected_consumer": "No selected current UIF build, White Room, service or delivery consumer is established in the checked source/evidence. This is not proof that no host tool or product uses the root.",
+        "current_use": "unknown; not declared obsolete, absent, historical-only or safe to remove"
+      },
+      "owner_disposition": {
+        "state": "retain_unselected_scope_with_qualification_unknown",
+        "decision": "Preserve existing placement, ownership, permission behavior and separate home profiles. Do not require unavailable historical captures or speculative consumer declarations before unrelated current UIF delivery.",
+        "not_new_placement_credit": true,
+        "full_original_qualification_fulfilled": false
+      },
+      "remaining_fact": "Inputs workflow/source association and actual caller",
+      "when_fact_is_required": "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite.",
+      "next_actor": "UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures.",
+      "immediate_external_request_required": false,
+      "denial_or_effect": "No access denial or external effect was attempted by this assessment."
+    },
+    {
+      "original_id": "portfolio-source-rights-inventory",
+      "kind": "content-selection-and-rights",
+      "current_evidence": {
+        "linked_requirements": [
+          "UIF-220",
+          "UIF-136"
+        ],
+        "known": "UIF owns the portfolio scope. Existing Site v41/source lineage and limited public Site/resume-link authority are retained evidence; original Drive/source-repository sharing was unchanged.",
+        "selected_corpus": "No exact new CV/resume/version/image/description corpus is selected by checked evidence.",
+        "not_inferred": "No general public rights, available-version inventory, canonical/duplicate mapping or new site/deployment requirement."
+      },
+      "owner_disposition": {
+        "state": "unselected_content_scope_with_rights_unknown",
+        "decision": "Do not reconstruct permanently unavailable historical versions or demand a blanket new rights inventory for unrelated UIF delivery. Retain existing public-site authorization only within its recorded scope.",
+        "full_original_inventory_fulfilled": false
+      },
+      "remaining_fact": "Exact currently available source/version IDs and selected description/image IDs, their canonical/duplicate relationships and existing audience/attribution/confidentiality authorization.",
+      "when_fact_is_required": "When actual portfolio production or a current selected source inventory is picked up. Existing unchanged authorized public Site content does not acquire a new general permission gate.",
+      "next_actor": "UIF accountable source owner first reuses the existing site/source custodian's permitted metadata record if available. Matthew/content rightsholder resolves only exact selected material whose source or rights cannot be settled by existing evidence.",
+      "immediate_external_request_required": false,
+      "current_UIF_runtime_dependency": false
+    },
+    {
+      "original_id": "recoverable-project-archive-502c2f50-3d73-42e9-bdac-25ffe9f3f7ad",
+      "kind": "current-recoverable-archive-obligation",
+      "target": {
+        "uuid": "502c2f50-3d73-42e9-bdac-25ffe9f3f7ad",
+        "name": "UIF V3"
+      },
+      "current_evidence": {
+        "linked_requirements": [
+          "UIF-158",
+          "UIF-116"
+        ],
+        "requirement": "Current retained requirement expressly requests supported recoverable project archival, not trash/delete, with exact target and restore/readback evidence.",
+        "capability": "Exposed current connector reads and metadata updates do not expose projectArchive/projectUnarchive or arbitrary authenticated GraphQL invocation. Prior ordinary Archive UI was unavailable; no fresh UI capability or archive-state proof is claimed.",
+        "target_state": "Current archived/not-trashed/restore state unverified; historical Canceled/closed counts are not archive receipts."
+      },
+      "owner_disposition": {
+        "state": "retain_exact_archive_obligation_capability_unavailable",
+        "decision": "Keep the existing target unchanged and report precise capability limitation. No new capture recovery, runtime/build work or target mutation is needed for this evidence disposition.",
+        "full_original_archive_fulfilled": false
+      },
+      "remaining_fact": "Existing approved supported recoverable archive/restore invocation through the authorized operator and exact target archived/not-trashed/restore readback. Reconcile any actually pending or uncertain original operation; do not require unavailable historical receipts or a fresh target-relevance/reapproval gate.",
+      "next_actor": "Existing authorized Linear administrator/operator through Morgan supplies its permitted current invocation capability and exact target readback. Do not use Delete/status changes, new credentials, private endpoints or team-wide autoarchive settings.",
+      "no_effect_alternative": "Retaining the existing project container without archiving can be proposed as a changed administrative scope; only the accountable user/decision owner can accept replacing the expressly requested archival. It is not adopted here and cannot be labelled archived.",
+      "current_UIF_runtime_dependency": false
+    },
+    {
+      "original_id": "recoverable-project-archive-2298e2d2-558d-4e43-89e3-8d3d77d47ecd",
+      "kind": "current-recoverable-archive-obligation",
+      "target": {
+        "uuid": "2298e2d2-558d-4e43-89e3-8d3d77d47ecd",
+        "name": "Infrastructure Deployment Programme"
+      },
+      "current_evidence": {
+        "linked_requirements": [
+          "UIF-158",
+          "UIF-116"
+        ],
+        "requirement": "Current retained requirement expressly requests supported recoverable project archival, not trash/delete, with exact target and restore/readback evidence.",
+        "capability": "Exposed current connector reads and metadata updates do not expose projectArchive/projectUnarchive or arbitrary authenticated GraphQL invocation. Prior ordinary Archive UI was unavailable; no fresh UI capability or archive-state proof is claimed.",
+        "target_state": "Current archived/not-trashed/restore state unverified; historical Canceled/closed counts are not archive receipts."
+      },
+      "owner_disposition": {
+        "state": "retain_exact_archive_obligation_capability_unavailable",
+        "decision": "Keep the existing target unchanged and report precise capability limitation. No new capture recovery, runtime/build work or target mutation is needed for this evidence disposition.",
+        "full_original_archive_fulfilled": false
+      },
+      "remaining_fact": "Existing approved supported recoverable archive/restore invocation and exact target readback, retaining only the Infrastructure current-relevance disposition already required by UIF-116. Reuse any existing bounded relevance review rather than invent a new audit. Reconcile any actually pending or uncertain original operation; unavailable historical receipts are not a new prerequisite.",
+      "next_actor": "Existing authorized Linear administrator/operator through Morgan supplies its permitted current invocation capability and exact target readback. Do not use Delete/status changes, new credentials, private endpoints or team-wide autoarchive settings.",
+      "no_effect_alternative": "Retaining the existing project container without archiving can be proposed as a changed administrative scope; only the accountable user/decision owner can accept replacing the expressly requested archival. It is not adopted here and cannot be labelled archived.",
+      "current_UIF_runtime_dependency": false
+    },
+    {
+      "original_id": "ledger-recoverable-archive-interface",
+      "kind": "supported-capability-reconciliation",
+      "current_evidence": {
+        "linked_requirements": [
+          "UIF-116",
+          "UIF-158"
+        ],
+        "completed": "Current exposed-schema and supported-interface assessment records the precise unavailable archive/restore route. No missing historical capture is required.",
+        "not_completed": "No authorized archive/restore invocation or recoverability round trip was established."
+      },
+      "owner_disposition": {
+        "state": "capability_assessment_complete_interface_still_unavailable",
+        "decision": "Reuse the completed capability finding; do not commission another broad UI/API/history search. Target effects and relevance stay with original target rows.",
+        "full_original_interface_established": false
+      },
+      "remaining_fact": "One existing operator names an actually supported and granted invocation/restore surface. Interface discovery does not independently authorize target effects.",
+      "next_actor": "Existing authorized Linear administrator/operator and current connector owner through Morgan; no new identity/token or private API.",
+      "no_effect_alternative": "Accept the precise unavailable-route evidence as the current reconciliation checkpoint while retaining explicit target obligations; not technical fulfillment or an archive effect.",
+      "current_UIF_runtime_dependency": false
+    }
+  ],
+  "accounting": {
+    "original_action_ids": 213,
+    "nonadditive_references": 11,
+    "review_domain": 107,
+    "accepted_owner_dispositioned": 48,
+    "remaining": 59,
+    "additional_full_row_closures": 0,
+    "foundation_publication": "PR38 current five-document publication unit is merged; no extra full-row closure is booked by this checkpoint."
+  },
+  "limits": [
+    "No historical capture search/reconstruction or equality inference",
+    "No new consumer, backup, portal/site/deployment or rights requirement",
+    "No settings/credential/data body reads or copies",
+    "No archive/delete/status/permission/service/runtime/claim effects",
+    "No replay or bypass of denied/uncertain operations",
+    "Existing product/shared-effect holds and original operation identities remain",
+    "Unknown scope or use is not proof of obsolete/absent/safe-to-remove material"
+  ]
+}
