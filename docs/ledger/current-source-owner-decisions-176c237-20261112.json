@@ -1,0 +1,1043 @@
+{
+  "schema": "uif-four-current-owner-source-decisions/1",
+  "date": "2026-11-12",
+  "accountable_owner": "uif-platform-owner",
+  "documentation_base": "56b4ce93f049d8dfddcc4499300a23faa21c775b",
+  "selected_source": {
+    "commit": "176c237e1a6bce2e8057d0c21424e4f76f59fb1f",
+    "tree": "a6bbf1612938574a3ebd0499a478a46f7361ba28",
+    "packet_manifest_sha256": "fcf3e46043a3a5886daef8a591ac55cb7e9554e04c5fd318fce7476ac53fd15c"
+  },
+  "evidence_provenance": {
+    "method": "Complete source map and verdict received as authorized internal evidence; source-byte/hash verification performed by the existing Foo assessor and independent reviewer. This cloud owner verifies its retained decision/snapshot hashes, not the unavailable full source archive.",
+    "source_map_sha256": "303604960ac95b69e99411dffdd305c13e7e9f43b9f59466214b19424060188e",
+    "structured_manifest_sha256": "133ebc562479644f3be0c3330ed9359e3be27d37cfaa40c6323de36ed6ef6f18",
+    "independent_verdict_sha256": "e93a546a57d4a050b0bfb47096719d5b83923a14aff44397df61a668c2309d03",
+    "native_verified_clauses": 14,
+    "native_verified_source_review_hashes": 50,
+    "duplicate_cloud_copy_required": false,
+    "citation_correction": {
+      "path": "src/uif/role_broker.py",
+      "old_line": 1288,
+      "correct_line": 1315,
+      "symbol": "_spawn_isolated",
+      "file_sha256": "5927651fe6415b5d4eade3632d48821d60c8ab0ef6a97c3ff0019809a10c1cae",
+      "effect": "Anchor correction only; original map/hash retained unchanged.",
+      "old_line_points_to": "process polling method"
+    }
+  },
+  "owner_decisions": {
+    "guard-policy-source-disposition": {
+      "original_clause": "Resolve retained guard-policy differences against the actual current requirement and selected source.",
+      "selected": "UIF guard/dropper/broker and typed launch forms at 176c237, including the accepted isolated package closure. Retained OffMenu guard is lineage, not current policy authority.",
+      "clauses": [
+        "guard.confinement",
+        "guard.launch_forms",
+        "guard.entrypoint"
+      ],
+      "status": "partial_source_selection_recorded_remaining_clause_open",
+      "remaining_source_clause": "canonical.operator",
+      "runtime_evidence_is_separate": true
+    },
+    "r070-r071-dependency-selection": {
+      "original_clause": "Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation.",
+      "selected": "For this current consumer, select source.acquire_checkout and the typed owner/source receiver chain instead of clone_current_workspace. Preserve R071 retained 5b8 component credit and separate custody/history duties.",
+      "clauses": [
+        "acquisition.replacement",
+        "acquisition.typed_consumer",
+        "acquisition.stages"
+      ],
+      "status": "partial_source_selection_recorded_remaining_clause_open",
+      "remaining_source_clause": "canonical.operator",
+      "runtime_evidence_is_separate": true
+    },
+    "assets-validator-composition-disposition": {
+      "original_clause": "Resolve the distinct 996b adoption-assets and b850 validator/schema source composition with exact current pins and acceptance.",
+      "selected": "Select the pinned UIF control package, launch/guard assets and strict task/stage/publication validators. Historical 996b and b850 are distinct provenance, not mandatory current inputs or claimed equal/recovered bytes.",
+      "clauses": [
+        "assets.replacement",
+        "assets.validators"
+      ],
+      "status": "partial_source_selection_recorded_remaining_clause_open",
+      "remaining_source_clause": "canonical.operator",
+      "runtime_evidence_is_separate": true
+    },
+    "canonical-v1-selected-composition": {
+      "original_clause": "Reconcile the exact selected canonical-V1 producer/schema/sealer/settings/assets/operator source pairs and independent reviews into one coherent source composition.",
+      "selected": "Select the six concrete current UIF source roles below. Current schema labels prove no historical V1 equality. Producer/schema/sealer/settings/assets have reviewed implementations; the executable long-running operator edge remains missing.",
+      "clauses": [
+        "canonical.producer",
+        "canonical.schema",
+        "canonical.sealing",
+        "canonical.settings",
+        "canonical.assets",
+        "canonical.operator"
+      ],
+      "status": "partial_source_selection_recorded_remaining_clause_open",
+      "remaining_source_clause": "canonical.operator",
+      "runtime_evidence_is_separate": true
+    }
+  },
+  "clauses": [
+    {
+      "id": "guard.confinement",
+      "decision": "Select fixed issue/ledger attempt checks, privilege drop, projection/namespace/output custody and original stopped-witness binding.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "guard",
+          "line": 308,
+          "symbol": "issue_length,ledger_key_length,check_attempt"
+        },
+        {
+          "pin": "guard",
+          "line": 409,
+          "symbol": "main"
+        },
+        {
+          "pin": "dropper",
+          "line": 7,
+          "symbol": "fixed identity and exec"
+        },
+        {
+          "pin": "broker",
+          "line": 858,
+          "symbol": "_prepare"
+        },
+        {
+          "pin": "broker",
+          "line": 989,
+          "symbol": "_namespace_files"
+        },
+        {
+          "pin": "broker",
+          "line": 1315,
+          "symbol": "_spawn_isolated and command gate"
+        }
+      ],
+      "review_coverage": [
+        "dispatch_findings",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "guard.launch_forms",
+      "decision": "Select separate issue-backed and ledger coding/review keys; compare original authority, intent and projection; no synthetic issue and no review write roots.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "broker",
+          "line": 81,
+          "symbol": "LaunchKey,LedgerLaunchKey,LedgerReviewLaunchKey"
+        },
+        {
+          "pin": "broker",
+          "line": 423,
+          "symbol": "_check_original"
+        },
+        {
+          "pin": "supervisor",
+          "line": 152,
+          "symbol": "_inputs"
+        },
+        {
+          "pin": "supervisor",
+          "line": 516,
+          "symbol": "run_registered_role_turn"
+        },
+        {
+          "pin": "review_launcher",
+          "line": 250,
+          "symbol": "ReviewLauncher.run"
+        }
+      ],
+      "review_coverage": [
+        "task_identity",
+        "dispatch_findings",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "guard.entrypoint",
+      "decision": "Select isolated pinned package/template and accepted render, not installed privilege proof.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "helper_template",
+          "line": 4,
+          "symbol": "render pins/package custody/isolated execution"
+        },
+        {
+          "pin": "broker",
+          "line": 1737,
+          "symbol": "_policy and main"
+        },
+        {
+          "pin": "control_manifest",
+          "line": 16,
+          "symbol": "role_helper and file pins"
+        },
+        {
+          "pin": "render_package",
+          "line": 1,
+          "symbol": "24 module hashes"
+        },
+        {
+          "pin": "render_helper",
+          "line": 4,
+          "symbol": "rendered launcher"
+        }
+      ],
+      "review_coverage": [
+        "dispatch_findings",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "acquisition.replacement",
+      "decision": "Choose dependency-complete local bundle/no-replace acquisition for R070; retain separate R071 equivalence credit.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "source",
+          "line": 75,
+          "symbol": "require_local_git_storage"
+        },
+        {
+          "pin": "source",
+          "line": 182,
+          "symbol": "acquire_checkout"
+        },
+        {
+          "pin": "stokowski",
+          "line": 246,
+          "symbol": "acquire_uif_task_source"
+        },
+        {
+          "pin": "retained_selection_md",
+          "line": 41,
+          "symbol": "owner selection"
+        },
+        {
+          "pin": "retained_custody",
+          "line": 401,
+          "symbol": "R071 credit"
+        }
+      ],
+      "review_coverage": [
+        "acquisition_custody",
+        "earlier_pr42",
+        "connected_flow"
+      ]
+    },
+    {
+      "id": "acquisition.typed_consumer",
+      "decision": "Select canonical row/task/source checks and owner-fenced original claim or verified-absence first ID; unknown effects hold.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "ledger",
+          "line": 40,
+          "symbol": "read_snapshot"
+        },
+        {
+          "pin": "identity",
+          "line": 22,
+          "symbol": "LedgerTaskKey,LedgerTaskEnvelope"
+        },
+        {
+          "pin": "admission",
+          "line": 231,
+          "symbol": "read_current"
+        },
+        {
+          "pin": "admission",
+          "line": 292,
+          "symbol": "select_ready,ledger_context"
+        },
+        {
+          "pin": "owner",
+          "line": 255,
+          "symbol": "select_ledger_tasks,claim_ledger_task,_claim"
+        },
+        {
+          "pin": "owner",
+          "line": 364,
+          "symbol": "selected_ledger_source,ensure_ledger_workspace"
+        },
+        {
+          "pin": "stokowski",
+          "line": 180,
+          "symbol": "_bind_ledger_task,_bind_source,_ensure_workspace"
+        }
+      ],
+      "review_coverage": [
+        "task_identity",
+        "intake_findings",
+        "dispatch_qualification",
+        "connected_flow"
+      ]
+    },
+    {
+      "id": "acquisition.stages",
+      "decision": "Select original dispatch/validation/completion/refill hooks; offline fixture drives them, no tracked long-running production caller.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "admission",
+          "line": 369,
+          "symbol": "dispatch fence,record_intent"
+        },
+        {
+          "pin": "dispatch",
+          "line": 309,
+          "symbol": "for_ledger"
+        },
+        {
+          "pin": "dispatch",
+          "line": 436,
+          "symbol": "owned_ledger_turn"
+        },
+        {
+          "pin": "owner",
+          "line": 230,
+          "symbol": "stage_fence"
+        },
+        {
+          "pin": "owner",
+          "line": 572,
+          "symbol": "validation_adapter"
+        },
+        {
+          "pin": "validation",
+          "line": 85,
+          "symbol": "StageBinding"
+        },
+        {
+          "pin": "validation",
+          "line": 332,
+          "symbol": "_Stage.tick"
+        },
+        {
+          "pin": "validation",
+          "line": 375,
+          "symbol": "WindmillValidationBackend"
+        },
+        {
+          "pin": "refill",
+          "line": 25,
+          "symbol": "verify_refill"
+        }
+      ],
+      "review_coverage": [
+        "intake_findings",
+        "dispatch_findings",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "assets.replacement",
+      "decision": "Select current UIF package and exact assets, preserving 996b/b850 provenance without equality or historic recovery.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "retained_roles_md",
+          "line": 50,
+          "symbol": "replacement boundary"
+        },
+        {
+          "pin": "build",
+          "line": 1,
+          "symbol": "package/build definition"
+        },
+        {
+          "pin": "control_manifest",
+          "line": 20,
+          "symbol": "file pins"
+        },
+        {
+          "pin": "guard",
+          "line": 1,
+          "symbol": "native guard"
+        },
+        {
+          "pin": "dropper",
+          "line": 1,
+          "symbol": "dropper template"
+        },
+        {
+          "pin": "helper_template",
+          "line": 4,
+          "symbol": "launcher template"
+        }
+      ],
+      "review_coverage": [
+        "earlier_pr42",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "assets.validators",
+      "decision": "Select strict source/task/stage/reviewer/publication consumers; ordinary Foo schema does not select a live ledger validation consumer.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "role",
+          "line": 11,
+          "symbol": "verify_control_role"
+        },
+        {
+          "pin": "ledger_schema",
+          "line": 2,
+          "symbol": "closed wire schema"
+        },
+        {
+          "pin": "identity",
+          "line": 49,
+          "symbol": "canonical task content"
+        },
+        {
+          "pin": "validation",
+          "line": 85,
+          "symbol": "StageBinding.verify"
+        },
+        {
+          "pin": "review",
+          "line": 27,
+          "symbol": "ReviewSpec"
+        },
+        {
+          "pin": "publication",
+          "line": 77,
+          "symbol": "verify_publication_origin,PublicationRequest"
+        },
+        {
+          "pin": "foo_schema",
+          "line": 1,
+          "symbol": "ordinary transport schema"
+        },
+        {
+          "pin": "foo_jobs",
+          "line": 114,
+          "symbol": "request and receipt"
+        },
+        {
+          "pin": "native_publisher",
+          "line": 870,
+          "symbol": "publisher registration decoder"
+        }
+      ],
+      "review_coverage": [
+        "task_identity",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "canonical.producer",
+      "decision": "Select create-only original admission and exact candidate/PR source producers; external publishing was simulated.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "owner",
+          "line": 249,
+          "symbol": "claim,claim_ledger_task"
+        },
+        {
+          "pin": "owner",
+          "line": 322,
+          "symbol": "first/original operation and durable admission"
+        },
+        {
+          "pin": "publication_rpc",
+          "line": 326,
+          "symbol": "publish_candidate"
+        },
+        {
+          "pin": "publication_rpc",
+          "line": 409,
+          "symbol": "prepare_pull_request"
+        }
+      ],
+      "review_coverage": [
+        "intake_findings",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "canonical.schema",
+      "decision": "Select explicit current inventory/task/stage/publication/ordinary schemas, preserving legacy branch; no historical V1 equivalence.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "control_manifest",
+          "line": 1,
+          "symbol": "versioned entrypoint/pin manifest"
+        },
+        {
+          "pin": "role",
+          "line": 11,
+          "symbol": "verify_control_role"
+        },
+        {
+          "pin": "ledger_schema",
+          "line": 2,
+          "symbol": "ledger schema"
+        },
+        {
+          "pin": "identity",
+          "line": 49,
+          "symbol": "snapshot/row validation"
+        },
+        {
+          "pin": "validation",
+          "line": 85,
+          "symbol": "StageBinding"
+        },
+        {
+          "pin": "publication",
+          "line": 102,
+          "symbol": "PublicationRequest"
+        },
+        {
+          "pin": "foo_schema",
+          "line": 1,
+          "symbol": "ordinary schema"
+        }
+      ],
+      "review_coverage": [
+        "task_identity",
+        "earlier_pr42",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "canonical.sealing",
+      "decision": "Select canonical digest/durable receipt/original operation locking and completion-before-refill contracts, not signatures or recovered old receipts.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "publication",
+          "line": 55,
+          "symbol": "wire,fingerprint"
+        },
+        {
+          "pin": "native_publisher",
+          "line": 102,
+          "symbol": "durable"
+        },
+        {
+          "pin": "owner",
+          "line": 158,
+          "symbol": "lock"
+        },
+        {
+          "pin": "owner",
+          "line": 487,
+          "symbol": "read_completion,complete_publication"
+        },
+        {
+          "pin": "admission",
+          "line": 466,
+          "symbol": "OwnerStages"
+        },
+        {
+          "pin": "recovery",
+          "line": 107,
+          "symbol": "Recovery.observe"
+        },
+        {
+          "pin": "refill",
+          "line": 25,
+          "symbol": "verify_refill"
+        }
+      ],
+      "review_coverage": [
+        "dispatch_qualification",
+        "earlier_pr42",
+        "connected_flow"
+      ]
+    },
+    {
+      "id": "canonical.settings",
+      "decision": "Select source configuration shapes, not invented operative registration/CPU/grants or installed values.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "role_launch",
+          "line": 2,
+          "symbol": "controller/role custody"
+        },
+        {
+          "pin": "role_supervisor",
+          "line": 2,
+          "symbol": "capacity/helper/owner pins"
+        },
+        {
+          "pin": "shared_admission",
+          "line": 2,
+          "symbol": "Pool/descriptor/resources"
+        },
+        {
+          "pin": "owner",
+          "line": 100,
+          "symbol": "OwnerAuthority.load exact schema"
+        },
+        {
+          "pin": "native_publisher",
+          "line": 870,
+          "symbol": "publisher registration schema"
+        }
+      ],
+      "review_coverage": [
+        "earlier_pr42",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "canonical.assets",
+      "decision": "Select the exact UIF source/package/guard/launcher assets and accepted render; retain shared Stokowski/Pool lineage and historical decisions.",
+      "state": "selected_reviewed_source_component",
+      "source_refs": [
+        {
+          "pin": "build",
+          "line": 1,
+          "symbol": "build metadata"
+        },
+        {
+          "pin": "control_manifest",
+          "line": 20,
+          "symbol": "source inventory"
+        },
+        {
+          "pin": "guard",
+          "line": 1,
+          "symbol": "guard"
+        },
+        {
+          "pin": "dropper",
+          "line": 1,
+          "symbol": "dropper"
+        },
+        {
+          "pin": "helper_template",
+          "line": 4,
+          "symbol": "launcher"
+        },
+        {
+          "pin": "render_package",
+          "line": 1,
+          "symbol": "package pins"
+        },
+        {
+          "pin": "render_helper",
+          "line": 4,
+          "symbol": "rendered launcher"
+        }
+      ],
+      "review_coverage": [
+        "earlier_pr42",
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    },
+    {
+      "id": "canonical.operator",
+      "decision": "Remain open: bind_owner_coordinator returns typed callbacks but no non-test caller opens authority, registers/drives stages, dispatches, recovers and performs warranted distinct refill. No console script/service unit supplies this edge.",
+      "state": "missing_executable_long_running_source_edge",
+      "source_refs": [
+        {
+          "pin": "control_manifest",
+          "line": 2,
+          "symbol": "bootstrap/intake/entrypoints"
+        },
+        {
+          "pin": "owner",
+          "line": 553,
+          "symbol": "register_stages"
+        },
+        {
+          "pin": "owner",
+          "line": 663,
+          "symbol": "LedgerIntake,bind_owner_coordinator"
+        },
+        {
+          "pin": "dispatch",
+          "line": 436,
+          "symbol": "owned_ledger_turn"
+        },
+        {
+          "pin": "supervisor",
+          "line": 712,
+          "symbol": "single-attempt main"
+        },
+        {
+          "pin": "review_selector",
+          "line": 220,
+          "symbol": "single invocation review entrypoint"
+        },
+        {
+          "pin": "publisher_entry",
+          "line": 5,
+          "symbol": "fixed publication entrypoint"
+        },
+        {
+          "pin": "admission_entry",
+          "line": 1,
+          "symbol": "shared admission entrypoint"
+        },
+        {
+          "pin": "foo_entry",
+          "line": 12,
+          "symbol": "ordinary transport entrypoint"
+        },
+        {
+          "pin": "connected_fixture",
+          "line": 103,
+          "symbol": "offline explicit stage driving"
+        }
+      ],
+      "review_coverage": [
+        "connected_flow",
+        "integrated_launcher"
+      ]
+    }
+  ],
+  "pins": {
+    "guard": {
+      "path": "tools/delivery/uif_coding_child_guard.c",
+      "sha256": "d5d792e6aa614d4c1467fa111e8657685f6ce166c550ca53a3b02d356c234e51",
+      "custody": "tracked_source"
+    },
+    "dropper": {
+      "path": "deploy/stokowski/uif-coding-dropper.sh",
+      "sha256": "c10c05f77677c52596c3820e9645c74a30a167d0585730a485f719cb7725cb47",
+      "custody": "tracked_source"
+    },
+    "broker": {
+      "path": "src/uif/role_broker.py",
+      "sha256": "5927651fe6415b5d4eade3632d48821d60c8ab0ef6a97c3ff0019809a10c1cae",
+      "custody": "tracked_source"
+    },
+    "supervisor": {
+      "path": "src/uif/supervisor.py",
+      "sha256": "78e0d15262c11b799b91637b8cd951cadebee62b7be7ad3559c7aa961749048c",
+      "custody": "tracked_source"
+    },
+    "review_launcher": {
+      "path": "src/uif/review_launcher.py",
+      "sha256": "b6bdd6b55f77a2bf1da98ab2512982ac1fc2ccfd7c1ba1650e581e4d660e14d6",
+      "custody": "tracked_source"
+    },
+    "helper_template": {
+      "path": "deploy/stokowski/uif-role-helper.sh",
+      "sha256": "0c9f94a2ce7fb0b4412174f0465834a7433c1b20609bbb894e29edfdff5e9849",
+      "custody": "tracked_source"
+    },
+    "control_manifest": {
+      "path": "config/delivery/stokowski-control.json",
+      "sha256": "6bc89f95da597bcfaab08e60bdbb7e0fb5200d6d95724f6db6b26be38a25978f",
+      "custody": "tracked_source"
+    },
+    "source": {
+      "path": "src/uif/source.py",
+      "sha256": "7eda6b85694a9dcf119e8e591e53955e1f1982eccd8d0aa1afae6ed674ad7d9c",
+      "custody": "tracked_source"
+    },
+    "stokowski": {
+      "path": "src/uif/stokowski.py",
+      "sha256": "85900a09d5dda84cf0d7174365e2191d53c1bd7b3a6d8054b4cfc347df491023",
+      "custody": "tracked_source"
+    },
+    "ledger": {
+      "path": "src/uif/ledger.py",
+      "sha256": "10ca83d73144f0a7d1169559eba07532945a0ebfdfb3308e692a854bf9d07b8e",
+      "custody": "tracked_source"
+    },
+    "identity": {
+      "path": "src/uif/task_identity.py",
+      "sha256": "47f802fbfcb667b2b794b3d96fb9c2b0640fcd50e1b143bb5a2cba2b502b4732",
+      "custody": "tracked_source"
+    },
+    "admission": {
+      "path": "src/uif/admission.py",
+      "sha256": "c0c94ef85865a90118d624918834effea55a807d005e4346c342762ad85803ca",
+      "custody": "tracked_source"
+    },
+    "owner": {
+      "path": "src/uif/owner_runtime.py",
+      "sha256": "248211e082037979228aeb5f4a9291b96facc358d80943bff85d5197cd36c40b",
+      "custody": "tracked_source"
+    },
+    "dispatch": {
+      "path": "src/uif/dispatch.py",
+      "sha256": "6bac0936bfab1b1383e4f5f77791a078fe480bd5a9fd38da26fede05839756d0",
+      "custody": "tracked_source"
+    },
+    "validation": {
+      "path": "src/uif/validation.py",
+      "sha256": "04ec572f49e176537cf9e5b8c1d13ab3ce24aea195b889f76984c1059f0b3314",
+      "custody": "tracked_source"
+    },
+    "refill": {
+      "path": "src/uif/refill.py",
+      "sha256": "1b9c39ea48d35f6a909b86a78f92b8e2b25ab202d7b650007284c38a6e728e92",
+      "custody": "tracked_source"
+    },
+    "build": {
+      "path": "pyproject.toml",
+      "sha256": "ec37075111bdcb7960698bdd7e2c4c3898b639d12ecdb23598bc15ca8b96462d",
+      "custody": "tracked_source"
+    },
+    "role": {
+      "path": "src/uif/role.py",
+      "sha256": "80c477ad0c074f62de0e1a18e8ba5330c768bd147143df36b0962a0656586a43",
+      "custody": "tracked_source"
+    },
+    "ledger_schema": {
+      "path": "config/delivery/ledger-task.schema.json",
+      "sha256": "dd94d634d9d5ccf224319550d648edc9c5f4afe3c9ef4d1ddbef9403050e54ce",
+      "custody": "tracked_source"
+    },
+    "review": {
+      "path": "src/uif/review.py",
+      "sha256": "d031179e627f93f355775b3859727889ccd22a89dc08d1be5e8a04e7a9aca661",
+      "custody": "tracked_source"
+    },
+    "publication": {
+      "path": "src/uif/publication.py",
+      "sha256": "010e052af560515735fae84eeb675bf6cb2f34c7d049170b0331b0ef5ba2397e",
+      "custody": "tracked_source"
+    },
+    "foo_schema": {
+      "path": "config/windmill/source/foo_jobs.schema.json",
+      "sha256": "c7d745a2d989ee7b358593e0e67a3bf7d5a233cf9df29e37726f5444e2f2bf9f",
+      "custody": "tracked_source"
+    },
+    "foo_jobs": {
+      "path": "config/windmill/source/foo_jobs.py",
+      "sha256": "353fe127b3369500b13e088617013598aee3ed4d20edaec2d0650db6f6317c77",
+      "custody": "tracked_source"
+    },
+    "native_publisher": {
+      "path": "src/uif/native_publisher.py",
+      "sha256": "e8efaeffbccf39f530e255c0e417cd428dc5920fa7ce3cb5448333731c16cdea",
+      "custody": "tracked_source"
+    },
+    "publication_rpc": {
+      "path": "src/uif/publication_rpc.py",
+      "sha256": "09eb0f1c396b492f3e9db342dc2f2f46441ebfbeeeed50b5e0e43f452f0651c1",
+      "custody": "tracked_source"
+    },
+    "recovery": {
+      "path": "src/uif/recovery.py",
+      "sha256": "753dd9179fcfbe18680358b9a252643b7acb042af85a5544b4f075bc7c6e0908",
+      "custody": "tracked_source"
+    },
+    "role_launch": {
+      "path": "config/delivery/role-launch.example.json",
+      "sha256": "09a58a18d2f90950c6b78749bd0293a02011663ac50997513d5a4edfe010621b",
+      "custody": "tracked_source"
+    },
+    "role_supervisor": {
+      "path": "config/delivery/role-supervisor.example.json",
+      "sha256": "4654701ba14e564c6706ce3c6bb48e680e5e1f70c32ddbc8fbd06bae4da5b3d0",
+      "custody": "tracked_source"
+    },
+    "shared_admission": {
+      "path": "config/delivery/shared-job-admission.example.json",
+      "sha256": "e337c0f725633f36c46f83d0c4f914071cf590bdd091dfba092341e3c4176f8b",
+      "custody": "tracked_source"
+    },
+    "review_selector": {
+      "path": "src/uif/review_selector.py",
+      "sha256": "00660f9a42ca6ac69610231b353b55af54ea769b2fdf13d2a9b05407815e28ee",
+      "custody": "tracked_source"
+    },
+    "publisher_entry": {
+      "path": "tools/delivery/uif_native_publisher.py",
+      "sha256": "01fccf0412d99913f65852da6b2ead2537c1ec2957796104a36e2372727c4b2b",
+      "custody": "tracked_source"
+    },
+    "admission_entry": {
+      "path": "tools/delivery/uif_shared_job_admission.py",
+      "sha256": "46d3458b5ee943392672dd597fe2934f48cb244ffc1b984b27528aea23e5dbd7",
+      "custody": "tracked_source"
+    },
+    "foo_entry": {
+      "path": "tools/windmill/foo_user_exec.py",
+      "sha256": "5a558508d502a5379af4faa6d026e7422262f68e19803e0f60a3fdbca49289ed",
+      "custody": "tracked_source"
+    },
+    "render_package": {
+      "path": "uif-role-package.json",
+      "sha256": "05ae49e71435925ed03b3307960c134e4124946dfd541d6c80d90dfbe26ba94e",
+      "custody": "accepted_foo_packet_artifact"
+    },
+    "render_helper": {
+      "path": "uif-role-helper",
+      "sha256": "aad7b10d9ea9c3d2cb8e7f38d22073356675629f970037b37c71156c05b0bf75",
+      "custody": "accepted_foo_packet_artifact"
+    },
+    "connected_fixture": {
+      "path": "connected_foo_verified.py",
+      "sha256": "019815892ae409d88e2ad7eadb2dcdcff790af84105356d20aade6e083516311",
+      "custody": "accepted_foo_packet_artifact"
+    },
+    "retained_selection_md": {
+      "path": "docs/ledger/current-source-selection-dispositions-20261112.md",
+      "sha256": "0f5395fb9069a0a01e3fd85744efdc3231ae2720429deb8101ddb6dddfa5cb80",
+      "custody": "retained_owner_decision"
+    },
+    "retained_selection_json": {
+      "path": "docs/ledger/current-source-selection-dispositions-20261112.json",
+      "sha256": "60c410dd1e3c13d080650a1f1cac9ff8df74be8fc28728b9f100dfe038d01535",
+      "custody": "retained_owner_decision"
+    },
+    "retained_roles_md": {
+      "path": "docs/current-source-role-map-20261112.md",
+      "sha256": "26d42727182cf24e6cd0502f632ff07d5dc6e044d3cdef2efb776f99e3e8c161",
+      "custody": "retained_owner_decision"
+    },
+    "retained_roles_json": {
+      "path": "docs/current-source-role-map-20261112.json",
+      "sha256": "2dd98e2618fc30e4878f380f6e5183e2df36a6dc76873646d5b1ff4ab2dd00d2",
+      "custody": "retained_owner_decision"
+    },
+    "retained_custody": {
+      "path": "docs/ledger/current-custody-retain-dispositions-20261112.json",
+      "sha256": "92660fc678557e7aa2c047097ca3c21d00b106eeb482b10f2d7a22d5af02e553",
+      "custody": "retained_owner_decision"
+    },
+    "review_integrated_launcher": {
+      "path": "/tmp/uif-parent-independent-review-20261111/ledger-launcher-176c237.2jho7K/review.md",
+      "sha256": "5543e05a45227ef74efe7d523b6004878b57e8fc0f6a0214234d77debd66eaaa",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_connected_flow": {
+      "path": "/tmp/uif-parent-independent-review-20261111/connected-ledger.Xn4k22/review.md",
+      "sha256": "91de4572d0c459b0b9a2936bd34ab16a9587783d35c70af20683950c737fc2eb",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_task_identity": {
+      "path": "/tmp/uif-parent-independent-review-20261111/ledger-task-identity.Cl6hR7/review.md",
+      "sha256": "66742ea6fd4f7097d813dae9b8a70d63d40c30ee4cedda4c86e230d2e0db7474",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_acquisition_custody": {
+      "path": "/tmp/uif-parent-independent-review-20261111/custody-revision-e581506/exact-candidate-review.md",
+      "sha256": "f3f5f59d951baeb74539468e4a894eb83169681292ac0c1545aedf6892ea2b32",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_intake_findings": {
+      "path": "/tmp/uif-parent-independent-review-20261111/ledger-intake.FQmL98/review.md",
+      "sha256": "eb024015fec4817ad6cfc8bc06b02ef88753fc508a0f26a486fe9e637e8b4507",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_dispatch_findings": {
+      "path": "/tmp/uif-parent-independent-review-20261111/ledger-dispatch.d30rMJ/review.md",
+      "sha256": "0d2beea588abf8de4165492db41541fa35809a120267bc414aaf4d7d868a43fb",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_dispatch_qualification": {
+      "path": "/tmp/uif-parent-independent-review-20261111/recovered-ledger-dispatch-937f38f/exact-candidate-review.md",
+      "sha256": "33392b45e0c1c456e17948d574d28a85aa7e056111ddc41d505afad08178996e",
+      "custody": "retained_foo_independent_review"
+    },
+    "review_earlier_pr42": {
+      "path": "/tmp/uif-parent-independent-review-20261111/pr42-corrections.BRpLv4/combined-review.md",
+      "sha256": "c5482a57e152619b63b5678443f0d1f8eb6294b6c0c99033b349f739a7945aec",
+      "custody": "retained_foo_independent_review"
+    },
+    "snapshot": {
+      "path": "README.md",
+      "sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+      "custody": "canonical_snapshot"
+    }
+  },
+  "review_scopes": {
+    "integrated_launcher": {
+      "pin": "review_integrated_launcher",
+      "scope": "accepted launcher/package closure; inert privileged-path substitute"
+    },
+    "connected_flow": {
+      "pin": "review_connected_flow",
+      "scope": "offline chain observed; import finding closed by integrated_launcher"
+    },
+    "task_identity": {
+      "pin": "review_task_identity",
+      "scope": "accepted standalone identity/schema"
+    },
+    "acquisition_custody": {
+      "pin": "review_acquisition_custody",
+      "scope": "accepted disposable custody/source receiver correction"
+    },
+    "intake_findings": {
+      "pin": "review_intake_findings",
+      "scope": "findings at cf542cd; corrected original intent/flow covered by connected_flow"
+    },
+    "dispatch_findings": {
+      "pin": "review_dispatch_findings",
+      "scope": "mixed-role/package findings closed by connected_flow and integrated_launcher"
+    },
+    "dispatch_qualification": {
+      "pin": "review_dispatch_qualification",
+      "scope": "accepted bounded prior-effect/original-dispatch qualification"
+    },
+    "earlier_pr42": {
+      "pin": "review_earlier_pr42",
+      "scope": "accepted 89e component composition"
+    }
+  },
+  "common_remaining_source_edge": {
+    "status": "source implementation active as reported by Morgan; no live admission",
+    "required_behavior": "A selected executable long-running UIF caller opens owner/config authority, consumes typed intake, invokes guarded dispatch, binds and drives validation/review/publication, reconciles original recovery and verifies warranted distinct refill. Reuse existing ownership/Pool/fences, no second queue/allocator/store.",
+    "existing_author": "01a1cd15-85ae-7783-b1b6-176c64c41a06",
+    "exclusive_source": "NEW ledger_coordinator.py and its focused test",
+    "integrator": "01a1ca69-fd55-7010-b848-84f9de667e84 retains shared source/config/entrypoint composition",
+    "independent_reviewer": "01a1ca70-e536-7df0-be78-9559a662a9d6",
+    "no_duplicate_assignment": true
+  },
+  "separate_live_requirements": [
+    "Operative store/owner/epoch, current effect/claim and original operation/lease/receipt join; five epoch1 proposals remain unknown/held,ready0.",
+    "Selected deployed validation script and actual request/receipt contract; source adapter needed only if that selected contract is incompatible.",
+    "Installed reviewer/publisher/role/native/CPU and scoped grants, current runtime custody and authorized effect readback.",
+    "Real live pickup/refill and BAU proof; offline local Git/Pool with substituted transports/children does not establish it."
+  ],
+  "counterpart_credit": {
+    "repository": "maldous/offmenu",
+    "event": "PR222 health source accepted and controller-verified",
+    "commit": "3f5f85e5764a60f84b86d8814f482b40ceecf1e5",
+    "tree": "fe4eb6e8a8e668e50689ae3b2beb614153eaccf9",
+    "parents_as_reported": [
+      "2bdd9045",
+      "8623115"
+    ],
+    "scope": "Bounded accepted health source only; not product/shared runtime readiness. Existing sole publisher continues serial PR223/224. No duplicate product action."
+  },
+  "accounting": {
+    "dispositioned": 57,
+    "current": 50,
+    "additional_closures": 0,
+    "all_four_source_rows_remain_open": true,
+    "original_action_ids": 213,
+    "nonadditive_references": 11,
+    "selected_epoch1_rows_ready": 0
+  },
+  "preserved_boundaries": {
+    "neutral_ec6_packet": "unchanged; protected approval pending",
+    "pr11": "exact-head denied merge remains stopped; no code substituted into this unit",
+    "pr42": "merge separately held",
+    "failed_library_transfer": "no retry or alternate download; unavailable copy is not itself a runtime/product gate",
+    "combined_records": "held",
+    "source_edits_tests_runtime_changes": "none; owner-decision documentation only"
+  }
+}
