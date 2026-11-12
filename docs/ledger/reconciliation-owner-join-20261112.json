@@ -9,41 +9,71 @@
     "README_sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
     "policy_version": "1.2.3",
     "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
-    "this_unit_state": "prepared_for_independent_review_and_owner_publication",
+    "this_unit_state": "revised_locally_pending_independent_review_and_owner_publication",
     "README_and_original_order_unchanged": true,
-    "new_whole_row_closures": 0
+    "new_accepted_dispositions_at_base": 0,
+    "proposed_bounded_read_review_completions": 8
   },
   "counting": {
     "original_action_ids": 213,
     "nonadditive_reference_ids": 11,
     "assessed_records": 107,
-    "canonical_dispositioned": 48,
-    "canonical_categories": {
-      "bounded_history_fulfilled": 1,
-      "legacy_unavailable_unfulfilled": 34,
-      "bounded_retain_decisions": 5,
-      "existing_custody_dispositions": 8
+    "accepted_baseline": {
+      "commit": "9e51f0cf7768d0f6441b54662ddff1247331446e",
+      "dispositioned": 48,
+      "categories": {
+        "bounded_history_fulfilled": 1,
+        "legacy_unavailable_unfulfilled": 34,
+        "bounded_retain_decisions": 5,
+        "existing_custody_dispositions": 8
+      },
+      "remaining": 59,
+      "remaining_categories": {
+        "partial_current": 13,
+        "engineering": 12,
+        "shared_joins": 34
+      },
+      "remaining_formal_source_domains": {
+        "original_UIF73": 47,
+        "original_discovery34": 12
+      },
+      "shared34_formal_intersection": {
+        "original_UIF73": 25,
+        "original_discovery34": 9
+      },
+      "meaning": "Accepted base remains 48/59 until this revision is accepted and merged; unmerged PR43 and local proposals do not change that baseline."
     },
-    "remaining": 59,
-    "remaining_categories": {
-      "partial_current": 13,
-      "engineering": 12,
-      "shared_joins": 34
+    "proposed_if_this_revision_is_accepted": {
+      "dispositioned": 56,
+      "categories": {
+        "bounded_history_fulfilled": 1,
+        "legacy_unavailable_unfulfilled": 34,
+        "bounded_retain_decisions": 5,
+        "existing_custody_dispositions": 8,
+        "bounded_original_read_review_complete": 8
+      },
+      "remaining": 51,
+      "remaining_categories": {
+        "partial_current": 13,
+        "engineering": 12,
+        "shared_joins": 26
+      },
+      "remaining_formal_source_domains": {
+        "original_UIF73": 47,
+        "original_discovery34": 4
+      },
+      "shared26_formal_intersection": {
+        "original_UIF73": 25,
+        "original_discovery34": 1
+      },
+      "meaning": "Eight existing original READ/REVIEW obligations alone are proposed complete; no underlying product implementation, source qualification, permission, archive, publication effect or production outcome is fulfilled by them."
     },
-    "remaining_formal_source_domains": {
-      "original_UIF73": 47,
-      "original_discovery34": 12
-    },
-    "current_shared34_formal_intersection": {
-      "original_UIF73": 25,
-      "original_discovery34": 9
-    },
-    "current_shared34_is_original_discovery34": false,
     "other_product_readiness_outside_assessment": 106,
     "conditional_unselected_with_completed_present_applicability": 6,
-    "specific_CIX_semantic_read_holds": 8,
-    "new_records_tasks_or_whole_row_closures": 0,
-    "meaning": "48 are canonical scoped dispositions, not 48 technical successes; 59 remain under the original outcomes. Counts are not atomic jobs, admitted sessions, live claims or proof of exhaustive current requirements."
+    "completed_top_level_CIX_read_reviews": 8,
+    "prior_generic_read_hold_superseded_for_completed_scope": true,
+    "new_records_tasks_or_product_technical_closures": 0,
+    "counts_are_not_jobs_claims_or_exhaustive_current_requirements": true
   },
   "provenance": {
     "retained_input_artifacts": [
@@ -79,7 +109,19 @@
       }
     ],
     "fresh_join_attribution": "Morgan reports relayed by the UIF owner circa 04:40 UTC and subsequent component/integrated review updates on 2026-11-12. This writer did not independently observe those remote executions. No private session/turn IDs or raw receipts are reproduced.",
-    "freshness_limit": "These are scoped receipts/checkpoints, not a universal health or current process-liveness claim. Existing counterpart turns were reported admitted; CQ/OffMenu contribution completion was still pending in this join."
+    "freshness_limit": "These are scoped receipts/checkpoints, not a universal health or current process-liveness claim. Existing counterpart turns were reported admitted; CQ/OffMenu contribution completion was still pending in this join.",
+    "new_CIX_read_review_receipt": {
+      "source": "Existing CIX owner completed turn and assessment, received through Morgan and relayed by the UIF owner; no new reads by this documentation writer.",
+      "receipt_scope": "Top-level issue fields and semantic assessment only; no comments, attachments, diagnostics, source payloads or external effects.",
+      "attempted": 8,
+      "succeeded": 8,
+      "denied": 0,
+      "unattempted": 0,
+      "full_six_field_records": "Retained with the existing CIX owner/coordinator; private receipt identifiers and raw bodies are not reproduced.",
+      "source_links": "Exact issue links inherited from unchanged README; no MCP fetch or historical reconstruction.",
+      "accounting_scope": "Eight existing original obligations are Complete the held CIX-N semantic evidence review, not deliver CIX product implementation. Propose bounded READ/REVIEW fulfillment only; acceptance/publication of this revision remains separate.",
+      "supersession_scope": "The prior generic read-hold treatment is superseded only for these eight completed top-level read/reviews. All specific underlying operation restrictions and excluded read scopes remain intact."
+    }
   },
   "routes": {
     "conditional-owner": "Existing UIF/source custodian metadata only if actual current use or content is selected; no new read, search or external request now.",
@@ -89,7 +131,7 @@
     "engineering-pipeline": "Existing source integrator, helper/control owner, route owner and independent reviewer; Morgan routes existing Foo-local sessions. No new writer or runtime action.",
     "counterpart-join": "Existing UIF accountable coordinator and relevant current product/source owner; Morgan relays existing session requests and fresh scope-specific contribution receipts.",
     "connector-owner": "Existing UIF connector/transport owner and actual caller owners; current non-secret identity, grant and continuity metadata only. No new grant, rebinding or retirement.",
-    "specific-read-hold": "Current CIX owner and existing exact semantic-read permission boundary; no direct or equivalent indirect body read without the specific release."
+    "completed-review-recording": "Existing CIX owner supplies the completed assessment; UIF records only bounded original READ/REVIEW completion for exact source review/publication. No further read, new writer or effect is selected."
   },
   "state_semantics": {
     "applicability_assessed_unselected": "Present applicability assessment is complete; original qualification/inventory remains unfulfilled, scope unknown and future selected requirement retained. No present unrelated BAU or source-publication gate and no automatic request/search.",
@@ -99,7 +141,8 @@
     "canonical_custody8": "Passive existing-custody disposition, not backup/restore, asset absence, recovered bytes or qualified custodian/consumer. Existing permissions and actual selected contracts remain protected.",
     "canonical_bounded_history1": "Only the original historical contradiction is reconciled. Programme remains INCOMPLETE, not READY; no PR360 merge or mutation receipt is inferred.",
     "engineering": "One existing composition/qualification pipeline contributes to 12 distinct outcomes and selected release inputs. Component and integrated source acceptance are not 12 admitted jobs or 12 completed outcomes.",
-    "shared": "All 34 actual shared effects remain held pending relevant counterpart working/readiness and task-specific authority. Scoped metadata/owner preparation may continue. This is not a verdict that every product failed or that every product is required."
+    "shared": "The remaining 26 actual shared effects retain relevant counterpart readiness and task-specific holds. Eight former shared READ/REVIEW outcomes now have completed bounded owner assessments proposed for source acceptance; their underlying operation restrictions persist. No blanket product failure or universal product requirement is asserted.",
+    "bounded_read_review_complete_proposed_disposition": "Original bounded top-level semantic read/review is complete from the existing CIX owner receipt; source disposition is proposed pending acceptance/merge. This does not fulfill underlying technical work or release any excluded-read or operation restriction."
   },
   "reported_engineering_join": {
     "attribution": "Morgan-reported, relayed by UIF owner; not independently observed by this documentation writer.",
@@ -132,7 +175,9 @@
         "recovery_probes": 5
       },
       "further_source_correction_required_by_this_verdict": false,
-      "publication_state": "Existing integrator publishing isolated candidate through Morgan for cloud readback/PR; remote publication/merge not observed in this snapshot."
+      "publication_state": "Published in PR42 at exact head fa39bfdb0d1161efc67e93cccebc21a9101306f0 and tree 153a9853d6141fa5faaee4f61298018acc23fe09; GitHub readback verified by the UIF root owner. No merge or production adoption is claimed.",
+      "pull_request": "https://github.com/maldous/uif/pull/42",
+      "hosted_CI": "Existing workflow failed ModuleNotFoundError: uif; root alone owns the separate PYTHONPATH=src workflow correction. This documentation unit changes no CI source and adds no tests."
     },
     "installation_preparation": "Existing integrator owns preparation. Current registration, ExecStart/runtime closure and effective CPU policy remain unknown; numeric production identities are not adopted here.",
     "production_installed_or_qualified": false,
@@ -151,7 +196,7 @@
       "credit": "524 native and 16 portable checks, CLI/SDK/roundtrip; selected CLI/SDK/portable 0.1.0.",
       "actual_cloud_owner_caller": "Foo Workspace / foo",
       "caller_preview": "https://windmill.aldous.info/run/01a1cd86-86ca-588e-ebc7-6fcc7eab6eae?workspace=foo",
-      "limits": "Server, full engine, Foo and portal are unselected. Core proof does not release eight exact semantic-read holds or prove connector grant/continuity; archive necessity/custodian/route remains unresolved."
+      "limits": "Server, full engine, Foo and portal are unselected. Core proof does not establish connector grants/continuity; archive necessity/custodian/route remains unresolved. The separate existing-owner receipt completes eight top-level semantic reviews only; underlying restrictions persist."
     },
     "OffMenu": {
       "credit": "v4 publication assignment settled; native-v2 fingerprint mismatch is not a current gate.",
@@ -615,8 +660,8 @@
       "state": "integrated_source_accepted_production_unqualified",
       "accountable_owner": "UIF integrator; independent reviewer",
       "route": "engineering-pipeline",
-      "next_eligible_action": "Retain exact accepted integrated source/tree and let the existing integrator publish/read back that isolated candidate.",
-      "remaining_requirement": "Source acceptance is reported; source publication/readback and complete selected-profile adoption remain separate.",
+      "next_eligible_action": "Retain accepted integrated source/tree and root-verified PR42 readback; existing root owner handles the separate hosted workflow correction and normal review.",
+      "remaining_requirement": "PR42 source publication/readback is verified by root; its hosted CI workflow correction and normal integration remain separate from complete selected-profile production adoption.",
       "full_original_outcome_fulfilled": false,
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/14",
       "engineering_pipeline_reference": "#/reported_engineering_join"
@@ -1402,162 +1447,253 @@
     {
       "original_id": "ledger-cix199-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-015",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-199 semantic evidence review (CIX-199; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-199 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-199 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "No independent output or global cleanup is established or authorized by the state observation; no product technical fulfillment is inferred.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/47",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-199 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/25"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-199/luca-reconcile-owned-renderer-shutdown-and-core-storage-metadata",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Done",
+        "observed_updated_at_utc": "2026-10-29T22:25:33.916Z",
+        "assessment": "Top-level semantic review records the observed Done state only.",
+        "current_requirement_and_restrictions": "No independent output or global cleanup is established or authorized by the state observation; no product technical fulfillment is inferred."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/25",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix239-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-016",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-239 semantic evidence review (CIX-239; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-239 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-239 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "Evaluate applicability against the actually selected current contract. No historical execution permission or general present implementation defect is inferred.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/48",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-239 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/26"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-239/eli-qualify-current-cli-large-file-and-pipe-full-engine-windows",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Backlog",
+        "assessment": "The greater-than-128-MiB real-file/real-pipe full-engine criterion may remain unmet only for an actually selected current source/provider; small fixtures do not prove that criterion.",
+        "current_requirement_and_restrictions": "Evaluate applicability against the actually selected current contract. No historical execution permission or general present implementation defect is inferred."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/26",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix240-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-017",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-240 semantic evidence review (CIX-240; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-240 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-240 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "Do not reconstruct or require that nonexistent historical completed result, or infer current product fulfillment from the cancellation.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/49",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-240 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/27"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-240/quinn-review-current-128mib-filereal-pipe-full-engine-windows",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Canceled",
+        "assessment": "The dependent historical review was canceled; its expected completed result never existed.",
+        "current_requirement_and_restrictions": "Do not reconstruct or require that nonexistent historical completed result, or infer current product fulfillment from the cancellation."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/27",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix241-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-018",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-241 semantic evidence review (CIX-241; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-241 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-241 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "The no-resume, no-recreate and no-reroute restrictions persist. No diagnostics, repair, restart or alternate execution is authorized by this review.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/50",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-241 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/28"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-241/elilocal-repair-current-cli-large-window-sigsegv-and-restore-rc10",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Canceled",
+        "assessment": "The historical diagnostic/repair scope was explicitly revoked; the historical crash is not proof of a current defect.",
+        "current_requirement_and_restrictions": "The no-resume, no-recreate and no-reroute restrictions persist. No diagnostics, repair, restart or alternate execution is authorized by this review."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/28",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix249-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-019",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-249 semantic evidence review (CIX-249; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-249 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-249 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "The distinct publication/payload no-fetch, no-relay and no-retry restrictions persist. No payload/source read or publication effect is authorized.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/51",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-249 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/29"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-249/quinn-review-cix-248-current-binding-publication-at-the-frozen-pr-head",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Backlog",
+        "leading_correction": "Blocked",
+        "assessment": "The top-level leading correction is Blocked despite Backlog metadata; the prior local review is credited.",
+        "current_requirement_and_restrictions": "The distinct publication/payload no-fetch, no-relay and no-retry restrictions persist. No payload/source read or publication effect is authorized."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/29",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix375-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-020",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-375 semantic evidence review (CIX-375; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-375 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-375 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "Retain the existing source writer and selected-contract applicability check; do not create a new writer or infer missing implementation from historical clauses.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/52",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-375 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/30"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-375/eli-bind-remaining-cli-clauses-to-accepted-source-and-receipts",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Backlog",
+        "assessment": "The retained scope is source-only CLI clause correspondence; applicability belongs to the selected current contract, with no implementation gap proven.",
+        "current_requirement_and_restrictions": "Retain the existing source writer and selected-contract applicability check; do not create a new writer or infer missing implementation from historical clauses."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/30",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix447-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-021",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-447 semantic evidence review (CIX-447; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-447 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-447 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "The specific source-hashing/initialization refusal and alternate-route prohibition persist. No new source hashing, initialization, physical-target selection or alternate route is authorized.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/53",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-447 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/31"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-447/luca-prepare-accepted-mixed-root-materialization-and-admission-source",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Backlog",
+        "leading_correction": "Blocked",
+        "assessment": "The top-level leading correction is Blocked. Earlier approved diagnostics are credited; the physical target and writer remain unbound.",
+        "current_requirement_and_restrictions": "The specific source-hashing/initialization refusal and alternate-route prohibition persist. No new source hashing, initialization, physical-target selection or alternate route is authorized."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/31",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-cix493-semantic-review",
       "original_routing_key": "ledger-discovery-20261111-022",
-      "group": "shared34",
+      "group": "proposed_read_review8",
       "formal_source_domain": "shared_discovery_records",
       "obligation": "Complete the held CIX-493 semantic evidence review (CIX-493; held semantic read).",
-      "state": "specific_semantic_read_hold",
-      "accountable_owner": "Current CIX owner; UIF boundary recorder",
-      "route": "specific-read-hold",
-      "next_eligible_action": "Retain CIX-493 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
-      "remaining_requirement": "The exact CIX-493 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
-      "full_original_outcome_fulfilled": false,
+      "state": "bounded_read_review_complete_proposed_disposition",
+      "accountable_owner": "Existing CIX semantic-review owner; UIF disposition/publication owner",
+      "route": "completed-review-recording",
+      "next_eligible_action": "Accept/review the bounded original READ/REVIEW disposition in this source revision; retain the existing owner and underlying current scope without new reads or effects.",
+      "remaining_requirement": "Retain exact selected-consumer preimage/lineage requirements if applicable; they are not a general CLI/build-readiness gate. No manuscript/source payload read is authorized here.",
       "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/54",
       "counterpart_scope": [
         "CIX"
       ],
-      "shared_effect_held": true,
-      "remaining_held_effect": "Read/review the held CIX-493 semantic body or infer its technical acceptance/remaining implementation.",
-      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/32"
+      "baseline_group": "shared34",
+      "original_read_review_obligation_complete": true,
+      "proposed_bounded_original_fulfillment": true,
+      "source_disposition_accepted_at_base": false,
+      "underlying_product_technical_fulfillment_claimed": false,
+      "issue_source": "https://linear.app/maldous/issue/CIX-493/camille-reconcile-current-manuscript-version-and-custody-receipt",
+      "read_scope": "Top-level only; no comments, attachments, diagnostics, source payloads or effects.",
+      "receipt_reference": "#/provenance/new_CIX_read_review_receipt",
+      "review_assessment": {
+        "observed_issue_state": "Blocked",
+        "assessment": "Mutable manuscript preimage/lineage is relevant only to an actually selected consumer.",
+        "current_requirement_and_restrictions": "Retain exact selected-consumer preimage/lineage requirements if applicable; they are not a general CLI/build-readiness gate. No manuscript/source payload read is authorized here."
+      },
+      "prior_shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/32",
+      "prior_read_hold_supersession": "Historical matrix hold superseded for completed top-level READ/REVIEW scope only; exact underlying operation restrictions remain."
     },
     {
       "original_id": "ledger-foundation-deployment-dispositions",
@@ -1685,10 +1821,19 @@
     }
   ],
   "limits": [
-    "The ordered 213 README action IDs and 11 references remain byte-identical. This scoped 107-row evidence view neither replaces the ledger nor creates new rows, claims, permissions or work.",
-    "No whole-row closure is created. The six present-applicability decisions are complete only as applicability assessments; the original qualifications/inventory remain unfulfilled and future selected requirements are retained.",
-    "Preserve all eight exact CIX semantic-read boundaries and all 34 shared-effect holds. Readiness/build/Done/title/core receipts do not bypass access or coupled-effect restrictions.",
-    "No historical search, reconstruction, old-effect retry, body/dataset copy, private session identifier, protected edit, installation, service transition, archive mutation, Linear change or duplicate product build is performed by this documentation unit.",
-    "Current documentation accounting and exact review/publication preparation can continue without production installation or a blanket product-readiness gate. Source publication and actual runtime adoption must be recorded separately."
-  ]
+    "The ordered 213 README action IDs and 11 references remain byte-identical; this scoped 107-row evidence view creates no new ledger rows, jobs, claims or authority.",
+    "Accepted baseline remains 48 dispositioned/59 remaining. Eight existing original READ/REVIEW completions are proposed, yielding 56/51 only if accepted/merged; no underlying product technical or operational outcome is thereby fulfilled.",
+    "Six present-applicability decisions remain complete only as applicability assessments; original qualification/inventory obligations are unfulfilled, future selected requirements retained, with no extra current BAU gate.",
+    "Prior generic read-hold statements are superseded only for eight completed top-level reviews. The remaining 26 shared-effect holds and every exact underlying source/payload/diagnostic/restart/publication/alternate-route restriction remain applicable.",
+    "No new MCP/body/source-payload reads, historical searches, comments/attachments/diagnostics, duplicate tests/workers, installation, runtime transitions, Linear/archive effects or publication operations are performed by this documentation revision.",
+    "Current documentation review/publication preparation need not wait for installation or blanket product readiness. PR42 source readback is root-verified; hosted CI correction is separately root-owned, with no production adoption claimed."
+  ],
+  "revision": {
+    "prior_local_commit": "0359d0b20cb0dae4295a6483a49d7702a33b4844",
+    "prior_local_tree": "41c9502a009e2e9b0e50aa42239f6051c187f463",
+    "prior_patch_sha256": "2607e43e1c583159a24ea8a029b39e34ae1a0c905a9d3ec527cddebfa39983b8",
+    "prior_source_publication": "PR43 published at head 4e103815 with the exact prior tree; unmerged, with no merge attempt reported. This revision is local and pending independent review/owner publication.",
+    "pull_request": "https://github.com/maldous/uif/pull/43",
+    "new_evidence_scope": "Existing CIX owner completed eight bounded top-level semantic read/reviews; no product task or operation restriction is closed."
+  }
 }
