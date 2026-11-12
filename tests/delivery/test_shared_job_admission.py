@@ -1,6 +1,7 @@
 """Exercise the neutral adapter through the retained, patched Pool and OwnerAuthority."""
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import os
@@ -12,12 +13,34 @@ from unittest.mock import patch
 
 from uif import shared_job_admission as shared
 from uif.dispatch import _digest, _encode
+from uif.neutral_launch import NeutralLaunch
 from uif.owner_runtime import OwnerAuthority
+from uif.role_broker import ATTEMPT_ISOLATION, CANCEL_BEFORE_START, NeutralObservation, SCHEMA, slot_for_lease
 from uif.source import SourceHold, file_digest
 from uif.supervisor import load_capacity
 
 CAPACITY = os.environ.get("UIF_NEUTRAL_POOL_SOURCE")
 SNAPSHOT = Path(__file__).resolve().parents[2] / "README.md"
+
+
+class FixtureBroker:
+    """Substitute only the privileged transport with exact typed observations."""
+
+    def __init__(self):
+        self.actions = []
+        self.terminal = None
+
+    def start(self, request):
+        self.actions.append(("start", request))
+        return NeutralObservation("running", request.digest)
+
+    def observe(self, request):
+        self.actions.append(("observe", request))
+        return self.terminal or NeutralObservation("running", request.digest)
+
+    def cancel(self, request):
+        self.actions.append(("cancel", request))
+        return self.terminal or NeutralObservation("uncertain", request.digest)
 
 
 @skipUnless(CAPACITY, "set UIF_NEUTRAL_POOL_SOURCE to the patched retained Pool")
@@ -64,6 +87,8 @@ class SharedJobTests(TestCase):
             "limits": dict(cpu_millis=1000, memory_bytes=8 * 1024**2, io_slots=4, output_bytes=32768,
                            workers=4, overhead_processes=2),
         }
+        self.broker = FixtureBroker()
+        self.launch = NeutralLaunch(self.runtime, self.broker, sorted(os.sched_getaffinity(0))[:1])
         self.adapter = self.open()
         self.binding = {
             "namespace": shared.NAMESPACE, "workspace": "foo", "job_id": "original-job",
@@ -73,6 +98,11 @@ class SharedJobTests(TestCase):
                               workers=1, overhead_processes=1, read_roots=[],
                               write_roots=[str(self.execution / "ordinary")]),
         }
+        body = {key: self.binding[key] for key in ("workspace", "job_id", "descriptor_sha256",
+                                                  "mode", "timeout_seconds", "resources")}
+        body.update(protocol="foo-user-exec-v1", command=":")
+        self.binding.update(command_sha256=sha256(b":").hexdigest(), request_sha256=_digest(body))
+        self.work = {**body, "action": "run", "request_sha256": self.binding["request_sha256"]}
 
     @staticmethod
     def put(path, value):
@@ -80,18 +110,44 @@ class SharedJobTests(TestCase):
         path.chmod(0o600)
 
     def open(self):
-        return shared.SharedJobAdmission(self.authority, self.capacity, self.policy, self.config, "f" * 64)
+        return shared.SharedJobAdmission(self.authority, self.capacity, self.policy, self.config, "f" * 64, self.launch)
 
     def call(self, action, binding=None, **extra):
         return self.adapter.handle(dict(schema=shared.SCHEMA, action=action,
                                         binding=self.binding if binding is None else binding, **extra))
 
-    def witness(self, lease, outcome="cancelled", **extra):
+    def witness(self, lease, outcome="cancelled", *, no_fork=False, **extra):
+        original, = [row for row in self.pool.status() if row["id"] == lease]
+        request, _ = self.launch.request(lease, original["binding"])
+        exit_code = None if no_fork else 0 if outcome == "succeeded" else -9
+        logs, truncated = {"stdout": 0, "stderr": 0}, {"stdout": False, "stderr": False}
         receipt = dict(self.binding, lease_id=lease, status=outcome, child_tree_gone=True,
-                       reconcile_required=False, **extra)
-        self.put(self.receipts / f"{lease}.json", dict(
-            schema="uif-shared-job-stopped-evidence/1", lease_id=lease,
-            binding_sha256=_digest(self.binding), receipt=receipt))
+                       reconcile_required=False, exit_code=exit_code, log_bytes=logs, logs_truncated=truncated,
+                       **extra)
+        reservation = dict(schema=SCHEMA, request=request.digest, boot="fixture-boot", isolation=ATTEMPT_ISOLATION)
+        terminal = dict(request=request.digest, boot=reservation["boot"], isolation=ATTEMPT_ISOLATION,
+                        exit_code=exit_code)
+        if no_fork:
+            state = "refused-before-fork"
+            terminal.update(state=state, decision=CANCEL_BEFORE_START, cgroup=None, pid=None)
+            reservation["decision"] = CANCEL_BEFORE_START
+            shape = {}
+        else:
+            state = "exited-clean"
+            started = dict(boot=terminal["boot"], cgroup=[1, 2], pid=42, start_ticks=1, request=request.digest,
+                           isolation=ATTEMPT_ISOLATION, namespaces={"mnt": [1, 3], "pid": [1, 4]})
+            terminal.update(**{**started, "state": state, "outcome": outcome,
+                               "log_bytes": logs, "logs_truncated": truncated})
+            shape = dict(cgroup={"boot": terminal["boot"], "cgroup": started["cgroup"]}, started=started,
+                         released={"request": request.digest, "started_sha256": _digest(started)})
+        evidence = dict(namespace=self.binding["namespace"], workspace="foo", job_id=self.binding["job_id"],
+                        lease_id=lease, binding_sha256=_digest(self.binding), runner_intent=self.binding,
+                        runner_intent_sha256=request.intent_sha256, runner_receipt=receipt,
+                        runner_receipt_sha256=_digest(receipt), trusted_terminal=terminal,
+                        trusted_terminal_sha256=_digest(terminal), reservation=reservation, **shape)
+        self.broker.terminal = NeutralObservation(state, request.digest, _digest(terminal), exit_code,
+                                                  outcome=outcome, stopped_evidence=evidence,
+                                                  log_bytes=logs, logs_truncated=truncated)
         return dict(lease_id=lease, outcome=outcome, child_tree_gone=True, receipt_sha256=_digest(receipt))
 
     def native(self, name, cpu, review=False, policy=None, backend=None):
@@ -120,7 +176,11 @@ class SharedJobTests(TestCase):
         held = self.call("admit")
         self.assertEqual((held["status"], held["reused"]), ("held", True))
         self.assertNotIn("cpu_ids", held)
-        self.assertEqual(self.call("status")["status"], "running")
+        self.assertEqual(self.call("status")["status"], "held")
+        self.assertEqual(self.call("status")["lease_id"], held["lease_id"])
+        with self.assertRaises(FileNotFoundError):
+            self.call("start", request=self.work)
+        self.assertEqual(self.broker.actions, [])
         changed = {**self.binding, "request_sha256": "9" * 64}
         self.assertEqual(self.call("admit", changed)["lease_id"], held["lease_id"])
         self.assertEqual(len(self.pool.status()), 1)
@@ -135,12 +195,12 @@ class SharedJobTests(TestCase):
         lease = admitted["lease_id"]
         self.assertEqual(self.call("cancel")["status"], "cancel_requested")
         self.assertEqual(self.call("cancel")["status"], "cancel_requested")
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaisesRegex(SourceHold, "original_launch_missing"):
             self.call("finish", lease_id=lease, outcome="cancelled", child_tree_gone=True, receipt_sha256="1" * 64)
-        finish = self.witness(lease, "succeeded")
-        with self.assertRaisesRegex(self.capacity.AdmissionError, "cancelled_task_cannot_succeed"):
-            self.call("finish", **finish)
-        finish = self.witness(lease)
+        stopped = self.call("cancel", request=self.work)
+        self.assertEqual(stopped["observation"]["state"], "uncertain")
+        self.assertEqual([action for action, _ in self.broker.actions], ["cancel"])
+        finish = self.witness(lease, no_fork=True)
         with self.assertRaisesRegex(SourceHold, "stopped_receipt"):
             self.call("finish", **{**finish, "receipt_sha256": "1" * 64})
         self.assertEqual(self.pool.status()[0]["status"], "cancel_requested")
@@ -149,7 +209,7 @@ class SharedJobTests(TestCase):
         self.assertEqual(self.call("finish", **finish), released)
         self.assertEqual(self.call("admit")["status"], "held")
         replacement = self.witness(lease, observation="changed")
-        with self.assertRaisesRegex(self.capacity.AdmissionError, "terminal_receipt_conflict"):
+        with self.assertRaisesRegex(SourceHold, "stopped_receipt"):
             self.call("finish", **replacement)
         with sqlite3.connect(self.database) as database:
             events = database.execute("SELECT event FROM events WHERE id=?", (lease,)).fetchall()
@@ -170,6 +230,40 @@ class SharedJobTests(TestCase):
             self.native("native-three", 100)
         with self.assertRaisesRegex(self.capacity.AdmissionError, "lease_lane_mismatch"):
             self.pool.finish(lease, True, "failed")
+
+    def test_original_start_seals_exact_run_cpu_and_pool_and_never_starts_again(self):
+        lease = self.call("admit")["lease_id"]
+        with self.assertRaisesRegex(SourceHold, "original_run"):
+            self.call("start", request={**self.work, "command": "different"})
+        self.assertEqual(self.broker.actions, [])
+        launched = self.call("start", request=self.work)
+        self.assertEqual(launched["observation"]["state"], "running")
+        self.assertNotIn("stopped_evidence", launched["observation"])
+        self.assertEqual(self.call("start", request=self.work), launched)
+        self.assertEqual([action for action, _ in self.broker.actions], ["start", "observe"])
+        request = self.broker.actions[0][1]
+        self.assertEqual(request.cpu_ids, self.launch.cpu_ids)
+        self.assertEqual(request.pool_binding_sha256, self.pool.status()[0]["fingerprint"])
+        self.assertEqual((self.runtime / slot_for_lease(lease) / "request.json").read_bytes(), _encode(self.work))
+
+    def test_reaped_release_rejects_changed_runner_receipt_and_publishes_create_only(self):
+        lease = self.call("admit")["lease_id"]
+        self.call("start", request=self.work)
+        finish = self.witness(lease, "succeeded")
+        witness = self.broker.terminal
+        witness.stopped_evidence["runner_receipt"]["reconcile_required"] = True
+        with self.assertRaisesRegex(SourceHold, "stopped_receipt"):
+            self.call("finish", **finish)
+        self.assertEqual(list(self.receipts.iterdir()), [])
+        self.assertEqual(self.pool.status()[0]["status"], "running")
+        witness.stopped_evidence["runner_receipt"]["reconcile_required"] = False
+        result = self.call("finish", **finish)
+        path = self.receipts / f"{lease}.json"
+        exact = path.read_bytes()
+        self.broker.terminal = None
+        self.assertEqual(self.call("finish", **finish), result)
+        self.assertEqual(path.read_bytes(), exact)
+        self.assertEqual(self.call("status")["receipt_sha256"], finish["receipt_sha256"])
 
     def test_native_first_mismatch_holds_the_reviewed_500m_1000m_case(self):
         older = deepcopy(self.policy)
@@ -199,6 +293,7 @@ class SharedJobTests(TestCase):
 
     def test_status_recovers_exact_release_after_lost_finish_reply(self):
         lease = self.call("admit")["lease_id"]
+        self.call("start", request=self.work)
         finish = self.witness(lease)
         complete = self.adapter.pool.finish_neutral
 
@@ -254,15 +349,28 @@ class SharedJobTests(TestCase):
         def pin(path):
             return {"path": str(path), "sha256": file_digest(path)}
         config = dict(self.config, schema="uif-shared-job-registration/1", controller_uid=os.getuid(),
-                      runner_uid=os.getuid() + 1, owner_registration=pin(self.owner_registration),
+                      runner_uid=os.getuid() + 1, runner_control=str(self.root / "runner"),
+                      owner_registration=pin(self.owner_registration),
                       capacity=pin(Path(CAPACITY)), capacity_policy=pin(policy_file))
         self.put(registration, config)
+        role_policy, wrapper = self.root / "roles", self.root / "wrapper"
+        wrapper.write_text("fixture wrapper")
+        neutral = {name: config[name] for name in ("runner_uid", "runner_control", "descriptor_sha256", "runner_sha256",
+                   "execution_root", "read_roots", "write_roots", "protected_roots", "limits", "timeout_seconds")}
+        neutral.update(store_id=self.authority.store_id, registration_sha256=file_digest(registration),
+                       capacity_policy_sha256=config["capacity_policy"]["sha256"], policy_fingerprint=_digest(self.policy),
+                       memory_reserve_bytes=0, disk_reserve_bytes=0, cpu_ids=list(self.launch.cpu_ids))
+        self.put(role_policy, dict(schema=SCHEMA, attempt_isolation=ATTEMPT_ISOLATION, controller_uid=os.getuid(),
+                 controller_gid=os.getegid(), controller_root=str(self.runtime), pool_database=str(self.database),
+                 operation_locks=str(self.authority.operation_locks_path), roles={"neutral": neutral}))
         installed = dict(schema="uif-coding-supervisor/2", uid=os.getuid(), capacity=config["capacity"],
                          owner_registration=config["owner_registration"], runtime_root=str(self.runtime),
-                         pool_root=str(self.database.parent))
+                         pool_root=str(self.database.parent), role_policy=pin(role_policy), role_helper=pin(wrapper))
         self.put(supervisor, installed)
-        # Only the root installation owner check is substituted in this unprivileged test.
-        with patch.object(shared, "_trusted", side_effect=Path), patch.object(shared, "SUPERVISOR_POLICY", supervisor):
+        # Substitute root-owned installation checks and privileged transport only.
+        with (patch.object(shared, "_trusted", side_effect=Path),
+              patch.object(shared, "SUPERVISOR_POLICY", supervisor), patch.object(shared, "ROLE_POLICY", role_policy),
+              patch.object(shared, "RoleBroker", return_value=self.broker)):
             with patch.dict(os.environ, SUDO_UID=str(config["runner_uid"])):
                 opened = shared.SharedJobAdmission.load(registration)
                 self.assertEqual(opened.authority.pool_database_path, self.database)

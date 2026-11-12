@@ -7,8 +7,10 @@ import re
 import stat
 import sys
 
-from .dispatch import _digest, _encode, _record, _sync_directory, _unique
+from .dispatch import _digest, _encode, _unique
+from .neutral_launch import NeutralLaunch
 from .owner_runtime import OwnerAuthority, _owned_file
+from .role_broker import ATTEMPT_ISOLATION, POLICY as ROLE_POLICY, RoleBroker, SCHEMA as ROLE_SCHEMA
 from .source import SourceHold, exact_path, file_digest
 from .supervisor import POLICY as SUPERVISOR_POLICY, _trusted, load_capacity
 
@@ -17,6 +19,7 @@ NAMESPACE = "uif-foo-user-job/1"
 REGISTRATION = Path("/etc/uif-stokowski/shared-job-admission.json")
 CAPACITY_SHA256 = "a416ee6e5dab2b2b98dc973f8b905648b4a9a4f0195ba804a91e7f12862b9f8b"
 MAX_WIRE = 65536
+MAX_REQUEST = 2 * MAX_WIRE + 1024
 BINDING_FIELDS = {
     "namespace", "workspace", "job_id", "descriptor_sha256", "request_sha256",
     "command_sha256", "mode", "timeout_seconds", "resources", "capacity_policy_sha256", "runner_sha256",
@@ -39,8 +42,8 @@ def _registered_file(reference):
     return path
 
 
-def _decode(raw):
-    if len(raw) > MAX_WIRE:
+def _decode(raw, limit=MAX_WIRE):
+    if len(raw) > limit:
         raise SourceHold("uif_shared_job_wire_limit")
     value = json.loads(raw, object_pairs_hook=_unique)
     if not isinstance(value, dict):
@@ -64,9 +67,9 @@ def _below(path, root):
 class SharedJobAdmission:
     """Bind neutral requests and stopped evidence to the controller's original lease."""
 
-    def __init__(self, authority, capacity, policy, config, registration_sha256):
+    def __init__(self, authority, capacity, policy, config, registration_sha256, launch):
         self.authority, self.capacity, self.policy = authority, capacity, policy
-        self.config, self.registration_sha256 = config, registration_sha256
+        self.config, self.registration_sha256, self.launch = config, registration_sha256, launch
         self.execution_root = _canonical(config["execution_root"])
         native_root = authority.runtime_root_path
         self.stopped_receipts = _canonical(config["stopped_receipts"])
@@ -97,7 +100,7 @@ class SharedJobAdmission:
         expected = {
             "schema", "controller_uid", "runner_uid", "owner_registration", "capacity", "capacity_policy",
             "descriptor_sha256", "runner_sha256", "execution_root", "read_roots", "write_roots",
-            "protected_roots", "stopped_receipts", "limits", "timeout_seconds",
+            "protected_roots", "runner_control", "stopped_receipts", "limits", "timeout_seconds",
         }
         if (set(config) != expected or config["schema"] != "uif-shared-job-registration/1"
                 or any(type(config[name]) is not int or config[name] <= 0
@@ -124,7 +127,35 @@ class SharedJobAdmission:
         policy_raw = policy_path.read_bytes()
         if sha256(policy_raw).hexdigest() != config["capacity_policy"]["sha256"]:
             raise SourceHold("uif_shared_job_policy_drift")
-        return cls(authority, capacity, _decode(policy_raw), config, sha256(raw).hexdigest())
+        policy = _decode(policy_raw)
+        registration_sha = sha256(raw).hexdigest()
+        role_path = _registered_file(supervisor["role_policy"])
+        if role_path != ROLE_POLICY:
+            raise SourceHold("uif_neutral_role_policy_path")
+        roles = _decode(role_path.read_bytes())
+        neutral = roles["roles"]["neutral"]
+        expected = {
+            **{name: config[name] for name in ("runner_uid", "descriptor_sha256", "runner_sha256",
+                                               "execution_root", "runner_control", "read_roots", "write_roots", "protected_roots",
+                                               "limits", "timeout_seconds")},
+            "store_id": authority.store_id, "registration_sha256": registration_sha,
+            "capacity_policy_sha256": config["capacity_policy"]["sha256"],
+            "policy_fingerprint": _digest(policy),
+            "memory_reserve_bytes": policy["host"]["memory_reserve_bytes"],
+            "disk_reserve_bytes": policy["host"]["disk_reserve_bytes"],
+        }
+        if (roles["schema"] != ROLE_SCHEMA or roles["attempt_isolation"] != ATTEMPT_ISOLATION
+                or roles["controller_uid"] != config["controller_uid"] or roles["controller_gid"] != os.getegid()
+                or _canonical(roles["controller_root"]) != authority.runtime_root_path
+                or _canonical(roles["pool_database"]) != authority.pool_database_path
+                or _canonical(roles["operation_locks"]) != authority.operation_locks_path
+                or any(neutral.get(name) != value for name, value in expected.items())):
+            raise SourceHold("uif_neutral_role_registration")
+        helper = supervisor["role_helper"]
+        helper_path = _registered_file(helper)
+        broker = RoleBroker(helper_path, helper["sha256"])
+        launch = NeutralLaunch(authority.runtime_root_path, broker, neutral["cpu_ids"])
+        return cls(authority, capacity, policy, config, registration_sha, launch)
 
     def _receipt_custody(self):
         for directory in (self.stopped_receipts, *self.stopped_receipts.parents):
@@ -178,10 +209,12 @@ class SharedJobAdmission:
         return lease, pool_binding
 
     def handle(self, request):
-        if request.get("schema") != SCHEMA or request.get("action") not in ("admit", "status", "cancel", "finish"):
+        if request.get("schema") != SCHEMA or request.get("action") not in ("admit", "start", "status", "cancel", "finish"):
             raise SourceHold("uif_shared_job_protocol")
         action = request["action"]
         expected = {"schema", "action", "binding"}
+        if action == "start" or (action == "cancel" and "request" in request):
+            expected.add("request")
         if action == "finish":
             expected |= {"lease_id", "receipt_sha256", "outcome", "child_tree_gone"}
         if set(request) != expected:
@@ -202,6 +235,8 @@ class SharedJobAdmission:
                 cpus = available[start:start + width]
                 if not cpus:
                     return dict(response, status="refused")
+                if tuple(cpus) != self.launch.cpu_ids:
+                    raise SourceHold("uif_neutral_registered_cpu")
                 try:
                     admitted = self.pool.admit_neutral(
                         lease, pool_binding, self.capacity.host_snapshot(self.execution_root))
@@ -213,46 +248,54 @@ class SharedJobAdmission:
                 if (admitted["id"] != lease or admitted["reused"] is not False
                         or admitted["status"] != "running" or admitted["binding"] != pool_binding):
                     return dict(response, status="held", lease_id=lease)
+                self.launch.reserve(lease, pool_binding, cpus)
                 return dict(response, status="admitted", lease_id=lease, reused=False, cpu_ids=cpus)
             if original is None:
                 return dict(response, status="absent")
-            if action == "cancel" and original["status"] == "running":
-                self.pool.cancel(lease)
-                return dict(response, status="cancel_requested", lease_id=lease)
-            if action == "status" and original["status"] in ("finished", "failed"):
+            state = original["status"]
+            if action == "status" and state in ("finished", "failed"):
                 receipt_pin = self.pool.neutral_release_receipt(lease, original["fingerprint"])
                 return dict(response, status="finished", lease_id=lease, receipt_sha256=receipt_pin,
-                            pool_status=original["status"], outcome=original["outcome"])
-            if action != "finish":
-                return dict(response, status=original["status"], outcome=original["outcome"], lease_id=lease)
-            return self._finish(request, binding, lease, response)
+                            pool_status=state, outcome=original["outcome"])
+            if action == "finish":
+                return self._finish(request, pool_binding, lease, response)
+            if state not in ("running", "cancel_requested"):
+                return dict(response, status=state, outcome=original["outcome"], lease_id=lease)
+            work = request.get("request")
+            if "request" in request:
+                self.launch._check_run(work, binding)
+            if action == "cancel" and state == "running":
+                self.pool.cancel(lease)
+                state = "cancel_requested"
+            try:
+                launch, fresh = self.launch.request(lease, pool_binding, work=work)
+            except FileNotFoundError:
+                if action in ("status", "cancel"):
+                    return dict(response, status="held", lease_id=lease)
+                raise
+            response = dict(response, status=state, outcome=original["outcome"], lease_id=lease)
+            if launch is None:
+                return response
+            operation = "observe"
+            if action == "cancel" or (action == "start" and state == "cancel_requested"):
+                operation = "cancel"
+            elif action == "start" and fresh:
+                operation = "start"
+            observed = self.launch.observe(launch, operation)
+            return dict(response, observation=self.launch.runner_observation(observed))
 
-    def _finish(self, request, binding, lease, response):
+    def _finish(self, request, pool_binding, lease, response):
         receipt_pin, outcome = request["receipt_sha256"], request["outcome"]
         if (request["lease_id"] != lease or request["child_tree_gone"] is not True
                 or not _sha(receipt_pin) or outcome not in OUTCOMES):
             raise SourceHold("uif_shared_job_finish_binding")
         self._receipt_custody()
+        launch, _ = self.launch.request(lease, pool_binding)
+        if launch is None:
+            raise SourceHold("uif_neutral_original_launch_missing")
         path = self.stopped_receipts / (lease + ".json")
+        self.launch.stopped(path, launch, receipt_pin, outcome)
         _owned_file(path)
-        witness, _ = _record(path)
-        if set(witness) != {"schema", "lease_id", "binding_sha256", "receipt"}:
-            raise SourceHold("uif_shared_job_stopped_receipt")
-        receipt = witness["receipt"]
-        if (witness["schema"] != "uif-shared-job-stopped-evidence/1" or witness["lease_id"] != lease
-                or witness["binding_sha256"] != response["binding_sha256"] or not isinstance(receipt, dict)
-                or any(receipt.get(name) != value for name, value in binding.items())
-                or receipt.get("lease_id") != lease or receipt.get("status") != outcome
-                or receipt.get("child_tree_gone") is not True or receipt.get("reconcile_required") is not False
-                or _digest(receipt) != receipt_pin):
-            raise SourceHold("uif_shared_job_stopped_receipt")
-        # The registered independent writer owns this evidence. Readback and
-        # the durability barrier precede the same-lease transaction.
-        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as stream:
-            os.fsync(stream.fileno())
-        _sync_directory(path.parent)
-        if _record(path)[0] != witness:
-            raise SourceHold("uif_shared_job_stopped_receipt_drift")
         self.pool.finish_neutral(lease, True, OUTCOMES[outcome], receipt_pin)
         return dict(response, status="finished", lease_id=lease, receipt_sha256=receipt_pin)
 
@@ -261,7 +304,7 @@ def main():
     if len(sys.argv) != 1 or sys.stdin.isatty():
         return 2
     try:
-        request = _decode(sys.stdin.buffer.read(MAX_WIRE + 1))
+        request = _decode(sys.stdin.buffer.read(MAX_REQUEST + 1), MAX_REQUEST)
         response = SharedJobAdmission.load(REGISTRATION).handle(request)
         sys.stdout.buffer.write(_encode(response) + b"\n")
     except (OSError, ValueError, RuntimeError, KeyError, TypeError):

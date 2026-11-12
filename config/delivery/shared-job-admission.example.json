@@ -2,6 +2,7 @@
   "schema": "uif-shared-job-registration/1",
   "controller_uid": null,
   "runner_uid": null,
+  "runner_control": null,
   "owner_registration": {"path": "/etc/uif-stokowski/owner-runtime.json", "sha256": null},
   "capacity": {
     "path": null,

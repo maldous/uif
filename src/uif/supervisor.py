@@ -98,7 +98,7 @@ def _installed(runtime, installation):
             or authority.pool_database_path != pool / "state.sqlite"
             or roles["pool_database"] != str(authority.pool_database_path)
             or roles["operation_locks"] != str(authority.operation_locks_path)
-            or control != root or set(roles["roles"]) != {"coding", "review"}):
+            or control != root or set(roles["roles"]) not in ({"coding", "review"}, {"coding", "review", "neutral"})):
         raise SourceHold("uif_supervisor_role_binding")
     helper = cfg["role_helper"]
     if not isinstance(helper, dict) or set(helper) != {"path", "sha256"}:
