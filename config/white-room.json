@@ -283,7 +283,7 @@
         "anqr"
       ],
       "expected": null,
-      "declaration_source": "Foo Workspace OAuth exposes foo at https://windmill.aldous.info/api/mcp/w/foo/mcp; private root runner binding and grant remain unqualified",
+      "declaration_source": "Generic Foo Workspace exposes foo and its root identity probe verified host foo; operation-specific production grant and installed runner remain unqualified",
       "max_age_seconds": 300
     },
     {

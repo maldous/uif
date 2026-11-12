@@ -154,3 +154,9 @@ Preserve its exact bytes as evidence; a separately reviewed candidate must addre
 these findings before runtime acceptance. Source/schema hashes prove identity, not
 safety. The adapter rejects an empty/blank lock for this dependency-using runner,
 but a nonempty hash alone still does not prove that a lock is a genuine resolution.
+
+The active transport is `foo`. The `recreation_workspace` selector remains
+unset until the owner chooses an isolated target for an authorized recreation.
+The active workspace is never selected by the offline mock. The generic Foo
+root identity readback established host and effective identity only.
+[Root identity receipt](https://windmill.aldous.info/run/01a1cd9c-839a-13ec-c548-389b23952286?workspace=foo)

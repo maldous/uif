@@ -1,11 +1,11 @@
 {
   "version": 1,
   "owner_repository": "maldous/uif",
-  "purpose": "Foo-only desired target; source qualification without an approved private runner grant",
+  "purpose": "Active Foo transport and separate offline recreation qualification",
   "workspace": {
     "id": "foo",
     "display_name": "Foo",
-    "state": "oauth-visible-root-grant-unverified"
+    "state": "active-identity-observed"
   },
   "runner": {
     "path": "u/admin/foo_root_jobs",
@@ -33,7 +33,7 @@
   },
   "source": {
     "mock_path": "tools/windmill/white_room.py",
-    "mock_sha256": "8015a6b3d37eb964a638b718541a0c918aa7da5027211cbe75b6baae7b6b8dc9",
+    "mock_sha256": "0dce7d86bdffb435ffca58e3f2147d5f5523fc73303acf64442aa1df5086aad7",
     "deployed_runner_sha256": null,
     "host_protocol_sha256": null,
     "live_source_status": "unqualified-source-preservation-required"
@@ -50,5 +50,9 @@
     "Native-job and all consumer reconciliation outstanding",
     "New credential destination and persistent permissions require confirmation",
     "Fresh-child identity, same-job status and terminal receipt not verified"
-  ]
+  ],
+  "recreation_workspace": {
+    "id": null,
+    "state": "requires-explicit-isolated-target"
+  }
 }

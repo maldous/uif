@@ -41,8 +41,10 @@ def validate():
         raise ValueError('ownership or qualification gaps drift')
     if m['version'] != 1 or m['target_transport'] != TRANSPORT:
         raise ValueError('transport identity drift')
-    if m['workspace'] != {'id': 'foo', 'display_name': 'Foo', 'state': 'oauth-visible-root-grant-unverified'}:
+    if m['workspace'] != {'id': 'foo', 'display_name': 'Foo', 'state': 'active-identity-observed'}:
         raise ValueError('target identity drift')
+    if m['recreation_workspace'] != {'id': None, 'state': 'requires-explicit-isolated-target'}:
+        raise ValueError('recreation workspace must be selected separately')
     if m['credential'] != {'reference': None, 'destination': 'unqualified', 'new_destination_authorized': False}:
         raise ValueError('credential destination drift')
     if m['runner'] != {'path': 'u/admin/foo_root_jobs', 'principal': 'foo-runner',
@@ -152,7 +154,8 @@ class WhiteRoom:
 def plan():
     m = validate()
     return {'mode': 'plan-only', 'runtime_mutations': [], 'live_recreation_verified': False,
-            'target': m['workspace'], 'target_transport': TRANSPORT, 'blockers': m['blockers'],
+            'target': m['workspace'], 'target_transport': TRANSPORT,
+            'recreation_workspace': m['recreation_workspace'], 'blockers': m['blockers'],
             'steps': [
                 'Reconcile live native jobs and all consumers under one migration owner.',
                 'Preserve approved source/config with hashes and prove restore without reading denied source.',
