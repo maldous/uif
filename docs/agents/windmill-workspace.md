@@ -34,8 +34,10 @@ For example, a separately authorized status read uses the original job identity:
 }
 ```
 
-The runner's parameters are `action`, `command`, `cwd`, `job_id` and
-`timeout_seconds`, as applicable to the selected action. There is no `run_as`
+The retained runner protocol declares `action`, `command`, `cwd`, `job_id` and
+`timeout_seconds`, as applicable to the selected action. Confirm the deployed
+Foo script schema and grant before dependent use; the private root execution
+grant in `foo` is not qualified by this connection-inventory read. There is no `run_as`
 or policy-version/hash argument in that contract. The example submits nothing;
 it grants no host command, credential placement or persistent access. Follow
 current task authority and the discovered schema. Record an admitted operation's
@@ -53,7 +55,10 @@ A wrapper response alone is not a terminal host receipt.
   The accepted recreation guard preserves `foo`, `offmenu` and `admins`.
 - OffMenu product repositories, scripts, data and compatibility service names
   have their own owners. Workspace branding does not select a rename or transfer
-  their ownership.
+  their ownership. Separately, the current UIF requirement makes active shared
+  infrastructure filenames and service/runtime bindings project-neutral. That
+  source/deployment migration remains with its existing integrator; product
+  identities may remain within explicit optional product boundaries.
 - Historical `offmenu-wm` and credential-destination observations do not qualify
   the current Foo execution account, credential placement or native roots.
   Verify those bindings through their existing owner and permitted evidence;
