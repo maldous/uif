@@ -7,6 +7,7 @@ its kernel child-reaping witness to release the capacity it admitted.
 
 import argparse
 import ctypes
+from hashlib import sha256
 import importlib.util
 import json
 import os
@@ -28,6 +29,8 @@ from uif.stokowski import LedgerAdmission, UIF
 
 
 POLICY = Path("/etc/uif/coding-supervisor.json")
+TYPED_POLICY = Path("/etc/uif/typed-supervisor.json")
+TYPED_HELPER = Path("/usr/local/libexec/uif-typed-role-helper")
 SUDO = Path("/usr/bin/sudo")
 NATIVE_ENV = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}
 LEDGER_FIELDS = ("store_id", "row_id", "snapshot_sha256", "source_sha256",
@@ -51,17 +54,26 @@ def _trusted(path, executable=False, *, setuid=False):
     return path
 
 
-def _installed(runtime, installation):
-    policy_path = _trusted(POLICY)
-    if file_digest(policy_path) != installation.get("supervisor_policy_sha256"):
+def _installed(runtime, installation, *, typed=False):
+    policy_path = _trusted(TYPED_POLICY if typed else POLICY)
+    expected = installation.get("supervisor_policy_sha256")
+    if file_digest(policy_path) != expected:
         raise SourceHold("uif_supervisor_policy_pin")
-    cfg = json.loads(policy_path.read_bytes())
+    raw = policy_path.read_bytes()
+    if sha256(raw).hexdigest() != expected:
+        raise SourceHold("uif_supervisor_policy_pin")
+    cfg = json.loads(raw)
     required = {"schema", "runtime_root", "coordinator_runtime", "pool_root",
                 "uid", "capacity", "role_helper", "role_policy", "owner_registration"}
     if (set(cfg) != required or cfg["schema"] != "uif-coding-supervisor/2"
             or type(cfg["uid"]) is not int or cfg["uid"] <= 0
             or os.getuid() != cfg["uid"] or os.geteuid() != cfg["uid"]):
         raise SourceHold("uif_supervisor_policy")
+    if typed:
+        ordinary = json.loads(_trusted(POLICY).read_bytes())
+        if (set(ordinary) != required
+                or any(cfg[field] != ordinary[field] for field in required - {"role_helper", "role_policy"})):
+            raise SourceHold("uif_supervisor_shared_binding")
     root = exact_path(cfg["runtime_root"])
     coordinator = exact_path(cfg["coordinator_runtime"])
     pool = exact_path(cfg["pool_root"])
@@ -84,11 +96,29 @@ def _installed(runtime, installation):
     from uif import role_broker
 
     role_policy = cfg["role_policy"]
-    if exact_path(role_policy["path"]) != role_broker.POLICY:
+    selected_role_policy = role_broker.TYPED_POLICY if typed else role_broker.POLICY
+    if exact_path(role_policy["path"]) != selected_role_policy:
         raise SourceHold("uif_supervisor_role_policy_path")
-    roles = json.loads(role_broker.POLICY.read_bytes())
-    if file_digest(role_broker.POLICY) != role_policy["sha256"]:
+    role_raw = selected_role_policy.read_bytes()
+    if sha256(role_raw).hexdigest() != role_policy["sha256"]:
         raise SourceHold("uif_supervisor_installed_digest")
+    roles = json.loads(role_raw)
+    if typed:
+        ordinary_role = ordinary["role_policy"]
+        ordinary_path = _trusted(ordinary_role["path"])
+        ordinary_raw = ordinary_path.read_bytes()
+        if ordinary_path != role_broker.POLICY or sha256(ordinary_raw).hexdigest() != ordinary_role["sha256"]:
+            raise SourceHold("uif_supervisor_shared_binding")
+        ordinary_roles = json.loads(ordinary_raw)
+        native_assets = {"guard", "dropper", "runtime_files"}
+        if ({key: value for key, value in roles.items() if key != "roles"}
+                != {key: value for key, value in ordinary_roles.items() if key != "roles"}
+                or set(roles["roles"]) != set(ordinary_roles["roles"])
+                or roles["roles"].get("neutral") != ordinary_roles["roles"].get("neutral")
+                or any({key: value for key, value in roles["roles"][role].items() if key not in native_assets}
+                       != {key: value for key, value in ordinary_roles["roles"][role].items()
+                           if key not in native_assets} for role in role_broker.MODES)):
+            raise SourceHold("uif_supervisor_shared_binding")
     isolation = "uif-role-attempt-namespaces/1"
     if roles.get("attempt_isolation") != isolation or getattr(role_broker, "ATTEMPT_ISOLATION", None) != isolation:
         raise SourceHold("uif_supervisor_attempt_isolation_unqualified")
@@ -106,6 +136,8 @@ def _installed(runtime, installation):
     helper = cfg["role_helper"]
     if not isinstance(helper, dict) or set(helper) != {"path", "sha256"}:
         raise SourceHold("uif_supervisor_role_binding")
+    if typed and exact_path(helper["path"]) != TYPED_HELPER:
+        raise SourceHold("uif_supervisor_typed_helper_path")
     cfg.update(runtime_root=root, coordinator_runtime=coordinator, pool_root=pool,
                capacity=exact_path(cfg["capacity"]["path"]), controller_root=control,
                role_broker=role_broker.RoleBroker(helper["path"], _pin(helper["sha256"])), role_limits=roles["roles"],
@@ -452,8 +484,8 @@ def _check_output(workspace, directory, dispatch, binding):
     return dict(scope_violations=violations, source_identity_changed=identity_changed, output_sha256=outputs)
 
 
-def prepare_guarded_runtime(runtime, installation, *, role_launch=False):
-    cfg = _installed(exact_path(runtime), installation)
+def prepare_guarded_runtime(runtime, installation, *, role_launch=False, typed=False):
+    cfg = _installed(exact_path(runtime), installation, typed=typed)
     if "role_broker" in cfg and role_launch is not True:
         raise SourceHold("uif_supervisor_role_launch_required")
     _subreaper()
@@ -549,7 +581,7 @@ def execute(runtime, issue=None, *, ledger_workspace=None, invocation_id=None):
         dispatch, original_sha = _record(directory / "dispatch-intent.json")
         claim, _ = _record(runtime / "current-admission.json", _pin(dispatch["pins"]["admission_sha256"]))
         installation, _ = _record(runtime / "installation.json", _pin(claim["installation_sha256"]))
-        cfg = prepare_guarded_runtime(runtime, installation, role_launch=True)
+        cfg = prepare_guarded_runtime(runtime, installation, role_launch=True, typed=True)
         if "role_broker" not in cfg:
             raise SourceHold("uif_supervisor_role_launch_required")
         task = LedgerTaskEnvelope.from_record(dispatch["task"], snapshot_path=cfg["authority"].snapshot_path)

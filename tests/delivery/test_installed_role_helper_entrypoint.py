@@ -9,20 +9,30 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 from unittest import TestCase, skipUnless
+from unittest.mock import patch
 
+from uif import role_broker, supervisor
 from uif.ledger import SNAPSHOT_SHA256, read_snapshot
-from uif.role_broker import LEDGER_SCHEMA, slot_for_lease
+from uif.role_broker import LEDGER_SCHEMA, NEUTRAL_BINDING, NEUTRAL_NAMESPACE, NEUTRAL_SCHEMA, _digest, slot_for_lease
 from uif.task_identity import LedgerTaskKey
 
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = ROOT / "deploy/stokowski/uif-role-helper.sh"
 MAIN = 'if __name__ == "__main__":\n    raise SystemExit(main())\n'
-PROBE = """if __name__ == "__main__":
+PROBE = """def main(*, typed_only):
+    assert typed_only is True
+    directory = Path(__file__).parents[2] / sys.argv[2]
+    cfg = {"controller_root": str(directory.parent), "controller_uid": os.getuid(),
+           "roles": {"neutral": {}}}
+    def probe_original(cfg, action, path, request):
+        assert isinstance(request, LaunchRequest)
+        return request
+    globals()["_handle_original"] = probe_original
     try:
-        request = _request(Path(__file__).parents[2] / sys.argv[2], os.getuid())
+        request = _handle(cfg, sys.argv[1], sys.argv[2], typed_only=typed_only)
     except LaunchHold:
-        raise SystemExit(2)
+        return 2
     if isinstance(request.key, _LedgerRoleKey):
         from uif.stokowski import LEDGER_DISPATCH_INTENT
         assert LEDGER_DISPATCH_INTENT == "uif-dispatch-intent/2"
@@ -31,6 +41,7 @@ PROBE = """if __name__ == "__main__":
         "isolated": sys.flags.isolated, "no_site": sys.flags.no_site,
         "no_bytecode": sys.flags.dont_write_bytecode,
     }))
+    return 0
 """
 
 
@@ -83,7 +94,7 @@ class InstalledRoleHelperTests(TestCase):
         lease = f"fixture-{role}-{'ledger' if ledger else 'issue'}"
         slot = slot_for_lease(lease)
         path = self.root / slot
-        path.mkdir()
+        path.mkdir(mode=0o700)
         key = dict(intent_sha256="a" * 64, lease_id=lease)
         row = read_snapshot(ROOT / "README.md")["src-059-qualification"]
         if ledger:
@@ -130,6 +141,43 @@ class InstalledRoleHelperTests(TestCase):
         for args in (("observe", slot), ("run", slot), ("observe", slot.upper()), ("observe",)):
             with self.subTest(args=args):
                 self.assertEqual(self.run_launcher(*args).returncode, 2)
+
+    def test_typed_launcher_refuses_neutral_before_original_handler(self):
+        self.render()
+        job = "ordinary-fixture"
+        lease = "neutral-" + _digest([NEUTRAL_NAMESPACE, "foo", job])
+        slot = slot_for_lease(lease)
+        directory = self.root / slot
+        directory.mkdir(mode=0o700)
+        binding = dict.fromkeys(NEUTRAL_BINDING, "a" * 64)
+        binding.update(namespace=NEUTRAL_NAMESPACE, workspace="foo", job_id=job)
+        path = directory / "launch.json"
+        path.write_text(json.dumps(dict(schema=NEUTRAL_SCHEMA, binding=binding, slot=slot,
+                                        intent_sha256="b" * 64, request_file_sha256="c" * 64,
+                                        pool_binding_sha256="d" * 64, cpu_ids=[0])))
+        path.chmod(0o600)
+        for action in ("start", "observe", "cancel"):
+            with self.subTest(action=action):
+                result = self.run_launcher(action, slot)
+                self.assertEqual((result.returncode, result.stdout, result.stderr), (2, "", ""))
+
+    def test_privileged_policy_reader_pins_the_fixed_typed_role_config(self):
+        registration = self.root / "typed-supervisor.json"
+        roles = self.root / "typed-role-launch.json"
+        roles.write_text('{}')
+        roles.chmod(0o600)
+        registration.write_text(json.dumps({"role_policy": {"path": str(roles), "sha256": digest(roles)}}))
+        registration.chmod(0o600)
+        checked = role_broker._regular
+        with (patch.object(supervisor, "TYPED_POLICY", registration),
+              patch.object(role_broker, "TYPED_POLICY", roles), patch.object(role_broker, "_dir"),
+              patch.object(role_broker, "_regular", wraps=lambda fd, uid, mode: checked(fd, os.getuid(), mode))):
+            with self.assertRaises(KeyError) as incomplete:
+                role_broker._policy(typed_only=True)
+            self.assertEqual(incomplete.exception.args, ("schema",))
+            roles.write_text('{"changed":true}')
+            with self.assertRaisesRegex(role_broker.LaunchHold, "role_launch_digest"):
+                role_broker._policy(typed_only=True)
 
     def test_refuses_changed_module_unlisted_file_and_symlink(self):
         self.render()

@@ -26,6 +26,7 @@ from uuid import UUID
 
 
 POLICY = Path("/etc/uif/role-launch.json")
+TYPED_POLICY = Path("/etc/uif/typed-role-launch.json")
 SUDO = "/usr/bin/sudo"
 SCHEMA = "uif-role-launch/1"
 LEDGER_SCHEMA = "uif-role-launch/2"
@@ -1858,10 +1859,10 @@ def _neutral_observation(cfg, directory, request, result):
                               log_bytes=counts, logs_truncated=truncated)
 
 
-def _handle(cfg, action, slot):
+def _handle(cfg, action, slot, *, typed_only=False):
     directory = _dir(_path(cfg["controller_root"]) / slot, cfg["controller_uid"], 0o077)
     request = _request(directory, cfg["controller_uid"])
-    if isinstance(request, NeutralLaunchRequest) and "neutral" not in cfg["roles"]:
+    if isinstance(request, NeutralLaunchRequest) and (typed_only or "neutral" not in cfg["roles"]):
         raise LaunchHold("neutral_launch_role_not_installed")
     result = _handle_original(cfg, action, directory, request)
     if isinstance(request, NeutralLaunchRequest):
@@ -1869,10 +1870,21 @@ def _handle(cfg, action, slot):
     return result
 
 
-def _policy():
-    for parent in POLICY.parents:
+def _policy(*, typed_only=False):
+    policy = TYPED_POLICY if typed_only else POLICY
+    expected = None
+    if typed_only:
+        from uif.supervisor import TYPED_POLICY as supervisor_policy
+
+        for parent in supervisor_policy.parents:
+            _dir(parent, 0, 0o022)
+        registration = _record(supervisor_policy, 0, forbidden=0o022)["role_policy"]
+        expected = registration["sha256"]
+        if registration["path"] != str(policy) or not _sha(expected):
+            raise LaunchHold("role_launch_typed_policy")
+    for parent in policy.parents:
         _dir(parent, 0, 0o022)
-    cfg = _record(POLICY, 0, forbidden=0o022)
+    cfg = _record(policy, 0, expected, forbidden=0o022)
     if (cfg["schema"] != SCHEMA or cfg.get("attempt_isolation") != ATTEMPT_ISOLATION or any(type(cfg[field]) is not int or cfg[field] <= 0
                                       for field in ("controller_uid", "controller_gid"))):
         raise LaunchHold("role_launch_policy")
@@ -1933,14 +1945,14 @@ def _policy():
     return cfg
 
 
-def main():
+def main(*, typed_only=False):
     args = sys.argv[1:]
     if (not sys.flags.isolated or os.getuid() != 0 or os.geteuid() != 0 or len(args) != 2
             or args[0] not in {"start", "observe", "cancel"} or not _sha(args[1])):
         return 2
     os.umask(0o077)
     try:
-        result = _handle(_policy(), *args)
+        result = _handle(_policy(typed_only=typed_only), *args, typed_only=typed_only)
         print(_wire({"schema": SCHEMA, **asdict(result)}).decode())
     except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
         return 2

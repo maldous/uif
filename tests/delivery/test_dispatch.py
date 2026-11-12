@@ -146,11 +146,15 @@ class FixtureBroker:
             str(marker)], timeout=5)
         return role_broker.LaunchObservation("exited-clean", launch.digest, "d" * 64, child.returncode)
 
-supervisor._installed = lambda *_: dict(
-    runtime_root=root, coordinator_runtime=authority.coordinator_runtime_path, pool_root=database.parent,
-    authority=authority, controller_root=root, role_broker=FixtureBroker(),
-    role_limits={"coding": {"max_processes": 2, "max_projection_bytes": 1048576}},
-)
+def installed(*_, typed):
+    assert typed is True
+    return dict(
+        runtime_root=root, coordinator_runtime=authority.coordinator_runtime_path, pool_root=database.parent,
+        authority=authority, controller_root=root, role_broker=FixtureBroker(),
+        role_limits={"coding": {"max_processes": 2, "max_projection_bytes": 1048576}},
+    )
+
+supervisor._installed = installed
 supervisor.load_capacity = lambda _: FixtureCapacity
 execute = supervisor.execute
 def diagnostic_execute(*args, **kwargs):

@@ -89,5 +89,5 @@ module = importlib.util.module_from_spec(spec)
 sys.modules["uif"] = module
 spec.loader.exec_module(module)
 sys.argv = [str(helper), *args]
-runpy.run_path(str(helper), run_name="__main__")
+sys.exit(runpy.run_path(str(helper))["main"](typed_only=True))
 ' "$helper" "$helper_sha" "$manifest" "$manifest_sha" "$@"

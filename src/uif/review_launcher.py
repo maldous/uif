@@ -267,7 +267,7 @@ class ReviewLauncher:
             installation = self._runtime_record(runtime, "installation.json", selection.installation_sha256)
             capacity = self._runtime_record(runtime, "capacity-policy.json", selection.capacity_policy_sha256)
             provider = self._runtime_record(runtime, "provider-proof.json", selection.provider_proof_sha256)
-            cfg = supervisor.prepare_guarded_runtime(runtime, installation, role_launch=True)
+            cfg = supervisor.prepare_guarded_runtime(runtime, installation, role_launch=True, typed=task is not None)
             registered_role = "role_broker" in cfg
             if (cfg.get("schema") == "uif-coding-supervisor/2" or task is not None) and not registered_role:
                 raise SourceHold("uif_review_launcher_role_binding")

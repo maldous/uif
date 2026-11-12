@@ -10,6 +10,7 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import time
+from types import SimpleNamespace
 from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
@@ -17,8 +18,78 @@ from uif.dispatch import MODEL, SCHEMA, _digest, _lease_id, read_outcome
 from uif.source import SourceHold, file_digest, git
 from uif.stokowski import DispatchReportBinding, LedgerAdmission, PolledIssue, UIF
 from uif.task_identity import LedgerTaskKey
-from uif import supervisor
+from uif import role_broker, supervisor
 import test_guard_dropper as guard_fixtures
+
+
+class TypedSupervisorBindingTests(TestCase):
+    def test_owner_pinned_typed_binding_shares_ordinary_authority_and_refuses_drift(self):
+        root = Path(self.enterContext(TemporaryDirectory()))
+        runtime, pool, coordinator = (root / name for name in ("row", "pool", "coordinator"))
+        for directory in (runtime, pool, coordinator):
+            directory.mkdir()
+
+        def write(path, value):
+            path.write_text(json.dumps(value))
+            path.chmod(0o600)
+            return dict(path=str(path), sha256=file_digest(path))
+
+        authority = SimpleNamespace(runtime_root_path=root, coordinator_runtime_path=coordinator,
+                                    pool_database_path=pool / "state.sqlite", operation_locks_path=root / "locks")
+        role_config = dict(
+            schema=role_broker.SCHEMA, attempt_isolation=role_broker.ATTEMPT_ISOLATION,
+            controller_uid=os.getuid(), controller_gid=os.getegid(), controller_root=str(root),
+            pool_database=str(authority.pool_database_path), operation_locks=str(authority.operation_locks_path),
+            roles={name: {} for name in ("coding", "review", "neutral")},
+        )
+        roles = write(root / "roles.json", role_config)
+        typed_roles = write(root / "typed-roles.json", dict(role_config, roles={
+            **role_config["roles"], "coding": {"guard": {"sha256": "c" * 64}},
+        }))
+        ordinary_path, typed_path = root / "ordinary.json", root / "typed.json"
+        ordinary_helper = dict(path=str(root / "neutral-helper"), sha256="a" * 64)
+        typed_helper = dict(path=str(root / "typed-helper"), sha256="b" * 64)
+        ordinary = dict(schema="uif-coding-supervisor/2", uid=os.getuid(), runtime_root=str(root),
+                        coordinator_runtime=str(coordinator), pool_root=str(pool), role_policy=roles,
+                        capacity=write(root / "capacity.py", {}),
+                        owner_registration=write(root / "owner.json", {}), role_helper=ordinary_helper)
+        if os.getuid() == 0:
+            self.skipTest("requires a non-root supervisor fixture")
+        ordinary_pin = write(ordinary_path, ordinary)["sha256"]
+        typed = dict(ordinary, role_helper=typed_helper, role_policy=typed_roles)
+        typed_pin = write(typed_path, typed)["sha256"]
+        with (patch.object(supervisor, "POLICY", ordinary_path), patch.object(supervisor, "TYPED_POLICY", typed_path),
+              patch.object(supervisor, "TYPED_HELPER", Path(typed_helper["path"])),
+              patch.object(role_broker, "POLICY", Path(roles["path"])),
+              patch.object(role_broker, "TYPED_POLICY", Path(typed_roles["path"])),
+              patch.object(supervisor, "_trusted", side_effect=Path),
+              patch("uif.owner_runtime.OwnerAuthority.load", return_value=authority),
+              patch.object(role_broker, "RoleBroker") as broker):
+            supervisor._installed(runtime, {"supervisor_policy_sha256": ordinary_pin})
+            broker.assert_called_once_with(ordinary_helper["path"], ordinary_helper["sha256"])
+            broker.reset_mock()
+            supervisor._installed(runtime, {"supervisor_policy_sha256": typed_pin}, typed=True)
+            broker.assert_called_once_with(typed_helper["path"], typed_helper["sha256"])
+            broker.reset_mock()
+            with self.assertRaisesRegex(SourceHold, "supervisor_policy_pin"):
+                supervisor._installed(runtime, {"supervisor_policy_sha256": ordinary_pin}, typed=True)
+            for change, reason in (({"pool_root": str(root / "other")}, "shared_binding"),
+                                   ({"owner_registration": ordinary["capacity"]}, "shared_binding"),
+                                   ({"role_policy": roles}, "role_policy_path"),
+                                   ({"role_helper": ordinary_helper}, "typed_helper_path")):
+                pin = write(typed_path, dict(typed, **change))["sha256"]
+                with self.assertRaisesRegex(SourceHold, reason):
+                    supervisor._installed(runtime, {"supervisor_policy_sha256": pin}, typed=True)
+            drifted = write(Path(typed_roles["path"]), dict(role_config, roles={
+                **role_config["roles"], "coding": {"uid": 999},
+            }))
+            pin = write(typed_path, dict(typed, role_policy=drifted))["sha256"]
+            with self.assertRaisesRegex(SourceHold, "shared_binding"):
+                supervisor._installed(runtime, {"supervisor_policy_sha256": pin}, typed=True)
+            typed_path.unlink()
+            with self.assertRaises(FileNotFoundError):
+                supervisor._installed(runtime, {"supervisor_policy_sha256": typed_pin}, typed=True)
+            broker.assert_not_called()
 
 
 CHILD = r"""
@@ -86,7 +157,7 @@ class FixtureCapacity:
     host_snapshot = staticmethod(lambda path: {})
     host_pressure = staticmethod(lambda path, policy: None)
 
-supervisor._installed = lambda *args: cfg
+supervisor._installed = lambda *args, **kwargs: cfg
 if not capacity:
     supervisor.load_capacity = lambda cfg: FixtureCapacity
 supervisor._command = lambda cfg, ws, directory, home, mode: [

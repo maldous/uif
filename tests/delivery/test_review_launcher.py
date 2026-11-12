@@ -164,8 +164,9 @@ class ReviewLauncherTests(unittest.IsolatedAsyncioTestCase):
         launcher = ReviewLauncher(settings=self.settings, review=review, fence=fence, check_current=check_current)
         supervisor = ModuleType("uif.supervisor")
 
-        def prepare(selected_runtime, installation, *, role_launch):
+        def prepare(selected_runtime, installation, *, role_launch, typed):
             self.assertIs(role_launch, True)
+            self.assertIs(typed, f.spec.binding.task is not None)
             calls.append("prepare")
             self.assertEqual(selected_runtime, runtime)
             self.assertEqual(installation, records["installation.json"])
