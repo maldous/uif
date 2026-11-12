@@ -1,0 +1,91 @@
+ANQR-R205-1 — current acceptance reconciliation, not product completion
+
+Original ledger: maldous/uif README.md at f982b939ae917c0b5aa6e2e6db118d851e273aed, ANQR-R205-1. This is a bounded result on the existing row/UIF-205, not eighteen new issues or a replacement backlog. Actual accepted analysis source: maldous/anqr-v3 develop b69cf31b79b6aad3a1fab5fea55a78bcb7a3e81e.
+
+All18 retained criteria in original comment13308131-da0f-4af8-8d15-1e8452a2382d (current body SHA-256921c2dd7346dfa0d5da71f55d776957f8ed610f1bb3bd368296bae0a6ee2abd1) were reconciled against actual current files and the six existing children. The historical concrete artifact/PNG decoder/locale/experience evidence at preserved unselected92ba820dd63e7461928bdeddfd8a430c4cc10a74 is retained, not represented as current develop and not negated by current-path absence.
+
+Current evidence below is source-model evidence plus previously executed authored tests, not proof of a served protocol, rendered journey or real artifact. Paths are relative to src/capabilities/ at the exact source above; every listed module has its corresponding authored tests/conformance path.
+
+1. Define destination and payment safety without conflating representation with execution
+Current source: payload/paymentpayloadrepresentation.ts [blob 087b1f17faca043f94968192cbcaf31b00b6684d]; analysis/payloadclassification.ts [blob 3265fb32dd9f56510ba46d273f36ac8efbe16ea6].
+Representation/conformance and classification logic exists; it does not define destination/payment safety. Existing UIF-209/210 owners must select bounded assessment outcomes/evidence. No payment execution selected.
+
+2. Realise and verify approved destination/payment safety assessments
+Current source: payload/paymentpayloadrepresentation.ts [blob 087b1f17faca043f94968192cbcaf31b00b6684d]; analysis/payloadclassification.ts [blob 3265fb32dd9f56510ba46d273f36ac8efbe16ea6]; trust/remoteassetsafety.ts [blob 9055f6d01497bb26445212662ce699569aadf4f3].
+Injected remote-asset boundary checks are not destination safety assessment. Assessment method, admissible inputs and stale/unavailable behavior remain unresolved under existing UIF-209/210.
+
+3. Verify the served HTTP and asynchronous programmatic artifact service
+Current source: distribution/httpapidelivery.ts [blob f2c5bf6b0b1927eded1040b9be9f0eedcfd85e8f]; enterprise/programmaticgeneration.ts [blob a77229aede229a809422e1e35baf55c641271e32].
+HTTP capability returns a generated identifier and modeled invocation data. Select a served artifact/status/retrieval/cache path before qualifying that service; no transport or asynchronous retrieval is established.
+
+4. Deliver the selected MCP interface with real product outcomes
+Current source: distribution/mcpdelivery.ts [blob 4ee14e338bc91bbe788cbca76b4d2a795d8363bd]; enterprise/programmaticgeneration.ts [blob a77229aede229a809422e1e35baf55c641271e32].
+Generation returns QR-/ADVANCED-QR- plus base64 payload; these are exported functions, not a protocol server/image producer. Tools, transport and actual artifact outcome remain to be selected/qualified. HTTP is not made mandatory.
+
+5. Verify installable offline use, sharing and device-local state
+Current source: distribution/shareablerepresentation.ts [blob 75632f054121f5e5e7493a66e6a74bb4c272c90c]; experience/responsivewebdelivery.ts [blob 6adb295db901c39450abc48aba726d5409ad4e43].
+Supplied configuration serialization/share-recipient objects are modeled. No tracked installableoffline/service-worker/storage adapter. Decide selected lifecycle/privacy behavior; no native-app reactivation.
+
+6. Resolve locale parity scope and authoritative translation inputs
+Current source: localisation/interfacelocalisation.ts [blob c784de374c0a567843830ce5eb7ea5ed0929f98d]; localisation/localenegotiation.ts [blob b80420923c2cf4858614a3b693b5f12c58e81628].
+Supplied locale/string lookup and negotiation exist. The historical localeparity/resource paths are absent from this checkout. Approve exact locale/key/journey denominator, source inputs and missing-input owners.
+
+7. Realise and independently validate the approved locale matrix
+Current source: localisation/interfacelocalisation.ts [blob c784de374c0a567843830ce5eb7ea5ed0929f98d]; localisation/bidirectionaltextsupport.ts [blob a147432ea0902af991184344d877af7c0152ca31]; localisation/localetypography.ts [blob 1ac582ac65770152071d5870b9e7493ee69a548b].
+State/string/direction/font-outcome logic and miniature authored inputs exist; no approved translated resource corpus is tracked. Approved inputs and rendered locale/focus/layout/switching evidence remain outstanding.
+
+8. Complete accessible responsive journeys through exact experience bindings
+Current source: experience/accessibleinteraction.ts [blob 4df61fc452851cb5be7ad8b2a18f78fdcb06deae]; experience/responsivewebdelivery.ts [blob 6adb295db901c39450abc48aba726d5409ad4e43]; experience/guidedonboarding.ts [blob 6d689dc5f331c358afbd661fb1d8d6726dac0a07].
+Control/focus/configuration/onboarding models are not rendered browser/assistive-technology journeys. Select affected journeys or explicit non-UI scope; preserve first-journey historical acceptance at its exact source.
+
+9. Verify anonymous use, payload privacy, consent and remote-asset boundaries
+Current source: trust/anonymousgeneration.ts [blob 48e58c87a439a8a3aaaea674d74cbbabb7ab8788]; trust/payloadconfidentiality.ts [blob 463992ad24bf632d444b7125c7bd6c5396ca9da5]; trust/remoteassetsafety.ts [blob 9055f6d01497bb26445212662ce699569aadf4f3].
+Anonymous success/counter and payload artifact models do not prove end-to-end privacy; assertNoPayloadLeak is empty. Substantive remote-asset URL/redirect/audit logic takes injected fetch size/time. No tracked consent module. Qualify only selected real privacy/network boundaries.
+
+10. Verify abuse controls, audit outcomes and entitlement boundaries
+Current source: enterprise/programmaticgeneration.ts [blob a77229aede229a809422e1e35baf55c641271e32]; quality/performancebudget.ts [blob 125fa733cc73cff500b72df2c4388fa005ebe6a6].
+In-memory perimeter/audit/readiness and supplied sample/budget logic exist. Historical standalone RateLimiter/audit/entitlement paths are absent here. Actual trust, retention, enforcement and failure-observation bindings remain unresolved; no enterprise identity activation.
+
+11. Adopt consent-bound advertising without degrading the core journey
+Current source: package/README/toolchain declarations and tracked-tree boundary as applicable.
+No tracked advertising or consent implementation in this checkout. Retain decision-first provider/consent/privacy/layout criterion; no provider contact, payment, subscription or activation selected.
+
+12. Complete localized discovery content, gallery and translation contribution flows
+Current source: localisation/multilingualdiscoverability.ts [blob 35fc7d901a8f3c4c9eca2473deaea14c42dedd91]; localisation/localisedstaticcontent.ts [blob b5d1e2e2ecea2e7075c3cf441df8a86dae69798d]; experience/capabilitygallery.ts [blob dc5a3a2581fa1977324b84b175f61775f924c3e7]; localisation/communitytranslationcontribution.ts [blob ea5251e5420942c1ed908941e3ed257f774972d1].
+Supplied content/link generation and proposal-state logic exist. Gallery render/decode is simulated; object publication is not repository/hosted publication. Select approved content/locales/moderation and actual environment before qualification.
+
+13. Bind production ANQR to independently versioned UXF, USF and managed UIF contracts
+Current source: package/README/toolchain declarations and tracked-tree boundary as applicable.
+Current README/policy require independent source checks and optional UIF integration. No tracked .usf/composed experience declarations. Select only applicable current consumer contracts/revision axes; preserve historical semantics without reviving USF/Hermes.
+
+14. Prove clean-clone build and composed browser/API integration in CI
+Current source: package/README/toolchain declarations and tracked-tree boundary as applicable.
+Pinned source checks are already qualified by the preserved exact-input receipt: Node24.16.0/npm11.13.0, TypeScript5.9.3, typecheck and171 tests. No build/start/deploy script or tracked CI workflow. This does not establish artifact/browser/API/MCP/composed CI behavior.
+
+15. Promote an evidence-bound ANQR candidate to approved staging
+Current source: package/README/toolchain declarations and tracked-tree boundary as applicable.
+No selected staging candidate, approved endpoint or promotion binding is established. Retain the criterion for a selected candidate; no provider, provisioning or spend action selected.
+
+16. Release production ANQR with scoped smoke evidence and rollback readiness
+Current source: package/README/toolchain declarations and tracked-tree boundary as applicable.
+No current production release/rollback/hosted observation is established. README disclaims standalone web deployment. Exact release, operator, environment and required smoke/rollback evidence remain unresolved; no deployment selected.
+
+17. Prove product health, operational ownership and recovery behavior
+Current source: distribution/httpapidelivery.ts [blob f2c5bf6b0b1927eded1040b9be9f0eedcfd85e8f]; enterprise/programmaticgeneration.ts [blob a77229aede229a809422e1e35baf55c641271e32]; quality/performancebudget.ts [blob 125fa733cc73cff500b72df2c4388fa005ebe6a6].
+Readiness/audit objects and supplied performance samples are not deployed outcome metrics, alerting or recovery proof. Historical runtimeobservability module is absent here. Select actual state/operator/recovery scope; do not invent a database/backup requirement.
+
+18. Maintain explicit dispositions for deferred, reserved and experimental capabilities
+Current source: package/README/toolchain declarations and tracked-tree boundary as applicable.
+No six-disposition register is tracked here. Preserve the retained requirement for six owned/rationalized dispositions; payment/enterprise capability names do not activate payment execution or enterprise scope. Exact current denominator/owner decisions remain unresolved.
+
+Existing child dispositions:
+- UIF-206: current QR creation/output/animation modules validate options and model synthetic outputs; independent emitted-image decoding/Unicode/ECI/ECC/customization remains unresolved for a selected source.
+- UIF-207: qrdecoding.decode at this commit returns structured failure for image input; result/registry/vector helpers and authored injected results exist. Structural inspection consumes supplied specifications; classification is string-pattern logic. This scoped current finding does not revive the false blanket claim that V3 never implemented real decoding.
+- UIF-208: scan validation/diagnosis consumes fixture identifiers or supplied measurements. Actual independent image-corpus calibration and meaning-preserving repair qualification remain outstanding.
+- UIF-209: representation/remote-asset checks cannot substitute for an approved reputation rubric, evidence/freshness boundaries and method.
+- UIF-210: retain genuine UIF-209 prerequisite; no provider or implementation selected by this reconciliation.
+- UIF-215: exact product baseline, transfer/rights and consumer decisions remain unresolved. Selecting develop as this analysis target is not selecting new product reuse scope.
+
+ANQR-R205-2 credit: package.json/lockfile/.node-version/docs/toolchain.md already pin Node24.16.0, npm11.13.0, TypeScript5.9.3 and @types/node24.19.2. Source/tests/compiler/dependency inputs are byte-identical to the preserved typecheck/171-test receipt. Both scripts exercise the same171 tests, not342 distinct tests. No checks were repeated and no broader product or CI acceptance is inferred.
+
+Outcome: the original row's current-source acceptance crosswalk is complete in this bounded evidence scope. The aggregate and child product outcomes remain unresolved; no synthetic issues, source copying, rights clearance, runtime/service/provider/permission action, historical replay, shared-ledger closure or status/assignment/dependency mutation occurred. Independent review must accept this exact result before incorporation. Existing original IDs, source hashes, histories, accepted definitions and owner controls remain intact.

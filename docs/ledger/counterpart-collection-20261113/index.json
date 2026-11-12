@@ -1,0 +1,206 @@
+{
+  "schema": "uif-original-counterpart-evidence-collection/1",
+  "purpose": "Incremental requested documentary collection; no new task/ownership/execution store.",
+  "base": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "README_sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+  "original_allocations": {
+    "UIF": 73,
+    "CQ": 26,
+    "CIX": 19,
+    "OffMenu": 54,
+    "ANQR": 7,
+    "discovery": 34,
+    "total": 213,
+    "nonadditive_references": 11
+  },
+  "accepted_UIF_assessment": {
+    "records": 107,
+    "dispositioned": 61,
+    "current": 46,
+    "change": 0
+  },
+  "record_count": 15,
+  "records": [
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R202-1",
+      "source_sha256": "44783841fe58242da9bc551142e48fc02917a708d31b66a69a7d67ad45a7c98d",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R205-1",
+      "source_sha256": "b7fa0f19bd3002c5f2f65e4c66a260e687d9ed934b0fcf1e9789489e94e0b007",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R205-2",
+      "source_sha256": "5158972829c9edeecd49a768ec5ba66eae9ef56d6ce900def83ace628f4048a4",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R215-1",
+      "source_sha256": "4303c929b67577bb891aaca8522c8ba40a53a8a5081eb0109058f5b363c5b146",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R215-2",
+      "source_sha256": "0b1f1bd6da5b919818e880e5d131039219dc34fe6d176526890cdfefa6101670",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R215-3",
+      "source_sha256": "f12c49a527c6ad0d92beeb3646170524c1bdc24a1b8e8ac9e32c0075e9ef7d4c",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "ANQR",
+      "original_id": "ANQR-R215-4",
+      "source_sha256": "2dc262cf0ae26b32f5ed36f473062862d28c3cbd5225079d510e80de51997071",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "CIX",
+      "original_id": "CIX-71:historical-policy-lineage",
+      "source_sha256": "4683e83a55c9f1d52a12826857b05d4a47968cfca78857f2d929196b8a75784f",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "CIX"
+    },
+    {
+      "project": "CIX",
+      "original_id": "CIX-71:historical-policy-disposition",
+      "source_sha256": "98bab5fa98944a462e3dd49aeb23db67aedb77d54e5b09795d776d465fabf786",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "CIX"
+    },
+    {
+      "project": "CIX",
+      "original_id": "CIX-141:handoff-applicability",
+      "source_sha256": "aab5ee9c2e9126f04ff87155ed5b802148788696c0c042d2bace9b9ad7520d92",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "CIX"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.profile.bind_exact_contract",
+      "source_sha256": "cbc5497c84143e51faddbeef3144d47c982cae4cc620d2124b72cb28c7179e7b",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.analyzer.original_pin_assessment",
+      "source_sha256": "89ca5da53a6da2fedaaf2b00ba8302a298b85fb1a1610f542cf2c30504d4acf6",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.analyzer.owner_review",
+      "source_sha256": "bdf57c2f16854650dee0b1fe9a8686ce32eccdc3f2d3265be267d43c4202cdf4",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-locale-requirements",
+      "source_sha256": "6b2d13843586cb502ad315ea68a53f59e9aefa7edbc4b1d41692200bfe64162f",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-developer-contract-qualification",
+      "source_sha256": "e8a2b76e43851ebb29d75f5fa1ac73b69b5d2a089da7b9b588a525e2fbd8465d",
+      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "evidence_group": "OffMenu"
+    }
+  ],
+  "evidence_groups": {
+    "ANQR": {
+      "ids": [
+        "ANQR-R202-1",
+        "ANQR-R205-1",
+        "ANQR-R205-2",
+        "ANQR-R215-1",
+        "ANQR-R215-2",
+        "ANQR-R215-3",
+        "ANQR-R215-4"
+      ],
+      "owner_turns": [
+        "01a1d1cc-c2ca-7365-9b2a-eab78d61c1e5",
+        "01a1d1d8-f480-7124-b51f-919331f89dfb"
+      ],
+      "source": "b69cf31b79b6aad3a1fab5fea55a78bcb7a3e81e",
+      "packet_expected_sha256": "86c4689876665936658abf4c400790673f05555c14aeae4e0db7a441d451ce94",
+      "boundary": "Current in-place classifier selection; no transfer, rights grant or overall product baseline. R202 finite discovery accepted; R205 18-criterion/six-child crosswalk source-model only. Same171 tests credited, not342. R215-2 historical numeric-ID recovery is legacy/permanently unavailable; no archive search. Future selected translation needs authoritative corpus/key/locale/rights, not a blocker to classifier."
+    },
+    "CIX": {
+      "ids": [
+        "CIX-71:historical-policy-lineage",
+        "CIX-71:historical-policy-disposition",
+        "CIX-141:handoff-applicability"
+      ],
+      "owner_turns": [
+        "01a1d1d6-a29d-7711-bbb4-cb64c26c2cb0"
+      ],
+      "source": "8ebd669b01fb737ba766aaff0e615b9086ae7346",
+      "packet_expected_sha256": "b888ab0399b8698d1188bc22c9fbd25509e1e65cb54b6eb5824c83736f69d657",
+      "boundary": "Three bounded historical lineage/applicability dispositions received. Preserve distinct PR82 44410-byte source and later61755-byte file; retain accepted CIX343/502. PR85 unselected historical runtime candidate, /proc receiving FAIL and zero admission preserved. No stale merge/retirement or Symphony activation. CIX507 addendum resolves all14 PR source ancestry mappings; candidate current path/preimage/redacted scan receipt remains with project health, not duplicated here."
+    },
+    "CQ": {
+      "ids": [
+        "cq.profile.bind_exact_contract",
+        "cq.analyzer.original_pin_assessment",
+        "cq.analyzer.owner_review"
+      ],
+      "owner_turns": [
+        "01a1d1d7-cc82-75e2-8070-7e104f3200eb",
+        "01a1d21d-4ffc-73bf-b8fa-9e14b6b53a03"
+      ],
+      "source": "74e17dd62ac83d6504d6589e9d7a46b26ee77252",
+      "packet_expected_sha256": "fdc6ddd10376eb5c5d0263f77fb47a6295077ce748a6066cdbaa3b90eae459a8",
+      "boundary": "Exact project/source/read-only input/output facts bound; no qualified CQ profile, original assessment or substituted acceptance. Missing original analyzer manifest/warning bytes remain unavailable without a fresh recovery gate. Current addendum: PR20 merged to feature at761ed69346f3394762b7159102f0dffcc0169266/tree9757c9dc088102ccfdc62a961bf022c1e250082a, docs/next-agent-prompt.md only; PR1 open. Preserve current SRC002/R180 outstanding alias/source boundaries; no UI/server restart or alias retirement."
+    },
+    "OffMenu": {
+      "ids": [
+        "offmenu-locale-requirements",
+        "offmenu-developer-contract-qualification"
+      ],
+      "owner_turns": [
+        "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
+      ],
+      "source": "e16267d26c75fb96047ea34159889988220c1677",
+      "packet_expected_sha256": "a7595ea656b3d4d2791a32f8636d010c083af80a14af42729541075e98689927",
+      "library": {
+        "id": "libfile_fde3_f-0152a80f0468819195c42f69e5df72b3_0c82fc302be08191a8fa197415547715",
+        "file_id": "file_00000000c72481fa8d060922ecf8dafa",
+        "version": 0,
+        "bytes": 53048,
+        "name": "portable-original-row-handoff.json"
+      },
+      "boundary": "Receiving file/hash pending; project-health verification attributed, not reproduced. Locale candidate c3b99ea437e0c13a1e08cbe786b5fcafa9d10b24/treea5d8e697ae3da40d95afc7056355cff7e526b542 is PREPARED/unpublished, 31 tests/eight checks, English/Arabic preview only; broader row partial. Developer-contract slice accepted at e16267d with broader interface limits; no runtime or broader locale acceptance."
+    }
+  },
+  "byte_verification": "Only two copied ANQR owner texts are locally exact SHA verified. Other complete texts remain in cited conversation receipts; their expected packet hashes do not hash these summaries. OffMenu Library receiver verification remains pending.",
+  "materialized_owner_files": {
+    "ANQR-R202-1.owner.txt": "f572e22c2ab5721fac3f54e7b43fe7457774e3f714fc2bc827034b2e860bd56f",
+    "ANQR-R205-1.owner.txt": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b"
+  },
+  "prior_denials": {
+    "PR50": "merge stopped; no publication/merge reroute through this branch",
+    "prior_four_documents": "publication stopped; not replaced or republished here"
+  },
+  "effects": "No README/policy/runtime/claim/issue/project state changed. Collection is neither canonical row closure nor branch merge. No Stokowski/BAU/native/shared effect."
+}
