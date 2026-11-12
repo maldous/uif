@@ -1,0 +1,1694 @@
+{
+  "schema": "uif-reconciliation-owner-join/1",
+  "checkpoint_date": "2026-11-12",
+  "scope": "Revision-scoped owner-join evidence for the existing ledger-final-acceptance-deduplication and preparation of ledger-final-integrated-publication. This is not a new ledger, queue, allocator, permission, lease or runtime authority.",
+  "source_checkpoint": {
+    "repository": "maldous/uif",
+    "accepted_base": "9e51f0cf7768d0f6441b54662ddff1247331446e",
+    "README_git_blob": "e9f75a1f617efc49020d5f396a767cfb8106f24e",
+    "README_sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+    "policy_version": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
+    "this_unit_state": "prepared_for_independent_review_and_owner_publication",
+    "README_and_original_order_unchanged": true,
+    "new_whole_row_closures": 0
+  },
+  "counting": {
+    "original_action_ids": 213,
+    "nonadditive_reference_ids": 11,
+    "assessed_records": 107,
+    "canonical_dispositioned": 48,
+    "canonical_categories": {
+      "bounded_history_fulfilled": 1,
+      "legacy_unavailable_unfulfilled": 34,
+      "bounded_retain_decisions": 5,
+      "existing_custody_dispositions": 8
+    },
+    "remaining": 59,
+    "remaining_categories": {
+      "partial_current": 13,
+      "engineering": 12,
+      "shared_joins": 34
+    },
+    "remaining_formal_source_domains": {
+      "original_UIF73": 47,
+      "original_discovery34": 12
+    },
+    "current_shared34_formal_intersection": {
+      "original_UIF73": 25,
+      "original_discovery34": 9
+    },
+    "current_shared34_is_original_discovery34": false,
+    "other_product_readiness_outside_assessment": 106,
+    "conditional_unselected_with_completed_present_applicability": 6,
+    "specific_CIX_semantic_read_holds": 8,
+    "new_records_tasks_or_whole_row_closures": 0,
+    "meaning": "48 are canonical scoped dispositions, not 48 technical successes; 59 remain under the original outcomes. Counts are not atomic jobs, admitted sessions, live claims or proof of exhaustive current requirements."
+  },
+  "provenance": {
+    "retained_input_artifacts": [
+      {
+        "basename": "uif-exact59-current-work-matrix-9e51f0c-20261112.json",
+        "sha256": "8a6ea2c5e2efbf47997dc9eb3cf4c2dbfed4d2a3964fe54e2479f94d743b7908"
+      },
+      {
+        "basename": "uif-current-shared-34-counterpart-prerequisites-20261112.json",
+        "sha256": "6c965465dfac999be6e1faec1758946c8705c32f738b0f9d3202ac66d281f9b6"
+      },
+      {
+        "basename": "uif-white-room-live-qualification-20261112.json",
+        "sha256": "943d3f3b6d032f23cbfc4d75003da5be4457cfd202860cfac0ce59c29e8f1087"
+      }
+    ],
+    "accepted_source_documents": [
+      {
+        "path": "docs/ledger/legacy-unavailable-dispositions-20261112.json",
+        "sha256": "d48f5c5498f4126e7c1f9912a779355921b32a4946fe41deee79c73e9370c47f"
+      },
+      {
+        "path": "docs/ledger/current-custody-retain-dispositions-20261112.json",
+        "sha256": "92660fc678557e7aa2c047097ca3c21d00b106eeb482b10f2d7a22d5af02e553"
+      },
+      {
+        "path": "docs/ledger/reconciled-historical-criteria-20261112.json",
+        "sha256": "1524ea771bfc9bf81081c647d1c380469ce6c6feb4040688b8e39b2898d4cb63"
+      },
+      {
+        "path": "docs/ledger/current-obligation-applicability-20261112.json",
+        "sha256": "a5d9dcb5812bd05ac369e9357ae77be258ad154d9384a0ba1d4208e1fb99c37f"
+      }
+    ],
+    "fresh_join_attribution": "Morgan reports relayed by the UIF owner circa 04:40 UTC and subsequent component/integrated review updates on 2026-11-12. This writer did not independently observe those remote executions. No private session/turn IDs or raw receipts are reproduced.",
+    "freshness_limit": "These are scoped receipts/checkpoints, not a universal health or current process-liveness claim. Existing counterpart turns were reported admitted; CQ/OffMenu contribution completion was still pending in this join."
+  },
+  "routes": {
+    "conditional-owner": "Existing UIF/source custodian metadata only if actual current use or content is selected; no new read, search or external request now.",
+    "archive-operator": "Existing authorized administrative operator through Morgan; supported exact-target archive/restore and readback only, with prior uncertain effects reconciled before retry.",
+    "release-owner": "Existing UIF selected-source/release owner and independent review; use the one reserved engineering pipeline, not a new release writer.",
+    "cloud-recording": "Existing UIF canonical source owner, exact review and normal publication. Foo/runtime availability is not a gate to this no-effect documentation unit.",
+    "engineering-pipeline": "Existing source integrator, helper/control owner, route owner and independent reviewer; Morgan routes existing Foo-local sessions. No new writer or runtime action.",
+    "counterpart-join": "Existing UIF accountable coordinator and relevant current product/source owner; Morgan relays existing session requests and fresh scope-specific contribution receipts.",
+    "connector-owner": "Existing UIF connector/transport owner and actual caller owners; current non-secret identity, grant and continuity metadata only. No new grant, rebinding or retirement.",
+    "specific-read-hold": "Current CIX owner and existing exact semantic-read permission boundary; no direct or equivalent indirect body read without the specific release."
+  },
+  "state_semantics": {
+    "applicability_assessed_unselected": "Present applicability assessment is complete; original qualification/inventory remains unfulfilled, scope unknown and future selected requirement retained. No present unrelated BAU or source-publication gate and no automatic request/search.",
+    "canonical_dispositions": "Use accepted per-row source references for the original decisions and preserved current requirements. No re-adjudication or extra credit is created by this join.",
+    "canonical_legacy34": "Adopted no-effect retirement; historical goals remain unfulfilled, not recovered/equivalent. Cited per-row current requirements, uncertainty and holds remain applicable.",
+    "canonical_retain5": "Only the no-change placement decision is fulfilled. No move/merge/permission/ownership transfer; separate qualifications remain partial.",
+    "canonical_custody8": "Passive existing-custody disposition, not backup/restore, asset absence, recovered bytes or qualified custodian/consumer. Existing permissions and actual selected contracts remain protected.",
+    "canonical_bounded_history1": "Only the original historical contradiction is reconciled. Programme remains INCOMPLETE, not READY; no PR360 merge or mutation receipt is inferred.",
+    "engineering": "One existing composition/qualification pipeline contributes to 12 distinct outcomes and selected release inputs. Component and integrated source acceptance are not 12 admitted jobs or 12 completed outcomes.",
+    "shared": "All 34 actual shared effects remain held pending relevant counterpart working/readiness and task-specific authority. Scoped metadata/owner preparation may continue. This is not a verdict that every product failed or that every product is required."
+  },
+  "reported_engineering_join": {
+    "attribution": "Morgan-reported, relayed by UIF owner; not independently observed by this documentation writer.",
+    "one_existing_pipeline": true,
+    "roles": [
+      "source integrator",
+      "helper/control source owner",
+      "route source owner",
+      "independent reviewer"
+    ],
+    "helper_source": {
+      "commit": "53f213f",
+      "independent_review": "accepted",
+      "review_sha256": "9b4f9f1161649e6df0feb5873aede1bfe541dfbbb433207d0143f2e31c032064"
+    },
+    "route_source": {
+      "commit": "82738c3",
+      "independent_review": "accepted",
+      "review_sha256": "0c0ce9e83f9d651903262ba7f7f75c97691d6330355e3ae6cad35f8bcd2809ab"
+    },
+    "prior_component_findings_closed": 4,
+    "integrated_source": {
+      "commit": "fa39bfdb0d1161efc67e93cccebc21a9101306f0",
+      "tree": "153a9853d6141fa5faaee4f61298018acc23fe09",
+      "independent_review": "accepted",
+      "review_sha256": "ab5c872025b19d2a3a5ee365903b3aa99855855ed5cd478371e6831008f4ab15",
+      "reported_passes": {
+        "role_pins": 38,
+        "targeted_checks": 4,
+        "recovery_probes": 5
+      },
+      "further_source_correction_required_by_this_verdict": false,
+      "publication_state": "Existing integrator publishing isolated candidate through Morgan for cloud readback/PR; remote publication/merge not observed in this snapshot."
+    },
+    "installation_preparation": "Existing integrator owns preparation. Current registration, ExecStart/runtime closure and effective CPU policy remain unknown; numeric production identities are not adopted here.",
+    "production_installed_or_qualified": false,
+    "new_workers_or_duplicate_review_dispatched_by_this_unit": false
+  },
+  "reported_counterpart_contributions": {
+    "ANQR": {
+      "source": "b21e2b1",
+      "credit": "171 tests and typecheck; existing source/declaration contribution. Reuse it without repeat product builds.",
+      "actual_cloud_owner_caller": "Foo Workspace / foo",
+      "caller_preview": "https://windmill.aldous.info/run/01a1cd86-af2a-0cb0-e641-7ba2d1d54518?workspace=foo",
+      "limits": "Exported product MCP functions are not deployed callers. No ANQR portal, Foo service or composed consumer is selected; preview does not prove installation/grants or every continuity contract."
+    },
+    "CIX": {
+      "source": "24c8d2d",
+      "credit": "524 native and 16 portable checks, CLI/SDK/roundtrip; selected CLI/SDK/portable 0.1.0.",
+      "actual_cloud_owner_caller": "Foo Workspace / foo",
+      "caller_preview": "https://windmill.aldous.info/run/01a1cd86-86ca-588e-ebc7-6fcc7eab6eae?workspace=foo",
+      "limits": "Server, full engine, Foo and portal are unselected. Core proof does not release eight exact semantic-read holds or prove connector grant/continuity; archive necessity/custodian/route remains unresolved."
+    },
+    "OffMenu": {
+      "credit": "v4 publication assignment settled; native-v2 fingerprint mismatch is not a current gate.",
+      "limits": "Existing OffMenu cloud owner is sole publisher. Owner-qualified original policy adoption and supported v4 shared-root Controller invocation/owner-lock contract remain current inputs; ordinary metadata inspection is assigned to the existing audit owner, not repeated here. Native-v2 root/fingerprint is distinct. Normal checks and merge use bypass_protection=false; no separate branch-protection snapshot gate is added, and the denied administrative 403 remains stopped. Contribution completion for this join remains pending."
+    },
+    "CQ": {
+      "credit": "Existing CQ owner retains source/publication/custody responsibility.",
+      "limits": "Contribution completion and selected skill/client/publication-interface working/readiness confirmation remain pending in this join. CQ is not automatically a connector consumer."
+    },
+    "mixed_SRC060": "No current per-constituent consumer, custodian, recovery mapping or new placement is proven. Completed prior relocation is credited without taking over source/custody.",
+    "scope_rule": "Credit completed core/declaration and actual caller evidence only within its scope. Additional emitted/deployed/full-engine/portal/Foo proof is required only for a genuinely selected contract, never from a workspace or product name alone."
+  },
+  "scoped_completed_proof": {
+    "five_document_publication": {
+      "record": "shared-publication-execute-uif",
+      "pull_request": "https://github.com/maldous/uif/pull/38",
+      "merged_commit": "de9e0f2f2ef43b45eb2291f340fa9404096311eb",
+      "paths": [
+        "docs/adr/0001-foundation-repository.md",
+        "docs/architecture.md",
+        "docs/evidence.md",
+        "docs/operating-procedure.md",
+        "docs/project-integration.md"
+      ],
+      "limit": "These five documents only, not the full original conditional row or original uncertain CQ/UIF publication outcomes. No duplicate publication."
+    },
+    "white_room_fixture": {
+      "source": "6f5e2327fa95e63eeb220009839d55640a3dabd8",
+      "completed_at_utc": "2026-11-12T04:33:26Z",
+      "artifact_reference": "uif-white-room-live-qualification-20261112.json",
+      "artifact_sha256": "943d3f3b6d032f23cbfc4d75003da5be4457cfd202860cfac0ce59c29e8f1087",
+      "credit": "Actual temporary fixture boundaries and scoped cleanup passed, as reported in the retained qualified proof.",
+      "production_BAU_proven": false,
+      "production_installation_performed": false,
+      "ledger_or_shared_effects": false
+    },
+    "archive_capability": "General authenticated Archive UI verified in owner-reported evidence. Exact selected-target archive/restore route, authority and readback remain unqualified; no Delete/Canceled substitution."
+  },
+  "records": [
+    {
+      "original_id": "shared.skills.catalog_refresh",
+      "original_routing_key": "uif-ledger-20261111-001",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish supported in-place skill catalog refresh behavior (UIF-175; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "CQ skill/catalog owner; UIF coordinator",
+      "route": "counterpart-join",
+      "next_eligible_action": "CQ owner supplies the supported in-place catalog implementation/source and exact refresh evidence.",
+      "remaining_requirement": "Selected catalog behavior and relevant CQ interface working/readiness confirmation remain unresolved.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/0",
+      "counterpart_scope": [
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Implement/adopt/qualify the shared in-place catalog refresh behavior.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/0"
+    },
+    {
+      "original_id": "shared.skills.constant_time_path",
+      "original_routing_key": "uif-ledger-20261111-002",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish supported constant-time-analysis path semantics (UIF-175; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "CQ skill/path owner; UIF coordinator",
+      "route": "counterpart-join",
+      "next_eligible_action": "Join the existing supported constant-time path contract, source and accepted evidence.",
+      "remaining_requirement": "Actual selected path semantics/consumer proof and scope-specific CQ readiness remain unresolved.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/1",
+      "counterpart_scope": [
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Adopt/qualify the selected constant-time-analysis path.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/1"
+    },
+    {
+      "original_id": "shared.skills.spec_compliance_runtime",
+      "original_routing_key": "uif-ledger-20261111-003",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish supported spec-to-code-compliance runtime or distribution (UIF-175; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "CQ runtime/distribution owner; UIF coordinator",
+      "route": "counterpart-join",
+      "next_eligible_action": "CQ owner binds the supported runtime or distribution, source and actual consumer.",
+      "remaining_requirement": "Runtime versus distribution and its relevant readiness/behavior evidence are not established.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/2",
+      "counterpart_scope": [
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Deliver/adopt or exercise the selected spec-compliance runtime/distribution.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/2"
+    },
+    {
+      "original_id": "src-059-qualification",
+      "original_routing_key": "uif-ledger-20261111-004",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish local configuration scope and consumers (UIF-243; subtask).",
+      "state": "applicability_assessed_unselected",
+      "accountable_owner": "UIF owner; selected workflow owner if needed",
+      "route": "conditional-owner",
+      "next_eligible_action": "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "remaining_requirement": "Settings scope, actual caller and project/home lookup precedence remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/3",
+      "present_applicability_assessment_complete": true,
+      "current_dependent_use_selected": false,
+      "immediate_external_request_required": false,
+      "future_selected_requirement_retained": true,
+      "applicability_source_reference": "current-obligation-applicability-20261112.json#/records/0"
+    },
+    {
+      "original_id": "src-059-placement-decision",
+      "original_routing_key": "uif-ledger-20261111-005",
+      "group": "canonical_retain5",
+      "state": "fulfilled_bounded_retain_in_place_decision",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/retain_decisions/0",
+      "bounded_original_outcome_fulfilled": true
+    },
+    {
+      "original_id": "src-062-qualification",
+      "original_routing_key": "uif-ledger-20261111-006",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish project marker binding and lookup consumers (UIF-245; subtask).",
+      "state": "applicability_assessed_unselected",
+      "accountable_owner": "UIF owner; selected workflow owner if needed",
+      "route": "conditional-owner",
+      "next_eligible_action": "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "remaining_requirement": "Project-marker association and actual resolver remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/4",
+      "present_applicability_assessment_complete": true,
+      "current_dependent_use_selected": false,
+      "immediate_external_request_required": false,
+      "future_selected_requirement_retained": true,
+      "applicability_source_reference": "current-obligation-applicability-20261112.json#/records/1"
+    },
+    {
+      "original_id": "src-062-placement-decision",
+      "original_routing_key": "uif-ledger-20261111-007",
+      "group": "canonical_retain5",
+      "state": "fulfilled_bounded_retain_in_place_decision",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/retain_decisions/1",
+      "bounded_original_outcome_fulfilled": true
+    },
+    {
+      "original_id": "src-064-qualification",
+      "original_routing_key": "uif-ledger-20261111-008",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Qualify local configuration/cache entries and readers or writers (UIF-245; subtask).",
+      "state": "applicability_assessed_unselected",
+      "accountable_owner": "UIF owner; selected workflow owner if needed",
+      "route": "conditional-owner",
+      "next_eligible_action": "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "remaining_requirement": "Configuration/cache readers and writers and project/home scope remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/5",
+      "present_applicability_assessment_complete": true,
+      "current_dependent_use_selected": false,
+      "immediate_external_request_required": false,
+      "future_selected_requirement_retained": true,
+      "applicability_source_reference": "current-obligation-applicability-20261112.json#/records/2"
+    },
+    {
+      "original_id": "src-064-placement-decision",
+      "original_routing_key": "uif-ledger-20261111-009",
+      "group": "canonical_retain5",
+      "state": "fulfilled_bounded_retain_in_place_decision",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/retain_decisions/2",
+      "bounded_original_outcome_fulfilled": true
+    },
+    {
+      "original_id": "src-066-qualification",
+      "original_routing_key": "uif-ledger-20261111-010",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Qualify notes custodian, current or historical use and consumers (UIF-245; subtask).",
+      "state": "applicability_assessed_unselected",
+      "accountable_owner": "UIF owner; selected workflow owner if needed",
+      "route": "conditional-owner",
+      "next_eligible_action": "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "remaining_requirement": "Notes custodian and actual current or retained-only use remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/6",
+      "present_applicability_assessment_complete": true,
+      "current_dependent_use_selected": false,
+      "immediate_external_request_required": false,
+      "future_selected_requirement_retained": true,
+      "applicability_source_reference": "current-obligation-applicability-20261112.json#/records/3"
+    },
+    {
+      "original_id": "src-066-placement-decision",
+      "original_routing_key": "uif-ledger-20261111-011",
+      "group": "canonical_retain5",
+      "state": "fulfilled_bounded_retain_in_place_decision",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/retain_decisions/3",
+      "bounded_original_outcome_fulfilled": true
+    },
+    {
+      "original_id": "src-067-qualification",
+      "original_routing_key": "uif-ledger-20261111-012",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish inputs workflow ownership, provenance and consumers (UIF-245; subtask).",
+      "state": "applicability_assessed_unselected",
+      "accountable_owner": "UIF owner; selected workflow owner if needed",
+      "route": "conditional-owner",
+      "next_eligible_action": "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "remaining_requirement": "Inputs workflow/source association and actual caller remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/7",
+      "present_applicability_assessment_complete": true,
+      "current_dependent_use_selected": false,
+      "immediate_external_request_required": false,
+      "future_selected_requirement_retained": true,
+      "applicability_source_reference": "current-obligation-applicability-20261112.json#/records/4"
+    },
+    {
+      "original_id": "src-067-placement-decision",
+      "original_routing_key": "uif-ledger-20261111-013",
+      "group": "canonical_retain5",
+      "state": "fulfilled_bounded_retain_in_place_decision",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/retain_decisions/4",
+      "bounded_original_outcome_fulfilled": true
+    },
+    {
+      "original_id": "mixed-custody-source-classification",
+      "original_routing_key": "uif-ledger-20261111-014",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Classify CIX/OffMenu source and evidence roles within the already-relocated mixed custody group; attach supported project-specific followups and unresolved dependencies. (UIF-246; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF coordinator; CIX and OffMenu custody owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Reuse completed relocation provenance; join only exact constituent roles, custodians, consumers and rights from retained metadata.",
+      "remaining_requirement": "Current mixed-group constituent consumer/custodian classification is unproven; completed relocation is retained, not reopened.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/8",
+      "counterpart_scope": [
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Apply combined CIX/OffMenu source/evidence classification or follow-up effects.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/3"
+    },
+    {
+      "original_id": "src-060-qualification",
+      "original_routing_key": "uif-ledger-20261111-015",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Reconcile custody-group ownership, consumers and recovery mappings (UIF-217, UIF-108; subtask).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF coordinator; CIX and OffMenu custody owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Enumerate missing per-constituent ownership, consumer and recovery joins from existing metadata.",
+      "remaining_requirement": "No current constituent consumer/custodian/recovery mapping is proven; no held body read is authorized.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/9",
+      "counterpart_scope": [
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Complete combined group qualification or change consumer/recovery ownership.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/4"
+    },
+    {
+      "original_id": "src-060-placement-decision",
+      "original_routing_key": "uif-ledger-20261111-016",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Select group-specific custody placement with existing project owners (UIF-217, UIF-108; subtask).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF coordinator; actual mixed-group custodians",
+      "route": "counterpart-join",
+      "next_eligible_action": "After group qualification, prepare a justified retain-versus-relocate decision; preserve current placement meanwhile.",
+      "remaining_requirement": "No new placement, destination, move or ownership change is selected; relocation is conditional, not mandatory.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/10",
+      "counterpart_scope": [
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Select/execute a combined group placement or ownership change.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/5"
+    },
+    {
+      "original_id": "retained-r059-evidence-custody",
+      "original_routing_key": "uif-ledger-20261111-017",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/0",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "r192-dirty-postimage-custody",
+      "original_routing_key": "uif-ledger-20261111-018",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/1",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "r193-independent-store-recovery",
+      "original_routing_key": "uif-ledger-20261111-019",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/2",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif128-exact-tip-acceptance",
+      "original_routing_key": "uif-ledger-20261111-020",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/0",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif128-original-history-recovery",
+      "original_routing_key": "uif-ledger-20261111-021",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/1",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif126-original-history-recovery",
+      "original_routing_key": "uif-ledger-20261111-022",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/2",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "guard-policy-source-disposition",
+      "original_routing_key": "uif-ledger-20261111-023",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Resolve retained guard-policy differences against the actual current requirement and selected source. (UIF-216; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF integrator; helper/control owner; reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Credit accepted helper/control corrections and reconcile exact guard-policy pins in the accepted integrated source.",
+      "remaining_requirement": "Production effect/control boundary and any applicable protected adoption remain unqualified.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/11",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "assets-validator-composition-disposition",
+      "original_routing_key": "uif-ledger-20261111-024",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Resolve the distinct 996b adoption-assets and b850 validator/schema source composition with exact current pins and acceptance. (UIF-216; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF integrator; composition reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Credit the accepted integrated composition; retain exact assets/validator selection and review provenance.",
+      "remaining_requirement": "Accepted source does not establish installation, current consumer effects or full original adoption proof.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/12",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "documentary-metadata-disposition",
+      "original_routing_key": "uif-ledger-20261111-025",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/3",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "lifecycle-provenance-disposition",
+      "original_routing_key": "uif-ledger-20261111-026",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/4",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "r192-source-disposition",
+      "original_routing_key": "uif-ledger-20261111-027",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/5",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "r070-r071-dependency-selection",
+      "original_routing_key": "uif-ledger-20261111-028",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation. (UIF-216; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF integrator; source/dependency owner; reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Use accepted helper and route integration to bind current acquisition/reader consumers; preserve original helper evidence.",
+      "remaining_requirement": "Dependency-complete selected acquisition and actual applicable consumer/validation acceptance still require scoped qualification.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/13",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "r055-local-origin-disposition",
+      "original_routing_key": "uif-ledger-20261111-029",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/6",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "r058-source-equivalence",
+      "original_routing_key": "uif-ledger-20261111-030",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/7",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "r068-source-disposition",
+      "original_routing_key": "uif-ledger-20261111-031",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/8",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "javascript-profile-history-recovery",
+      "original_routing_key": "uif-ledger-20261111-032",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/9",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "javascript-refill-history-recovery",
+      "original_routing_key": "uif-ledger-20261111-033",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/10",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "canonical-v1-selected-composition",
+      "original_routing_key": "uif-ledger-20261111-034",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Reconcile the exact selected canonical-V1 producer/schema/sealer/settings/assets/operator source pairs and independent reviews into one coherent source composition. (UIF-161; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF integrator; independent reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Retain exact accepted integrated source/tree and let the existing integrator publish/read back that isolated candidate.",
+      "remaining_requirement": "Source acceptance is reported; source publication/readback and complete selected-profile adoption remain separate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/14",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "canonical-v1-current-input-qualification",
+      "original_routing_key": "uif-ledger-20261111-035",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Bind fresh authoritative current inputs, exact target/operation identity and bootstrap; qualify affected consumers, seven semantic consumer proofs and original-intake evidence. (UIF-161; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF qualification owner; integrator and reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Join the existing current input packet and scoped fixture evidence with selected producer/consumer and bootstrap contracts.",
+      "remaining_requirement": "Fresh input/authority, seven applicable semantic consumer proofs and original-intake scope are not all established by component or fixture passes.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/15",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "coherent-adoption-readiness",
+      "original_routing_key": "uif-ledger-20261111-036",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Identify the exact selected-profile/coherent adoption and recovery evidence still missing after the PR209 source gap closed; bind current owner, original operation and scoped hold. (UIF-130; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF adoption owner; integrator and reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Use accepted composition, retained recovery proof and exact installation preparation to enumerate only actual remaining adoption prerequisites.",
+      "remaining_requirement": "Production is uninstalled/unqualified; no BAU, live readiness or protected adoption is established.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/16",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "client-baseline-document-integration",
+      "original_routing_key": "uif-ledger-20261111-037",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Integrate the independently accepted shared capability inventory into existing canonical documentation with product-owned differences preserved. (UIF-192; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF documentation writer; OffMenu and CQ owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Compare the retained accepted inventory with current docs and select exact owned-path differences with counterpart owners.",
+      "remaining_requirement": "Current selected source slice and shared integration acceptance remain unbound; missing old follow-up history is not a current-delivery gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/17",
+      "counterpart_scope": [
+        "OffMenu",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Integrate the combined client inventory into canonical documentation under existing writers.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/6"
+    },
+    {
+      "original_id": "client-surface-entitlement-qualification",
+      "original_routing_key": "uif-ledger-20261111-038",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Resolve still-unknown per-project client surfaces, actual account/plan entitlements and consent/recovery/lifecycle applicability through authorized evidence. (UIF-192; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF coordinator; selected OffMenu/CQ client owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Join exact selected browser/Android/client declarations with non-secret entitlement, consent and lifecycle metadata.",
+      "remaining_requirement": "Actual selected entitlement/consent/recovery contract remains unqualified; configured labels do not prove grants.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/18",
+      "counterpart_scope": [
+        "OffMenu",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Qualify the combined actual client/entitlement/consent lifecycle or make account/service changes.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/7"
+    },
+    {
+      "original_id": "recoverable-project-archive-502c2f50-3d73-42e9-bdac-25ffe9f3f7ad",
+      "original_routing_key": "uif-ledger-20261111-039",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Complete supported recoverable archive and archived/not-trashed/restore readback for UIF V3. (UIF-158; deliverable).",
+      "state": "exact_target_archive_route_unqualified",
+      "accountable_owner": "Authorized administrative operator; UIF archive owner",
+      "route": "archive-operator",
+      "next_eligible_action": "Reuse the verified general authenticated Archive UI finding; establish the supported granted route and exact target archived/not-trashed/restore readback for UIF V3.",
+      "remaining_requirement": "Exact-target archive/restore and recoverability remain unproven. Preserve the original target and any required existing relevance disposition; no Delete, Canceled/status, credential or private-endpoint substitute.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/19"
+    },
+    {
+      "original_id": "recoverable-project-archive-2298e2d2-558d-4e43-89e3-8d3d77d47ecd",
+      "original_routing_key": "uif-ledger-20261111-040",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Complete supported recoverable archive and archived/not-trashed/restore readback for Infrastructure Deployment Programme. (UIF-158; deliverable).",
+      "state": "exact_target_archive_route_unqualified",
+      "accountable_owner": "Authorized administrative operator; UIF archive owner",
+      "route": "archive-operator",
+      "next_eligible_action": "Reuse the verified general authenticated Archive UI finding; establish the supported granted route and exact target archived/not-trashed/restore readback for Infrastructure Deployment Programme.",
+      "remaining_requirement": "Exact-target archive/restore and recoverability remain unproven. Preserve the original target and any required existing relevance disposition; no Delete, Canceled/status, credential or private-endpoint substitute.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/20"
+    },
+    {
+      "original_id": "recoverable-project-archive-852dfec6-50d6-4dd8-b349-8c884fa21a12",
+      "original_routing_key": "uif-ledger-20261111-041",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Complete supported recoverable archive and archived/not-trashed/restore readback for CIX — Managed service rollout. (UIF-158; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF archive owner; current CIX custodian",
+      "route": "archive-operator",
+      "next_eligible_action": "Confirm current necessity/custodian for CIX Managed service rollout; reuse archive assessment to bind the exact supported route.",
+      "remaining_requirement": "Selected-consumer relevance and exact-target archived/not-trashed/restore proof remain unqualified; consolidation credit does not archive the project.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/21",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Invoke archive and validate archived/not-trashed/restore state for exact project 852dfec6-50d6-4dd8-b349-8c884fa21a12.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/8"
+    },
+    {
+      "original_id": "recoverable-project-archive-7d101ad0-1107-4cc8-ba9a-6521dd544e7c",
+      "original_routing_key": "uif-ledger-20261111-042",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Complete supported recoverable archive and archived/not-trashed/restore readback for CIX — Next release. (UIF-158; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF archive owner; current CIX custodian",
+      "route": "archive-operator",
+      "next_eligible_action": "Confirm current necessity/custodian for CIX Next release; reuse archive assessment to bind the exact supported route.",
+      "remaining_requirement": "Selected-consumer relevance and exact-target archived/not-trashed/restore proof remain unqualified; no Delete/status substitute.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/22",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Invoke archive and validate archived/not-trashed/restore state for exact project 7d101ad0-1107-4cc8-ba9a-6521dd544e7c.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/9"
+    },
+    {
+      "original_id": "connector-stable-identity-map",
+      "original_routing_key": "uif-ledger-20261111-043",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Identify exact obsolete and successor connector installation/configuration IDs, endpoints and supported scopes without secrets. (UIF-211; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF connector owner; actual installation owners",
+      "route": "connector-owner",
+      "next_eligible_action": "Join current foo guidance with exact supplied obsolete/successor installation IDs, endpoints and supported scope metadata.",
+      "remaining_requirement": "Workspace/name/endpoint is not connector installation identity; exact pair, scope and responsible installation owner remain unresolved.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/23",
+      "counterpart_scope": [
+        "ANQR",
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Publish/adopt a complete affected-connector identity map as qualified.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/10",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "connector-consumer-map",
+      "original_routing_key": "uif-ledger-20261111-044",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Map clients, tool bindings, automations and receipt/status/history/recovery consumers for the identified connector pair. (UIF-211; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF connector owner; actual caller owners",
+      "route": "connector-owner",
+      "next_eligible_action": "Credit the reported ANQR/CIX cloud-owner foo callers and supplied declarations; identify only actual remaining OffMenu/external/dynamic callers.",
+      "remaining_requirement": "No exhaustive consumer census is proven; exported ANQR product functions are not deployed callers and CQ is not automatically required.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/24",
+      "counterpart_scope": [
+        "ANQR",
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Accept the complete affected-consumer map or rebind consumers.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/11",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "connector-successor-continuity",
+      "original_routing_key": "uif-ledger-20261111-045",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Verify authorized successor access, least privilege and required current/historical receipt retrieval for affected consumers. (UIF-211; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF connector owner; selected caller owners",
+      "route": "connector-owner",
+      "next_eligible_action": "Specify continuity/readback proof for each actually selected caller using current scoped receipts.",
+      "remaining_requirement": "Least-privilege successor grant and required current/history/status/recovery receipt continuity remain unqualified; caller previews do not prove them.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/25",
+      "counterpart_scope": [
+        "ANQR",
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Run/adopt successor continuity or change access/tool bindings.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/12",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "connector-retirement-rollback-plan",
+      "original_routing_key": "uif-ledger-20261111-046",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Record bounded exact-connector retirement and rollback with existing accountable owners. (UIF-211; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF connector/security owner; actual caller owners",
+      "route": "connector-owner",
+      "next_eligible_action": "Prepare exact target/effect/rollback and verification from existing identity, caller and continuity metadata.",
+      "remaining_requirement": "Retirement/revocation or rollback remains held until exact pair, complete affected-consumer scope, authority and continuity are qualified.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/26",
+      "counterpart_scope": [
+        "ANQR",
+        "CIX",
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Retire/remove/revoke a connector or apply rollback/security changes.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/13",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "project-binding-candidate-reconciliation",
+      "original_routing_key": "uif-ledger-20261111-047",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Reconcile the original A-assignment candidate and independent verdict before commissioning duplicate project-agnostic routing work. (UIF-140; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF integrator/route owner; OffMenu source owner",
+      "route": "counterpart-join",
+      "next_eligible_action": "Credit accepted generic helper/route composition and settled OffMenu v4 publication assignment; join exact optional product-role bindings.",
+      "remaining_requirement": "Owner-qualified original policy adoption and supported v4 shared-root Controller invocation/owner-lock contract remain inputs. Normal protection controls remain; no separate protection-snapshot or native-v2 fingerprint gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/27",
+      "counterpart_scope": [
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Adopt the combined control/product source-role selection or admit an OffMenu role using it.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/14"
+    },
+    {
+      "original_id": "complete-tail-selected-profile-proof",
+      "original_routing_key": "uif-ledger-20261111-048",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Establish exact source/scope/validation/review/publication support for the selected current profile before coding; reconcile the accepted later consumer pair and source/current-input qualification. (UIF-141; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF integrator/control/route/reviewer; selected OffMenu profile owner",
+      "route": "counterpart-join",
+      "next_eligible_action": "Join the accepted source handoffs with the actually selected profile and existing review/publication/recovery consumers.",
+      "remaining_requirement": "Complete selected-profile coding-to-publication/recovery flow and actual optional OffMenu interface proof remain unqualified.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/28",
+      "counterpart_scope": [
+        "OffMenu"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Run/admit or accept complete combined selected-profile coding-to-publication delivery.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/15"
+    },
+    {
+      "original_id": "frozen-release-input-readiness",
+      "original_routing_key": "uif-ledger-20261111-049",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Select and approve the actual immutable release candidate and exhaustive validation contract; retain source/profile/output identities and original operation history. (UIF-160; deliverable).",
+      "state": "integrated_source_accepted_release_contract_pending",
+      "accountable_owner": "UIF release owner; existing integrator and reviewer",
+      "route": "release-owner",
+      "next_eligible_action": "Join the accepted integrated candidate with the actual selected immutable release/profile, exhaustive validation contract and current input authorities.",
+      "remaining_requirement": "Accepted source composition is a contribution, not full frozen-release acceptance. Exact release/input/output/operation contract and applicable consumer proof remain to be bound.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/29"
+    },
+    {
+      "original_id": "cq-original-publication-receipts",
+      "original_routing_key": "uif-ledger-20261111-050",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Recover the two original CQ publication operation/run identities and terminal receipts through an available authorized source. (UIF-218; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "CQ publication custodian; UIF transport coordinator",
+      "route": "counterpart-join",
+      "next_eligible_action": "Retain known original identity/outcome uncertainty; use existing owner evidence only, while independent current delivery continues.",
+      "remaining_requirement": "Original CQ effects remain uncertain and cannot be replayed or relabeled complete. No historical receipt search or reconstruction is requested.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/30",
+      "counterpart_scope": [
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Retry/replay or declare the two original CQ publication operations reconciled/complete.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/16"
+    },
+    {
+      "original_id": "shared-transport-owner-correlation",
+      "original_routing_key": "uif-ledger-20261111-051",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Bind an actual authorized transport executor and supported non-secret server receive/ref-transaction correlation source; join original CQ/UIF records. (UIF-218; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF/CQ publication owners; authorized transport executor",
+      "route": "counterpart-join",
+      "next_eligible_action": "Record actual current executor/interface and non-secret receive/ref-transaction correlation, separating original and current operations.",
+      "remaining_requirement": "Shared transport authority/correlation and uncertain original outcomes remain unqualified; a current Git route does not prove old completion.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/31",
+      "counterpart_scope": [
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Apply/claim a shared transport handoff or reconcile uncertain original effects as complete.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/17"
+    },
+    {
+      "original_id": "shared-publication-continuation-plan",
+      "original_routing_key": "uif-ledger-20261111-052",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Prepare one evidence-supported continuation for the accepted CQ/UIF source, with exact remote commit/tree/ancestry readback and unchanged guards. (UIF-218, UIF-193; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF canonical writer; CQ current publication owner",
+      "route": "counterpart-join",
+      "next_eligible_action": "Credit PR38 only for the five merged UIF docs; join the current CQ scope/owner and exact disjoint continuation contract.",
+      "remaining_requirement": "Combined CQ/UIF continuation scope and relevant CQ confirmation remain open; no retry or completion claim for the old operation.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/32",
+      "counterpart_scope": [
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Execute or accept a combined CQ/UIF publication continuation under the original outcome.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/18"
+    },
+    {
+      "original_id": "standalone-harness-boundary-plan",
+      "original_routing_key": "uif-ledger-20261111-053",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Reconcile actual shared source boundary, current/pending consumers, source/issue owners, existing dependencies and applicable build/test/Sonar checks; independently review the extraction plan. (UIF-120; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF source integrator; affected product owners; reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Reuse accepted shared-source composition and foundation documents; complete only the selected parent/product boundary and applicable checks.",
+      "remaining_requirement": "Five docs and component acceptance are not complete runtime extraction or affected-consumer qualification.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/33",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "cross-project-baseline-input-map",
+      "original_routing_key": "uif-ledger-20261111-054",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Record exact selected sibling repository identities, immutable pins, roles, rights, owners and dependency/interface versions without assuming five projects means five repos. (UIF-219; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF integration owner; actually selected repository owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Join existing source/declaration maps and ANQR/CIX contribution credit with missing exact role, source and interface fields.",
+      "remaining_requirement": "Chosen multi-project baseline and scope-specific owner readiness remain unresolved; do not require unselected portals/services/full engines.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/34",
+      "counterpart_scope": [
+        "OffMenu",
+        "ANQR",
+        "CIX",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Accept/admit the combined multi-project baseline.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/19",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "cross-project-isolation-plan",
+      "original_routing_key": "uif-ledger-20261111-055",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Define independent integration worktrees and mutable dependency/cache/output/runtime/data namespace isolation for the selected baseline. (UIF-219; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF resource owner; selected worktree/cache/data custodians",
+      "route": "counterpart-join",
+      "next_eligible_action": "Use selected baseline declarations to record exclusive writers and disjoint mutable worktree/cache/output/runtime/data namespaces.",
+      "remaining_requirement": "Exact selected baseline and unresolved resource consumers/owners remain; no shared resource allocation is authorized.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/35",
+      "counterpart_scope": [
+        "OffMenu",
+        "ANQR",
+        "CIX",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Adopt/execute the combined isolation or allocate shared mutable resources.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/20",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "cross-project-build-compliance-matrix",
+      "original_routing_key": "uif-ledger-20261111-056",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Derive exact per-repository/cross-project commands, toolchains, environments, evidence and refusal/recovery checks from actual selected interfaces. (UIF-219; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF check owner; selected product toolchain owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Map already completed ANQR171/typecheck and CIX524/16/CLI/SDK/roundtrip checks to selected interfaces; request only uncovered evidence.",
+      "remaining_requirement": "Selected baseline/isolation and actual uncovered command/refusal/recovery contracts remain; do not repeat completed product builds.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/36",
+      "counterpart_scope": [
+        "OffMenu",
+        "ANQR",
+        "CIX",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Execute/accept combined cross-project build/compliance qualification.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/21",
+      "contribution_reference": "#/reported_counterpart_contributions"
+    },
+    {
+      "original_id": "portal-source-ownership-inventory",
+      "original_routing_key": "uif-ledger-20261111-057",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Inventory actual portal source/assets/history, deployed-site lineage, project destinations and issue/repository/source ownership before selecting migration. (UIF-220; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF portal owner; existing site custodian; selected asset owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Reuse accepted site lineage and metadata-only source/rights evidence; bind actual source maintainers and selected contributions.",
+      "remaining_requirement": "Exact portal corpus, product contribution selection, ownership and public rights remain unknown; no ANQR/CIX portal consumer is selected.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/37",
+      "counterpart_scope": [
+        "OffMenu",
+        "ANQR",
+        "CIX",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Move/adopt shared portal source/assets or publish combined product contributions.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/22"
+    },
+    {
+      "original_id": "portfolio-source-rights-inventory",
+      "original_routing_key": "uif-ledger-20261111-058",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Reconcile available legacy CV/resume versions, supporting images/descriptions, provenance, duplicates and public-sharing rights before portfolio production. (UIF-220; deliverable).",
+      "state": "applicability_assessed_unselected",
+      "accountable_owner": "UIF source owner; existing site custodian; exact rightsholder if needed",
+      "route": "conditional-owner",
+      "next_eligible_action": "Reuse existing source/site authority. Resolve only exact source/version, canonical/duplicate and rights metadata when content is actually selected.",
+      "remaining_requirement": "Original inventory and selected-material rights remain unfulfilled/unknown. No new corpus, deployment, blanket rights request or current BAU dependency is selected.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/38",
+      "present_applicability_assessment_complete": true,
+      "current_dependent_use_selected": false,
+      "immediate_external_request_required": false,
+      "future_selected_requirement_retained": true,
+      "applicability_source_reference": "current-obligation-applicability-20261112.json#/records/5"
+    },
+    {
+      "original_id": "restart-foo-dependency-discovery",
+      "original_routing_key": "uif-ledger-20261111-059",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Discover Foo project and shared dependencies (Existing issue ownership still to map; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF runtime/dependency owner; selected service custodians",
+      "route": "counterpart-join",
+      "next_eligible_action": "Join existing project declarations and UIF-only source preparation for the actually proposed service/project set.",
+      "remaining_requirement": "Actual selected Foo admitted set and applicable declaration owners remain unbound; no blanket four-product/full-app gate.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/39",
+      "counterpart_scope": [
+        "OffMenu",
+        "ANQR",
+        "CIX",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Perform/accept complete combined Foo/project dependency readiness or admit dependent runtime work.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/23"
+    },
+    {
+      "original_id": "restart-foo-configuration-drift",
+      "original_routing_key": "uif-ledger-20261111-060",
+      "group": "shared34",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Reconcile declared Foo dependency configuration with running state (Existing issue ownership still to map; deliverable).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF runtime/Windmill integrator; selected declaration owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Prepare selected declaration/revision versus permitted current observation fields using existing source and owner evidence.",
+      "remaining_requirement": "Current runtime closure, registration/ExecStart and effective CPU policy remain unknown; no drift repair, installation or runtime resumption is authorized.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/40",
+      "counterpart_scope": [
+        "OffMenu",
+        "ANQR",
+        "CIX",
+        "CQ"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Qualify or repair full cross-project Foo configuration drift and resume dependent runtime.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/24"
+    },
+    {
+      "original_id": "restart-foo",
+      "original_routing_key": "uif-ledger-20261111-061",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Implement clean Foo restart reconstruction (Existing issue ownership still to map; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF recovery integrator and reviewer; authorized fixture owner",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Reuse the completed scoped White Room boundary/cleanup evidence and accepted source; continue existing installation preparation.",
+      "remaining_requirement": "Full actual Foo restart reconstruction and production recovery are not proven by the temporary fixture.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/41",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "restart-cloud",
+      "original_routing_key": "uif-ledger-20261111-062",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Implement isolated cloud restart reconstruction (Existing issue ownership still to map; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF cloud owner; recovery integrator and reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Reconcile isolated current cloud reconstruction contracts with the accepted recovery composition, preserving existing source ownership.",
+      "remaining_requirement": "Actual complete cloud restart/reconstruction proof remains distinct from source and temporary fixture acceptance.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/42",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "restart-durability",
+      "original_routing_key": "uif-ledger-20261111-063",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Bind durable checkpoints and execution ownership (Existing issue ownership still to map; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF integrator; publication/recovery/refill owner; reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Join accepted durable-state/fencing source and original-operation reconciliation with the selected completion/publication flow.",
+      "remaining_requirement": "Actual selected checkpoint/ownership/recovery effect acceptance and production durability are unqualified.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/43",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "restart-foo-validation",
+      "original_routing_key": "uif-ledger-20261111-064",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Validate Foo recovery and cloud handoff (Existing issue ownership still to map; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF qualification owner; integrator and reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Credit only the completed fixture boundaries and scoped cleanup; review the remaining actual Foo/cloud handoff validation contract.",
+      "remaining_requirement": "Full Foo recovery, production BAU and cross-domain handoff are not established; no additional live validation is dispatched here.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/44",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "restart-cloud-validation",
+      "original_routing_key": "uif-ledger-20261111-065",
+      "group": "engineering12",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Validate cloud worker and coordinator recovery (Existing issue ownership still to map; deliverable).",
+      "state": "integrated_source_accepted_production_unqualified",
+      "accountable_owner": "UIF cloud owner; recovery reviewer",
+      "route": "engineering-pipeline",
+      "next_eligible_action": "Prepare/review the currently owned worker/coordinator recovery contract against accepted source; retain missing actual scenario evidence.",
+      "remaining_requirement": "No complete actual cloud worker/coordinator loss-and-recovery evidence is supplied by this join.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/45",
+      "engineering_pipeline_reference": "#/reported_engineering_join"
+    },
+    {
+      "original_id": "shared-publication-execute-uif",
+      "original_routing_key": "uif-ledger-20261111-066",
+      "group": "partial_current13",
+      "formal_source_domain": "UIF_records",
+      "obligation": "Publish accepted UIF source through the qualified route and verify remote identity (UIF-218, UIF-161; conditional execution). **Conditional.**",
+      "state": "five_document_publication_merged_row_partial",
+      "accountable_owner": "UIF canonical publication owner",
+      "route": "cloud-recording",
+      "next_eligible_action": "Credit only PR38/de9e0f2 five-document delivery and adjudicate the remaining original scope; do not repeat publication or the old uncertain operation.",
+      "remaining_requirement": "Full original conditional record is not closed. No additional selected publication unit or original-outcome reconciliation is inferred from the five-document merge.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/46"
+    },
+    {
+      "original_id": "uif217-r055-independent-custody",
+      "original_routing_key": "uif-ledger-20261111-067",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/3",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif217-r058-independent-custody",
+      "original_routing_key": "uif-ledger-20261111-068",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/4",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif217-r068-independent-custody",
+      "original_routing_key": "uif-ledger-20261111-069",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/5",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif217-r070-independent-custody",
+      "original_routing_key": "uif-ledger-20261111-070",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/6",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "uif217-r071-independent-custody",
+      "original_routing_key": "uif-ledger-20261111-071",
+      "group": "canonical_custody8",
+      "state": "retained_existing_custody_legacy_recovery_unavailable",
+      "accepted_source_reference": "current-custody-retain-dispositions-20261112.json#/records/7",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "retained-r067-history-recovery",
+      "original_routing_key": "uif-ledger-20261111-072",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/11",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "retained-r087-history-recovery",
+      "original_routing_key": "uif-ledger-20261111-073",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/12",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-asset-identity-join",
+      "original_routing_key": "ledger-discovery-20261111-001",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/13",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-unresolved-issue-tokens",
+      "original_routing_key": "ledger-discovery-20261111-002",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/14",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-project-overlay-recompute",
+      "original_routing_key": "ledger-discovery-20261111-003",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/15",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-conflict-signature-review",
+      "original_routing_key": "ledger-discovery-20261111-004",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/16",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-historical-census-crosswalk",
+      "original_routing_key": "ledger-discovery-20261111-005",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/17",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-retained-checkout-crosswalk",
+      "original_routing_key": "ledger-discovery-20261111-006",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/18",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-coverage-exclusions-account",
+      "original_routing_key": "ledger-discovery-20261111-007",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/19",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-uif216-source-crosswalk",
+      "original_routing_key": "ledger-discovery-20261111-008",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/20",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-uif217-custody-crosswalk",
+      "original_routing_key": "ledger-discovery-20261111-009",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/21",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-canonical89-relation-map",
+      "original_routing_key": "ledger-discovery-20261111-010",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/22",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-current-requirement-crosswalk",
+      "original_routing_key": "ledger-discovery-20261111-011",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/23",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-h2-current-applicability",
+      "original_routing_key": "ledger-discovery-20261111-012",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/24",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-h4-current-applicability",
+      "original_routing_key": "ledger-discovery-20261111-013",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/25",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-usf1144-evidence-reconciliation",
+      "original_routing_key": "ledger-discovery-20261111-014",
+      "group": "canonical_bounded_history1",
+      "state": "bounded_history_reconciled",
+      "accepted_source_reference": "reconciled-historical-criteria-20261112.json#/records/0",
+      "bounded_original_outcome_fulfilled": true
+    },
+    {
+      "original_id": "ledger-cix199-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-015",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-199 semantic evidence review (CIX-199; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-199 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-199 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/47",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-199 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/25"
+    },
+    {
+      "original_id": "ledger-cix239-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-016",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-239 semantic evidence review (CIX-239; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-239 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-239 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/48",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-239 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/26"
+    },
+    {
+      "original_id": "ledger-cix240-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-017",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-240 semantic evidence review (CIX-240; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-240 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-240 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/49",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-240 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/27"
+    },
+    {
+      "original_id": "ledger-cix241-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-018",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-241 semantic evidence review (CIX-241; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-241 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-241 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/50",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-241 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/28"
+    },
+    {
+      "original_id": "ledger-cix249-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-019",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-249 semantic evidence review (CIX-249; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-249 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-249 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/51",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-249 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/29"
+    },
+    {
+      "original_id": "ledger-cix375-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-020",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-375 semantic evidence review (CIX-375; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-375 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-375 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/52",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-375 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/30"
+    },
+    {
+      "original_id": "ledger-cix447-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-021",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-447 semantic evidence review (CIX-447; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-447 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-447 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/53",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-447 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/31"
+    },
+    {
+      "original_id": "ledger-cix493-semantic-review",
+      "original_routing_key": "ledger-discovery-20261111-022",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the held CIX-493 semantic evidence review (CIX-493; held semantic read).",
+      "state": "specific_semantic_read_hold",
+      "accountable_owner": "Current CIX owner; UIF boundary recorder",
+      "route": "specific-read-hold",
+      "next_eligible_action": "Retain CIX-493 identity and known metadata; await a valid specific permission/access release. No substitute or indirect equivalent read.",
+      "remaining_requirement": "The exact CIX-493 semantic body and its technical acceptance/residual determination remain held. Core builds, Done status, title or general readiness do not release the hold.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/54",
+      "counterpart_scope": [
+        "CIX"
+      ],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Read/review the held CIX-493 semantic body or infer its technical acceptance/remaining implementation.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/32"
+    },
+    {
+      "original_id": "ledger-foundation-deployment-dispositions",
+      "original_routing_key": "ledger-discovery-20261111-023",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/26",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-repository-environment-dispositions",
+      "original_routing_key": "ledger-discovery-20261111-024",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/27",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-usf580-criterion-disposition",
+      "original_routing_key": "ledger-discovery-20261111-025",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/28",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-legacy-ten-dispositions",
+      "original_routing_key": "ledger-discovery-20261111-026",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/29",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-cix-paused-project-dispositions",
+      "original_routing_key": "ledger-discovery-20261111-027",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/30",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-uxf-project-compatibility",
+      "original_routing_key": "ledger-discovery-20261111-028",
+      "group": "shared34",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Resolve the three UXF team and project compatibility dispositions (UXF-1, UXF-5, UXF-6; outstanding discovery).",
+      "state": "shared_effect_held_preparation_only",
+      "accountable_owner": "UIF allocation/admin owner; actual UXF consumer owners",
+      "route": "counterpart-join",
+      "next_eligible_action": "Reuse retained compatibility metadata to bind the actual UXF consumer/administrator and supported arrangement.",
+      "remaining_requirement": "Actual product set and permitted project/team association contract remain unresolved; preserve known-not-applied/unattempted outcomes and issue history.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/55",
+      "counterpart_scope": [],
+      "shared_effect_held": true,
+      "remaining_held_effect": "Change the three UXF project/team associations or broaden team/project permissions.",
+      "shared_source_reference": "uif-current-shared-34-counterpart-prerequisites-20261112.json#/records/33"
+    },
+    {
+      "original_id": "ledger-document-descendant-coverage",
+      "original_routing_key": "ledger-discovery-20261111-029",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/31",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-historical-anqr-coverage",
+      "original_routing_key": "ledger-discovery-20261111-030",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/32",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-administrative-delta-reconciliation",
+      "original_routing_key": "ledger-discovery-20261111-031",
+      "group": "canonical_legacy34",
+      "state": "retired_legacy_unavailable_unfulfilled",
+      "accepted_source_reference": "legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/33",
+      "bounded_original_outcome_fulfilled": false
+    },
+    {
+      "original_id": "ledger-recoverable-archive-interface",
+      "original_routing_key": "ledger-discovery-20261111-032",
+      "group": "partial_current13",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Establish a supported recoverable archive and restoration interface (UIF-116, UIF-158; blocked archive capability).",
+      "state": "general_ui_verified_exact_route_unqualified",
+      "accountable_owner": "Authorized administrative operator and connector owner",
+      "route": "archive-operator",
+      "next_eligible_action": "Reuse the completed schema/UI assessment. Existing operator supplies one supported granted exact-target invocation/restore route; avoid a new broad search.",
+      "remaining_requirement": "A general authenticated Archive UI exists; exact selected-target archive/restore route, authority and round-trip proof remain unqualified. Interface evidence does not authorize target effects.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/56"
+    },
+    {
+      "original_id": "ledger-final-acceptance-deduplication",
+      "original_routing_key": "ledger-discovery-20261111-033",
+      "group": "partial_current13",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Complete the final parent-child and independently closable acceptance audit (Cross-project ledger coordination; outstanding discovery).",
+      "state": "current_owner_join_prepared_for_review",
+      "accountable_owner": "UIF ledger owner; canonical integration writer",
+      "route": "cloud-recording",
+      "next_eligible_action": "Review this exact 107/59 owner join against accepted dispositions and fresh scoped contributions; reconcile parent/child and independently closable acceptance without recensus.",
+      "remaining_requirement": "Final owner acceptance/deduplication remains pending. This prepared no-effect evidence unit adds no whole-row closure or technical success and need not wait for installation.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/57"
+    },
+    {
+      "original_id": "ledger-final-integrated-publication",
+      "original_routing_key": "ledger-discovery-20261111-034",
+      "group": "partial_current13",
+      "formal_source_domain": "shared_discovery_records",
+      "obligation": "Publish the reconciled end-state ledger after discovery outcomes are accepted (Cross-project ledger coordination; conditional final record completion).",
+      "state": "scoped_snapshot_prepared_publication_pending",
+      "accountable_owner": "UIF canonical integration/publication owner",
+      "route": "cloud-recording",
+      "next_eligible_action": "Independently review the two-file snapshot, then publish its exact accepted tree through the existing owner and verify current remote readback.",
+      "remaining_requirement": "This snapshot is locally prepared, not accepted or published at its checkpoint; final integrated end-state publication and row closure are not claimed.",
+      "full_original_outcome_fulfilled": false,
+      "source_reference": "uif-exact59-current-work-matrix-9e51f0c-20261112.json#/records/58"
+    }
+  ],
+  "limits": [
+    "The ordered 213 README action IDs and 11 references remain byte-identical. This scoped 107-row evidence view neither replaces the ledger nor creates new rows, claims, permissions or work.",
+    "No whole-row closure is created. The six present-applicability decisions are complete only as applicability assessments; the original qualifications/inventory remain unfulfilled and future selected requirements are retained.",
+    "Preserve all eight exact CIX semantic-read boundaries and all 34 shared-effect holds. Readiness/build/Done/title/core receipts do not bypass access or coupled-effect restrictions.",
+    "No historical search, reconstruction, old-effect retry, body/dataset copy, private session identifier, protected edit, installation, service transition, archive mutation, Linear change or duplicate product build is performed by this documentation unit.",
+    "Current documentation accounting and exact review/publication preparation can continue without production installation or a blanket product-readiness gate. Source publication and actual runtime adoption must be recorded separately."
+  ]
+}
