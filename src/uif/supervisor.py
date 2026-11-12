@@ -110,14 +110,14 @@ def _installed(runtime, installation, *, typed=False):
         if ordinary_path != role_broker.POLICY or sha256(ordinary_raw).hexdigest() != ordinary_role["sha256"]:
             raise SourceHold("uif_supervisor_shared_binding")
         ordinary_roles = json.loads(ordinary_raw)
-        native_assets = {"guard", "dropper", "runtime_files"}
+        native_fields = {"guard", "dropper", "runtime_files", "max_processes", "max_projection_bytes"}
         if ({key: value for key, value in roles.items() if key != "roles"}
                 != {key: value for key, value in ordinary_roles.items() if key != "roles"}
                 or set(roles["roles"]) != set(ordinary_roles["roles"])
                 or roles["roles"].get("neutral") != ordinary_roles["roles"].get("neutral")
-                or any({key: value for key, value in roles["roles"][role].items() if key not in native_assets}
+                or any({key: value for key, value in roles["roles"][role].items() if key not in native_fields}
                        != {key: value for key, value in ordinary_roles["roles"][role].items()
-                           if key not in native_assets} for role in role_broker.MODES)):
+                           if key not in native_fields} for role in role_broker.MODES)):
             raise SourceHold("uif_supervisor_shared_binding")
     isolation = "uif-role-attempt-namespaces/1"
     if roles.get("attempt_isolation") != isolation or getattr(role_broker, "ATTEMPT_ISOLATION", None) != isolation:

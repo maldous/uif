@@ -40,12 +40,15 @@ class TypedSupervisorBindingTests(TestCase):
             schema=role_broker.SCHEMA, attempt_isolation=role_broker.ATTEMPT_ISOLATION,
             controller_uid=os.getuid(), controller_gid=os.getegid(), controller_root=str(root),
             pool_database=str(authority.pool_database_path), operation_locks=str(authority.operation_locks_path),
-            roles={name: {} for name in ("coding", "review", "neutral")},
+            roles={"coding": {"max_processes": 1, "max_projection_bytes": 1},
+                   "review": {"max_processes": 1, "max_projection_bytes": 1},
+                   "neutral": {"limits": {"workers": 1}}},
         )
         roles = write(root / "roles.json", role_config)
-        typed_roles = write(root / "typed-roles.json", dict(role_config, roles={
-            **role_config["roles"], "coding": {"guard": {"sha256": "c" * 64}},
-        }))
+        native_limits = {"max_processes": 4, "max_projection_bytes": 2**20}
+        typed_role_config = dict(role_config, roles={**role_config["roles"],
+            "coding": {**native_limits, "guard": {"sha256": "c" * 64}}, "review": native_limits})
+        typed_roles = write(root / "typed-roles.json", typed_role_config)
         ordinary_path, typed_path = root / "ordinary.json", root / "typed.json"
         ordinary_helper = dict(path=str(root / "neutral-helper"), sha256="a" * 64)
         typed_helper = dict(path=str(root / "typed-helper"), sha256="b" * 64)
@@ -68,8 +71,10 @@ class TypedSupervisorBindingTests(TestCase):
             supervisor._installed(runtime, {"supervisor_policy_sha256": ordinary_pin})
             broker.assert_called_once_with(ordinary_helper["path"], ordinary_helper["sha256"])
             broker.reset_mock()
-            supervisor._installed(runtime, {"supervisor_policy_sha256": typed_pin}, typed=True)
+            loaded = supervisor._installed(runtime, {"supervisor_policy_sha256": typed_pin}, typed=True)
             broker.assert_called_once_with(typed_helper["path"], typed_helper["sha256"])
+            self.assertEqual(loaded["role_limits"]["review"], native_limits)
+            self.assertEqual(loaded["role_limits"]["neutral"], role_config["roles"]["neutral"])
             broker.reset_mock()
             with self.assertRaisesRegex(SourceHold, "supervisor_policy_pin"):
                 supervisor._installed(runtime, {"supervisor_policy_sha256": ordinary_pin}, typed=True)
@@ -80,12 +85,13 @@ class TypedSupervisorBindingTests(TestCase):
                 pin = write(typed_path, dict(typed, **change))["sha256"]
                 with self.assertRaisesRegex(SourceHold, reason):
                     supervisor._installed(runtime, {"supervisor_policy_sha256": pin}, typed=True)
-            drifted = write(Path(typed_roles["path"]), dict(role_config, roles={
-                **role_config["roles"], "coding": {"uid": 999},
-            }))
-            pin = write(typed_path, dict(typed, role_policy=drifted))["sha256"]
-            with self.assertRaisesRegex(SourceHold, "shared_binding"):
-                supervisor._installed(runtime, {"supervisor_policy_sha256": pin}, typed=True)
+            for changed in ({"coding": {**native_limits, "uid": 999}}, {"neutral": {"limits": {"workers": 2}}}):
+                drifted = write(Path(typed_roles["path"]), dict(typed_role_config, roles={
+                    **typed_role_config["roles"], **changed,
+                }))
+                pin = write(typed_path, dict(typed, role_policy=drifted))["sha256"]
+                with self.assertRaisesRegex(SourceHold, "shared_binding"):
+                    supervisor._installed(runtime, {"supervisor_policy_sha256": pin}, typed=True)
             typed_path.unlink()
             with self.assertRaises(FileNotFoundError):
                 supervisor._installed(runtime, {"supervisor_policy_sha256": typed_pin}, typed=True)
