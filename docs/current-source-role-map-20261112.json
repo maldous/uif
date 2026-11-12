@@ -1,0 +1,325 @@
+{
+  "schema": "uif-current-source-role-map/1",
+  "date": "2026-11-12",
+  "repository": "maldous/uif",
+  "source": {
+    "commit": "89e0f761c4efb8ae32b66f37e6c33e068355d0d0",
+    "tree": "cacfe2ea5b8935426ee829dd7ab1a999c773d7c4",
+    "documentation_base": "612bcd9211a782995dac51147333b811aa32ae41",
+    "owner_decision_sha256": "eb140aeb5178d4ed220b2cdb00153d858b0756f1ddf38fc543d8b7d7d3955abd",
+    "owner_decision_source_basis": "fa39bfdb0d1161efc67e93cccebc21a9101306f0",
+    "owner_decision_canonical": "612bcd9211a782995dac51147333b811aa32ae41",
+    "parent_reported_credit": "PR42 source is 89e0f76; hosted qualification passed. This mapper did not repeat hosted tests or infer PR merge/installation.",
+    "later_identity_component_credit": {
+      "source_ref": "7dfdb09",
+      "review_ref": "66742ea6",
+      "status": "Accepted three-file identity component, per subsequent coordinator receipt",
+      "pin_scope": "Abbreviated references supplied by coordinator; explicitly later than and separate from the mapped89e source. No new source inspection performed for this correction.",
+      "ownership": "Helper author owns common ledger/admission/owner_runtime/stokowski and tests; integrator owns final manifest/bootstrap/composition."
+    }
+  },
+  "original_rows": {
+    "assets-validator-composition-disposition": "Current UIF source/assets/validator selection is mapped; historical996b/b850 identities remain history. Concrete typed consumer adaptation and exact corrected source review remain separately identified; installation is not a source-map prerequisite.",
+    "canonical-v1-selected-composition": "Six current roles are explicitly selected. No equality to the historical canonical-V1 pair, old sealer or historical bytes is inferred. Owner records bounded source credit; full-row acceptance is not declared by this map."
+  },
+  "roles": {
+    "producer": {
+      "owner": "Existing helper author for common owner-runtime integration; existing publisher owner for publication RPC; integrator for final composition",
+      "symbols": [
+        {
+          "path": "src/uif/owner_runtime.py",
+          "symbol": "OwnerAuthority.claim",
+          "line": 186
+        },
+        {
+          "path": "src/uif/publication_rpc.py",
+          "symbol": "PublicationRPC.publish_candidate",
+          "line": 326
+        },
+        {
+          "path": "src/uif/publication_rpc.py",
+          "symbol": "PublicationRPC.prepare_pull_request",
+          "line": 409
+        }
+      ],
+      "actual": "Qualified issue-backed row claim plus exact source-candidate and PR effects/readback. Not a general ledger-task producer.",
+      "files": [
+        "src/uif/owner_runtime.py",
+        "src/uif/publication_rpc.py"
+      ]
+    },
+    "schema_validator": {
+      "owner": "Existing helper author and actual guard/route/publisher consumer owners; integrator for final manifest",
+      "symbols": [
+        {
+          "path": "src/uif/role.py",
+          "symbol": "verify_control_role",
+          "line": 11
+        },
+        {
+          "path": "src/uif/validation.py",
+          "symbol": "StageBinding",
+          "line": 78
+        },
+        {
+          "path": "src/uif/publication.py",
+          "symbol": "PublicationRequest",
+          "line": 74
+        }
+      ],
+      "files": [
+        "config/delivery/stokowski-control.json",
+        "config/windmill/source/foo_jobs.schema.json",
+        "src/uif/role.py",
+        "src/uif/validation.py",
+        "src/uif/publication.py"
+      ],
+      "actual": "Manifest/file pins, dispatch/coding evidence, publication request and run/status/cancel transport shape. Current schema versions do not imply historical canonical-V1 semantics."
+    },
+    "sealing_and_receipts": {
+      "owner": "Existing publisher owner and helper author for common owner-runtime integration",
+      "symbols": [
+        {
+          "path": "src/uif/publication.py",
+          "symbol": "wire",
+          "line": 54
+        },
+        {
+          "path": "src/uif/publication.py",
+          "symbol": "fingerprint",
+          "line": 59
+        },
+        {
+          "path": "src/uif/native_publisher.py",
+          "symbol": "durable",
+          "line": 103
+        },
+        {
+          "path": "src/uif/owner_runtime.py",
+          "symbol": "OwnerAuthority.lock",
+          "line": 110
+        }
+      ],
+      "actual": "Canonical JSON/SHA-256, durable receipt writes and owner operation locking. Fingerprints are not signatures or old-sealer equivalence.",
+      "files": [
+        "src/uif/publication.py",
+        "src/uif/native_publisher.py",
+        "src/uif/owner_runtime.py"
+      ]
+    },
+    "settings": {
+      "owner": "UIF integration/release owner; actual binding custodians supply their inputs",
+      "symbols": [],
+      "files": [
+        "config/delivery/role-launch.example.json",
+        "config/delivery/role-supervisor.example.json",
+        "config/delivery/shared-job-admission.example.json"
+      ],
+      "actual": "Versioned source templates; null UID/grant/path/pin fields are unrendered requirements, not installed identities. Epoch1 prepared owner-runtime/catalogue inputs require their own exact supplied pins; no audited policy bytes are invented."
+    },
+    "assets": {
+      "owner": "UIF source/release integrator; existing guard owner retains guard/helper corrections",
+      "symbols": [],
+      "files": [
+        "pyproject.toml",
+        "config/delivery/stokowski-control.json",
+        "tools/delivery/uif_coding_child_guard.c",
+        "deploy/stokowski/uif-coding-dropper.sh",
+        "deploy/stokowski/uif-role-helper.sh"
+      ],
+      "actual": "UIF control package and selected manifest/guard/launch templates; shared Stokowski/Pool lineage retained. No mandatory product payload or historical bundle equality."
+    },
+    "operator": {
+      "owner": "Existing helper author and disjoint guard/route/publisher consumer owners; integrator for final executable bootstrap/composition",
+      "symbols": [
+        {
+          "path": "src/uif/owner_runtime.py",
+          "symbol": "bind_owner_coordinator",
+          "line": 508
+        },
+        {
+          "path": "src/uif/supervisor.py",
+          "symbol": "main",
+          "line": 639
+        },
+        {
+          "path": "src/uif/shared_job_admission.py",
+          "symbol": "main",
+          "line": 303
+        },
+        {
+          "path": "tools/windmill/foo_user_exec.py",
+          "symbol": "main",
+          "line": 12
+        }
+      ],
+      "files": [
+        "tools/delivery/uif_shared_job_admission.py",
+        "src/uif/owner_runtime.py",
+        "src/uif/supervisor.py",
+        "src/uif/shared_job_admission.py",
+        "tools/windmill/foo_user_exec.py"
+      ],
+      "actual": "Coordinator registration hook, per-issue supervisor, existing Pool shared-admission wrapper and fixed ordinary-user transport entry. A hook is not proof of a registered long-running executable bootstrap."
+    }
+  },
+  "file_pins": {
+    "config/delivery/role-launch.example.json": {
+      "git_blob": "f380352d8ed1231d5327736427abcaa9fe99d9dc",
+      "sha256": "09a58a18d2f90950c6b78749bd0293a02011663ac50997513d5a4edfe010621b"
+    },
+    "config/delivery/role-supervisor.example.json": {
+      "git_blob": "eae6ae06f3ba27dbbaee097072b46ba35ae817ed",
+      "sha256": "4654701ba14e564c6706ce3c6bb48e680e5e1f70c32ddbc8fbd06bae4da5b3d0"
+    },
+    "config/delivery/shared-job-admission.example.json": {
+      "git_blob": "545782ffbc72843c8b65b21aeee0bec8f9c18fb1",
+      "sha256": "e337c0f725633f36c46f83d0c4f914071cf590bdd091dfba092341e3c4176f8b"
+    },
+    "config/delivery/stokowski-control.json": {
+      "git_blob": "51793ea8bd3fff40cb90bf02fed6f8bb1d25b27b",
+      "sha256": "9b043a2d056c9059a76d9bb44d5a61d7202b1e790f6c41519e3aa487b2640eb9"
+    },
+    "config/windmill/source/foo_jobs.schema.json": {
+      "git_blob": "96e93163b20f6d6589c426174bb52d2947b6b9ab",
+      "sha256": "c7d745a2d989ee7b358593e0e67a3bf7d5a233cf9df29e37726f5444e2f2bf9f"
+    },
+    "deploy/stokowski/uif-coding-dropper.sh": {
+      "git_blob": "00d8c4b839fc2d7c45e20a52d94e88d8e6049282",
+      "sha256": "c10c05f77677c52596c3820e9645c74a30a167d0585730a485f719cb7725cb47"
+    },
+    "deploy/stokowski/uif-role-helper.sh": {
+      "git_blob": "51d124bc7e361d79e383fbc754a50b322a8e355a",
+      "sha256": "08632684451d2d40c7a9c904246294dbb522a5c924d864e599cc7baab4c9f9b2"
+    },
+    "pyproject.toml": {
+      "git_blob": "2d24c9727248424a39803b06750c43ebb6ea46d4",
+      "sha256": "ec37075111bdcb7960698bdd7e2c4c3898b639d12ecdb23598bc15ca8b96462d"
+    },
+    "src/uif/ledger.py": {
+      "git_blob": "b1295e3fed17079348f65207c644a7b62c6b5b82",
+      "sha256": "0404b388fe4805b610e46242cbd4a1ce9a041b1f519123da347ab4436e2dbb18"
+    },
+    "src/uif/native_publisher.py": {
+      "git_blob": "d1ea97e4955bfedaebf1a93f374f5c5138453dba",
+      "sha256": "da81c3129a56a4a4bdee2b5fbf51c73f0c2c318b66b59c26eaf63a93a4c0afb5"
+    },
+    "src/uif/owner_runtime.py": {
+      "git_blob": "aba7fef0e63b8c7608fb5debba43f62c84240495",
+      "sha256": "09a6fa203f8a2578ee2c5f3d4cfdc4223a4a5813f6b414e45a1eaf6a56f466b2"
+    },
+    "src/uif/publication.py": {
+      "git_blob": "471fe114c90922515957f0e06bb159486902c8af",
+      "sha256": "ead8bcce4514c8ed22c809588760fa0a83efbf69f0567c5c578bbf0ff9a84345"
+    },
+    "src/uif/publication_rpc.py": {
+      "git_blob": "c1b21f38a324d6993ce10b679be3b605e9f6aba3",
+      "sha256": "09eb0f1c396b492f3e9db342dc2f2f46441ebfbeeeed50b5e0e43f452f0651c1"
+    },
+    "src/uif/role.py": {
+      "git_blob": "9faa4f75ad9ab2f353e5635b9ef5994ca7ff5209",
+      "sha256": "80c477ad0c074f62de0e1a18e8ba5330c768bd147143df36b0962a0656586a43"
+    },
+    "src/uif/shared_job_admission.py": {
+      "git_blob": "bd6c67b812b5fb404ea269448c1d379a1a5d571d",
+      "sha256": "d9a8f7ec23baef2714a0390bb185db4de601124dd02a58fc0e77ea7ffca7aab1"
+    },
+    "src/uif/stokowski.py": {
+      "git_blob": "7b8679e60c3a5ec99be4ef3474bd4980a0a0afb6",
+      "sha256": "790fab16087cd688fdace971e03b144ae09259b9afdcd9f16f04f506ebf60418"
+    },
+    "src/uif/supervisor.py": {
+      "git_blob": "6a38a292efc050702805129e928bd6feca4de67f",
+      "sha256": "4bc17e161506483b9e8d0dac3cf1892d5f5805fd92619fb726842bee4093d2a5"
+    },
+    "src/uif/validation.py": {
+      "git_blob": "31e7a08dab4543fa896eb5cc7640794a6fbc23c7",
+      "sha256": "7990ccf216117f0eee460d494225e1c9ded792ba39835459f852dc835b6ba8fe"
+    },
+    "tools/delivery/uif_coding_child_guard.c": {
+      "git_blob": "d0555056a7f5a86a11a451c7ceb95debe5ce0aec",
+      "sha256": "c8eacfe9ddc9aab550bf7b733575c8dbd37cd7bba923e986a41737e696cf809b"
+    },
+    "tools/delivery/uif_shared_job_admission.py": {
+      "git_blob": "cdb76e87278146caf1c06bc2a79fa4d835813874",
+      "sha256": "46d3458b5ee943392672dd597fe2934f48cb244ffc1b984b27528aea23e5dbd7"
+    },
+    "tools/windmill/foo_user_exec.py": {
+      "git_blob": "2cbe255ce7f160d4fdc9018b0a5cfe31a95ba8f9",
+      "sha256": "5a558508d502a5379af4faa6d026e7422262f68e19803e0f60a3fdbca49289ed"
+    }
+  },
+  "ledger_consumer_gap": {
+    "existing_credit": [
+      "RowKey/LedgerAdmission preserve row/source/snapshot/owner/epoch/original-operation bindings.",
+      "Current owner claim, validation and publication consumers implement issue-backed source flow.",
+      "A later coordinator receipt accepts the three-file identity component7dfdb09, review66742ea6; this is separate from the pinned89e map and does not establish all consumer integration."
+    ],
+    "source_evidence": [
+      {
+        "path": "src/uif/owner_runtime.py",
+        "symbol": "bind_owner_coordinator.eligible",
+        "lines": [
+          523,
+          533
+        ],
+        "finding": "Drops rows with row.issue is None; wraps actual Linear issue identity."
+      },
+      {
+        "path": "src/uif/supervisor.py",
+        "symbol": "_inputs",
+        "lines": [
+          150,
+          174
+        ],
+        "finding": "Requires UIF issue syntax plus a UUID and current issue-bound admission."
+      },
+      {
+        "path": "src/uif/publication.py",
+        "symbol": "PublicationRequest.__post_init__",
+        "lines": [
+          98,
+          103
+        ],
+        "finding": "Requires issue UUID/identifier; it is not an independent typed ledger-task envelope."
+      },
+      {
+        "path": "src/uif/native_publisher.py",
+        "symbol": "verify_origin",
+        "lines": [
+          331,
+          339
+        ],
+        "finding": "Preserves issue UUID/project and operation pin requirements."
+      }
+    ],
+    "required_adaptation": "Existing helper author integrates the accepted identity component through the common ledger/admission/owner_runtime/stokowski modules and tests, preserving the existing catalogue/Pool. Existing guard/route/publisher owners retain disjoint consumer changes; integrator owns final manifest/bootstrap/composition. Exact integrated consumers need independent source review. Preserve original row/operation/proof/owner bindings; no fake Linear UUID, new queue/service or duplicate product implementation.",
+    "operator_residual": "Integrator identifies/registers the final executable long-running coordinator bootstrap and actual typed intake/caller; helper author owns common identity integration. At89e bind_owner_coordinator is a library hook and supervisor.main executes an issue. Later accepted identity source does not alone prove integrated consumers, installed execution or BAU."
+  },
+  "historical_boundary": {
+    "decision": "For current delivery the owner selected UIF contracts rather than mandatory996b/b850/historical canonical-V1 runtime inputs.",
+    "not_claimed": [
+      "historical byte recovery",
+      "semantic equality",
+      "old effects completed",
+      "deletion or relabeling of history",
+      "automatic full-row closure"
+    ],
+    "future_consumers": "Preserve conditional obligations of any historical contract only if a real future consumer actually selects it; qualify that producer/consumer boundary then."
+  },
+  "checks": {
+    "selected_python_symbols_AST_verified": true,
+    "manifest_pinned_files_sha256_checked": 38,
+    "actual_verify_control_role_readonly": "PASS: 38 files",
+    "source_manifest_sha256": "9b043a2d056c9059a76d9bb44d5a61d7202b1e790f6c41519e3aa487b2640eb9",
+    "policy_version_at_documentation_base": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
+    "prepared_policy_1_2_4": "Separately under review per parent; not edited or needed for this source map."
+  },
+  "effects": {
+    "source_modules_or_policy_changed": false,
+    "network_publication": false,
+    "installation_or_runtime": false,
+    "new_worker": false
+  }
+}
