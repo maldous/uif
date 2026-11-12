@@ -5,6 +5,7 @@
     "controller_role_launch": "uif.supervisor.run_registered_role_turn",
     "intake": "stokowski.orchestrator.ensure_workspace",
     "native_publisher": "tools/delivery/uif_native_publisher.py",
+    "neutral_job_runner": "tools/windmill/foo_user_exec.py",
     "owner_registration": "uif.owner_runtime.OwnerAuthority.load",
     "owner_stages": "uif.owner_runtime.OwnerAuthority.register_stages",
     "pickup": "uif.admission.OwnerAdmission.select_ready",
@@ -22,6 +23,8 @@
     "config/delivery/role-launch.example.json": "09a58a18d2f90950c6b78749bd0293a02011663ac50997513d5a4edfe010621b",
     "config/delivery/role-supervisor.example.json": "4654701ba14e564c6706ce3c6bb48e680e5e1f70c32ddbc8fbd06bae4da5b3d0",
     "config/delivery/shared-job-admission.example.json": "68b884cefd20287acb7cb7620b0eb0f470c5d19ed65cc6f4614a3c4f2ada2dde",
+    "config/windmill/source/foo_jobs.py": "0a50572ee2b4a098671ade40bf32a6c7a0a0d42464d18407ee91e8d0669c8b5a",
+    "config/windmill/source/foo_jobs.schema.json": "c7d745a2d989ee7b358593e0e67a3bf7d5a233cf9df29e37726f5444e2f2bf9f",
     "deploy/stokowski/uif-coding-dropper.sh": "c10c05f77677c52596c3820e9645c74a30a167d0585730a485f719cb7725cb47",
     "deploy/stokowski/uif-neutral-capacity.patch": "823ec0666b29d1effaab50a65ce8d8b8d6adb36edbee2cea23a9a1d83e0b3e50",
     "deploy/stokowski/uif-role-helper.sh": "08632684451d2d40c7a9c904246294dbb522a5c924d864e599cc7baab4c9f9b2",
@@ -30,6 +33,7 @@
     "src/uif/admission.py": "606703b47bc578bf626518e9c54614809387e8d37188737cec751508306d0888",
     "src/uif/controller_launch.py": "0a222d8c1b66ecd4302e02779840d96857894e64d3ff77f0ff217e834f143684",
     "src/uif/dispatch.py": "1094d4227a65856f8a34e513f8677e8007dd9fc3aa53c05927826bee84d74141",
+    "src/uif/host_jobs.py": "8118e5c5b29a765ed7062081c76356a609bbf0448fc2a93d6b16edd9e3693a80",
     "src/uif/ledger.py": "0404b388fe4805b610e46242cbd4a1ce9a041b1f519123da347ab4436e2dbb18",
     "src/uif/native_publisher.py": "82bc3c159b26411d13349612d4bee4a7ac8797d27bb3442b791405127d89d68b",
     "src/uif/neutral_launch.py": "c1c7e545bedc1fb898551e4e176446c6d08472df899046776b69d6d1ea991d0e",
@@ -50,7 +54,8 @@
     "src/uif/validation.py": "7990ccf216117f0eee460d494225e1c9ded792ba39835459f852dc835b6ba8fe",
     "tools/delivery/uif_coding_child_guard.c": "c8eacfe9ddc9aab550bf7b733575c8dbd37cd7bba923e986a41737e696cf809b",
     "tools/delivery/uif_native_publisher.py": "01fccf0412d99913f65852da6b2ead2537c1ec2957796104a36e2372727c4b2b",
-    "tools/delivery/uif_shared_job_admission.py": "46d3458b5ee943392672dd597fe2934f48cb244ffc1b984b27528aea23e5dbd7"
+    "tools/delivery/uif_shared_job_admission.py": "46d3458b5ee943392672dd597fe2934f48cb244ffc1b984b27528aea23e5dbd7",
+    "tools/windmill/foo_user_exec.py": "5a558508d502a5379af4faa6d026e7422262f68e19803e0f60a3fdbca49289ed"
   },
   "repository": "maldous/uif",
   "runtime_dependencies": {
