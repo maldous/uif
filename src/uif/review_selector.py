@@ -14,8 +14,10 @@ from .review_launcher import (
 )
 from .source import SourceHold, exact_path, file_digest
 from .stokowski import DispatchReportBinding, LedgerAdmission, PolledIssue, UIF
+from .task_identity import LedgerTaskEnvelope
 from .validation import (
-    StageBinding, StageJournal, ValidationAdapter, ValidationSpec, WindmillValidationBackend, digest, identity,
+    StageBinding, StageJournal, ValidationAdapter, ValidationSpec, WindmillValidationBackend, decode, digest,
+    identity, wire,
 )
 
 
@@ -66,12 +68,17 @@ def _dispatch(value):
     return DispatchReportBinding(**entry)
 
 
-def decode_review_spec(value):
+def decode_review_spec(value, *, snapshot_path=None, invocation_id=None):
     """Restore the existing stage-journal wire representation into typed pins."""
     review = _fields(value, ReviewSpec)
     validation = _fields(review["validation"], ValidationSpec)
     source = _fields(validation["binding"], StageBinding)
-    source["dispatch"] = _dispatch(source["dispatch"])
+    if isinstance(source["dispatch"], dict) and "schema" in source["dispatch"]:
+        if snapshot_path is None:
+            raise SourceHold("uif_review_selector_registered_snapshot_required")
+        source["dispatch"] = DispatchReportBinding.from_ledger_record(source["dispatch"], snapshot_path=snapshot_path)
+    else:
+        source["dispatch"] = _dispatch(source["dispatch"])
     for name in ("candidate", "coding_receipt"):
         source[name] = _path(source[name])
     validation["binding"] = StageBinding(**source)
@@ -80,7 +87,7 @@ def decode_review_spec(value):
     for name in ("policy", "evidence_directory"):
         review[name] = _path(review[name])
     review["pool_binding_json"] = _payload(review["pool_binding_json"])
-    return ReviewSpec(**review)
+    return ReviewSpec(**review, invocation_id=invocation_id)
 
 
 _OWNER_FIELDS = {
@@ -88,6 +95,19 @@ _OWNER_FIELDS = {
     "policy_path", "policy_sha256", "spec", "installation_sha256", "capacity_policy_sha256",
     "provider_proof_sha256",
 }
+
+
+def _owner_record(authority, invocation):
+    if invocation.issue is not None:
+        return authority.review_record(invocation)
+    try:
+        task = LedgerTaskEnvelope.from_record(decode(invocation.task_json), snapshot_path=authority.snapshot_path)
+    except ValueError as error:
+        raise SourceHold("uif_review_selector_task_record") from error
+    if wire(task.to_record()) != invocation.task_json:
+        raise SourceHold("uif_review_selector_task_record")
+    return authority.ledger_review_record(task, runtime=invocation.runtime, policy=invocation.policy,
+                                         policy_sha256=invocation.policy_sha256)
 
 
 class ReviewSelector:
@@ -105,14 +125,24 @@ class ReviewSelector:
     def select(self, invocation):
         if not isinstance(invocation, ReviewInvocation):
             raise SourceHold("uif_review_selector_invocation")
-        record = self.authority.review_record(invocation)
-        if (not isinstance(record, dict) or set(record) != _OWNER_FIELDS
-                or record["schema"] != "uif-owner-review/1"
-                or (record["runtime"], record["issue"], record["policy_path"], record["policy_sha256"])
-                != (str(invocation.runtime), invocation.issue, str(invocation.policy), invocation.policy_sha256)):
+        record = _owner_record(self.authority, invocation)
+        tagged = invocation.issue is None
+        expected_fields = _OWNER_FIELDS
+        if tagged:
+            from .owner_runtime import LEDGER_REVIEW_FIELDS
+
+            expected_fields = LEDGER_REVIEW_FIELDS
+        if (not isinstance(record, dict) or set(record) != expected_fields
+                or record["schema"] != ("uif-owner-review/2" if tagged else "uif-owner-review/1")
+                or (record["runtime"], record["policy_path"], record["policy_sha256"])
+                != (str(invocation.runtime), str(invocation.policy), invocation.policy_sha256)):
             raise SourceHold("uif_review_selector_sealed_record")
-        spec = decode_review_spec(record["spec"])
+        spec = decode_review_spec(record["spec"], snapshot_path=self.authority.snapshot_path if tagged else None,
+                                  invocation_id=invocation.invocation_id)
         invocation.require(spec)
+        target = {"task": spec.binding.task.to_record()} if tagged else {"issue": invocation.issue}
+        if any(record.get(k) != v for k, v in target.items()):
+            raise SourceHold("uif_review_selector_sealed_record")
         binding = spec.binding
         admission = binding.dispatch.ledger
         if (tuple(record[k] for k in ("store_id", "row_id", "operation_id", "owner", "epoch"))
@@ -194,7 +224,7 @@ def invoke_review(argv, *, authority, registration, invoked_path):
     invocation = ReviewInvocation.parse(argv)
     # Resolve custody before opening the requested runtime's journal. The
     # owner fence rechecks the selection before the launcher can start.
-    record = authority.review_record(invocation)
+    record = _owner_record(authority, invocation)
     if not isinstance(record, dict) or record.get("runtime") != str(invocation.runtime):
         raise SourceHold("uif_review_selector_unregistered_runtime")
     review = registration.open_review(invocation.runtime, authority.stage_fence)

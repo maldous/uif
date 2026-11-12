@@ -6,18 +6,21 @@ Stokowski worker at OffMenu 5b8ca36e3a212d60db7b74bb8ccb37e3993bb01e.
 
 import asyncio
 from contextlib import closing
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 import os
 from pathlib import Path
 import sqlite3
 
 from .source import SourceHold, exact_path, file_digest, git
+from .stokowski import UIF
 from .validation import (
-    StageBinding, ValidationSpec, _Observation, _Stage, decode, digest, identity, read_evidence, sha, wire,
+    StageBinding, ValidationSpec, _Observation, _Stage, decode, digest, identity, invocation_uuid,
+    read_evidence, sha, wire,
 )
 
 
 ORIGIN = "native-readonly-review-v1"
+LEDGER_ORIGIN = "native-readonly-review-v2"
 
 
 @dataclass(frozen=True)
@@ -31,18 +34,38 @@ class ReviewSpec:
     policy_sha256: str
     pool_binding_json: bytes
     first_submission: bool = False
+    # The ledger invocation is sealed by the review policy. Keep it out of
+    # the legacy owner codec's recursive dataclass encoding.
+    invocation_id: InitVar[str | None] = None
 
     @property
     def binding(self):
         return self.validation.binding
 
-    def __post_init__(self):
+    @property
+    def origin(self):
+        return LEDGER_ORIGIN if self.binding.task is not None else ORIGIN
+
+    def target_record(self):
+        if self.binding.task is None:
+            return {"issue": self.binding.dispatch.issue.identifier}
+        return {
+            "task": self.binding.task.to_record(), "workspace_key": self.binding.workspace_key,
+            "invocation_id": self.invocation_id,
+        }
+
+    def __post_init__(self, invocation_id):
+        if (self.binding.task is None and invocation_id is not None
+                or self.binding.task is not None and not invocation_uuid(invocation_id)):
+            raise SourceHold("uif_review_invocation_binding")
+        object.__setattr__(self, "invocation_id", invocation_id)
         pool = decode(self.pool_binding_json)
         attempts = self.binding.dispatch.workspace.parent.parent / "attempts"
         directory = exact_path(self.evidence_directory)
         if (directory.parent != attempts
                 or directory.is_relative_to(self.binding.candidate)
-                or (self.first_submission and directory.name != "review-" + self.binding.dispatch.issue.identifier)):
+                or ((self.first_submission or self.binding.task is not None)
+                    and directory.name != "review-" + self.binding.workspace_key)):
             raise SourceHold("uif_review_original_receipt_path")
         if (not identity(self.reviewer) or self.reviewer == self.binding.dispatch.ledger.owner
                 or not identity(self.lease)
@@ -99,7 +122,10 @@ class NativeReviewBackend:
 
     @staticmethod
     def _request(spec):
-        return dict(kind=ORIGIN, policy=dict(path=str(spec.policy), sha256=spec.policy_sha256))
+        request = dict(kind=spec.origin, policy=dict(path=str(spec.policy), sha256=spec.policy_sha256))
+        if spec.binding.task is not None:
+            request.update(spec.target_record(), lease=spec.lease)
+        return request
 
     def _read(self, path, *, limit=1048576):
         return read_evidence(path, uid=self.evidence_uid, limit=limit)
@@ -131,11 +157,14 @@ class NativeReviewBackend:
         if sha(raw) != spec.policy_sha256:
             raise SourceHold("uif_review_policy_drift")
         policy = decode(raw)
+        if (not isinstance(policy, dict)
+                or (binding.task is not None and ("issue" in policy or policy.get("lease") != spec.lease))):
+            raise SourceHold("uif_review_policy_binding")
         pool = decode(spec.pool_binding_json)
         source = policy.get("source", {})
         if (any(policy.get(k) != v for k, v in {
-                "schema": ORIGIN, "project_id": dispatch.issue.project_id,
-                "issue": dispatch.issue.identifier, "owner": admission.owner,
+                "schema": spec.origin, "project_id": UIF.project_id,
+                **spec.target_record(), "owner": admission.owner,
                 "reviewer_owner": spec.reviewer, "current_runtime": str(runtime),
                 "validation_identity": spec.validation.operation_key,
                 "stage_identity": spec.validation.operation_key,
@@ -214,8 +243,9 @@ class NativeReviewBackend:
         except FileNotFoundError:
             return _Observation("unknown") if lease is not None or directory.exists() else None
         result = decode(raw)
-        if (any(result.get(k) != v for k, v in {
-                "origin": ORIGIN, "issue": spec.binding.dispatch.issue.identifier,
+        if (not isinstance(result, dict) or (spec.binding.task is not None and "issue" in result)
+                or any(result.get(k) != v for k, v in {
+                "origin": spec.origin, **spec.target_record(),
                 "lease": spec.lease, "parent_binding": pool, "binding_sha256": sha(wire(pool)),
                 "request": self._request(spec), "policy_sha256": sha(wire(policy)),
             }.items()) or result.get("accepted_delivery") is not False):
@@ -254,7 +284,7 @@ class NativeReviewBackend:
         if (sha(artifact_raw) != result.get("artifact_sha256") or artifact != result.get("artifact")
                 or sha(events_raw) != result.get("events_sha256") or not self._events(events_raw, result["session_id"])
                 or not isinstance(artifact, dict) or set(artifact) != {"schema", "source", "verdict", "findings"}
-                or artifact["schema"] != ORIGIN or artifact["source"] != policy["source"]
+                or artifact["schema"] != spec.origin or artifact["source"] != policy["source"]
                 or artifact["verdict"] not in ("accept", "rework")
                 or not isinstance(artifact["findings"], list)
                 or not all(identity(finding) for finding in artifact["findings"])
@@ -289,9 +319,10 @@ class NativeReviewBackend:
         # even when its Pool row and original receipt are both missing.
         if directory.exists() or directory.is_symlink():
             raise SourceHold("uif_review_original_attempt_exists")
+        from .review_launcher import ReviewInvocation
+
         proc = await asyncio.create_subprocess_exec(
-            str(self.executable), "--runtime", str(runtime),
-            "--issue", spec.binding.dispatch.issue.identifier,
+            str(self.executable), "--runtime", str(runtime), *ReviewInvocation.for_spec(spec).target_args(),
             "--native-review-policy", str(spec.policy), "--native-review-policy-sha256", spec.policy_sha256,
             cwd=runtime, env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
             stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,

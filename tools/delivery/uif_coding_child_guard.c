@@ -312,6 +312,13 @@ static size_t issue_length(const char *name)
     return 4 + strspn(name + 4, "0123456789");
 }
 
+static size_t ledger_key_length(const char *name)
+{
+    if (strncmp(name, "ledger-", 7) || strspn(name + 7, "0123456789abcdef") != 64)
+        return 0;
+    return 71;
+}
+
 static void check_attempt(const char *mode, const char *source, const char *output,
                           const char *home, const char *state)
 {
@@ -344,6 +351,17 @@ static void check_attempt(const char *mode, const char *source, const char *outp
         attempt_name += 7;
     }
     size_t n = issue_length(attempt_name);
+    int ledger = !n;
+    if (ledger) {
+        n = ledger_key_length(attempt_name);
+        if (n && review) {
+            const char *slot = leaf(runtime);
+            const char *suffix = attempt_name + n;
+            if (strlen(slot) != 64 || strspn(slot, "0123456789abcdef") != 64 ||
+                *suffix != '-' || strlen(suffix + 1) != 16 || strncmp(suffix + 1, slot, 16))
+                refuse();
+        }
+    }
     if (!n || (attempt_name[n] && (!review || attempt_name[n] != '-' ||
                                     !token(attempt_name + n + 1))))
         refuse();
@@ -354,7 +372,7 @@ static void check_attempt(const char *mode, const char *source, const char *outp
             strlen(leaf(source)) == n && !strncmp(leaf(source), attempt_name, n))
             return;
     }
-    if (review && under(source, UIF_REVIEW_ROOT) && !strcmp(leaf(source), "candidate")) {
+    if (!ledger && review && under(source, UIF_REVIEW_ROOT) && !strcmp(leaf(source), "candidate")) {
         parent_of(source, section);
         parent_of(section, paths);
         if (!strcmp(leaf(paths), "contributions") &&

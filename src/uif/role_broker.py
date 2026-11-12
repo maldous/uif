@@ -4,7 +4,7 @@ The installed entrypoint requires root custody, an exact sudo caller and a
 qualified cgroup v2 subtree. Source tests do not invoke that entrypoint as root.
 """
 
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 from dataclasses import asdict, dataclass
 import ctypes
 import errno
@@ -28,6 +28,8 @@ from uuid import UUID
 POLICY = Path("/etc/uif/role-launch.json")
 SUDO = "/usr/bin/sudo"
 SCHEMA = "uif-role-launch/1"
+LEDGER_SCHEMA = "uif-role-launch/2"
+LEDGER_REVIEW_ORIGIN = "native-readonly-review-v2"
 ATTEMPT_ISOLATION = "uif-role-attempt-namespaces/1"
 CANCEL_BEFORE_START = "cancel-before-start"
 MODES = {"coding": "workspace-write", "review": "read-only"}
@@ -46,6 +48,27 @@ NEUTRAL_OUTCOMES = {"succeeded", "failed", "timed_out", "cancelled"}
 
 class LaunchHold(ValueError):
     """The exact launch must be held or reconciled."""
+
+
+class _CloneRefused(LaunchHold):
+    """clone3 returned an error, so this call created no child."""
+
+
+
+def _startup_error(error, phase):
+    # Never persist exception messages containing paths, command bytes or data.
+    value = {"phase": phase, "kind": type(error).__name__}
+    if isinstance(error, OSError):
+        value["errno"] = error.errno
+    elif isinstance(error, LaunchHold) and (match := re.fullmatch(
+            r"neutral_launch_mount_syscall:(428|429|437|442):([0-9]{1,4})", str(error))):
+        value.update(reason_code="neutral_launch_mount_syscall",
+                     syscall=int(match[1]), errno=int(match[2]))
+    elif (isinstance(error, LaunchHold) and len(str(error)) <= 160
+          and re.fullmatch(r"[a-z0-9_]+(?::[0-9]+)?", str(error))):
+        value["reason"] = str(error)
+    return value
+
 
 
 def _sha(value):
@@ -98,10 +121,70 @@ class LaunchKey:
                 or str(UUID(self.issue_id)) != self.issue_id):
             raise LaunchHold("role_launch_key")
 
+    @property
+    def workspace_key(self):
+        return self.issue_identifier
+
+
+@dataclass(frozen=True)
+class _LedgerRoleKey:
+    task: dict
+    workspace_key: str
+    invocation_id: str
+    intent_sha256: str
+    lease_id: str
+
+    def __post_init__(self):
+        from uif.ledger import SNAPSHOT_SHA256
+        from uif.task_identity import LedgerTaskKey, SCHEMA as TASK_SCHEMA
+
+        fields = {"schema", "store_id", "row_id", "snapshot_sha256", "source_sha256",
+                  "owner", "epoch", "original_operation_id"}
+        try:
+            invocation_matches = isinstance(self.invocation_id, str) and str(UUID(self.invocation_id)) == self.invocation_id
+        except ValueError:
+            invocation_matches = False
+        if (not isinstance(self.task, dict) or set(self.task) != fields or self.task["schema"] != TASK_SCHEMA
+                or any(not isinstance(self.task[field], str) or not self.task[field].strip()
+                       or self.task[field] != self.task[field].strip()
+                       for field in ("owner", "epoch", "original_operation_id"))
+                or self.task["snapshot_sha256"] != SNAPSHOT_SHA256
+                or not _sha(self.task["source_sha256"]) or not _sha(self.intent_sha256)
+                or LedgerTaskKey(self.store_id, self.task["row_id"]).workspace_key != self.workspace_key
+                or not invocation_matches
+                or not _token(self.lease_id)):
+            raise LaunchHold("role_launch_ledger_key")
+
+    @property
+    def store_id(self):
+        return self.task["store_id"]
+
+    @property
+    def operation_id(self):
+        return self.task["original_operation_id"]
+
+
+@dataclass(frozen=True)
+class LedgerLaunchKey(_LedgerRoleKey):
+    attempt: int | None
+    handoff_sha256: str
+    role = "coding"
+
+    def __post_init__(self):
+        super().__post_init__()
+        if (not _sha(self.handoff_sha256)
+                or (self.attempt is not None and (type(self.attempt) is not int or self.attempt < 0))):
+            raise LaunchHold("role_launch_ledger_coding_key")
+
+
+@dataclass(frozen=True)
+class LedgerReviewLaunchKey(_LedgerRoleKey):
+    role = "review"
+
 
 @dataclass(frozen=True)
 class LaunchRequest:
-    key: LaunchKey
+    key: LaunchKey | LedgerLaunchKey | LedgerReviewLaunchKey
     slot: str
     admission_sha256: str
     request_sha256: str
@@ -109,14 +192,21 @@ class LaunchRequest:
     policy_sha256: str
 
     def __post_init__(self):
-        if (not isinstance(self.key, LaunchKey) or not _sha(self.slot)
+        if (not isinstance(self.key, (LaunchKey, LedgerLaunchKey, LedgerReviewLaunchKey)) or not _sha(self.slot)
                 or self.slot != slot_for_lease(self.key.lease_id) or not all(_sha(value) for value in (
                     self.admission_sha256, self.request_sha256, self.projection_sha256, self.policy_sha256))):
             raise LaunchHold("role_launch_request")
 
     @property
     def digest(self):
-        return _digest(asdict(self))
+        return _digest(self.to_record())
+
+    def to_record(self):
+        record = asdict(self)
+        if isinstance(self.key, _LedgerRoleKey):
+            record["schema"] = LEDGER_SCHEMA
+            record["role"] = self.key.role
+        return record
 
 
 @dataclass(frozen=True)
@@ -335,6 +425,14 @@ def _request(directory, uid):
     data = _record(directory / "launch.json", uid)
     if data.get("schema") == NEUTRAL_SCHEMA:
         request = NeutralLaunchRequest(**data)
+    elif data.get("schema") == LEDGER_SCHEMA:
+        del data["schema"]
+        role = data.pop("role", None)
+        key_type = {"coding": LedgerLaunchKey, "review": LedgerReviewLaunchKey}.get(role)
+        if key_type is None:
+            raise LaunchHold("role_launch_ledger_key")
+        data["key"] = key_type(**data["key"])
+        request = LaunchRequest(**data)
     else:
         data["key"] = LaunchKey(**data["key"])
         request = LaunchRequest(**data)
@@ -350,13 +448,66 @@ def _check_original(cfg, directory, request):
     uid, key = cfg["controller_uid"], request.key
     admission = _record(directory / "admission.json", uid, request.admission_sha256)
     ledger = admission["ledger"]
-    expected = (key.store_id, key.row_id, key.row_source_sha256, key.epoch, key.operation_id)
-    if (tuple(ledger[name] for name in ("store_id", "row_id", "source_sha256", "epoch", "original_operation_id")) != expected
-            or (admission["owner"], admission["issue_id"], admission["issue"]) !=
-            (key.owner, key.issue_id, key.issue_identifier)):
+    if isinstance(key, _LedgerRoleKey):
+        admission_matches = (type(admission.get("version")) is int and admission["version"] == 2
+                             and not {"issue", "issue_id"} & admission.keys()
+                             and ledger == key.task and admission["owner"] == key.task["owner"])
+    else:
+        expected = (key.store_id, key.row_id, key.row_source_sha256, key.epoch, key.operation_id)
+        admission_matches = (
+            tuple(ledger[name] for name in ("store_id", "row_id", "source_sha256", "epoch",
+                                           "original_operation_id")) == expected
+            and (admission["owner"], admission["issue_id"], admission["issue"])
+            == (key.owner, key.issue_id, key.issue_identifier)
+        )
+    if not admission_matches:
         raise LaunchHold("role_launch_admission")
     intent = _record(directory / "intent.json", uid, key.intent_sha256)
-    if key.role == "coding":
+    if isinstance(key, LedgerLaunchKey):
+        from uif.stokowski import LEDGER_DISPATCH_INTENT, LEDGER_DISPATCH_INTENT_FIELDS
+
+        handoff = _record(directory / "controller-supervisor.json", uid, key.handoff_sha256)
+        workspace = _path(intent["workspace"])
+        if (set(intent) != LEDGER_DISPATCH_INTENT_FIELDS or intent["schema"] != LEDGER_DISPATCH_INTENT
+                or intent["task"] != key.task or intent["operation_id"] != key.operation_id
+                or type(intent["attempt"]) is not type(key.attempt) or intent["attempt"] != key.attempt
+                or workspace.name != key.workspace_key or workspace.parent.name != "workspaces"
+                or intent["lease_id"] != key.lease_id or admission["policy_sha256"] != request.policy_sha256
+                or intent["request_sha256"] != request.request_sha256
+                or intent["pins"]["admission_sha256"] != request.admission_sha256
+                or handoff.get("invocation_id") != key.invocation_id or handoff.get("operation_id") != key.operation_id
+                or handoff.get("dispatch_sha256") != key.intent_sha256):
+            raise LaunchHold("role_launch_ledger_intent")
+        binding = intent["worker_binding"]
+    elif isinstance(key, LedgerReviewLaunchKey):
+        review = intent["request"]
+        if (set(intent) != {"lease", "binding", "request", "phase", "history"}
+                or intent["phase"] != "spawn-pending"
+                or intent["lease"] != key.lease_id
+                or set(review) != {"kind", "policy", "task", "workspace_key", "invocation_id", "lease"}
+                or review["kind"] != LEDGER_REVIEW_ORIGIN or review["task"] != key.task
+                or review["workspace_key"] != key.workspace_key or review["invocation_id"] != key.invocation_id
+                or review["lease"] != key.lease_id or set(review["policy"]) != {"path", "sha256"}
+                or review["policy"]["sha256"] != request.policy_sha256):
+            raise LaunchHold("role_launch_ledger_review_intent")
+        binding = intent["binding"]
+        policy = _record(directory / "review-policy.json", uid, request.policy_sha256)
+        runtime = _path(policy["current_runtime"])
+        source = _path(policy["source"]["root"])
+        if (any(policy.get(name) != value for name, value in {
+                "schema": LEDGER_REVIEW_ORIGIN, "task": key.task, "workspace_key": key.workspace_key,
+                "invocation_id": key.invocation_id, "lease": key.lease_id, "require_stopped_child": True,
+                "owner": key.task["owner"], "reviewer_owner": binding["owner"], "resources": binding["resources"],
+                }.items()) or "issue" in policy or binding["owner"] == key.task["owner"]
+                or source not in (runtime / "workspaces" / key.workspace_key,
+                                  runtime / "contributions" / key.workspace_key / "candidate")
+                or not _path(review["policy"]["path"]).is_relative_to(runtime)
+                or binding["mode"] != "native-review-read-only" or binding["write_roots"] != []
+                or binding["read_roots"] != [str(source)]
+                or any(binding[name] != policy["source"][field] for name, field in (
+                    ("head", "head"), ("branch", "branch"), ("source_sha256", "files_sha256")))):
+            raise LaunchHold("role_launch_review_scope")
+    elif key.role == "coding":
         attempt = intent["attempt"]
         if (type(attempt) not in (int, type(None)) or ("initial" if attempt is None else str(attempt)) != key.attempt_id
                 or intent["schema"] != "uif-dispatch-intent/1" or intent["issue"]["issue_id"] != key.issue_id
@@ -405,6 +556,10 @@ def _check_original(cfg, directory, request):
     if row != (_digest(binding), "running"):
         raise LaunchHold("role_launch_lease")
     work = _record(directory / "request.json", uid, request.request_sha256)
+    if isinstance(key, LedgerLaunchKey):
+        target = {name: key.task[name] for name in ("store_id", "row_id", "snapshot_sha256", "source_sha256")}
+        if work.pop("ledger_task", None) != target:
+            raise LaunchHold("role_launch_ledger_work")
     if (set(work) != {"prompt", "timeout_seconds"} or not isinstance(work["prompt"], str)
             or not work["prompt"].strip() or type(work["timeout_seconds"]) is not int
             or not 1 <= work["timeout_seconds"] <= 600):
@@ -726,8 +881,8 @@ def _prepare(role, cfg, directory, request):
     uid, gid = role["uid"], role["gid"]
     slot = role_root / request.slot
     slot.mkdir(mode=0o700)
-    workspace = slot / "workspaces" / request.key.issue_identifier
-    name = request.key.issue_identifier
+    name = request.key.workspace_key
+    workspace = slot / "workspaces" / name
     if request.key.role == "review":
         name = "review-" + name + "-" + request.slot[:16]
     attempt = slot / "attempts" / name
@@ -818,18 +973,21 @@ class _CloneArgs(ctypes.Structure):
         "tls", "set_tid", "set_tid_size", "cgroup")]
 
 
-def _clone_into(cgroup):
+def _clone_into(cgroup, *, project_work=False):
     # CLONE_NEWNS | CLONE_NEWPID | CLONE_INTO_CGROUP. The fixed helper is
     # single-threaded; there is no CLONE_VM and no child can run outside cg.
     fd = os.open(cgroup, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
-        args = _CloneArgs(flags=0x00020000 | 0x20000000 | 0x200000000,
+        flags = 0x00020000 | 0x20000000 | 0x200000000
+        if project_work:
+            flags |= 0x40000000  # CLONE_NEWNET
+        args = _CloneArgs(flags=flags,
                           exit_signal=17, cgroup=fd)
         call = _linux().syscall
         call.restype = ctypes.c_long
         pid = call(435, ctypes.byref(args), ctypes.sizeof(args))
         if pid < 0:
-            raise LaunchHold(f"role_launch_clone3:{ctypes.get_errno()}")
+            raise _CloneRefused(f"role_launch_clone3:{ctypes.get_errno()}")
         return pid
     finally:
         os.close(fd)
@@ -864,7 +1022,8 @@ def _namespace_files(cfg, role, dropper, guard, workspace, attempt, role_name):
     entries.extend(((workspace, workspace, True, role_name == "review"),
                     (attempt, attempt, True, False)))
     protected = tuple(_path(cfg[name]) for name in ("controller_root", "cgroup_root"))
-    role_roots = tuple(_path(item["root"]) for item in cfg["roles"].values())
+    role_roots = tuple(_path(item["execution_root"] if name == "neutral" else item["root"])
+                       for name, item in cfg["roles"].items())
     kernel = (Path("/proc"), Path("/sys"), Path("/dev"))
     seen = list(kernel)
     for source, target, directory, _readonly in entries:
@@ -890,6 +1049,38 @@ def _neutral_scope_fd(path, anchor, uid):
         return _open_beneath(parent, path.name, os.O_PATH)
     finally:
         os.close(parent)
+
+
+def _prepare_project_output(role, request, work):
+    writable = work["resources"]["write_roots"]
+    if not writable:
+        return
+    job = request.binding["job_id"]
+    parent, = (_path(value) for value in role["write_roots"])
+    if (not isinstance(job, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}", job)
+            or writable != [str(parent / job)]):
+        raise LaunchHold("neutral_project_output_binding")
+    parent_fd = _open_projection_root(parent, custody_root=role["execution_root"],
+                                      custody_uid=role["execution_uid"])
+    try:
+        metadata = os.fstat(parent_fd)
+        if (metadata.st_uid, metadata.st_gid, stat.S_IMODE(metadata.st_mode)) != (0, 0, 0o711):
+            raise LaunchHold("neutral_project_output_custody")
+        os.mkdir(job, mode=0o700, dir_fd=parent_fd)
+        job_fd = _open_beneath(parent_fd, job, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            for name in ("empty-home", "scratch"):
+                os.mkdir(name, mode=0o700, dir_fd=job_fd)
+                child_fd = _open_beneath(job_fd, name, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fchown(child_fd, role["uid"], role["gid"])
+                finally:
+                    os.close(child_fd)
+            os.fchown(job_fd, role["uid"], role["gid"])
+        finally:
+            os.close(job_fd)
+    finally:
+        os.close(parent_fd)
 
 
 def _neutral_plan(cfg, role, work, stack):
@@ -937,7 +1128,12 @@ def _neutral_plan(cfg, role, work, stack):
         mode = os.fstat(fd).st_mode
         if not stat.S_ISDIR(mode) and not stat.S_ISREG(mode):
             raise LaunchHold("neutral_launch_mount_type")
-        selected.append((fd, path, stat.S_ISDIR(mode), readonly))
+        # Clone the selected mount while its FD still belongs to this
+        # namespace. After CLONE_NEWNS the inherited ordinary O_PATH mount
+        # is foreign; a detached anonymous mount FD remains attachable.
+        mount_fd = _mount_call(428, fd, b"", 0x1000 | 1 | os.O_CLOEXEC)
+        stack.callback(os.close, mount_fd)
+        selected.append((mount_fd, path, stat.S_ISDIR(mode), readonly))
     command = [paths["setpriv"], f"--reuid={role['uid']}", f"--regid={role['gid']}", "--clear-groups",
                "--bounding-set=-all", "--inh-caps=-all", "--ambient-caps=-all", "--no-new-privs", "--",
                paths["bash"], "--noprofile", "--norc", "-c", work["command"]]
@@ -984,13 +1180,12 @@ def _neutral_mounts(root, entries):
             try:
                 if stat.S_ISDIR(os.fstat(target_fd).st_mode) != directory:
                     raise LaunchHold("neutral_launch_mountpoint_type")
-                mount_fd = _mount_call(428, fd, b"", 0x1000 | 1 | os.O_CLOEXEC)
-                try:
-                    attributes = _MountAttr(set=2 | 4 | int(readonly))
-                    _mount_call(442, mount_fd, b"", 0x1000, ctypes.byref(attributes), ctypes.sizeof(attributes))
-                    _mount_call(429, mount_fd, b"", target_fd, b"", 0x04 | 0x40)
-                finally:
-                    os.close(mount_fd)
+                # fd is the parent-created detached mount, not a path FD
+                # tied to the parent's ordinary mount namespace. Ownership
+                # remains with _namespace_init / the parent's ExitStack.
+                attributes = _MountAttr(set=2 | 4 | int(readonly))
+                _mount_call(442, fd, b"", 0x1000, ctypes.byref(attributes), ctypes.sizeof(attributes))
+                _mount_call(429, fd, b"", target_fd, b"", 0x04 | 0x40)
             finally:
                 os.close(target_fd)
             installed.append(target)
@@ -1065,7 +1260,17 @@ def _neutral_logs(role, request, logs):
         os.close(directory)
 
 
-def _private_root(root, entries, ordinary_mounts=()):
+def _project_devices(root):
+    device_root = root / "dev"
+    device_root.mkdir(mode=0o755)
+    # This dedicated mount enables just the null device used by Git.
+    _mount("tmpfs", device_root, "tmpfs", 2 | 8, "mode=0755,size=4096,nr_inodes=4")
+    null = device_root / "null"
+    os.mknod(null, stat.S_IFCHR | 0o600, os.makedev(1, 3))
+    null.chmod(0o666)
+
+
+def _private_root(root, entries, ordinary_mounts=(), *, project_work=False):
     # No recursive bind of a host tree. MS_PRIVATE prevents propagation in
     # either direction. Child mounts are visible only in this mount namespace.
     _mount(None, "/", None, 16384 | 262144)
@@ -1087,6 +1292,8 @@ def _private_root(root, entries, ordinary_mounts=()):
         _mount(None, mountpoint, None, 4096 | 32 | 2 | 4 | int(readonly))
     if ordinary_mounts:
         _neutral_mounts(root, ordinary_mounts)
+    if project_work:
+        _project_devices(root)
     proc = root / "proc"
     proc.mkdir(mode=0o700)
     _mount("proc", proc, "proc", 2 | 4 | 8)
@@ -1105,14 +1312,16 @@ def _close_except(*kept):
 
 
 def _namespace_init(root, entries, command, stdin, stdout, stderr, ready, gate, *,
-                    ordinary_mounts=(), cwd="/", child_env=ENV, cpu_ids=()):
+                    ordinary_mounts=(), cwd="/", child_env=ENV, cpu_ids=(), project_work=False):
     for fd, source in enumerate((stdin, stdout, stderr)):
         os.dup2(source, fd, inheritable=True)
     mount_fds = [item[0] for item in ordinary_mounts]
     _close_except(ready, gate, *mount_fds)
     if cpu_ids:
         os.sched_setaffinity(0, cpu_ids)
-    if ordinary_mounts:
+    if project_work:
+        _private_root(root, entries, ordinary_mounts, project_work=True)
+    elif ordinary_mounts:
         _private_root(root, entries, ordinary_mounts)
     else:
         _private_root(root, entries)
@@ -1170,6 +1379,11 @@ def _namespace_ids(pid):
     return result
 
 
+def _network_namespace_id(pid):
+    info = Path(f"/proc/{pid}/ns/net").stat()
+    return info.st_dev, info.st_ino
+
+
 def _valid_namespaces(value):
     return (isinstance(value, dict) and set(value) == {"mnt", "pid"}
             and all(isinstance(identity, list) and len(identity) == 2
@@ -1178,42 +1392,64 @@ def _valid_namespaces(value):
 
 
 def _spawn_isolated(cg, cg_id, root, entries, command, logs, witness, request, start_by, check_fence, *,
-                    ordinary_mounts=(), cwd="/", child_env=ENV, cpu_ids=()):
+                    ordinary_mounts=(), cwd="/", child_env=ENV, cpu_ids=(), project_work=False, startup=None):
+    startup = {} if startup is None else startup
     stdin_r, stdin_w = os.pipe2(os.O_CLOEXEC)
     ready_r, ready_w = os.pipe2(os.O_CLOEXEC)
     gate_r, gate_w = os.pipe2(os.O_CLOEXEC)
     owned = {stdin_r, stdin_w, ready_r, ready_w, gate_r, gate_w}
     try:
-        pid = _clone_into(cg)
+        startup["phase"] = "clone"
+        try:
+            pid = _clone_into(cg, project_work=True) if project_work else _clone_into(cg)
+        except _CloneRefused:
+            startup["clone_refused"] = True
+            raise
         if pid == 0:
             try:
                 fd = os.open("/dev/null", os.O_RDONLY | os.O_CLOEXEC) if ordinary_mounts else stdin_r
                 _namespace_init(root, entries, command, fd, logs[0].fileno(), logs[1].fileno(),
                                 ready_w, gate_r, ordinary_mounts=ordinary_mounts, cwd=cwd,
-                                child_env=child_env, cpu_ids=cpu_ids)
+                                child_env=child_env, cpu_ids=cpu_ids, project_work=project_work)
+            except BaseException as error:
+                try:
+                    os.write(ready_w, b"E" + _wire(_startup_error(error, "namespace-init"))[:1024])
+                except OSError:
+                    pass
             finally:
                 os._exit(126)
+        startup.update(pid=pid, phase="namespace-readiness")
+        _create(witness / "spawned.json", {"request": request.digest, "boot": _boot(),
+                "cgroup": cg_id, "pid": pid, "start_ticks": _start_ticks(pid)})
         for fd in (stdin_r, ready_w, gate_r):
             os.close(fd)
             owned.remove(fd)
         remaining = max(0, start_by - time.monotonic())
         ready, _, _ = select.select([ready_r], [], [], remaining)
-        if (not ready or os.read(ready_r, 1) != b"R" or time.monotonic() >= start_by
+        marker = os.read(ready_r, 1) if ready else b""
+        if marker == b"E":
+            startup["namespace_error"] = _json(os.read(ready_r, 1024))
+        if (not ready or marker != b"R" or time.monotonic() >= start_by
                 or (witness / "cancel.json").exists()):
             raise LaunchHold("role_launch_namespace_readiness")
+        startup["phase"] = "namespace-identity"
         namespaces = _namespace_ids(pid)
         host = _namespace_ids(os.getpid())
         members = (cg / "cgroup.procs").read_text().split()
         if (not _valid_namespaces(namespaces) or any(namespaces[n] == host[n] for n in namespaces)
                 or _cgroup_id(cg) != cg_id or str(pid) not in members):
             raise LaunchHold("role_launch_namespace_or_cgroup_identity")
+        if project_work and _network_namespace_id(pid) == _network_namespace_id(os.getpid()):
+            raise LaunchHold("neutral_project_network_namespace_identity")
         started = {"pid": pid, "start_ticks": _start_ticks(pid), "boot": _boot(), "cgroup": cg_id,
                    "namespaces": namespaces, "request": request.digest, "isolation": ATTEMPT_ISOLATION}
         _create(witness / "started.json", started)
         check_fence()
         if time.monotonic() >= start_by or (witness / "cancel.json").exists():
             raise LaunchHold("role_launch_namespace_gate")
+        startup["phase"] = "command-gate"
         os.write(gate_w, b"G")
+        startup["command_released"] = True
         _create(witness / "released.json", {"request": request.digest, "started_sha256": _digest(started)})
         stream = os.fdopen(stdin_w, "wb", buffering=0)
         owned.remove(stdin_w)
@@ -1250,13 +1486,17 @@ def _monitor(child, cg, logs, work):
         pipe.close()
 
 
-def _watch(cfg, directory, witness, request, role, work, limits, start_by):
+def _watch(cfg, directory, witness, request, role, work, limits, start_by, *,
+           release_gate=None, project_work=False):
     child = None
     cg_id = None
     spawn_window = False
+    startup = {"phase": "prepare", "clone_refused": False, "command_released": False}
     projection_fds = []
     cg = _cgroup(cfg, request.slot)
     try:
+        _create(witness / "watcher.json", {"request": request.digest, "boot": _boot(),
+                "pid": os.getpid(), "start_ticks": _start_ticks(os.getpid())})
         # The watcher is single-purpose and remains outside the role cgroup.
         if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) != 0:
             raise LaunchHold("role_launch_subreaper")
@@ -1281,19 +1521,29 @@ def _watch(cfg, directory, witness, request, role, work, limits, start_by):
 
         if neutral:
             with ExitStack() as stack:
-                entries, mounts, command, cwd, env = _neutral_plan(cfg, role, work, stack)
-                readers, writers = {}, []
-                for name in ("stdout", "stderr"):
-                    read_fd, write_fd = os.pipe2(os.O_CLOEXEC)
-                    readers[name] = stack.enter_context(os.fdopen(read_fd, "rb", buffering=0))
-                    writers.append(stack.enter_context(os.fdopen(write_fd, "wb", buffering=0)))
-                check_fence()
-                if time.monotonic() >= start_by or (witness / "cancel.json").exists():
-                    raise LaunchHold("role_launch_pre_spawn_hold")
-                spawn_window = True
-                child, started = _spawn_isolated(
-                    cg, cg_id, root, entries, command, writers, witness, request, start_by, check_fence,
-                    ordinary_mounts=mounts, cwd=cwd, child_env=env, cpu_ids=request.cpu_ids)
+                # The helper can time out before the watcher starts. Take the
+                # watcher's own drain fence before preparing any namespace and
+                # retain it through release of the command and its witness.
+                with release_gate() if release_gate is not None else nullcontext():
+                    if project_work:
+                        check_fence()
+                        if time.monotonic() >= start_by or (witness / "cancel.json").exists():
+                            raise LaunchHold("role_launch_pre_spawn_hold")
+                        _prepare_project_output(role, request, work)
+                    entries, mounts, command, cwd, env = _neutral_plan(cfg, role, work, stack)
+                    readers, writers = {}, []
+                    for name in ("stdout", "stderr"):
+                        read_fd, write_fd = os.pipe2(os.O_CLOEXEC)
+                        readers[name] = stack.enter_context(os.fdopen(read_fd, "rb", buffering=0))
+                        writers.append(stack.enter_context(os.fdopen(write_fd, "wb", buffering=0)))
+                    check_fence()
+                    if time.monotonic() >= start_by or (witness / "cancel.json").exists():
+                        raise LaunchHold("role_launch_pre_spawn_hold")
+                    spawn_window = True
+                    child, started = _spawn_isolated(
+                        cg, cg_id, root, entries, command, writers, witness, request, start_by, check_fence,
+                        ordinary_mounts=mounts, cwd=cwd, child_env=env, cpu_ids=request.cpu_ids,
+                        project_work=project_work, startup=startup)
                 for stream in writers:
                     stream.close()
                 outcome, captured, truncated = _neutral_monitor(child, cg, readers, witness, work, role)
@@ -1314,7 +1564,7 @@ def _watch(cfg, directory, witness, request, role, work, limits, start_by):
             with _log(attempt / "stdout.jsonl", role) as out, _log(attempt / "stderr.log", role) as err:
                 spawn_window = True
                 child, started = _spawn_isolated(cg, cg_id, root, entries, command, (out, err),
-                                                  witness, request, start_by, check_fence)
+                                                  witness, request, start_by, check_fence, startup=startup)
                 _monitor(child, cg, (out, err), work)
         if _populated(cg):
             _kill(cg)
@@ -1332,8 +1582,19 @@ def _watch(cfg, directory, witness, request, role, work, limits, start_by):
                 except (OSError, ValueError):
                     pass
             _create(witness / "terminal.json", terminal)
-    except Exception:
-        if not spawn_window and cg_id is not None and not _populated(cg):
+    except Exception as error:
+        # Publish the reason before cleanup: a later cleanup error must not
+        # erase the original failure. Existing old reservations are untouched.
+        try:
+            _create(witness / "startup-failure.json", {"request": request.digest, "boot": _boot(),
+                    "isolation": ATTEMPT_ISOLATION, "cgroup": cg_id,
+                    "error": _startup_error(error, startup["phase"]), **startup})
+        except (OSError, ValueError):
+            # A failed diagnostic write must never skip containment cleanup.
+            pass
+        no_child = not spawn_window or startup["clone_refused"]
+        if (no_child and cg_id is not None and _cgroup_id(cg) == cg_id
+                and not _populated(cg) and _wait_empty(cg) and _cgroup_id(cg) == cg_id):
             terminal = {"state": "refused-before-fork", "request": request.digest, "boot": _boot(),
                         "cgroup": cg_id, "pid": None, "exit_code": None, "isolation": ATTEMPT_ISOLATION}
             if isinstance(request, NeutralLaunchRequest):
@@ -1345,6 +1606,14 @@ def _watch(cfg, directory, witness, request, role, work, limits, start_by):
                 _kill(cg)
                 if child is not None:
                     child.wait(timeout=4)
+                elif startup.get("pid") is not None:
+                    # This watcher is still the original child's parent.
+                    # waitpid cannot signal or reap an unrelated reused PID.
+                    process = _NamespaceProcess(startup["pid"], None)
+                    process.wait(timeout=4)
+                    _create(witness / "startup-reaped.json", {
+                        "request": request.digest, "boot": _boot(), "cgroup": cg_id,
+                        "pid": process.pid, "exit_code": process.returncode})
                 _wait_empty(cg)
             except (OSError, ValueError, subprocess.SubprocessError):
                 pass
@@ -1496,7 +1765,7 @@ def _cancel_existing(cfg, witness, request):
     return _observe(cfg, witness, request)
 
 
-def _handle_original(cfg, action, directory, request):
+def _handle_original(cfg, action, directory, request, *, release_gate=None, project_work=False):
     slot = request.slot
     witness = directory / ".role-helper"
     if action == "observe":
@@ -1529,7 +1798,8 @@ def _handle_original(cfg, action, directory, request):
                 os.dup2(fd, channel)
             os.close(fd)
             os.closerange(3, os.sysconf("SC_OPEN_MAX"))
-            _watch(cfg, directory, witness, request, cfg["roles"][request.key.role], work, limits, end)
+            _watch(cfg, directory, witness, request, cfg["roles"][request.key.role], work, limits, end,
+                   release_gate=release_gate, project_work=project_work)
         finally:
             os._exit(0)
     while time.monotonic() < end:

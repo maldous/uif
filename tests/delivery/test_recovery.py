@@ -62,3 +62,27 @@ class RecoveryTests(PublicationFixture):
         with self.assertRaisesRegex(SourceHold, "checkpoint_incompatible"):
             recovery.observe(self.request, pin)
         self.assertTrue(all(call["mode"] == "observe" for call in self.calls()[1:]))
+
+
+class LedgerRecoveryTests(PublicationFixture):
+    ledger_only = True
+
+    def test_checkpoint_requires_exact_ledger_task_and_workspace_key(self):
+        publication = self.publisher.consume_boundary(self.request)
+        pin = CheckpointPin("thread", "", "checkpoint", "run", "a" * 64, "b" * 64,
+                            "c" * 64, ("publish",), ("complete",), "d" * 64, 2)
+        metadata = pin.metadata(self.request, publication)
+        self.assertNotIn("issue_id", metadata)
+        self.assertEqual(metadata["task"], self.request.task.to_record())
+        self.assertEqual(metadata["workspace_key"], self.request.task.key.workspace_key)
+        record = SimpleNamespace(
+            config={"configurable": {"thread_id": "thread", "checkpoint_ns": "", "checkpoint_id": "checkpoint"}},
+            checkpoint={"id": "checkpoint", "v": 2}, metadata={"uif_recovery": metadata}, pending_writes=[],
+        )
+        recovery = Recovery(self.publisher, LangGraphCheckpoint(
+            ExistingSaver(record), pin.graph_sha256, pin.schema_sha256, pin.code_sha256, pin.wire_version,
+        ))
+        self.assertEqual(recovery.observe(self.request, pin).publication, publication)
+        record.metadata["uif_recovery"]["workspace_key"] = "different-key"
+        with self.assertRaisesRegex(SourceHold, "checkpoint_incompatible"):
+            recovery.observe(self.request, pin)

@@ -1,6 +1,6 @@
 """Exercise the persisted owner authority at the coordinator's real hook boundaries."""
 
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 import json
 from pathlib import Path
 import sqlite3
@@ -8,17 +8,19 @@ import subprocess
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
+from uuid import UUID
 
 import test_dispatch as dispatch_fixtures
 import test_validation as validation_fixtures
 import test_publication as publication_fixtures
 from uif.admission import _fingerprint
-from uif.ledger import RowKey, read_snapshot
+from uif.ledger import RowKey, SNAPSHOT_SHA256, read_snapshot
 from uif.native_publisher import inner_response
-from uif.publication import fingerprint
-from uif.owner_runtime import OwnerAuthority, bind_owner_coordinator
+from uif.publication import AcceptedPublication, PublicationRequest, fingerprint
+from uif.owner_runtime import LEDGER_PUBLICATION_REQUEST, OwnerAuthority, bind_owner_coordinator
 from uif.source import SourceHold, file_digest
-from uif.stokowski import UIF, Workspace
+from uif.stokowski import DispatchReportBinding, LEDGER_DISPATCH_INTENT, LEDGER_DISPATCH_REPORT, UIF, Workspace
+from uif.task_identity import LedgerTaskEnvelope, LedgerTaskKey
 
 
 ROW = "src-059-qualification"
@@ -80,6 +82,316 @@ class OwnerRuntimeTests(IsolatedAsyncioTestCase):
 
     def authority(self):
         return OwnerAuthority.load(self.registration["path"], self.registration["sha256"])
+
+    def prepare_ledger_inputs(self, *, state="confirmed-absent", operation=None, **request_fields):
+        f = self.fixture
+        key = LedgerTaskKey("fixture-uif-store", ROW)
+        target = dict(store_id=key.store_id, row_id=key.row_id,
+                      snapshot_sha256=SNAPSHOT_SHA256, source_sha256=self.entry["source_sha256"])
+        task = {name: value for name, value in f.manifest["tasks"][f.issue.identifier].items()
+                if name != "issue_id"}
+        manifest = {**f.manifest, "tasks": {key.workspace_key: {**task, "ledger_task": target}}}
+        inputs = json.loads(Path(self.entry["admission_inputs"]["path"]).read_bytes())
+        inputs["manifest_sha256"] = dispatch_fixtures.put(f.runtime / "manifest.json", manifest)
+        inputs["request_sha256"] = dispatch_fixtures.put(
+            f.runtime / "requests" / (key.workspace_key + ".json"),
+            dict(prompt="fixture prompt", timeout_seconds=12, ledger_task=target, **request_fields))
+        lease = "rt-" + _fingerprint(dict(runtime=str(f.runtime), manifest_sha256=_fingerprint(manifest),
+                                          ledger_task=key.workspace_key))
+        effect = json.loads(Path(self.entry["effect"]["path"]).read_bytes())
+        effect.update(lease_ids=[lease], state=state, operation_id=operation)
+        self.entry.update(issue=None, lease_ids=[lease], effect=self.ref("effect.json", effect),
+                          admission_inputs=self.ref("admission-inputs.json", inputs))
+        self.set_catalogue()
+        return key
+
+    def test_selected_ledger_intake_claims_once_and_acquires_exact_workspace(self):
+        f = self.fixture
+        key = self.prepare_ledger_inputs()
+        owner, orchestrator = SimpleNamespace(), SimpleNamespace()
+        intake = bind_owner_coordinator(self.authority(), orchestrator, None, owner, intake="ledger")
+        selected, = intake.select_ready().eligible
+        self.assertEqual(selected.key, RowKey(key.store_id, key.row_id))
+        self.assertIsNone(selected.issue)
+        self.assertIsNone(selected.operation_id)
+        self.assertFalse(self.claim_file.exists())
+        task = intake.claim(key)
+        self.assertIsInstance(task, LedgerTaskEnvelope)
+        self.assertEqual(task.key, key)
+        self.assertEqual(str(UUID(task.original_operation_id)), task.original_operation_id)
+        claim = json.loads(self.claim_file.read_bytes())
+        self.assertEqual((claim["version"], claim["ledger"]), (2, task.to_record()))
+        self.assertFalse({"issue", "issue_id"} & claim.keys())
+        authority = self.authority()
+        self.assertEqual(authority.admission.ledger_context(task).ledger.original_operation_id,
+                         task.original_operation_id)
+        self.assertFalse(authority.select_ledger_tasks().eligible)
+        with self.assertRaisesRegex(SourceHold, "pickup_held"):
+            authority.claim_ledger_task(key)
+        self.assertEqual(json.loads(self.claim_file.read_bytes()), claim)
+        forged = LedgerTaskEnvelope.from_record(
+            {**task.to_record(), "original_operation_id": "invented"}, snapshot_path=SNAPSHOT)
+        lock_paths = set(authority.operation_locks_path.iterdir())
+        with self.assertRaisesRegex(SourceHold, "task_claim_drift"):
+            authority.ensure_ledger_workspace(forged, f.coordinator / "workspaces")
+        self.assertEqual(set(authority.operation_locks_path.iterdir()), lock_paths)
+        with authority.lock(operation=task.original_operation_id):
+            with self.assertRaisesRegex(SourceHold, "operation_busy"):
+                authority.ensure_ledger_workspace(task, f.coordinator / "workspaces")
+        workspace = intake.ensure_workspace(task, f.coordinator / "workspaces")
+        self.assertEqual((workspace.identifier, workspace.path),
+                         (key.workspace_key, f.runtime / "workspaces" / key.workspace_key))
+        self.assertEqual((workspace.path / "source").read_text(), "disposable source")
+        self.assertFalse(authority.ensure_ledger_workspace(task, f.coordinator / "workspaces").created)
+        self.assertEqual(vars(orchestrator), {})
+
+    def test_ledger_intake_preserves_reconciled_operation(self):
+        key = self.prepare_ledger_inputs(state="reconciled-for-pickup", operation="retained-original")
+        with patch("uif.owner_runtime.uuid4", side_effect=AssertionError("original must be reused")):
+            self.assertEqual(self.authority().claim_ledger_task(key).original_operation_id, "retained-original")
+
+    async def test_ledger_dispatch_carrier_and_original_intent_fence(self):
+        f = self.fixture
+        key = self.prepare_ledger_inputs(state="reconciled-for-pickup", operation="opaque-original")
+        authority = self.authority()
+        task = authority.claim_ledger_task(key)
+        admission = authority.admission.ledger_context(task).ledger
+        legacy = DispatchReportBinding(f.polled, 3, f.workspace, "legacy-original", f.path, "0" * 64)
+        self.assertIsNone(legacy.task)
+        self.assertEqual(tuple(asdict(legacy)), ("issue", "attempt_number", "workspace",
+                                                "operation_id", "receipt_path", "receipt_sha256", "ledger"))
+        pins = authority.admission.runtime_pins(None, admission, task=task)
+        claim = json.loads(self.claim_file.read_bytes())
+        workspace = f.runtime / "workspaces" / key.workspace_key
+        receipt = f.runtime / "attempts" / key.workspace_key / "dispatch-intent.json"
+        record = dict(schema=LEDGER_DISPATCH_INTENT, task=task.to_record(), admission=asdict(admission),
+                      operation_id=task.original_operation_id, attempt=3, workspace=str(workspace),
+                      source=f.source.repository, source_head=f.source.head, source_tree=f.source.tree,
+                      source_branch=f.source.branch, acquisition_sha256=f.source.acquisition_sha256,
+                      accepted_sha256=f.source.accepted_sha256, supervisor_sha256=file_digest(f.supervisor),
+                      requested_model="gpt-6.1-sol", requested_effort="medium", pins=asdict(pins),
+                      manifest_sha256=claim["manifest_sha256"], request_sha256=claim["request_sha256"],
+                      lease_id=self.entry["lease_ids"][0], pool_database=str(authority.pool_database_path),
+                      worker_binding={})
+        with authority.admission.dispatch_fence(None, admission, task=task) as register:
+            receipt.parent.mkdir(parents=True, mode=0o700)
+            wrong_digest = dispatch_fixtures.put(receipt, {**record, "issue": None})
+            with self.assertRaisesRegex(SourceHold, "intent_drift"):
+                register(receipt, wrong_digest)
+            for field in ("source_head", "source", "source_tree", "source_branch",
+                          "acquisition_sha256", "accepted_sha256"):
+                wrong_digest = dispatch_fixtures.put(receipt, {**record, field: "0" * len(record[field])})
+                with self.assertRaisesRegex(SourceHold, "intent_drift"):
+                    register(receipt, wrong_digest)
+                with self.assertRaisesRegex(SourceHold, "requires_reconciliation"):
+                    authority.admission.ledger.verify_dispatch(
+                        admission, None, operation_id=task.original_operation_id,
+                        receipt_path=receipt, receipt_sha256=wrong_digest, task=task)
+            digest = dispatch_fixtures.put(receipt, record)
+            register(receipt, digest)
+            authority.admission.ledger.verify_dispatch(
+                admission, None, operation_id=task.original_operation_id,
+                receipt_path=receipt, receipt_sha256=digest, task=task)
+            binding = DispatchReportBinding(None, 3, workspace, task.original_operation_id,
+                                            receipt, digest, admission, task=task)
+            wire = binding.to_record()
+            self.assertEqual((wire["schema"], wire["task"], wire["operation_id"]),
+                             (LEDGER_DISPATCH_REPORT, task.to_record(), "opaque-original"))
+            self.assertNotIn("issue", wire)
+            self.assertEqual(DispatchReportBinding.from_ledger_record(wire, snapshot_path=SNAPSHOT).task, task)
+            with self.assertRaisesRegex(SourceHold, "report_shape"):
+                DispatchReportBinding.from_ledger_record({**wire, "issue": None}, snapshot_path=SNAPSHOT)
+        authority = self.authority()
+        self.assertEqual(authority.catalogue()[0]["rows"][ROW]["dispatch_intent"],
+                         {"path": str(receipt), "sha256": digest})
+        with sqlite3.connect(authority.pool_database_path) as db:
+            db.execute("INSERT INTO leases VALUES (?, ?, ?, ?, ?)",
+                       (record["lease_id"], "{}", "fixture", "finished", "succeeded"))
+        with self.assertRaisesRegex(SourceHold, "requires_reconciliation"):
+            authority.admission.ledger_context(task)
+        async with authority.stage_fence("validation", SimpleNamespace(binding=SimpleNamespace(dispatch=binding))):
+            with self.assertRaisesRegex(SourceHold, "operation_busy"):
+                with self.authority().lock(operation=task.original_operation_id):
+                    self.fail("stage released the original operation lock")
+        other_runtime = f.runtime.parent / "other-runtime"
+        for forged, error in (
+            (replace(binding, receipt_sha256="9" * 64, task=task), "dispatch_intent_drift"),
+            (replace(binding, ledger=replace(admission, prior_effect="confirmed-absent"), task=task),
+             "dispatch_intent_drift"),
+            (replace(binding, workspace=other_runtime / "workspaces" / key.workspace_key,
+                     receipt_path=other_runtime / "attempts" / key.workspace_key / receipt.name, task=task),
+             "stage_workspace"),
+        ):
+            with self.subTest(error=error), self.assertRaisesRegex(SourceHold, error):
+                async with authority.stage_fence(
+                        "validation", SimpleNamespace(binding=SimpleNamespace(dispatch=forged))):
+                    self.fail("unexpected stage admission")
+
+    def test_ledger_report_requires_exact_path_spelling(self):
+        key = self.prepare_ledger_inputs()
+        authority = self.authority()
+        task = authority.claim_ledger_task(key)
+        admission = authority.admission.ledger_context(task).ledger
+        runtime = self.fixture.runtime
+        workspace = runtime / "workspaces" / key.workspace_key
+        receipt = runtime / "attempts" / key.workspace_key / "dispatch-intent.json"
+        wire = DispatchReportBinding(None, 3, workspace, task.original_operation_id, receipt,
+                                     "1" * 64, admission, task=task).to_record()
+        self.assertEqual(DispatchReportBinding.from_ledger_record(wire, snapshot_path=SNAPSHOT).to_record(), wire)
+        for field, segment in (("receipt_path", "/attempts/"), ("workspace", "/workspaces/")):
+            for spelling in (segment + "/", segment + "./"):
+                with self.subTest(field=field, spelling=spelling):
+                    alias = {**wire, field: wire[field].replace(segment, spelling)}
+                    with self.assertRaisesRegex(SourceHold, "report_shape"):
+                        DispatchReportBinding.from_ledger_record(alias, snapshot_path=SNAPSHOT)
+
+    async def test_ledger_stage_requires_registered_dispatch_receipt(self):
+        key = self.prepare_ledger_inputs()
+        authority = self.authority()
+        task = authority.claim_ledger_task(key)
+        admission = authority.admission.ledger_context(task).ledger
+        runtime = self.fixture.runtime
+        workspace = runtime / "workspaces" / key.workspace_key
+        receipt = runtime / "attempts" / key.workspace_key / "dispatch-intent.json"
+        dispatch = DispatchReportBinding(None, 3, workspace, task.original_operation_id, receipt,
+                                         "1" * 64, admission, task=task)
+        spec = SimpleNamespace(binding=SimpleNamespace(dispatch=dispatch), policy=runtime / "capacity-policy.json",
+                               policy_sha256="2" * 64)
+        selection = SimpleNamespace(spec=spec, installation_sha256="3" * 64,
+                                    capacity_policy_sha256="4" * 64, provider_proof_sha256="5" * 64)
+        with self.subTest("validation"):
+            with self.assertRaisesRegex(SourceHold, "dispatch_intent_drift"):
+                async with authority.stage_fence("validation", spec):
+                    pass
+        with self.subTest("review"):
+            record = {name: value for name, value in vars(selection).items() if name != "spec"}
+            record["spec"] = {}
+            with (patch.object(authority, "ledger_review_record", return_value=record),
+                  patch("uif.owner_runtime.review_spec_record", return_value={})):
+                with self.assertRaisesRegex(SourceHold, "dispatch_intent_drift"):
+                    with authority.review_fence(selection):
+                        pass
+
+    def test_ledger_intake_preserves_original_after_incomplete_catalogue_write(self):
+        key = self.prepare_ledger_inputs()
+        authority = self.authority()
+        with patch.object(authority, "_replace_catalogue", side_effect=SourceHold("fixture interrupted write")):
+            with self.assertRaisesRegex(SourceHold, "interrupted write"):
+                authority.claim_ledger_task(key)
+        original = self.claim_file.read_bytes()
+        self.assertTrue(json.loads(original)["ledger"]["original_operation_id"])
+        self.assertIn("requires_reconciliation", self.authority().select_ledger_tasks().held[ROW])
+        with patch("uif.owner_runtime.uuid4", side_effect=AssertionError("must not allocate again")):
+            with self.assertRaisesRegex(SourceHold, "requires_reconciliation"):
+                self.authority().claim_ledger_task(key)
+        self.assertEqual(self.claim_file.read_bytes(), original)
+
+    def test_ledger_completion_recovers_exact_task_with_registered_snapshot(self):
+        @dataclass(frozen=True)
+        class LedgerRequestFixture:
+            admission: object
+            task: LedgerTaskEnvelope
+            issue: None = None
+
+            @property
+            def key(self):
+                return RowKey(self.task.key.store_id, self.task.key.row_id)
+
+            def to_record(self):
+                return dict(schema=LEDGER_PUBLICATION_REQUEST, admission=asdict(self.admission),
+                            task=self.task.to_record())
+
+        key = self.prepare_ledger_inputs()
+        authority = self.authority()
+        task = authority.claim_ledger_task(key)
+        request = LedgerRequestFixture(authority.admission.ledger_context(task).ledger, task)
+        publication = AcceptedPublication(request, "1" * 40, "2" * 40, "fixture", "3" * 64, "4" * 64)
+        record = authority._completion_record(publication)
+        self.assertEqual(record["schema"], "uif-owner-delivery-completion/2")
+        self.assertEqual(record["publication"]["request"], request.to_record())
+        path = self.fixture.runtime / "delivery-completion.json"
+        digest = dispatch_fixtures.put(path, record)
+        with authority.lock():
+            catalogue, pin = authority.catalogue()
+            catalogue["rows"][ROW].update(
+                disposition="completed", publication_intent=request.to_record(),
+                completion=dict(operation_id=task.original_operation_id, receipt=dict(path=str(path), sha256=digest)))
+            authority._replace_catalogue(catalogue, pin)
+        with patch.object(PublicationRequest, "from_ledger_record", create=True, return_value=request) as decode:
+            with authority.publication_fence(request, "recovery") as transaction:
+                self.assertEqual(transaction.read_intent(request.key, task.original_operation_id), request)
+            recovered = authority.read_completion(task.original_operation_id)
+        self.assertEqual(recovered.publication, publication)
+        self.assertEqual(decode.call_count, 2)
+        for call in decode.call_args_list:
+            self.assertEqual(call.args, (request.to_record(),))
+            self.assertEqual(call.kwargs, {"snapshot_path": authority.snapshot_path})
+
+    def test_ledger_review_record_keeps_exact_task_and_original_operation(self):
+        key = self.prepare_ledger_inputs()
+        authority = self.authority()
+        task = authority.claim_ledger_task(key)
+        runtime = self.fixture.runtime
+        policy = runtime / "capacity-policy.json"
+        record = dict(schema="uif-owner-review/2", store_id=key.store_id, row_id=key.row_id,
+                      operation_id=task.original_operation_id, owner=task.owner, epoch=task.epoch,
+                      runtime=str(runtime), task=task.to_record(), policy_path=str(policy),
+                      policy_sha256=file_digest(policy), spec={}, installation_sha256="1" * 64,
+                      capacity_policy_sha256="2" * 64, provider_proof_sha256="3" * 64)
+        with authority.lock(operation=task.original_operation_id), authority.lock():
+            catalogue, pin = authority.catalogue()
+            catalogue["rows"][ROW]["review"] = self.ref("ledger-review.json", record)
+            authority._replace_catalogue(catalogue, pin)
+            self.assertEqual(authority.ledger_review_record(
+                task, runtime=runtime, policy=policy, policy_sha256=record["policy_sha256"]), record)
+            forged = LedgerTaskEnvelope.from_record(
+                {**task.to_record(), "original_operation_id": "wrong"}, snapshot_path=SNAPSHOT)
+            with self.assertRaisesRegex(SourceHold, "review_binding"):
+                authority.ledger_review_record(forged, runtime=runtime, policy=policy,
+                                               policy_sha256=record["policy_sha256"])
+
+    def test_ledger_intake_holds_unknown_effect_and_shared_row(self):
+        key = self.prepare_ledger_inputs(state="unknown")
+        authority = self.authority()
+        self.assertIn("requires_reconciliation", authority.select_ledger_tasks().held[ROW])
+        with self.assertRaisesRegex(SourceHold, "requires_reconciliation"):
+            authority.claim_ledger_task(key)
+        key = self.prepare_ledger_inputs()
+        self.entry["disposition"] = "held"
+        self.set_catalogue()
+        self.assertIn("pickup_held", authority.select_ledger_tasks().held[ROW])
+        with self.assertRaisesRegex(SourceHold, "pickup_held"):
+            authority.claim_ledger_task(key)
+        self.entry["disposition"] = "ready"
+        self.entry["counterparts"] = ["another-project"]
+        self.set_catalogue()
+        self.assertIn("counterpart_held", authority.select_ledger_tasks().held[ROW])
+        with self.assertRaisesRegex(SourceHold, "counterpart_held"):
+            authority.claim_ledger_task(key)
+        self.assertFalse(self.claim_file.exists())
+
+    def test_ledger_intake_does_not_bypass_registered_refill(self):
+        key = self.prepare_ledger_inputs()
+        catalogue = json.loads(self.catalogue.read_bytes())
+        catalogue["refill_from"] = "unverified-predecessor"
+        dispatch_fixtures.put(self.catalogue, catalogue)
+        authority = self.authority()
+        with self.assertRaisesRegex(SourceHold, "completion_unregistered"):
+            authority.select_ledger_tasks()
+        with self.assertRaisesRegex(SourceHold, "completion_unregistered"):
+            authority.claim_ledger_task(key)
+        self.assertFalse(self.claim_file.exists())
+
+    def test_ledger_claim_rejects_issue_association_and_fabricated_issue_input(self):
+        authority = self.authority()
+        key = LedgerTaskKey(authority.store_id, ROW)
+        self.assertIn("intake_held", authority.select_ledger_tasks().held[ROW])
+        with self.assertRaisesRegex(SourceHold, "effect_held"):
+            authority.claim_ledger_task(key)
+        self.prepare_ledger_inputs(issue_id="invented")
+        with self.assertRaisesRegex(SourceHold, "task_input_binding"):
+            authority.claim_ledger_task(key)
+        self.assertFalse(self.claim_file.exists())
 
     async def test_poll_dispatch_claim_and_original_report_survive_restart(self):
         f, authority = self.fixture, self.authority()

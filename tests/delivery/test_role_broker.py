@@ -187,7 +187,7 @@ class BrokerTests(unittest.TestCase):
                 (cg / name).touch()
             return [1, 42]
 
-        def launch(group, group_id, root, entries, command, logs, directory, request, deadline, fence):
+        def launch(group, group_id, root, entries, command, logs, directory, request, deadline, fence, *, startup):
             self.assertEqual((cg / "cpu.max").read_text(), "10000 100000")
             self.assertEqual((cg / "memory.max").read_text(), "512")
             self.assertEqual((cg / "pids.max").read_text(), "4")
@@ -261,13 +261,13 @@ class BrokerTests(unittest.TestCase):
         cg = self.root / "cgroup"
         cg.mkdir()
         (cg / "cgroup.procs").write_text("500")
-        witness = self.directory / ".role-helper"
-        witness.mkdir(mode=0o700)
         ready = lambda fds, *_: (fds, [], [])
         host, child = {"mnt": [1, 2], "pid": [1, 3]}, {"mnt": [1, 20], "pid": [1, 30]}
         for identities, group_id, allowed in (([host, host], [1, 42], False),
                                                ([child, host], [1, 43], False),
                                                ([child, host], [1, 42], True)):
+            witness = self.directory / f"witness-{group_id[1]}-{identities[0]['mnt'][1]}"
+            witness.mkdir(mode=0o700)
             with patch.object(broker, "_clone_into", return_value=500), \
                     patch.object(broker.select, "select", side_effect=ready), \
                     patch.object(broker.os, "read", return_value=b"R"), \
@@ -290,6 +290,32 @@ class BrokerTests(unittest.TestCase):
                     self.assertEqual(broker._record(witness / "released.json", self.uid)["started_sha256"],
                                      broker._digest(started))
                     gate.assert_called_once()
+
+    def test_namespace_failure_is_recorded_without_releasing_command(self):
+        witness = self.directory / "startup-witness"
+        witness.mkdir(mode=0o700)
+        cg = self.root / "cgroup"
+        cg.mkdir()
+        startup = {}
+        error = broker._startup_error(broker.LaunchHold("neutral_launch_mount_syscall:429:18"),
+                                      "namespace-init")
+        self.assertEqual((error["syscall"], error["errno"]), (429, 18))
+        private = broker._startup_error(PermissionError(13, "private", "/private/path"), "prepare")
+        self.assertEqual(private, {"phase": "prepare", "kind": "PermissionError", "errno": 13})
+        with (patch.object(broker, "_clone_into", return_value=500),
+              patch.object(broker, "_start_ticks", return_value=456),
+              patch.object(broker.select, "select", return_value=([1], [], [])),
+              patch.object(broker.os, "read", side_effect=[b"E", broker._wire(error)]),
+              patch.object(broker.os, "write") as gate):
+            with self.assertRaisesRegex(broker.LaunchHold, "namespace_readiness"):
+                broker._spawn_isolated(cg, [1, 42], self.root, [], ["/guard"], [], witness,
+                                       self.request, time.monotonic() + 5, lambda: None,
+                                       startup=startup)
+        self.assertEqual(startup["namespace_error"], error)
+        self.assertEqual(startup["pid"], 500)
+        self.assertFalse((witness / "released.json").exists())
+        self.assertFalse((witness / "terminal.json").exists())
+        gate.assert_not_called()
 
     def test_openat2_never_falls_back_on_mount_or_kernel_refusal(self):
         from types import SimpleNamespace
@@ -752,8 +778,12 @@ class NeutralBrokerTests(unittest.TestCase):
     def test_plan_keeps_exact_shell_scope_and_read_write_overlap(self):
         request, directory, work, role, cfg, lock, job = self.fixture()
         from contextlib import ExitStack
-        with ExitStack() as stack, patch.object(broker, "_installed", side_effect=lambda path, *_a, **_k: Path(path)):
+        with (ExitStack() as stack,
+              patch.object(broker, "_installed", side_effect=lambda path, *_a, **_k: Path(path)),
+              patch.object(broker, "_mount_call", side_effect=lambda _, fd, *_args: os.dup(fd)) as detach):
             runtime, mounts, command, cwd, env = broker._neutral_plan(cfg, role, work, stack)
+            self.assertEqual([call.args[0] for call in detach.call_args_list], [428, 428])
+            self.assertNotEqual([call.args[1] for call in detach.call_args_list], [entry[0] for entry in mounts])
             self.assertEqual(command[-5:], ["/bin/bash", "--noprofile", "--norc", "-c", work["command"]])
             self.assertIn("--no-new-privs", command)
             self.assertEqual(cwd, str(self.execution))
@@ -891,7 +921,7 @@ class NeutralBrokerTests(unittest.TestCase):
             self.assertEqual((cg / "pids.max").read_text(), "4")
             check_fence()
             return child, started
-        with lock.open("rb") as held, patch.object(broker, "_cgroup", return_value=group),                 patch.object(Path, "mkdir", create), patch.object(broker, "_cgroup_id", return_value=[1, 42]),                 patch.object(broker, "_boot", return_value="fixture"),                 patch.object(broker.ctypes, "CDLL", return_value=SimpleNamespace(prctl=lambda *_: 0)),                 patch.object(broker, "_installed", side_effect=lambda path, *_a, **_k: Path(path)),                 patch.object(broker, "_spawn_isolated", side_effect=launch),                 patch.object(broker, "_neutral_monitor", return_value=(
+        with lock.open("rb") as held, patch.object(broker, "_cgroup", return_value=group),                 patch.object(Path, "mkdir", create), patch.object(broker, "_cgroup_id", return_value=[1, 42]),                 patch.object(broker, "_boot", return_value="fixture"),                 patch.object(broker.ctypes, "CDLL", return_value=SimpleNamespace(prctl=lambda *_: 0)),                 patch.object(broker, "_installed", side_effect=lambda path, *_a, **_k: Path(path)),                 patch.object(broker, "_mount_call", side_effect=lambda _, fd, *_args: os.dup(fd)),                 patch.object(broker, "_spawn_isolated", side_effect=launch),                 patch.object(broker, "_neutral_monitor", return_value=(
                     "succeeded", {"stdout": b"fixture", "stderr": b""}, {"stdout": False, "stderr": False})),                 patch.object(broker, "_populated", return_value=False),                 patch.object(broker, "_wait_empty", return_value=False) as reaped,                 patch.object(broker, "_neutral_logs") as logs:
             fcntl.flock(held, fcntl.LOCK_EX)
             _, limits = broker._check_original(cfg, directory, request)

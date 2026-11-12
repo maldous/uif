@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 import test_review
+from test_validation import SNAPSHOT
 
 from uif.dispatch import SCHEMA
 from uif.review_launcher import ReviewInvocation, ReviewLauncher, ReviewSettings
@@ -183,4 +184,70 @@ class ReviewSelectorTests(unittest.IsolatedAsyncioTestCase):
         data["reviewer"] = "other-reviewer"
         data["pool_binding_json"] = wire(dict(decode(data["pool_binding_json"]), owner="other-reviewer")).decode()
         with self.assertRaisesRegex(SourceHold, "policy_binding"):
+            self.selector.select(self.invocation)
+
+
+class LedgerReviewSelectorTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        from uif.owner_runtime import review_spec_record
+
+        self.f = f = await test_review.ledger_review_fixture(self)
+        f.pool["resources"] = f.policy["resources"] = {"output_bytes": 65536}
+        f.spec.policy.write_bytes(wire(f.policy))
+        f.spec = replace(f.spec, policy_sha256=sha(f.spec.policy.read_bytes()), pool_binding_json=wire(f.pool))
+        self.invocation = ReviewInvocation.for_spec(f.spec)
+        self.settings = ReviewSettings("codex-chatgpt", "gpt-6.1-sol", "medium")
+        task = f.spec.binding.task
+        self.record = dict(
+            schema="uif-owner-review/2", task=task.to_record(), store_id=task.key.store_id,
+            row_id=task.key.row_id, operation_id=task.original_operation_id, owner=task.owner, epoch=task.epoch,
+            runtime=str(f.f.root), policy_path=str(f.spec.policy), policy_sha256=f.spec.policy_sha256,
+            spec=review_spec_record(f.spec), installation_sha256="b" * 64, capacity_policy_sha256="c" * 64,
+            provider_proof_sha256="d" * 64,
+        )
+        owner = Owner(self.record, f.adapter.fence)
+        owner.snapshot_path = SNAPSHOT
+
+        def ledger_record(actual, **pins):
+            self.assertEqual(actual, task)
+            self.assertEqual(pins, dict(runtime=f.f.root, policy=f.spec.policy, policy_sha256=f.spec.policy_sha256))
+            return self.record
+
+        owner.ledger_review_record = ledger_record
+        self.owner = owner
+        self.selector = ReviewSelector(owner, f.adapter, self.settings)
+
+    def test_owner_codec_and_launcher_use_the_same_registered_snapshot_and_selection(self):
+        selected = self.selector.select(self.invocation).spec
+        self.assertEqual(selected.binding.dispatch.to_record(), self.f.spec.binding.dispatch.to_record())
+        self.assertEqual(selected.invocation_id, test_review.REVIEW_INVOCATION)
+        self.assertEqual(selected.validation.windmill_job_id, self.f.spec.validation.windmill_job_id)
+        self.assertEqual(self.owner.invocations, [])
+        self.assertEqual(decode(self.f.adapter._pin(self.f.spec))["spec"], self.record["spec"])
+        with self.assertRaisesRegex(SourceHold, "snapshot_required"):
+            decode_review_spec(self.record["spec"], invocation_id=test_review.REVIEW_INVOCATION)
+
+    def test_finite_worker_entrypoint_selects_ledger_without_opening_a_replacement_journal(self):
+        f = self.f
+        invocation = self.invocation
+        argv = ["--runtime", str(invocation.runtime), *invocation.target_args(),
+                "--native-review-policy", str(invocation.policy),
+                "--native-review-policy-sha256", invocation.policy_sha256]
+        registration = ReviewWorkerRegistration(self.settings, f.executable, sha(f.executable.read_bytes()),
+                                                os.getuid(), f.db, "foo", "u/uif/runner")
+        before = (f.f.journal.path.read_bytes(), f.db.read_bytes())
+        with patch.object(ReviewLauncher, "run", autospec=True, return_value={"status": "succeeded"}) as run:
+            self.assertEqual(invoke_review(argv, authority=self.owner, registration=registration,
+                                           invoked_path=f.executable), {"status": "succeeded"})
+        _, parsed, selection = run.call_args.args
+        self.assertEqual(parsed, invocation)
+        self.assertEqual(selection.spec.invocation_id, invocation.invocation_id)
+        self.assertEqual(selection.spec.binding.task, f.spec.binding.task)
+        self.assertEqual((f.f.journal.path.read_bytes(), f.db.read_bytes()), before)
+
+    def test_wrong_invocation_or_changed_original_operation_cannot_select(self):
+        with self.assertRaisesRegex(SourceHold, "policy_binding"):
+            self.selector.select(replace(self.invocation, invocation_id="ac61804e-2a42-4806-b16b-8c660a5cf1a2"))
+        self.record["task"]["original_operation_id"] = "other-original"
+        with self.assertRaisesRegex(SourceHold, "sealed_record"):
             self.selector.select(self.invocation)

@@ -1,7 +1,8 @@
 """UIF's existing owner catalogue, guarded claim and terminal receipt authority."""
 
+from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 import fcntl
 from hashlib import sha256
 import json
@@ -13,13 +14,23 @@ from tempfile import NamedTemporaryFile
 from time import monotonic, sleep
 from uuid import uuid4
 
-from .admission import OwnerAdmission, OwnerStages, _fingerprint, _record
+from .admission import OwnerAdmission, OwnerStages, _fingerprint, _record, _task_lease
 from .dispatch import _record as read_owned_record, _sync_directory
-from .ledger import RowKey, SNAPSHOT_SHA256, _identity
+from .ledger import (
+    RowKey, SNAPSHOT_SHA256, _identity, ledger_task_target, verify_ledger_task_admission, verify_ledger_task_input,
+)
 from .publication import AcceptedPublication, PublicationRequest, wire
 from .refill import DeliveryCompletion, VerifiedRefill
 from .source import SourceHold, exact_path, file_digest
-from .stokowski import LedgerAdmission, PolledIssue, SelectedSource, UIF
+from .stokowski import LedgerAdmission, PolledIssue, SelectedSource, SourceBoundary, UIF
+from .task_identity import LedgerTaskEnvelope, LedgerTaskKey, SCHEMA as LEDGER_TASK_SCHEMA
+
+LEDGER_PUBLICATION_REQUEST = "uif-publication-request/2"
+LEDGER_REVIEW_FIELDS = frozenset({
+    "schema", "store_id", "row_id", "operation_id", "owner", "epoch", "runtime", "task",
+    "policy_path", "policy_sha256", "spec", "installation_sha256", "capacity_policy_sha256",
+    "provider_proof_sha256",
+})
 
 
 def _owned_file(path):
@@ -37,16 +48,53 @@ def _json_value(record):
                              default=lambda value: value.decode() if isinstance(value, bytes) else str(value)))
 
 
-def _publication_request(record):
+def _publication_request(record, *, snapshot_path):
+    if not isinstance(record, dict):
+        raise SourceHold("uif_owner_runtime_publication_binding")
+    if record.get("schema") == LEDGER_PUBLICATION_REQUEST:
+        return PublicationRequest.from_ledger_record(record, snapshot_path=snapshot_path)
+    if "task" in record or "schema" in record:
+        raise SourceHold("uif_owner_runtime_publication_binding")
     return PublicationRequest(
         **{**record, "admission": LedgerAdmission(**record["admission"]),
            "issue": PolledIssue(**record["issue"])},
     )
 
 
+def _publication_value(request):
+    task = getattr(request, "task", None)
+    if task is None:
+        record = asdict(request)
+        record.pop("task", None)
+    else:
+        record = request.to_record()
+        if (record.get("schema") != LEDGER_PUBLICATION_REQUEST or "issue" in record
+                or record.get("task") != task.to_record()
+                or record.get("admission") != asdict(request.admission)):
+            raise SourceHold("uif_owner_runtime_publication_binding")
+    return record
+
+
+def review_spec_record(spec):
+    value = asdict(spec)
+    dispatch = spec.binding.dispatch
+    if dispatch.task is not None:
+        value["validation"]["binding"]["dispatch"] = dispatch.to_record()
+    return _json_value(value)
+
+
 class _RegisteredAdmission(OwnerAdmission):
     def _catalogue(self):
         return self.authority.catalogue()[0]["rows"]
+
+    def _retain_ledger_dispatch_intent(self, key, entry, path, digest):
+        with self.authority.lock():
+            catalogue, pin = self.authority.catalogue()
+            registered, _ = self._entry(key, catalogue["rows"])
+            if registered != entry or "dispatch_intent" in registered:
+                raise SourceHold("uif_owner_dispatch_intent_drift")
+            registered["dispatch_intent"] = dict(path=str(path), sha256=digest)
+            self.authority._replace_catalogue(catalogue, pin)
 
 
 class OwnerAuthority:
@@ -156,9 +204,13 @@ class OwnerAuthority:
         if self.catalogue()[1] != sha256(data).hexdigest():
             raise SourceHold("uif_owner_runtime_catalogue_readback")
 
-    def _active(self, admission, issue):
+    def _active(self, admission, issue, *, task=None):
         if (admission.combined or os.path.lexists(self.coordinator_runtime_path / "cancel.json")):
             raise SourceHold("uif_owner_runtime_effect_held")
+        if (issue is None) != (task is not None):
+            raise SourceHold("uif_ledger_task_claim_drift")
+        if task is not None:
+            verify_ledger_task_admission(task, admission)
         key = RowKey(admission.store_id, admission.row_id)
         entry, runtime = self.admission._entry(key)
         if os.path.lexists(runtime / "cancel.json"):
@@ -169,9 +221,9 @@ class OwnerAuthority:
         return entry, runtime
 
     @contextmanager
-    def dispatch_fence(self, issue, admission):
+    def dispatch_fence(self, issue, admission, *, task=None):
         with self.lock(operation=admission.original_operation_id):
-            self._active(admission, issue)
+            self._active(admission, issue, task=task)
             yield
 
     @asynccontextmanager
@@ -180,12 +232,39 @@ class OwnerAuthority:
             raise SourceHold("uif_owner_runtime_stage")
         dispatch = spec.binding.dispatch
         with self.lock(operation=dispatch.operation_id):
-            self._active(dispatch.ledger, dispatch.issue)
+            self._verify_stage_dispatch(dispatch)
             yield
+
+    def _verify_stage_dispatch(self, dispatch):
+        _, runtime = self._active(dispatch.ledger, dispatch.issue, task=dispatch.task)
+        task = dispatch.task
+        if task is not None:
+            if dispatch.workspace != runtime / "workspaces" / task.key.workspace_key:
+                raise SourceHold("uif_owner_runtime_stage_workspace")
+            self.admission.ledger.verify_dispatch(
+                dispatch.ledger, None, operation_id=dispatch.operation_id,
+                receipt_path=dispatch.receipt_path, receipt_sha256=dispatch.receipt_sha256, task=task)
+        return runtime
 
     def claim(self, row_id, issue, *, previous_operation_id=None):
         """Bind one qualified row immediately before existing coordinator dispatch."""
+        if not isinstance(issue, PolledIssue):
+            raise SourceHold("uif_owner_runtime_issue_binding")
+        return self._claim(row_id, issue, previous_operation_id=previous_operation_id)
+
+    def select_ledger_tasks(self):
+        previous_operation_id = self.catalogue()[0].get("refill_from")
+        return self.admission.select_ready(previous_operation_id=previous_operation_id, ledger_only=True)
+
+    def claim_ledger_task(self, key):
+        if not isinstance(key, LedgerTaskKey) or key.store_id != self.store_id:
+            raise SourceHold("uif_owner_original_row_binding")
+        previous_operation_id = self.catalogue()[0].get("refill_from")
+        return self._claim(key.row_id, None, ledger_key=key, previous_operation_id=previous_operation_id)
+
+    def _claim(self, row_id, issue, *, previous_operation_id, ledger_key=None):
         ledger = self.admission.ledger
+        identifier = issue.identifier if ledger_key is None else ledger_key.workspace_key
         predecessor = completion = None
         if previous_operation_id is not None:
             completion = self.read_completion(previous_operation_id)
@@ -197,16 +276,19 @@ class OwnerAuthority:
                 raise SourceHold("uif_owner_runtime_completion_drift")
             row = (ledger.pickup(row_id) if predecessor is None
                    else ledger._refill_after(row_id, predecessor, previous_operation_id))
-            if row.counterparts != () or row.issue != issue or issue.project_id != UIF.project_id:
+            if (row.counterparts != () or row.issue != issue
+                    or (issue is not None and issue.project_id != UIF.project_id)):
                 raise SourceHold("uif_owner_runtime_effect_held")
             catalogue, catalogue_sha = self.catalogue()
+            if ledger_key is not None and catalogue.get("refill_from") != previous_operation_id:
+                raise SourceHold("uif_owner_runtime_completion_drift")
             entry, runtime = self.admission._entry(row.key, catalogue["rows"])
             if os.path.lexists(runtime / "cancel.json"):
                 raise SourceHold("uif_owner_runtime_effect_held")
             inputs = _record(entry.get("admission_inputs"))
             pin_files = {
                 "manifest_sha256": runtime / "manifest.json",
-                "request_sha256": runtime / "requests" / (issue.identifier + ".json"),
+                "request_sha256": runtime / "requests" / (identifier + ".json"),
                 "policy_sha256": runtime / "capacity-policy.json",
                 "installation_sha256": runtime / "installation.json",
             }
@@ -221,23 +303,34 @@ class OwnerAuthority:
                 raise SourceHold("uif_owner_runtime_source_binding")
             manifest, _ = read_owned_record(pin_files["manifest_sha256"], inputs["manifest_sha256"])
             policy, _ = read_owned_record(pin_files["policy_sha256"], inputs["policy_sha256"])
-            lease = "rt-" + _fingerprint({
-                "runtime": str(runtime), "manifest_sha256": _fingerprint(manifest), "issue": issue.identifier,
-            })
+            lease = _task_lease(runtime, manifest, identifier, ledger_only=ledger_key is not None)
+            tasks = manifest.get("tasks")
             if (lease not in entry["lease_ids"]
                     or exact_path(policy["symphony"]["pool_path"]) / "state.sqlite" != self.pool_database_path
                     or manifest.get("project_id") != UIF.project_id
-                    or set(manifest.get("tasks", {})) != {issue.identifier}
-                    or manifest["tasks"][issue.identifier].get("issue_id") != issue.issue_id
-                    or "stage" in manifest["tasks"][issue.identifier]
+                    or not isinstance(tasks, dict) or set(tasks) != {identifier}
+                    or not isinstance(tasks[identifier], dict) or "stage" in tasks[identifier]
                     or manifest.get("base_revision") != source.head or manifest.get("branch") != source.branch):
+                raise SourceHold("uif_owner_runtime_claim_inputs")
+            if ledger_key is not None:
+                target = ledger_task_target(ledger_key, row.source_sha256)
+                request, _ = read_owned_record(pin_files["request_sha256"], inputs["request_sha256"])
+                verify_ledger_task_input(tasks[identifier], target)
+                verify_ledger_task_input(request, target)
+            elif tasks[identifier].get("issue_id") != issue.issue_id:
                 raise SourceHold("uif_owner_runtime_claim_inputs")
             operation = row.operation_id or str(uuid4())
             self.admission._require_unique_operation(row.key, operation)
-            record = dict(inputs, version=1, owner=self.owner, issue=issue.identifier, issue_id=issue.issue_id,
-                          ledger=dict(store_id=self.store_id, row_id=row_id, epoch=self.epoch,
-                                      snapshot_sha256=SNAPSHOT_SHA256, source_sha256=row.source_sha256,
-                                      original_operation_id=operation))
+            record = dict(inputs, owner=self.owner)
+            if ledger_key is None:
+                record.update(version=1, issue=issue.identifier, issue_id=issue.issue_id,
+                              ledger=dict(**ledger_task_target(row.key, row.source_sha256),
+                                          epoch=self.epoch, original_operation_id=operation))
+            else:
+                envelope = LedgerTaskEnvelope.from_record(
+                    dict(schema=LEDGER_TASK_SCHEMA, **target, owner=self.owner, epoch=self.epoch,
+                         original_operation_id=operation), snapshot_path=self.snapshot_path)
+                record.update(version=2, ledger=envelope.to_record())
             path = runtime / "current-admission.json"
             data = wire(record)
             _sync_directory(runtime)
@@ -250,6 +343,9 @@ class OwnerAuthority:
             entry.update(disposition="claimed", claim=dict(path=str(path), sha256=sha256(data).hexdigest()))
             self.admission._claim(row.key, entry, runtime, issue)
             self._replace_catalogue(catalogue, catalogue_sha)
+            if ledger_key is not None:
+                self.admission.ledger_context(envelope)
+                return envelope
             return self.admission.context(issue).ledger
 
     @staticmethod
@@ -264,6 +360,27 @@ class OwnerAuthority:
         key = self.admission._claimed_issue(issue)
         entry, _ = self.admission._entry(key)
         return self._source(entry)
+
+    def selected_ledger_source(self, profile, task):
+        if profile != UIF:
+            raise SourceHold("uif_owner_runtime_source_binding")
+        self.admission.ledger_context(task)
+        entry, _ = self.admission._entry(RowKey(task.key.store_id, task.key.row_id))
+        return self._source(entry)
+
+    def ensure_ledger_workspace(self, task, workspace_root):
+        def qualify(task):
+            context = self.admission.ledger_context(task)
+            self._active(context.ledger, None, task=task)
+            return context
+
+        admission = self.admission.ledger_context(task).ledger
+        with self.lock(operation=admission.original_operation_id):
+            boundary = SourceBoundary(
+                runtime_root=self.runtime_root_path, coordinator_runtime=self.coordinator_runtime_path,
+                qualify_context=qualify, selected_source=self.selected_ledger_source,
+            )
+            return boundary.ensure_ledger_workspace(task, workspace_root)
 
     def polled_issue(self, identifier):
         matches = [entry["issue"] for entry in self.catalogue()[0]["rows"].values()
@@ -288,15 +405,41 @@ class OwnerAuthority:
             raise SourceHold("uif_owner_runtime_review_binding")
         return record
 
+    def ledger_review_record(self, task, *, runtime, policy, policy_sha256):
+        if not isinstance(task, LedgerTaskEnvelope) or task.key.store_id != self.store_id:
+            raise SourceHold("uif_owner_runtime_review_binding")
+        key = RowKey(task.key.store_id, task.key.row_id)
+        current = self.admission.read_current(key)
+        entry, registered_runtime = self.admission._entry(key)
+        claim = self.admission._claim(key, entry, registered_runtime, None)
+        record = _record(entry.get("review"))
+        if (set(record) != LEDGER_REVIEW_FIELDS
+                or current.disposition != "claimed" or current.counterparts != () or current.issue is not None
+                or claim is None or claim["ledger"] != task.to_record()
+                or registered_runtime != exact_path(runtime)
+                or any(record.get(name) != value for name, value in {
+                    "schema": "uif-owner-review/2", "store_id": self.store_id, "row_id": key.row_id,
+                    "operation_id": task.original_operation_id, "owner": self.owner, "epoch": self.epoch,
+                    "runtime": str(registered_runtime), "task": task.to_record(),
+                    "policy_path": str(exact_path(policy)),
+                    "policy_sha256": policy_sha256,
+                }.items())):
+            raise SourceHold("uif_owner_runtime_review_binding")
+        return record
+
     def check_review(self, selection):
         from .review_launcher import ReviewInvocation
 
         spec = selection.spec
         dispatch = spec.binding.dispatch
-        _, runtime = self._active(dispatch.ledger, dispatch.issue)
-        invocation = ReviewInvocation(runtime, dispatch.issue.identifier, spec.policy, spec.policy_sha256)
-        record = self.review_record(invocation)
-        if (record["spec"] != _json_value(asdict(spec))
+        runtime = self._verify_stage_dispatch(dispatch)
+        if dispatch.task is None:
+            invocation = ReviewInvocation(runtime, dispatch.issue.identifier, spec.policy, spec.policy_sha256)
+            record = self.review_record(invocation)
+        else:
+            record = self.ledger_review_record(dispatch.task, runtime=runtime,
+                                               policy=spec.policy, policy_sha256=spec.policy_sha256)
+        if (record["spec"] != review_spec_record(spec)
                 or any(record.get(name) != getattr(selection, name) for name in
                        ("installation_sha256", "capacity_policy_sha256", "provider_proof_sha256"))):
             raise SourceHold("uif_owner_runtime_review_binding")
@@ -309,31 +452,50 @@ class OwnerAuthority:
 
     async def report_attempt(self, binding, outcome):
         with self.lock(operation=binding.operation_id), self.lock():
-            self._active(binding.ledger, binding.issue)
             if outcome.operation_id != binding.operation_id:
                 raise SourceHold("uif_owner_runtime_report_binding")
             catalogue, digest = self.catalogue()
-            entry = catalogue["rows"][binding.ledger.row_id]
+            key = RowKey(binding.ledger.store_id, binding.ledger.row_id)
+            entry, _ = self.admission._entry(key, catalogue["rows"])
             record = dict(operation_id=binding.operation_id, dispatch_sha256=binding.receipt_sha256,
                           status=outcome.status, lease_id=outcome.lease_id,
                           receipt_path=str(outcome.worker_receipt_path),
                           receipt_sha256=outcome.worker_receipt_sha256)
             prior = entry.get("coding_outcome")
+            if outcome.status == "capacity-refused":
+                from .dispatch import read_outcome
+
+                if (binding.task is None
+                        or entry.get("dispatch_intent") != {
+                            "path": str(binding.receipt_path), "sha256": binding.receipt_sha256,
+                        } or read_outcome(binding) != outcome):
+                    raise SourceHold("uif_owner_runtime_no_start_binding")
+                if entry["disposition"] == "held" and prior == record:
+                    return
+            self._active(binding.ledger, binding.issue, task=binding.task)
             if prior == record:
                 return
             if prior is not None and (prior.get("dispatch_sha256") != binding.receipt_sha256
                                       or prior.get("status") not in ("unknown", "uncertain")):
                 raise SourceHold("uif_owner_runtime_report_drift")
             entry["coding_outcome"] = record
+            if outcome.status == "capacity-refused":
+                entry["disposition"] = "held"
             self._replace_catalogue(catalogue, digest)
 
     @staticmethod
     def _completion_record(publication):
-        admission = publication.request.admission
-        return dict(schema="uif-owner-delivery-completion/1", outcome="completed",
+        request = publication.request
+        admission = request.admission
+        accepted = asdict(publication)
+        accepted["request"] = _publication_value(request)
+        schema = "uif-owner-delivery-completion/1"
+        if getattr(request, "task", None) is not None:
+            schema = "uif-owner-delivery-completion/2"
+        return dict(schema=schema, outcome="completed",
                     store_id=admission.store_id, row_id=admission.row_id,
                     operation_id=admission.original_operation_id, owner=admission.owner,
-                    epoch=admission.epoch, publication=asdict(publication))
+                    epoch=admission.epoch, publication=accepted)
 
     def read_completion(self, operation):
         """Resolve a terminal owner receipt in the same retained catalogue."""
@@ -351,12 +513,12 @@ class OwnerAuthority:
             raise SourceHold("uif_owner_runtime_completion_binding")
         terminal = _record(ref)
         accepted = terminal["publication"]
-        request = _publication_request(accepted["request"])
+        request = _publication_request(accepted["request"], snapshot_path=self.snapshot_path)
         publication = AcceptedPublication(**{**accepted, "request": request})
         if (terminal != self._completion_record(publication)
                 or request.key != RowKey(self.store_id, row_id)
                 or request.admission.original_operation_id != operation
-                or entry.get("publication_intent") != asdict(request)):
+                or entry.get("publication_intent") != _publication_value(request)):
             raise SourceHold("uif_owner_runtime_completion_binding")
         return DeliveryCompletion(publication, "completed", ref["sha256"])
 
@@ -380,7 +542,7 @@ class OwnerAuthority:
                         raise SourceHold("uif_owner_runtime_completion_drift")
                     return previous
 
-                _, runtime = self._active(request.admission, request.issue)
+                _, runtime = self._active(request.admission, request.issue, task=getattr(request, "task", None))
                 catalogue, digest = self.catalogue()
                 entry = catalogue["rows"][request.key.row_id]
                 if entry.get("completion") is not None:
@@ -435,8 +597,13 @@ class OwnerAuthority:
     def _publication_entry(self, request, mode):
         if request.key.store_id != self.store_id or request.admission.combined:
             raise SourceHold("uif_owner_runtime_publication_binding")
+        task = getattr(request, "task", None)
+        if (request.issue is None) != (task is not None):
+            raise SourceHold("uif_owner_runtime_publication_binding")
+        if task is not None:
+            verify_ledger_task_admission(task, request.admission)
         if mode == "active":
-            entry, _ = self._active(request.admission, request.issue)
+            entry, _ = self._active(request.admission, request.issue, task=task)
             from .native_publisher import verify_record, verify_stopped
 
             if self.refill is None:
@@ -451,7 +618,7 @@ class OwnerAuthority:
             verify_stopped(ready["terminal"], inner, "ready")
             return entry
         entry, _ = self.admission._entry(request.key)
-        if entry.get("publication_intent") != _json_value(asdict(request)):
+        if entry.get("publication_intent") != _json_value(_publication_value(request)):
             raise SourceHold("uif_owner_runtime_publication_history")
         return entry
 
@@ -487,7 +654,7 @@ class _PublicationTransaction:
         self.recheck(request)
         entry, _ = self.authority.admission._entry(key)
         record = entry.get("publication_intent")
-        return None if record is None else _publication_request(record)
+        return None if record is None else _publication_request(record, snapshot_path=self.authority.snapshot_path)
 
     def create_intent(self, request):
         self.recheck(request)
@@ -501,15 +668,29 @@ class _PublicationTransaction:
                    and (record.get("publisher_operation_id") == request.publisher_operation_id
                         or record.get("invocation_id") == request.invocation_id) for row in rows.values()):
                 raise SourceHold("uif_owner_runtime_publication_duplicate")
-            rows[request.key.row_id]["publication_intent"] = _json_value(asdict(request))
+            rows[request.key.row_id]["publication_intent"] = _json_value(_publication_value(request))
             self.authority._replace_catalogue(catalogue, digest)
 
 
+@dataclass(frozen=True)
+class LedgerIntake:
+    select_ready: Callable
+    claim: Callable
+    ensure_workspace: Callable
+
+
 def bind_owner_coordinator(authority, orchestrator, workspace_module, owner, *,
-                           supervisor, supervisor_sha256):
-    """Register the dedicated UIF coordinator's actual poll and dispatch hooks."""
+                           supervisor=None, supervisor_sha256=None, intake="linear"):
+    """Bind explicit ledger intake or the dedicated coordinator's issue hooks."""
     if getattr(owner, "_uif_owner_authority", None) is not None:
         raise SourceHold("uif_owner_runtime_already_registered")
+    if intake == "ledger":
+        hooks = LedgerIntake(authority.select_ledger_tasks, authority.claim_ledger_task,
+                             authority.ensure_ledger_workspace)
+        owner._uif_owner_authority = authority
+        return hooks
+    if intake != "linear":
+        raise SourceHold("uif_owner_runtime_intake_binding")
     ensure_client = owner._ensure_linear_client
     original_dispatch = owner._dispatch
     candidate_fetches = {}

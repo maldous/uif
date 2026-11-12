@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UIF ledger task identity",
+  "description": "Wire shape for a bound original row and operation. The consumer verifies the canonical snapshot and current authority separately.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "store_id",
+    "row_id",
+    "snapshot_sha256",
+    "source_sha256",
+    "owner",
+    "epoch",
+    "original_operation_id"
+  ],
+  "properties": {
+    "schema": {"const": "uif-ledger-task/1"},
+    "store_id": {"$ref": "#/$defs/identity"},
+    "row_id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]+(?![\\s\\S])"},
+    "snapshot_sha256": {"$ref": "#/$defs/digest"},
+    "source_sha256": {"$ref": "#/$defs/digest"},
+    "owner": {"$ref": "#/$defs/identity"},
+    "epoch": {"$ref": "#/$defs/identity"},
+    "original_operation_id": {"$ref": "#/$defs/identity"}
+  },
+  "$defs": {
+    "identity": {"type": "string", "pattern": "^\\S(?:[\\s\\S]*\\S)?(?![\\s\\S])"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}(?![\\s\\S])"}
+  }
+}

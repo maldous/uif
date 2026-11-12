@@ -6,7 +6,7 @@
          slots=positive(provider.get('session_ceiling'),'provider_sessions')
 +        return self._admit(task_id, binding, resources, paths, fingerprint, now, slots, host=host)
 +
-+    def admit_neutral(self, task_id, binding, host):
++    def admit_neutral(self, task_id, binding, host, *, before_commit=None):
 +        if not isinstance(task_id, str) or not re.fullmatch(r'neutral-[a-f0-9]{64}', task_id):
 +            raise AdmissionError('invalid_neutral_task_id')
 +        expected = {'mode', 'owner', 'epoch', 'write_roots', 'resources', 'request', 'registration_sha256', 'policy_fingerprint'}
@@ -19,9 +19,9 @@
 +                       or str(Path(path).resolve()) != path for path in paths)):
 +            raise AdmissionError('invalid_neutral_write_scope')
 +        resources = resource_values(binding['resources'])
-+        return self._admit(task_id, binding, resources, paths, digest(binding), time.time(), None, host=host)
++        return self._admit(task_id, binding, resources, paths, digest(binding), time.time(), None, host=host, before_commit=before_commit)
 +
-+    def _admit(self, task_id, binding, resources, paths, fingerprint, now, provider_slots, *, host):
++    def _admit(self, task_id, binding, resources, paths, fingerprint, now, provider_slots, *, host, before_commit=None):
          with self._transaction() as db:
              rows=self._rows(db);previous=next((r for r in rows if r['id']==task_id),None)
              if previous:
@@ -58,15 +58,17 @@
                       [r['binding']['resources'] for r in active]+[resources])
              h=self.policy['host']
              ceilings={'cpu_millis':min(self.policy['symphony']['cpu_budget_millis'],max(0,positive(host.get('cpu_millis'),'host_cpu')-h['cpu_reserve']*1000)),
-@@ -206,6 +241,7 @@
+@@ -206,6 +241,9 @@
                  if sum(r[key] for r in demands)>limit:raise AdmissionError('capacity_'+key)
              db.execute('INSERT INTO leases VALUES(?,?,?,?,?,?)',(task_id,json.dumps(binding,sort_keys=True),fingerprint,'running',None,now))
              self._event(db,task_id,'admitted')
 +            self._event(db,task_id,policy_event)
++            if before_commit is not None:
++                before_commit()
              return {'id':task_id,'binding':binding,'fingerprint':fingerprint,'status':'running','reused':False}
 
      def cancel(self,task_id):
-@@ -215,14 +251,53 @@
+@@ -215,14 +253,53 @@
              if row[0] not in ('finished','failed'):
                  db.execute('UPDATE leases SET status=? WHERE id=?',('cancel_requested',task_id));self._event(db,task_id,'cancel_requested')
 
@@ -89,11 +91,6 @@
 +
      def finish(self,task_id,process_tree_gone,outcome):
 -        if process_tree_gone is not True or outcome not in ('succeeded','failed','cancelled','stopped'):raise AdmissionError('process_reconciliation_required')
--        with self._transaction() as db:
--            row=db.execute('SELECT status,outcome FROM leases WHERE id=?',(task_id,)).fetchone()
--            if not row:raise AdmissionError('unknown_task')
--            if row[0] in ('finished','failed'):
--                if row[1]!=outcome:raise AdmissionError('terminal_outcome_conflict')
 +        return self._finish(task_id, process_tree_gone, outcome, None)
 +
 +    def finish_neutral(self, task_id, process_tree_gone, outcome, receipt_sha256):
@@ -104,7 +101,11 @@
 +    def _finish(self, task_id, process_tree_gone, outcome, receipt_event):
 +        if process_tree_gone is not True or outcome not in ('succeeded','failed','cancelled','stopped'):
 +            raise AdmissionError('process_reconciliation_required')
-+        with self._transaction() as db:
+         with self._transaction() as db:
+-            row=db.execute('SELECT status,outcome FROM leases WHERE id=?',(task_id,)).fetchone()
+-            if not row:raise AdmissionError('unknown_task')
+-            if row[0] in ('finished','failed'):
+-                if row[1]!=outcome:raise AdmissionError('terminal_outcome_conflict')
 +            row = db.execute('SELECT status,outcome,binding FROM leases WHERE id=?', (task_id,)).fetchone()
 +            if not row:
 +                raise AdmissionError('unknown_task')

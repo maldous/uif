@@ -9,7 +9,7 @@ import time
 from unittest.mock import patch
 from uuid import UUID
 
-from test_publication import git
+from test_publication import OPERATION, SNAPSHOT, git
 from test_publication_rpc import RPCFixture
 from uif.publication_rpc import GitHubPullRequests
 from uif.native_publisher import (
@@ -20,7 +20,7 @@ from uif.publication import PublisherCommand, PublisherReceiptPaths, accepted_re
 from uif.source import SourceHold, file_digest
 
 
-class NativePublisherTests(RPCFixture):
+class NativePublisherFixture(RPCFixture):
     stage_candidate = False
 
     def setUp(self):
@@ -30,7 +30,8 @@ class NativePublisherTests(RPCFixture):
         (paths.accepted_root / "by-operation").mkdir(mode=0o700)
         paths.claim_root.mkdir(mode=0o700)
         (paths.claim_root / "repository-owner.lock").touch(mode=0o600)
-        self.host = NativePublisher(paths, self.closure, self.pr.repository_id, os.getuid(), self.rpc, timeout=10)
+        self.host = NativePublisher(paths, self.closure, self.pr.repository_id, os.getuid(), self.rpc, timeout=10,
+                                    snapshot_path=SNAPSHOT if self.ledger_only else None)
         self.directory = paths.claim_root / ("transaction-" + self.request.publisher_operation_id)
         self.directory.mkdir(mode=0o700)
         source = self.candidate_bundle(self.directory / "candidate.bundle")
@@ -39,9 +40,10 @@ class NativePublisherTests(RPCFixture):
             self.request.admission, self.request.issue, source, self.request.policy_sha256,
             self.request.validation_operation_id, self.request.validation_job_id,
             self.request.validation_receipt_sha256, self.request.publisher_operation_id, str(UUID(int=8)),
+            task=self.request.task,
         )
         self.seal("candidate-binding.json", self.upload, {
-            "schema": "uif-prepared-candidate-publication/1", **asdict(self.upload),
+            "schema": f"uif-prepared-candidate-publication/{self.request.version}", **self.upload.to_record(),
         })
 
     def seal(self, filename, request, grant, *, valid_until=None):
@@ -58,24 +60,25 @@ class NativePublisherTests(RPCFixture):
             self.request.admission, self.request.issue, self.candidate, self.request.policy_sha256,
             self.request.validation_operation_id, self.request.validation_job_id,
             self.request.validation_receipt_sha256, self.request.publisher_operation_id, str(UUID(int=9)),
-            self.upload.invocation_id, uploaded["receipt_sha256"],
+            self.upload.invocation_id, uploaded["receipt_sha256"], task=self.request.task,
         )
         self.seal("pr-binding.json", self.prepare, {
-            "schema": "uif-prepared-pull-request/1", **asdict(self.prepare),
+            "schema": f"uif-prepared-pull-request/{self.request.version}", **self.prepare.to_record(),
         })
+
     def setup_readiness(self):
         self.setup_pr()
         result = self.host.handle(wire(self.prepare.envelope(observe=False)))
         prepared = result["prepared_pull_request"]
         readiness_grant = {
-            "schema": "uif-prepared-publisher-readiness/1", "request": asdict(self.request),
+            "schema": f"uif-prepared-publisher-readiness/{self.request.version}", "request": self.request.to_record(),
             "pull_request": prepared["pull_request"], "test_merge_head": self.merge,
             "review_facts_sha256": self.review_sha, "require_atomic_base": False,
             "pr_preparation_invocation_id": self.prepare.invocation_id,
             "pr_preparation_receipt_sha256": prepared["receipt_sha256"],
         }
         readiness_grant["request"].pop("readiness_receipt_sha256")
-        self.ready = PreparedPublication.parse(readiness_grant, readiness=True)
+        self.ready = PreparedPublication.parse(readiness_grant, readiness=True, snapshot_path=self.host.snapshot_path)
         self.seal("readiness-binding.json", self.request, readiness_grant)
         return readiness_grant
 
@@ -85,8 +88,8 @@ class NativePublisherTests(RPCFixture):
         self.assertEqual(ready["response"]["status"], "ready")
         self.assertTrue(ready["receipt"]["body"]["terminal"]["waitpid_echild"])
         self.request = replace(self.request, readiness_receipt_sha256=ready["receipt"]["sha256"])
-        grant = {**readiness_grant, "schema": "uif-prepared-native-publication/1",
-                 "request": asdict(self.request), "require_atomic_base": atomic}
+        grant = {**readiness_grant, "schema": f"uif-prepared-native-publication/{self.request.version}",
+                 "request": self.request.to_record(), "require_atomic_base": atomic}
         if mutate_grant is not None:
             mutate_grant(grant)
         self.seal("binding.json", self.request, grant)
@@ -95,6 +98,7 @@ class NativePublisherTests(RPCFixture):
     def invoke(self, *, observe=False):
         return self.host.handle(wire(self.request.envelope(observe=observe)))
 
+class NativePublisherTests(NativePublisherFixture):
     def test_preparation_and_final_produce_original_readable_receipts(self):
         self.state.update(exists=False, create="lost")
         self.write_state()
@@ -400,7 +404,7 @@ class NativePublisherTests(RPCFixture):
         receipt_path = Path(self.host.paths.invocation(self.request))
         source = str(Path(__file__).resolve().parents[2] / "src")
         launcher.write_text(
-            "#!/usr/bin/python3\n"
+            "#!/usr/bin/python3 -B\n"
             "import json, os, subprocess, sys, time\n"
             "from pathlib import Path\n"
             f"sys.path.insert(0, {source!r})\n"
@@ -450,4 +454,42 @@ class NativePublisherTests(RPCFixture):
         self.assertEqual(observed["invocation_id"], self.request.invocation_id)
         self.assertEqual(observed["receipt"], {"body": record, "sha256": record_digest(record)})
         self.assertEqual(attempts.read_text().splitlines(), [child_pids])
+        self.assertEqual(self.writes(), [])
+
+
+class LedgerNativePublisherTests(NativePublisherFixture):
+    ledger_only = True
+
+    def test_issue_free_candidate_pr_readiness_and_merge_with_original_recovery(self):
+        self.state.update(exists=False, merge="refused")
+        self.write_state()
+        self.setup_final()
+        original = self.invoke()
+        self.assertEqual(original["response"]["status"], "unknown")
+        git(self.work, "push", "--quiet", str(self.bare), self.merge + ":refs/heads/develop")
+        self.state = json.loads(self.state_path.read_bytes())
+        self.state["pr"].update(state="closed", merged=True, merged_at="2026-11-12T00:00:00Z",
+                                merge_commit_sha=self.merge)
+        self.write_state()
+        observed = self.invoke(observe=True)
+        task = self.request.task.to_record()
+        self.assertEqual(task["original_operation_id"], OPERATION)
+        self.assertEqual(observed["invocation_id"], original["invocation_id"])
+        self.assertEqual(observed["version"], 2)
+        self.assertNotIn("issue_id", observed["response"])
+        self.assertEqual(observed["response"]["task"], task)
+        self.assertEqual(observed["accepted_source"]["fact"]["task"], task)
+        self.assertEqual(observed["accepted_source"]["fact"]["workspace_key"], self.request.task.key.workspace_key)
+        accepted = accepted_result(observed, self.request, self.request.envelope(observe=True), self.host)
+        self.publisher.remote.verify(accepted)
+        self.assertEqual(accepted.head, self.merge)
+        self.assertEqual([entry[0] for entry in self.writes()], ["POST", "PUT"])
+
+    def test_candidate_grant_needs_registered_snapshot_and_rejects_mixed_wire(self):
+        envelope = self.upload.envelope(observe=False)
+        with self.assertRaisesRegex(SourceHold, "source_grant_schema"):
+            replace(self.host, snapshot_path=None).handle(wire(envelope))
+        envelope["request"]["issue_id"] = str(UUID(int=5))
+        with self.assertRaisesRegex(SourceHold, "grant_drift"):
+            self.host.handle(wire(envelope))
         self.assertEqual(self.writes(), [])

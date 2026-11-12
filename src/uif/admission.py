@@ -13,10 +13,13 @@ import stat
 
 from .ledger import (
     SNAPSHOT_SHA256, Counterpart, CurrentDispatchIntent, CurrentRow, RecoveredLedger,
-    RowKey, _digest, _identity, bind_recovered_ledger_lifecycle,
+    RowKey, _digest, _identity, bind_recovered_ledger_lifecycle, ledger_task_target, verify_ledger_task_input,
 )
 from .source import SourceHold, exact_path, file_digest
-from .stokowski import UIF, LedgerAdmission, PolledIssue, QualifiedContext
+from .stokowski import (
+    LEDGER_DISPATCH_INTENT, LEDGER_DISPATCH_INTENT_FIELDS, UIF, LedgerAdmission, PolledIssue, QualifiedContext,
+)
+from .task_identity import LedgerTaskEnvelope, LedgerTaskKey
 
 
 def _unique(pairs):
@@ -30,6 +33,13 @@ def _unique(pairs):
 
 def _fingerprint(value):
     return sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def _task_lease(runtime, manifest, identifier, *, ledger_only):
+    field = "ledger_task" if ledger_only else "issue"
+    return "rt-" + _fingerprint({
+        "runtime": str(runtime), "manifest_sha256": _fingerprint(manifest), field: identifier,
+    })
 
 
 def _record(reference):
@@ -168,32 +178,51 @@ class OwnerAdmission:
         reference = entry.get("claim")
         if reference is None:
             return None
-        if exact_path(reference["path"]) != runtime / "current-admission.json" or issue is None:
+        if exact_path(reference["path"]) != runtime / "current-admission.json":
             raise SourceHold("uif_owner_claim_reference")
         claim = _record(reference)
         inputs = claim.get("inputs")
         ledger = claim.get("ledger")
-        if (claim.get("version") != 1 or claim.get("owner") != self.owner
-                or (claim.get("issue"), claim.get("issue_id")) != (issue.identifier, issue.issue_id)
-                or not isinstance(inputs, dict) or not isinstance(ledger, dict)
-                or ledger.get("store_id") != key.store_id or ledger.get("row_id") != key.row_id
+        if (claim.get("owner") != self.owner or not isinstance(inputs, dict) or not isinstance(ledger, dict)
+                or (ledger.get("store_id"), ledger.get("row_id")) != (key.store_id, key.row_id)
                 or ledger.get("epoch") != self.epoch or ledger.get("snapshot_sha256") != SNAPSHOT_SHA256
                 or ledger.get("source_sha256") != entry["source_sha256"]
                 or not _identity(ledger.get("original_operation_id"))):
             raise SourceHold("uif_owner_claim_binding")
+        if issue is None:
+            expected = {"version", "owner", "ledger", "manifest_sha256", "request_sha256",
+                        "policy_sha256", "installation_sha256", "source", "inputs"}
+            if (type(claim.get("version")) is not int or claim["version"] != 2
+                    or set(claim) != expected or ledger.get("owner") != self.owner):
+                raise SourceHold("uif_owner_claim_binding")
+            task = LedgerTaskEnvelope.from_record(ledger, snapshot_path=self.ledger.snapshot_path)
+            identifier = task.key.workspace_key
+        else:
+            if (claim.get("version") != 1
+                    or (claim.get("issue"), claim.get("issue_id")) != (issue.identifier, issue.issue_id)):
+                raise SourceHold("uif_owner_claim_binding")
+            identifier = issue.identifier
+        request_path = runtime / "requests" / (identifier + ".json")
         for path, field in ((runtime / "manifest.json", "manifest_sha256"),
                             (runtime / "capacity-policy.json", "policy_sha256"),
                             (runtime / "installation.json", "installation_sha256"),
-                            (runtime / "requests" / (issue.identifier + ".json"), "request_sha256")):
+                            (request_path, "request_sha256")):
             if file_digest(path) != claim.get(field):
                 raise SourceHold("uif_owner_claim_input_drift")
         if any(file_digest(path) != digest for path, digest in inputs.items()):
             raise SourceHold("uif_owner_claim_input_drift")
         manifest = _record(dict(path=str(runtime / "manifest.json"), sha256=claim["manifest_sha256"]))
         policy = _record(dict(path=str(runtime / "capacity-policy.json"), sha256=claim["policy_sha256"]))
-        expected_lease = "rt-" + _fingerprint({
-            "runtime": str(runtime), "manifest_sha256": _fingerprint(manifest), "issue": issue.identifier,
-        })
+        if issue is None:
+            target = ledger_task_target(key, entry["source_sha256"])
+            tasks = manifest.get("tasks")
+            if manifest.get("project_id") != UIF.project_id or not isinstance(tasks, dict) or set(tasks) != {identifier}:
+                raise SourceHold("uif_ledger_task_input_binding")
+            verify_ledger_task_input(tasks[identifier], target)
+            if "stage" in tasks[identifier]:
+                raise SourceHold("nonimplementation_workspace_refused")
+            verify_ledger_task_input(_record(dict(path=str(request_path), sha256=claim["request_sha256"])), target)
+        expected_lease = _task_lease(runtime, manifest, identifier, ledger_only=issue is None)
         if (expected_lease not in entry["lease_ids"]
                 or exact_path(policy["symphony"]["pool_path"]) / "state.sqlite" != self.pool_database):
             raise SourceHold("uif_owner_claim_pool_binding")
@@ -212,14 +241,28 @@ class OwnerAdmission:
         leases = self._leases(entry["lease_ids"])
         scope = self._intent.get()
         current_intent = scope[1] if scope is not None and scope[0] == key else None
+        retained_intent = None
+        reference = entry.get("dispatch_intent") if issue is None else None
+        if reference is not None:
+            identifier = LedgerTaskKey(key.store_id, key.row_id).workspace_key
+            path = runtime / "attempts" / identifier / "dispatch-intent.json"
+            if (claim is None or not isinstance(reference, dict) or set(reference) != {"path", "sha256"}
+                    or reference["path"] != str(path) or not _digest(reference["sha256"])):
+                raise SourceHold("uif_owner_dispatch_intent_drift")
+            retained_intent = CurrentDispatchIntent(claim["ledger"]["original_operation_id"], path,
+                                                     reference["sha256"])
+            if current_intent is not None and current_intent != retained_intent:
+                raise SourceHold("uif_owner_dispatch_intent_drift")
         attempts = runtime / "attempts"
         # An existing attempt outside this call's fresh create-only receipt is
         # historical/uncertain. A terminal Pool row also retains its identity.
         if os.path.lexists(attempts):
             directory = exact_path(attempts)
             entries = tuple(directory.iterdir())
-            if entries and (current_intent is None or issue is None
-                            or entries != (directory / issue.identifier,)
+            identifier = (issue.identifier if issue is not None else
+                          LedgerTaskKey(key.store_id, key.row_id).workspace_key if claim is not None else None)
+            if entries and (current_intent is None or identifier is None
+                            or entries != (directory / identifier,)
                             or tuple(exact_path(entries[0]).iterdir()) != (current_intent.receipt_path,)):
                 effect = {**effect, "state": "unknown"}
         if leases:
@@ -243,10 +286,10 @@ class OwnerAdmission:
             key, entry["source_sha256"], UIF.project_id, entry["phase"], entry["disposition"],
             effect["state"], evidence, operation, self.owner if claim else None,
             self.epoch if claim else None, tuple(counterparts) if counterparts is not None else None,
-            readiness, issue, current_intent,
+            readiness, issue, current_intent or retained_intent,
         )
 
-    def select_ready(self, *, previous_operation_id=None):
+    def select_ready(self, *, previous_operation_id=None, ledger_only=False):
         """Read candidates from the registered owner catalogue for the normal poll."""
         registered = self._catalogue()
         predecessor = (None if previous_operation_id is None
@@ -256,6 +299,8 @@ class OwnerAdmission:
             try:
                 row = (self.ledger.pickup(row_id) if predecessor is None
                        else self.ledger._refill_after(row_id, predecessor, previous_operation_id))
+                if ledger_only and (row.issue is not None or row.counterparts != ()):
+                    raise SourceHold("uif_ledger_task_intake_held")
             except SourceHold as error:
                 held[row_id] = str(error)
             except FileNotFoundError:
@@ -277,12 +322,21 @@ class OwnerAdmission:
 
     def context(self, issue):
         key = self._claimed_issue(issue)
+        return self.ledger.qualify_context(self._context(key, issue), issue)
+
+    def ledger_context(self, task):
+        if not isinstance(task, LedgerTaskEnvelope) or task.key.store_id != self.store_id:
+            raise SourceHold("uif_ledger_task_claim_required")
+        key = RowKey(task.key.store_id, task.key.row_id)
+        return self.ledger.qualify_ledger_context(self._context(key, None, task=task), task)
+
+    def _context(self, key, issue, *, task=None):
         entry, runtime = self._entry(key)
         claim = self._claim(key, entry, runtime, issue)
         current = self.read_current(key)
         if claim is None or current.operation_id is None or current.disposition != "claimed":
             raise SourceHold("uif_owner_claim_required")
-        context = QualifiedContext(
+        return QualifiedContext(
             runtime, _record(dict(path=str(runtime / "manifest.json"), sha256=claim["manifest_sha256"])),
             exact_path(claim["source"]),
             LedgerAdmission(
@@ -290,25 +344,49 @@ class OwnerAdmission:
                 self.owner, self.epoch, current.operation_id, "ready", current.prior_effect,
                 bool(current.counterparts), self.ledger._readiness(current),
             ),
+            task=task,
         )
-        return self.ledger.qualify_context(context, issue)
 
-    def runtime_pins(self, issue, admission):
+    def runtime_pins(self, issue, admission, *, task=None):
         # Dispatch owns the type and its runtime/provider checks.
         from .dispatch import RuntimePins
 
-        self.ledger._eligible_claim(admission, issue)
+        if (issue is None) != (task is not None):
+            raise SourceHold("uif_owner_dispatch_claim_drift")
+        if task is None:
+            self.ledger._eligible_claim(admission, issue)
+        elif self.ledger_context(task).ledger != admission:
+            raise SourceHold("uif_owner_dispatch_claim_drift")
         entry, _ = self._entry(RowKey(admission.store_id, admission.row_id))
         return RuntimePins(entry["claim"]["sha256"], entry["provider_sha256"])
 
+    def _retain_ledger_dispatch_intent(self, key, entry, path, digest):
+        raise SourceHold("uif_owner_dispatch_intent_retention_unregistered")
+
     @contextmanager
-    def dispatch_fence(self, issue, admission):
+    def dispatch_fence(self, issue, admission, *, task=None):
         key = RowKey(admission.store_id, admission.row_id)
-        with self.fence(issue, admission):
-            if self.context(issue).ledger != admission:
+        if ((issue is None) != (task is not None)
+                or (task is not None and not isinstance(task, LedgerTaskEnvelope))):
+            raise SourceHold("uif_owner_dispatch_claim_drift")
+        identifier = task.key.workspace_key if task is not None else issue.identifier
+        fence = self.fence(issue, admission) if task is None else self.fence(None, admission, task=task)
+        with fence:
+            context = self.context(issue) if task is None else self.ledger_context(task)
+            if context.ledger != admission:
                 raise SourceHold("uif_owner_dispatch_claim_drift")
-            _, runtime = self._entry(key)
-            expected = runtime / "attempts" / issue.identifier / "dispatch-intent.json"
+            entry, runtime = self._entry(key)
+            expected = runtime / "attempts" / identifier / "dispatch-intent.json"
+            if task is not None:
+                claim = self._claim(key, entry, runtime, None)
+                source_reference = entry.get("selected_source")
+                expected_pins = {
+                    "manifest_sha256": claim["manifest_sha256"], "request_sha256": claim["request_sha256"],
+                    "lease_id": _task_lease(runtime, context.manifest, identifier, ledger_only=True),
+                    "pool_database": str(self.pool_database),
+                    "pins": {"admission_sha256": entry["claim"]["sha256"],
+                             "provider_sha256": entry["provider_sha256"]},
+                }
             token = self._intent.set(None)
             try:
                 def record_intent(path, digest):
@@ -316,10 +394,37 @@ class OwnerAdmission:
                     if self._intent.get() is not None or exact_path(path) != expected:
                         raise SourceHold("uif_owner_dispatch_intent_drift")
                     record = _record(dict(path=str(expected), sha256=digest))
-                    if (record.get("schema") != "uif-dispatch-intent/1"
-                            or record.get("admission") != asdict(admission)
-                            or record.get("issue") != asdict(issue)):
+                    if task is None:
+                        bound = (record.get("schema") == "uif-dispatch-intent/1"
+                                 and record.get("issue") == asdict(issue))
+                    else:
+                        current_entry, _ = self._entry(key)
+                        if current_entry.get("selected_source") != source_reference:
+                            raise SourceHold("uif_owner_dispatch_intent_drift")
+                        source = _record(source_reference)
+                        source_pins = {
+                            "source": source.get("repository"), "source_head": source.get("head"),
+                            "source_tree": source.get("tree"), "source_branch": source.get("branch"),
+                            "acquisition_sha256": source.get("acquisition_sha256"),
+                            "accepted_sha256": source.get("accepted_sha256"),
+                        }
+                        attempt = record.get("attempt")
+                        bound = (set(record) == LEDGER_DISPATCH_INTENT_FIELDS
+                                 and record.get("schema") == LEDGER_DISPATCH_INTENT
+                                 and record.get("task") == task.to_record()
+                                 and record.get("operation_id") == task.original_operation_id
+                                 and record.get("workspace") == str(runtime / "workspaces" / identifier)
+                                 and source.get("checkout") == str(context.source)
+                                 and source_pins["source_head"] == context.manifest.get("base_revision")
+                                 and source_pins["source_branch"] == context.manifest.get("branch")
+                                 and all(_identity(value) and record.get(name) == value
+                                         for name, value in source_pins.items())
+                                 and all(record.get(name) == value for name, value in expected_pins.items())
+                                 and (attempt is None or (type(attempt) is int and attempt >= 0)))
+                    if not bound or record.get("admission") != asdict(admission):
                         raise SourceHold("uif_owner_dispatch_intent_drift")
+                    if task is not None:
+                        self._retain_ledger_dispatch_intent(key, entry, expected, digest)
                     self._intent.set((key, CurrentDispatchIntent(admission.original_operation_id, expected, digest)))
 
                 yield record_intent

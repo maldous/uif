@@ -8,11 +8,14 @@ import os
 from pathlib import Path
 from shutil import copyfile
 import sqlite3
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import time
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
+from uuid import UUID
 
 from uif.dispatch import DispatchBackend, RuntimePins, read_outcome
 from uif.source import SourceHold, file_digest, git
@@ -86,6 +89,84 @@ else:
 '''
 
 
+LEDGER_SUPERVISOR = r'''
+import json
+import os
+from pathlib import Path
+import sqlite3
+import subprocess
+import sys
+import traceback
+
+package, registration, digest, script, *argv = sys.argv[1:]
+sys.path.insert(0, package)
+sys.argv = [script, *argv]
+os.umask(0o077)
+
+from uif import role_broker, supervisor
+from uif.owner_runtime import OwnerAuthority
+
+authority = OwnerAuthority.load(registration, digest)
+root = authority.runtime_root_path
+database = authority.pool_database_path
+helper_cfg = dict(controller_root=root, controller_uid=os.getuid(),
+                  operation_locks=str(authority.operation_locks_path), pool_database=str(database))
+
+class FixturePool:
+    def __init__(self, path, policy):
+        assert path == database.parent
+
+    def admit(self, lease, binding, provider, host):
+        with sqlite3.connect(database) as db:
+            db.execute("INSERT INTO leases VALUES (?, ?, ?, 'running', NULL)",
+                       (lease, json.dumps(binding), supervisor._digest(binding)))
+        return {"reused": False}
+
+    def finish(self, lease, gone, status):
+        assert gone is True and status == "failed"
+        with sqlite3.connect(database) as db:
+            db.execute("UPDATE leases SET status='failed',outcome=? WHERE id=?", (status, lease))
+
+class FixtureCapacity:
+    Pool = FixturePool
+    host_snapshot = staticmethod(lambda path: {})
+    host_pressure = staticmethod(lambda path, policy: None)
+
+class FixtureBroker:
+    def start(self, launch):
+        directory = root / launch.slot
+        restored = role_broker._request(directory, os.getuid())
+        assert restored == launch
+        work, limits = role_broker._check_original(helper_cfg, directory, restored)
+        assert work == {"prompt": "fixture prompt", "timeout_seconds": 12}
+        assert limits["cpu_millis"] > 0 and limits["memory_bytes"] > 0
+        marker = root / "child-launch"
+        child = subprocess.run([sys.executable, "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).open('x').close(); raise SystemExit(7)",
+            str(marker)], timeout=5)
+        return role_broker.LaunchObservation("exited-clean", launch.digest, "d" * 64, child.returncode)
+
+supervisor._installed = lambda *_: dict(
+    runtime_root=root, coordinator_runtime=authority.coordinator_runtime_path, pool_root=database.parent,
+    authority=authority, controller_root=root, role_broker=FixtureBroker(),
+    role_limits={"coding": {"max_processes": 2, "max_projection_bytes": 1048576}},
+)
+supervisor.load_capacity = lambda _: FixtureCapacity
+execute = supervisor.execute
+def diagnostic_execute(*args, **kwargs):
+    try:
+        result = execute(*args, **kwargs)
+    except Exception:
+        traceback.print_exc()
+        raise
+    print(result.get("error_type"), file=sys.stderr)
+    return result
+
+supervisor.execute = diagnostic_execute
+raise SystemExit(supervisor.main())
+'''
+
+
 @dataclass
 class Attempt:
     issue_id: str
@@ -99,6 +180,143 @@ def put(path, value):
     path.write_text(json.dumps(value))
     path.chmod(0o600)
     return file_digest(path)
+
+
+class LedgerDispatchTests(IsolatedAsyncioTestCase):
+    async def test_capacity_refusal_reconciles_original_without_launch_or_retry(self):
+        from test_ledger_coordinator import CAPACITY, CoordinatorTests, stopped_supervisor
+        from uif.dispatch import CAPACITY_NO_START, read_outcome
+
+        if not CAPACITY:
+            self.skipTest("set UIF_NEUTRAL_POOL_SOURCE to the pinned retained Pool")
+        fixture = CoordinatorTests()
+        self.addCleanup(fixture.doCleanups)
+        fixture.setUp()
+        fixture.setup_connected()
+        authority = fixture.owner.authority()
+        task = authority.claim_ledger_task(fixture.key)
+        workspace = authority.ensure_ledger_workspace(task, fixture.fixture.coordinator / "workspaces").path
+        backend = DispatchBackend.for_ledger(authority, supervisor=fixture.supervisor,
+                                             supervisor_sha256=file_digest(fixture.supervisor))
+        provider = json.loads(fixture.fixture.provider.read_bytes())
+        for index in range(2):
+            identifier = f"other-{index}"
+            fixture.pool.admit(identifier, dict(
+                branch="feature/other", head="1" * 40, owner="other", write_roots=[identifier],
+                task_sha256="2" * 64,
+                resources=dict(cpu_millis=100, memory_bytes=1048576, io_slots=1, output_bytes=1024),
+            ), provider, dict(cpu_millis=4000, available_memory_bytes=2**40, available_disk_bytes=2**40))
+        process = subprocess.Popen
+        launches = []
+
+        def launch(argv, **kwargs):
+            if argv[:2] != [sys.executable, str(fixture.supervisor)]:
+                return process(argv, **kwargs)
+            launches.append(argv)
+            return process([sys.executable, "-B", "-c", stopped_supervisor(Path(CAPACITY)),
+                            str(fixture.supervisor.parents[1]), fixture.owner.registration["path"],
+                            fixture.owner.registration["sha256"], *argv[1:]], **kwargs)
+
+        inputs = dict(workspace=workspace, prompt="fixture prompt", timeout=12)
+        with patch("uif.dispatch.subprocess.Popen", side_effect=launch):
+            report, outcome = await backend.owned_ledger_turn(task, **inputs)
+            self.assertEqual(outcome.status, "capacity-refused")
+            self.assertEqual(outcome.operation_id, task.original_operation_id)
+            receipt = json.loads(outcome.worker_receipt_path.read_bytes())
+            self.assertEqual(receipt["schema"], CAPACITY_NO_START)
+            self.assertEqual(receipt["reason"], "capacity_sessions")
+            self.assertFalse((outcome.worker_receipt_path.parent / "fixture-child").exists())
+            self.assertEqual({row["id"] for row in fixture.pool.status()}, {"other-0", "other-1"})
+
+            path = outcome.worker_receipt_path
+            retained = path.read_bytes()
+            path.unlink()
+            self.assertEqual(read_outcome(report).status, "uncertain")
+            with self.assertRaisesRegex(SourceHold, "no_start_binding"):
+                await authority.report_attempt(report, outcome)
+            put(path, {**receipt, "handoff_sha256": "0" * 64})
+            self.assertEqual(read_outcome(report).status, "uncertain")
+            path.write_bytes(retained)
+            database = authority.pool_database_path
+            retained_database = database.with_suffix(".retained")
+            database.rename(retained_database)
+            try:
+                self.assertEqual(read_outcome(report).status, "uncertain")
+            finally:
+                retained_database.rename(database)
+            self.assertEqual(read_outcome(report), outcome)
+
+            await authority.report_attempt(report, outcome)
+            await authority.report_attempt(report, outcome)
+            row = authority.catalogue()[0]["rows"][task.key.row_id]
+            self.assertEqual(row["disposition"], "held")
+            self.assertEqual(row["coding_outcome"]["operation_id"], task.original_operation_id)
+            self.assertEqual(row["coding_outcome"]["receipt_sha256"], outcome.worker_receipt_sha256)
+            self.assertFalse(authority.select_ledger_tasks().eligible)
+            self.assertNotIn("refill_from", authority.catalogue()[0])
+            with self.assertRaises(SourceHold):
+                await backend.owned_ledger_turn(task, **inputs)
+        self.assertEqual(len(launches), 1)
+
+    async def test_original_opaque_operation_runs_once_through_supervisor_and_role_launch(self):
+        from test_owner_runtime import OwnerRuntimeTests
+        from uif import supervisor
+        from uif.dispatch import LEDGER_RECEIPT
+
+        owner_fixture = OwnerRuntimeTests()
+        self.addCleanup(owner_fixture.doCleanups)
+        owner_fixture.setUp()
+        fixture = owner_fixture.fixture
+        key = owner_fixture.prepare_ledger_inputs(state="reconciled-for-pickup", operation="retained op / 17")
+        inputs_path = Path(owner_fixture.entry["admission_inputs"]["path"])
+        inputs = json.loads(inputs_path.read_bytes())
+        fixture.policy["windmill"] = {"computation_subprocesses_per_job": 12}
+        inputs["policy_sha256"] = put(fixture.runtime / "capacity-policy.json", fixture.policy)
+        owner_fixture.entry["admission_inputs"] = owner_fixture.ref("admission-inputs.json", inputs)
+        owner_fixture.set_catalogue()
+        authority = owner_fixture.authority()
+        task = authority.claim_ledger_task(key)
+        workspace = authority.ensure_ledger_workspace(task, fixture.coordinator / "workspaces").path
+        supervisor_path = Path(supervisor.__file__).resolve()
+        backend = DispatchBackend.for_ledger(authority, supervisor=supervisor_path,
+                                             supervisor_sha256=file_digest(supervisor_path))
+        process = subprocess.Popen
+        launches = []
+        diagnostics = fixture.root / "ledger-supervisor-stderr"
+
+        def run_with_disposable_install(argv, **kwargs):
+            if argv[:2] != [sys.executable, str(supervisor_path)]:
+                return process(argv, **kwargs)
+            launches.append(argv)
+            self.assertEqual(argv[2:6], ["--runtime", str(fixture.runtime), "--ledger-workspace", key.workspace_key])
+            self.assertEqual(argv[6], "--invocation-id")
+            with diagnostics.open("wb") as stderr:
+                return process([sys.executable, "-c", LEDGER_SUPERVISOR, str(supervisor_path.parents[1]),
+                                owner_fixture.registration["path"], owner_fixture.registration["sha256"],
+                                *argv[1:]], **{**kwargs, "stderr": stderr})
+
+        kwargs = dict(workspace=workspace, prompt="fixture prompt", timeout=12, attempt_number=3)
+        with patch("uif.dispatch.subprocess.Popen", side_effect=run_with_disposable_install):
+            report, outcome = await backend.owned_ledger_turn(task, **kwargs)
+            with self.assertRaises(SourceHold):
+                await backend.owned_ledger_turn(task, **kwargs)
+        self.assertEqual(len(launches), 1)
+        self.assertTrue((fixture.root / "child-launch").is_file(), diagnostics.read_text())
+        self.assertEqual(outcome.status, "failed")
+        self.assertIsNone(report.issue)
+        self.assertEqual(report.task, task)
+        self.assertEqual(report.operation_id, "retained op / 17")
+        receipt = json.loads(outcome.worker_receipt_path.read_bytes())
+        self.assertEqual((receipt["schema"], receipt["task"], receipt["attempt"]),
+                         (LEDGER_RECEIPT, task.to_record(), 3))
+        self.assertEqual(str(UUID(receipt["invocation_id"])), receipt["invocation_id"])
+        self.assertNotEqual(receipt["invocation_id"], report.operation_id)
+        self.assertEqual(receipt["dispatch_sha256"], report.receipt_sha256)
+        self.assertEqual(receipt["exit_code"], 7)
+        self.assertNotIn("issue", receipt)
+        self.assertEqual(read_outcome(report), outcome)
+        put(outcome.worker_receipt_path, {**receipt, "invocation_id": "00000000-0000-4000-8000-000000000001"})
+        self.assertEqual(read_outcome(report).status, "uncertain")
 
 
 class DispatchTests(IsolatedAsyncioTestCase):

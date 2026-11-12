@@ -17,7 +17,7 @@ from .supervisor import POLICY as SUPERVISOR_POLICY, _trusted, load_capacity
 SCHEMA = "uif-shared-job-admission/1"
 NAMESPACE = "uif-foo-user-job/1"
 REGISTRATION = Path("/etc/uif-stokowski/shared-job-admission.json")
-CAPACITY_SHA256 = "754d6ed54068fcfc24b8450d9e61437f7d84a7c180a8227423f8d32b5d0a5df9"
+CAPACITY_SHA256 = "db72ff2b7b1afb01250c7f9060fdcd26b6dcca667ad2aa688784e085d84ae7e8"
 MAX_WIRE = 65536
 MAX_REQUEST = 2 * MAX_WIRE + 1024
 BINDING_FIELDS = {
@@ -208,7 +208,7 @@ class SharedJobAdmission:
                             registration_sha256=self.registration_sha256, policy_fingerprint=_digest(self.policy))
         return lease, pool_binding
 
-    def handle(self, request):
+    def handle(self, request, *, before_admit_commit=None):
         if request.get("schema") != SCHEMA or request.get("action") not in ("admit", "start", "status", "cancel", "finish"):
             raise SourceHold("uif_shared_job_protocol")
         action = request["action"]
@@ -238,8 +238,14 @@ class SharedJobAdmission:
                 if tuple(cpus) != self.launch.cpu_ids:
                     raise SourceHold("uif_neutral_registered_cpu")
                 try:
-                    admitted = self.pool.admit_neutral(
-                        lease, pool_binding, self.capacity.host_snapshot(self.execution_root))
+                    # Runner logs and receipts consume host disk. The execution
+                    # root may be a separately bounded project filesystem.
+                    host = self.capacity.host_snapshot(_canonical(self.config["runner_control"]))
+                    if before_admit_commit is None:
+                        admitted = self.pool.admit_neutral(lease, pool_binding, host)
+                    else:
+                        admitted = self.pool.admit_neutral(
+                            lease, pool_binding, host, before_commit=before_admit_commit)
                 except self.capacity.AdmissionError as error:
                     if str(error) not in ("capacity_sessions", "capacity_cpu_millis", "capacity_memory_bytes",
                                           "capacity_io_slots", "capacity_output_bytes", "ownership_conflict"):

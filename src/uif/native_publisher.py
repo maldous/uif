@@ -7,7 +7,7 @@ The publisher runs as one dedicated process per request on Linux.
 
 from contextlib import contextmanager
 import ctypes
-from dataclasses import asdict, dataclass
+from dataclasses import InitVar, asdict, dataclass
 import fcntl
 from hashlib import sha256
 import json
@@ -22,8 +22,8 @@ import time
 
 from .publication import (
     PUBLISHER_CLEANUP_SECONDS, PUBLISHER_MAX_WORK_SECONDS, PublicationRequest,
-    PublisherReceiptPaths, accepted_result, digest, fingerprint,
-    record_digest, require, unique_json_object, uuid, wire,
+    PublisherReceiptPaths, accepted_result, digest, fingerprint, publisher_identity, publisher_source_kind,
+    record_digest, require, unique_json_object, uuid, verify_publication_origin, wire,
 )
 from .publication_rpc import (
     CandidateSource, CanonicalGit, Executable, GitHubPullRequests, PublicationRPC,
@@ -32,11 +32,10 @@ from .publication_rpc import (
 from .source import SourceHold, exact_path, oid
 from .ledger import TERMINAL_LINKS
 from .stokowski import LedgerAdmission, PolledIssue, UIF
+from .task_identity import LedgerTaskEnvelope
 
 
 LIMIT = 65_536
-RECORD = "native-publisher-invocation-record-v1"
-RESPONSE = "native-publisher-response-v1"
 MODES = {
     "publish-candidate": ("candidate", True), "observe-candidate": ("candidate", False),
     "prepare-pr": ("pr", True), "observe-pr": ("pr", False),
@@ -45,7 +44,7 @@ MODES = {
 }
 ORIGIN_PINS = (
     "admission", "issue", "policy_sha256", "validation_operation_id", "validation_job_id",
-    "validation_receipt_sha256", "publisher_operation_id",
+    "validation_receipt_sha256", "publisher_operation_id", "task",
 )
 SOURCE_PINS = ("source_base", "source_head", "source_tree", "source_branch")
 
@@ -133,7 +132,7 @@ def process_start(pid):
 def inner_response(inner, status):
     return {
         **{key: value for key, value in inner.items() if key != "mode"},
-        "kind": RESPONSE, "request_sha256": fingerprint(inner), "phase": "integration",
+        "kind": f"native-publisher-response-v{inner['version']}", "request_sha256": fingerprint(inner), "phase": "integration",
         "status": status,
     }
 
@@ -300,11 +299,11 @@ class PreparedPublication:
     pr_preparation_receipt_sha256: str
 
     @classmethod
-    def parse(cls, value, *, readiness=False):
-        schema = "uif-prepared-publisher-readiness/1" if readiness else "uif-prepared-native-publication/1"
+    def parse(cls, value, *, readiness=False, snapshot_path=None):
+        schema = "uif-prepared-publisher-readiness" if readiness else "uif-prepared-native-publication"
         require(fields(value, "schema request pull_request test_merge_head review_facts_sha256 require_atomic_base "
                        "pr_preparation_invocation_id pr_preparation_receipt_sha256")
-                and value["schema"] == schema
+                and value["schema"] in (publisher_source_kind(schema, 1), publisher_source_kind(schema, 2))
                 and oid(value["test_merge_head"]) and digest(value["review_facts_sha256"])
                 and type(value["require_atomic_base"]) is bool
                 and uuid(value["pr_preparation_invocation_id"])
@@ -316,9 +315,9 @@ class PreparedPublication:
                 # Validation reuses the frozen request type. This in-memory
                 # value never enters the grant, wire, or stored receipt.
                 binding["readiness_receipt_sha256"] = "0" * 64
-            binding["admission"] = LedgerAdmission(**binding["admission"])
-            binding["issue"] = PolledIssue(**binding["issue"])
-            request = PublicationRequest(**binding)
+            request = PublicationRequest.from_record(binding, snapshot_path=snapshot_path)
+            require(value["schema"] == publisher_source_kind(schema, request.version),
+                    "uif_publisher_prepared_binding")
             require(value["pr_preparation_invocation_id"] not in (request.invocation_id, request.readiness_invocation_id),
                     "uif_publisher_pr_preparation_identity")
             return cls(request, PullRequestPin(**value["pull_request"]),
@@ -329,35 +328,58 @@ class PreparedPublication:
 
 
 def verify_origin(grant):
-    grant.admission.require_implementation()
-    require(grant.issue.project_id == UIF.project_id and grant.issue.project_slug == UIF.project_slug
-            and uuid(grant.issue.issue_id) and grant.issue.identifier not in TERMINAL_LINKS
-            and uuid(grant.invocation_id) and uuid(grant.validation_job_id)
+    if grant.task is not None:
+        verify_publication_origin(grant.admission, grant.issue, grant.task)
+    else:
+        grant.admission.require_implementation()
+        require(isinstance(grant.issue, PolledIssue) and grant.issue.project_id == UIF.project_id
+                and grant.issue.project_slug == UIF.project_slug and uuid(grant.issue.issue_id)
+                and grant.issue.identifier not in TERMINAL_LINKS, "uif_publisher_origin_pins")
+    require(uuid(grant.invocation_id) and uuid(grant.validation_job_id)
             and all(digest(value) for value in (
                 grant.policy_sha256, grant.validation_operation_id,
                 grant.validation_receipt_sha256, grant.publisher_operation_id,
             )), "uif_publisher_origin_pins")
 
 
-def parse_candidate_grant(cls, value, schema, candidate_type):
+def origin_record(grant):
+    record = asdict(grant)
+    if grant.task is not None:
+        del record["issue"]
+        record.update(publisher_identity(None, grant.task))
+    return record
+
+
+def parse_candidate_grant(cls, value, schema, candidate_type, snapshot_path):
+    require(isinstance(value, dict), "uif_publisher_source_grant")
     try:
         binding = dict(value)
-        require(binding.pop("schema") == schema, "uif_publisher_source_grant_schema")
+        tag = binding.pop("schema")
         binding["admission"] = LedgerAdmission(**binding["admission"])
-        binding["issue"] = PolledIssue(**binding["issue"])
         binding["candidate"] = candidate_type(**binding["candidate"])
-        return cls(**binding)
+        if tag == publisher_source_kind(schema, 1):
+            require("task" not in binding, "uif_publisher_source_grant")
+            binding["issue"] = PolledIssue(**binding["issue"])
+            return cls(**binding)
+        require(tag == publisher_source_kind(schema, 2) and "issue" not in binding
+                and snapshot_path is not None, "uif_publisher_source_grant_schema")
+        task = LedgerTaskEnvelope.from_record(binding.pop("task"), snapshot_path=snapshot_path)
+        require(binding.pop("workspace_key") == task.key.workspace_key, "uif_publication_workspace_key")
+        result = cls(issue=None, task=task, **binding)
+        require(wire({"schema": tag, **result.to_record()}) == wire(value), "uif_publisher_source_grant")
+        return result
     except (KeyError, TypeError) as error:
         raise SourceHold("uif_publisher_source_grant") from error
 
 
 def source_envelope(grant, action, observe_mode, observe):
+    version = 2 if grant.task is not None else 1
     return {
-        "version": 1, "mode": observe_mode if observe else action, "invocation_id": grant.invocation_id,
+        "version": version, "mode": observe_mode if observe else action, "invocation_id": grant.invocation_id,
         "request": {
-            "version": 1, "mode": action, "operation_id": grant.publisher_operation_id,
-            "issue_id": grant.issue.issue_id, "project_id": grant.issue.project_id,
-            "owner": grant.admission.owner, "binding_sha256": fingerprint(asdict(grant)),
+            "version": version, "mode": action, "operation_id": grant.publisher_operation_id,
+            **publisher_identity(grant.issue, grant.task),
+            "owner": grant.admission.owner, "binding_sha256": fingerprint(grant.to_record()),
         },
     }
 
@@ -365,7 +387,7 @@ def source_envelope(grant, action, observe_mode, observe):
 @dataclass(frozen=True)
 class PreparedCandidate:
     admission: LedgerAdmission
-    issue: PolledIssue
+    issue: PolledIssue | None
     candidate: CandidateSource
     policy_sha256: str
     validation_operation_id: str
@@ -374,12 +396,18 @@ class PreparedCandidate:
     publisher_operation_id: str
     invocation_id: str
 
-    def __post_init__(self):
+    task: InitVar[LedgerTaskEnvelope | None] = None
+
+    def __post_init__(self, task):
+        object.__setattr__(self, "task", task)
         verify_origin(self)
 
+    def to_record(self):
+        return origin_record(self)
+
     @classmethod
-    def parse(cls, value):
-        return parse_candidate_grant(cls, value, "uif-prepared-candidate-publication/1", CandidateSource)
+    def parse(cls, value, *, snapshot_path=None):
+        return parse_candidate_grant(cls, value, "uif-prepared-candidate-publication", CandidateSource, snapshot_path)
 
     def envelope(self, *, observe):
         return source_envelope(self, "publish-candidate", "observe-candidate", observe)
@@ -390,7 +418,7 @@ class PreparedPullRequest:
     """Sealed original PR preparation, before the independent review stage."""
 
     admission: LedgerAdmission
-    issue: PolledIssue
+    issue: PolledIssue | None
     candidate: PullRequestCandidate
     policy_sha256: str
     validation_operation_id: str
@@ -401,14 +429,20 @@ class PreparedPullRequest:
     candidate_invocation_id: str
     candidate_receipt_sha256: str
 
-    def __post_init__(self):
+    task: InitVar[LedgerTaskEnvelope | None] = None
+
+    def __post_init__(self, task):
+        object.__setattr__(self, "task", task)
         verify_origin(self)
         require(uuid(self.candidate_invocation_id) and self.candidate_invocation_id != self.invocation_id
                 and digest(self.candidate_receipt_sha256), "uif_publisher_pr_candidate_receipt")
 
+    def to_record(self):
+        return origin_record(self)
+
     @classmethod
-    def parse(cls, value):
-        return parse_candidate_grant(cls, value, "uif-prepared-pull-request/1", PullRequestCandidate)
+    def parse(cls, value, *, snapshot_path=None):
+        return parse_candidate_grant(cls, value, "uif-prepared-pull-request", PullRequestCandidate, snapshot_path)
 
     def envelope(self, *, observe):
         return source_envelope(self, "prepare-pr", "observe-pr", observe)
@@ -417,7 +451,7 @@ class PreparedPullRequest:
 def readiness_envelope(prepared, *, observe):
     request = prepared.request
     return {
-        "version": 1, "mode": "observe-readiness" if observe else "qualify-readiness",
+        "version": request.version, "mode": "observe-readiness" if observe else "qualify-readiness",
         "invocation_id": request.readiness_invocation_id,
         "request": {**request.envelope(observe=False)["request"], "mode": "observe"},
     }
@@ -444,12 +478,14 @@ def claim_binding(request, binding_sha256, valid_until):
         "original_operation_id": admitted.original_operation_id, "owner": admitted.owner,
         "epoch": admitted.epoch, "store_id": admitted.store_id, "row_id": admitted.row_id,
         "valid_until": valid_until,
+        **(publisher_identity(None, request.task) if request.task is not None else {}),
     }
 
 
 def verify_record(record, inner, invocation, closure):
     require(fields(record, "version kind intent terminal")
-            and type(record["version"]) is int and record["version"] == 1 and record["kind"] == RECORD,
+            and type(record["version"]) is int and record["version"] == inner["version"]
+            and record["kind"] == f"native-publisher-invocation-record-v{inner['version']}",
             "uif_publisher_original_record")
     intent = record["intent"]
     require(fields(intent, "operation_id invocation_id request request_sha256 closure_sha256 phase supervisor_pid supervisor_starttime")
@@ -500,6 +536,7 @@ class NativePublisher:
     rpc: PublicationRPC
     timeout: int = 180
     candidate_exclusions_sha256: str | None = None
+    snapshot_path: Path | None = None
 
     def __post_init__(self):
         require(type(self.uid) is int and self.uid > 0 and self.uid == os.getuid() == os.geteuid()
@@ -527,10 +564,10 @@ class NativePublisher:
         value = decode(raw)
         if phase in ("candidate", "pr"):
             cls = PreparedCandidate if phase == "candidate" else PreparedPullRequest
-            prepared = request = cls.parse(value)
+            prepared = request = cls.parse(value, snapshot_path=self.snapshot_path)
             envelope = request.envelope(observe=observe)
         else:
-            prepared = PreparedPublication.parse(value, readiness=phase == "readiness")
+            prepared = PreparedPublication.parse(value, readiness=phase == "readiness", snapshot_path=self.snapshot_path)
             request = prepared.request
             require(prepared.pr.repository_id == self.repository_id, "uif_publisher_repository_pin")
             envelope = (readiness_envelope(prepared, observe=observe) if phase == "readiness"
@@ -540,7 +577,7 @@ class NativePublisher:
     def handle(self, raw):
         envelope = decode(raw)
         require(fields(envelope, "version mode invocation_id request")
-                and type(envelope["version"]) is int and envelope["version"] == 1
+                and type(envelope["version"]) is int and envelope["version"] in (1, 2)
                 and isinstance(envelope["mode"], str) and envelope["mode"] in MODES
                 and uuid(envelope["invocation_id"]), "uif_publisher_envelope")
         inner = envelope["request"]
@@ -604,7 +641,8 @@ class NativePublisher:
         if success_path is not None:
             require(read_optional(success_path, uid=self.uid) is None, "uif_publisher_accepted_original_exists")
         record = {
-            "version": 1, "kind": RECORD, "terminal": None,
+            "version": inner["version"], "kind": f"native-publisher-invocation-record-v{inner['version']}",
+            "terminal": None,
             "intent": {
                 "operation_id": request.publisher_operation_id, "invocation_id": invocation,
                 "request": inner, "request_sha256": fingerprint(inner), "phase": "integration",
@@ -749,6 +787,7 @@ class NativePublisher:
                 "uif_publisher_original_pr_binding")
         require(result.get("prepared_pull_request") == {
             "pull_request": asdict(prepared.pr), "receipt_sha256": prepared.pr_preparation_receipt_sha256,
+            **(publisher_identity(None, request.task) if request.task is not None else {}),
         }, "uif_publisher_original_pr_receipt")
 
     def verify_readiness(self, directory, prepared):
@@ -756,7 +795,8 @@ class NativePublisher:
         request = prepared.request
         expected = asdict(prepared)
         expected["request"]["readiness_receipt_sha256"] = "0" * 64
-        require(asdict(ready) == expected, "uif_publisher_original_readiness_binding")
+        require(asdict(ready) == expected and ready.request.task == request.task,
+                "uif_publisher_original_readiness_binding")
         require(result["status"] == "complete" and result["receipt"]["sha256"] == request.readiness_receipt_sha256,
                 "uif_publisher_readiness_pin")
         verify_stopped(result["receipt"]["body"]["terminal"],
@@ -764,13 +804,16 @@ class NativePublisher:
 
     def candidate_fact(self, prepared, record):
         return {**{key: getattr(prepared.candidate, key) for key in SOURCE_PINS},
-                "receipt_sha256": record_digest(record)}
+                "receipt_sha256": record_digest(record),
+                **(publisher_identity(None, prepared.task) if prepared.task is not None else {})}
 
     def fact(self, prepared, record, merge_head):
         require(oid(merge_head), "uif_publisher_verified_merge_pin")
         request = prepared.request
         return {
-            "schema": "uif-accepted-project-source/1", "repository": UIF.repository,
+            "schema": publisher_source_kind("uif-accepted-project-source", request.version),
+            "repository": UIF.repository,
+            **(publisher_identity(None, request.task) if request.task is not None else {}),
             "branch": UIF.accepted_branch, "head": merge_head, "tree": request.source_tree,
             "parents": [request.source_base, request.source_head],
             "base": request.source_base, "candidate_head": request.source_head,
@@ -787,10 +830,9 @@ class NativePublisher:
             status = "not-found"
         else:
             status = "complete" if terminal and terminal.get("child_tree_gone") is True else "unknown"
+        kind = phase if phase in ("candidate", "pr") else "invocation"
         value = {
-            "version": 1, "kind": {
-                "candidate": "native-publisher-candidate-v1", "pr": "native-publisher-pr-v1",
-            }.get(phase, "native-publisher-invocation-v1"),
+            "version": inner["version"], "kind": f"native-publisher-{kind}-v{inner['version']}",
             "operation_id": inner["operation_id"],
             "invocation_id": envelope["invocation_id"], "request_sha256": fingerprint(inner),
             "status": status, "response": terminal["response"] if terminal else None,
@@ -809,7 +851,8 @@ class NativePublisher:
                     directory / "native-candidate-published.json", self.candidate_fact(prepared, record))
             elif phase == "pr":
                 expected = {"pull_request": asdict(self.pr_evidence(evidence)),
-                            "receipt_sha256": record_digest(record)}
+                            "receipt_sha256": record_digest(record),
+                            **(publisher_identity(None, prepared.task) if prepared.task is not None else {})}
                 value["prepared_pull_request"] = self.materialize(directory / "native-pr-prepared.json", expected)
             else:
                 request = prepared.request
@@ -827,10 +870,18 @@ class NativePublisher:
 def registered(config_path):
     """Load a root-owned installation binding; the wire supplies no selectors."""
     value = decode(read(config_path, uid=0, mode=0o644))
-    require(fields(value, "schema claim_root accepted_root closure_sha256 repository_id publisher_uid timeout git gh askpass candidate_askpass gh_config_dir "
-                          "candidate_exclusions_sha256")
-            and value["schema"] == "uif-native-publisher-config/1"
-            and digest(value["candidate_exclusions_sha256"]), "uif_publisher_config")
+    config_fields = ("schema claim_root accepted_root closure_sha256 repository_id publisher_uid timeout git gh "
+                     "askpass candidate_askpass gh_config_dir candidate_exclusions_sha256")
+    version = value.get("schema") if isinstance(value, dict) else None
+    snapshot = None
+    if version == "uif-native-publisher-config/2":
+        require(fields(value, config_fields + " snapshot_path")
+                and isinstance(value["snapshot_path"], str), "uif_publisher_config")
+        snapshot = exact_path(value["snapshot_path"])
+    else:
+        require(version == "uif-native-publisher-config/1" and fields(value, config_fields),
+                "uif_publisher_config")
+    require(digest(value["candidate_exclusions_sha256"]), "uif_publisher_config")
 
     def executable(item):
         require(fields(item, "path sha256"), "uif_publisher_executable_config")
@@ -842,7 +893,7 @@ def registered(config_path):
     return NativePublisher(PublisherReceiptPaths(Path(value["accepted_root"]), Path(value["claim_root"])),
                            value["closure_sha256"], value["repository_id"], value["publisher_uid"],
                            PublicationRPC(github, git), value["timeout"],
-                           candidate_exclusions_sha256=value["candidate_exclusions_sha256"])
+                           candidate_exclusions_sha256=value["candidate_exclusions_sha256"], snapshot_path=snapshot)
 
 
 def main(argv):

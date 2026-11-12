@@ -8,7 +8,7 @@ The existing owner supplies the lock and journal. This module creates no store.
 
 from collections.abc import Callable
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
+from dataclasses import InitVar, asdict, dataclass
 from hashlib import sha256
 import json
 import os
@@ -23,6 +23,7 @@ from uuid import UUID
 from .ledger import RowKey, TERMINAL_LINKS
 from .source import SourceHold, exact_path, file_digest, oid
 from .stokowski import LedgerAdmission, PolledIssue, UIF
+from .task_identity import LedgerTaskEnvelope
 
 
 PUBLISHER_MAX_WORK_SECONDS = 600
@@ -70,10 +71,37 @@ def unique_json_object(items):
     return result
 
 
+LEDGER_PUBLICATION_REQUEST = "uif-publication-request/2"
+
+
+def verify_publication_origin(admission, issue, task):
+    admission.require_implementation()
+    if task is not None:
+        from .ledger import verify_ledger_task_admission
+
+        require(issue is None, "uif_publication_ledger_origin")
+        verify_ledger_task_admission(task, admission)
+        return
+    require(isinstance(issue, PolledIssue) and issue.project_id == UIF.project_id
+            and issue.project_slug == UIF.project_slug and uuid(issue.issue_id)
+            and identifier(issue.identifier) and issue.identifier not in TERMINAL_LINKS,
+            "uif_publication_issue")
+
+
+def publisher_identity(issue, task):
+    if task is None:
+        return {"issue_id": issue.issue_id, "project_id": issue.project_id}
+    return {"task": task.to_record(), "workspace_key": task.key.workspace_key}
+
+
+def publisher_source_kind(kind, version):
+    return f"{kind}/{version}"
+
+
 @dataclass(frozen=True)
 class PublicationRequest:
     admission: LedgerAdmission
-    issue: PolledIssue
+    issue: PolledIssue | None
     source_base: str
     source_head: str
     source_tree: str
@@ -95,12 +123,12 @@ class PublicationRequest:
     invocation_id: str
     effect_mode: str = "step"
 
-    def __post_init__(self):
-        self.admission.require_implementation()
-        require(self.issue.project_id == UIF.project_id and self.issue.project_slug == UIF.project_slug
-                and uuid(self.issue.issue_id) and identifier(self.issue.identifier)
-                and self.issue.identifier not in TERMINAL_LINKS,
-                "uif_publication_issue")
+    # Legacy recursive dataclass encoding remains the v1 carrier.
+    task: InitVar[LedgerTaskEnvelope | None] = None
+
+    def __post_init__(self, task):
+        verify_publication_origin(self.admission, self.issue, task)
+        object.__setattr__(self, "task", task)
         require(all(oid(value) for value in (self.source_base, self.source_head, self.source_tree))
                 and self.source_head != self.source_base and identifier(self.source_branch),
                 "uif_publication_source")
@@ -124,16 +152,61 @@ class PublicationRequest:
 
     @property
     def key(self):
+        if self.task is not None:
+            return RowKey(self.task.key.store_id, self.task.key.row_id)
         return RowKey(self.admission.store_id, self.admission.row_id)
+
+    @property
+    def original_operation_id(self):
+        return self.task.original_operation_id if self.task is not None else self.admission.original_operation_id
+
+    @property
+    def version(self):
+        return 2 if self.task is not None else 1
+
+    def to_record(self):
+        record = asdict(self)
+        if self.task is not None:
+            del record["issue"]
+            record.update(schema=LEDGER_PUBLICATION_REQUEST, task=self.task.to_record())
+        return record
+
+    @classmethod
+    def from_ledger_record(cls, record, *, snapshot_path):
+        require(isinstance(record, dict) and record.get("schema") == LEDGER_PUBLICATION_REQUEST
+                and "issue" not in record and snapshot_path is not None, "uif_publication_request_shape")
+        binding = dict(record)
+        del binding["schema"]
+        try:
+            task = LedgerTaskEnvelope.from_record(binding.pop("task"), snapshot_path=snapshot_path)
+            admission = LedgerAdmission(**binding.pop("admission"))
+            result = cls(admission=admission, issue=None, task=task, **binding)
+            require(wire(result.to_record()) == wire(record), "uif_publication_request_shape")
+            return result
+        except (KeyError, TypeError) as error:
+            raise SourceHold("uif_publication_request_shape") from error
+
+    @classmethod
+    def from_record(cls, record, *, snapshot_path=None):
+        require(isinstance(record, dict), "uif_publication_request_shape")
+        if "schema" in record:
+            return cls.from_ledger_record(record, snapshot_path=snapshot_path)
+        require("task" not in record, "uif_publication_request_shape")
+        binding = dict(record)
+        try:
+            admission = LedgerAdmission(**binding.pop("admission"))
+            return cls(admission=admission, issue=PolledIssue(**binding.pop("issue")), **binding)
+        except (KeyError, TypeError) as error:
+            raise SourceHold("uif_publication_request_shape") from error
 
     def envelope(self, *, observe):
         # Recovery changes only the outer mode. The original inner request survives.
         return {
-            "version": 1, "mode": "observe" if observe else "invoke",
+            "version": self.version, "mode": "observe" if observe else "invoke",
             "invocation_id": self.invocation_id,
             "request": {
-                "version": 1, "mode": self.effect_mode, "operation_id": self.publisher_operation_id,
-                "issue_id": self.issue.issue_id, "project_id": self.issue.project_id,
+                "version": self.version, "mode": self.effect_mode, "operation_id": self.publisher_operation_id,
+                **publisher_identity(self.issue, self.task),
                 "owner": self.admission.owner, "unit_sha256": self.unit_sha256,
                 "packet_sha256": self.packet_sha256, "source_sha256": self.source_sha256,
             },
@@ -339,8 +412,10 @@ def accepted_result(value, request, envelope, command):
     """Check original invocation identity, stopped proof and accepted source facet."""
     try:
         inner = envelope["request"]
-        require(type(value["version"]) is int and value["version"] == 1
-                and value["kind"] == "native-publisher-invocation-v1"
+        version = request.version
+        require(wire(envelope) == wire(request.envelope(observe=envelope.get("mode") == "observe"))
+                and type(value["version"]) is int and value["version"] == version
+                and value["kind"] == f"native-publisher-invocation-v{version}"
                 and value["operation_id"] == request.publisher_operation_id
                 and value["invocation_id"] == request.invocation_id
                 and value["request_sha256"] == fingerprint(inner)
@@ -349,8 +424,8 @@ def accepted_result(value, request, envelope, command):
         record = receipt["body"]
         intent, terminal = record["intent"], record["terminal"]
         require(receipt["sha256"] == record_digest(record)
-                and type(record["version"]) is int and record["version"] == 1
-                and record["kind"] == "native-publisher-invocation-record-v1"
+                and type(record["version"]) is int and record["version"] == version
+                and record["kind"] == f"native-publisher-invocation-record-v{version}"
                 and intent["operation_id"] == request.publisher_operation_id
                 and intent["invocation_id"] == request.invocation_id
                 and intent["request"] == inner and intent["request_sha256"] == fingerprint(inner)
@@ -366,7 +441,7 @@ def accepted_result(value, request, envelope, command):
                 and type(response["version"]) is int
                 and response == {
                     **{key: val for key, val in inner.items() if key != "mode"},
-                    "kind": "native-publisher-response-v1", "request_sha256": fingerprint(inner),
+                    "kind": f"native-publisher-response-v{version}", "request_sha256": fingerprint(inner),
                     "phase": "integration", "status": response["status"],
                 },
                 "uif_publication_terminal_proof")
@@ -385,10 +460,17 @@ def accepted_result(value, request, envelope, command):
                 and fact["head"] == evidence["merge_head"]
                 and fact["pr_url"] == f"https://github.com/{UIF.repository}/pull/{pr['number']}",
                 "uif_publication_terminal_evidence")
+        if request.task is not None:
+            require({key: fact.get(key) for key in ("task", "workspace_key")}
+                    == publisher_identity(None, request.task)
+                    and not {"issue", "issue_id", "identifier", "project_id", "project_slug", "linear"} & fact.keys(),
+                    "uif_publication_accepted_task")
+        else:
+            require("task" not in fact and "workspace_key" not in fact, "uif_publication_accepted_task")
         require(accepted["reference"] == {
                     "path": command.paths.accepted(request), "sha256": record_digest(fact),
                 }
-                and fact["schema"] == "uif-accepted-project-source/1"
+                and fact["schema"] == publisher_source_kind("uif-accepted-project-source", version)
                 and fact["repository"] == UIF.repository and fact["branch"] == UIF.accepted_branch
                 and fact["base"] == request.source_base and fact["candidate_head"] == request.source_head
                 and fact["parents"] == [request.source_base, request.source_head]
@@ -414,7 +496,7 @@ class Publisher:
     def consume_boundary(self, request: PublicationRequest) -> AcceptedPublication:
         """Run one already-approved publication, or observe its original invocation."""
         with self.fence(request, "active") as owner:
-            prior = owner.read_intent(request.key, request.admission.original_operation_id)
+            prior = owner.read_intent(request.key, request.original_operation_id)
             if prior is not None:
                 require(prior == request, "uif_publication_intent_drift")
                 return self._transaction(request, owner, observe=True)
@@ -423,7 +505,7 @@ class Publisher:
             return self._transaction(request, owner, observe=False)
 
     def observe_original(self, request: PublicationRequest, owner: OwnerTransaction) -> AcceptedPublication:
-        require(owner.read_intent(request.key, request.admission.original_operation_id) == request,
+        require(owner.read_intent(request.key, request.original_operation_id) == request,
                 "uif_publication_original_intent")
         return self._transaction(request, owner, observe=True)
 

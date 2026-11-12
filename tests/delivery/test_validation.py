@@ -1,13 +1,17 @@
 import asyncio
 from contextlib import asynccontextmanager
-from dataclasses import replace
+from dataclasses import asdict, replace
+import json
 from pathlib import Path
+import sqlite3
 import tempfile
 from types import SimpleNamespace
 import unittest
 
+from uif.ledger import SNAPSHOT_SHA256, read_snapshot
 from uif.source import SourceHold, git
 from uif.stokowski import DispatchReportBinding, LedgerAdmission, PolledIssue, UIF
+from uif.task_identity import LedgerTaskEnvelope, LedgerTaskKey
 from uif.validation import (
     StageBinding, StageJournal, ValidationAdapter, ValidationSpec, WindmillValidationBackend,
     decode, sha, wire,
@@ -99,6 +103,132 @@ class ValidationFixture:
         return receipt
 
 
+SNAPSHOT = Path(__file__).resolve().parents[2] / "README.md"
+
+
+class LedgerValidationFixture(ValidationFixture):
+    def __init__(self, root):
+        from uif.dispatch import LEDGER_RECEIPT, MODEL
+        from uif.stokowski import LEDGER_DISPATCH_INTENT, LEDGER_DISPATCH_INTENT_FIELDS
+
+        super().__init__(root)
+        legacy = self.spec.binding
+        original = legacy.dispatch
+        key = LedgerTaskKey(original.ledger.store_id, "standalone-harness-boundary-plan")
+        source_sha256 = read_snapshot(SNAPSHOT)[key.row_id].source_sha256
+        operation = "retained:opaque-operation/1"
+        task = LedgerTaskEnvelope(key, SNAPSHOT_SHA256, source_sha256, self.owner, self.epoch, operation, SNAPSHOT)
+        admission = replace(original.ledger, row_id=key.row_id, snapshot_sha256=SNAPSHOT_SHA256,
+                            source_sha256=source_sha256, original_operation_id=operation)
+        attempt = root / "attempts" / key.workspace_key
+        attempt.mkdir(mode=0o700, parents=True)
+        intent = attempt / "dispatch-intent.json"
+        workspace = root / "workspaces" / key.workspace_key
+        self.author_binding["head"] = legacy.base
+        pins = {"admission_sha256": "a" * 64, "provider_sha256": "b" * 64}
+        record = dict(schema=LEDGER_DISPATCH_INTENT, task=task.to_record(), admission=asdict(admission),
+                      operation_id=operation, attempt=3, workspace=str(workspace), source=str(root / "source"),
+                      source_head=legacy.base, source_tree=legacy.tree, source_branch=legacy.branch,
+                      acquisition_sha256="c" * 64, accepted_sha256="d" * 64, supervisor_sha256="e" * 64,
+                      requested_model=MODEL, requested_effort="medium", pins=pins, manifest_sha256="f" * 64,
+                      request_sha256="0" * 64, lease_id="coding-lease", pool_database=str(root / "state.sqlite"),
+                      worker_binding=self.author_binding)
+        assert set(record) == LEDGER_DISPATCH_INTENT_FIELDS
+        intent.write_bytes(wire(record))
+        intent_sha256 = sha(intent.read_bytes())
+        invocation = "1f24cc8b-36f2-4a8d-a38c-762f554f6777"
+        handoff = attempt / "controller-supervisor.json"
+        handoff.write_bytes(wire(dict(invocation_id=invocation, operation_id=operation, dispatch_sha256=intent_sha256)))
+        (attempt / "intent.json").write_bytes(wire(dict(lease="coding-lease", binding=self.author_binding)))
+        coding = attempt / "receipt.json"
+        coding.write_bytes(wire(dict(
+            decode(self.coding.read_bytes()),
+            schema=LEDGER_RECEIPT, task=task.to_record(), workspace_key=key.workspace_key, attempt=3,
+            original_operation_id=operation, invocation_id=invocation, dispatch_sha256=intent_sha256,
+            admission_sha256=pins["admission_sha256"], handoff_sha256=sha(handoff.read_bytes()),
+            parent_binding=self.author_binding, binding_sha256=sha(wire(self.author_binding)),
+            parent_runtime=str(root), attempt_path=str(attempt), accepted_delivery=False,
+            turn_completed=True, source_identity_changed=False, provider_route="codex-chatgpt",
+            requested_model=MODEL, requested_effort="medium",
+        )))
+        with sqlite3.connect(root / "state.sqlite") as db:
+            db.execute("CREATE TABLE leases (id TEXT PRIMARY KEY,binding TEXT,fingerprint TEXT,status TEXT,outcome TEXT)")
+            db.execute("INSERT INTO leases VALUES (?, ?, ?, ?, ?)",
+                       ("coding-lease", wire(self.author_binding).decode(), sha(wire(self.author_binding)),
+                        "finished", "succeeded"))
+        self.coding = coding
+        self.candidate = root / "contributions" / key.workspace_key / "candidate"
+        self.candidate.parent.mkdir(parents=True)
+        legacy.candidate.rename(self.candidate)
+        dispatch = DispatchReportBinding(None, 3, workspace, operation, intent, intent_sha256, admission, task=task)
+        binding = replace(legacy, dispatch=dispatch, candidate=self.candidate, coding_receipt=coding,
+                          coding_receipt_sha256=sha(coding.read_bytes()))
+        self.spec = replace(self.spec, binding=binding, operation_key=binding.key("validation"))
+        backend = WindmillValidationBackend(self.client, workspace="foo", script_path="u/uif/runner")
+        self.adapter = ValidationAdapter(self.journal, self.adapter.fence, backend)
+
+    def completed(self, **updates):
+        receipt = super().completed(**updates)
+        self.client.job["workspace_id"] = "foo"
+        return receipt
+
+class LedgerValidationTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.f = LedgerValidationFixture(Path(temporary.name))
+
+    async def test_ledger_validation_keeps_the_original_invocation_and_dispatch(self):
+        f = self.f
+        f.client.drop_ack = True
+        self.assertEqual((await f.adapter.tick(f.spec)).status, "unknown")
+        with self.assertRaisesRegex(SourceHold, "operation_rebind"):
+            await f.adapter.tick(replace(f.spec, windmill_job_id="276d1a06-a722-432c-91e3-2701f927c4a5"))
+        f.completed()
+        self.assertEqual((await f.adapter.tick(f.spec)).status, "succeeded")
+        proof = await f.adapter.accepted(f.spec)
+        binding = proof.binding.dispatch
+        pin = decode(f.adapter._pin(f.spec))
+        self.assertEqual(pin["schema"], "uif-stage/2")
+        self.assertEqual(pin["workspace_key"], binding.task.key.workspace_key)
+        self.assertEqual(pin["spec"]["binding"]["dispatch"], binding.to_record())
+        self.assertEqual(proof.windmill_job_id, f.spec.windmill_job_id)
+        self.assertEqual(binding.operation_id, "retained:opaque-operation/1")
+        self.assertEqual([entry[0] for entry in f.client.calls], ["get", "post", "get"])
+
+    async def test_retained_runner_receipt_holds_without_replay_or_acceptance(self):
+        f = self.f
+        receipts = f.root / "runner"
+        directory = receipts / f.spec.runner_job_id
+        directory.mkdir(parents=True)
+        (directory / "receipt.json").write_bytes(wire(f.runner_receipt()))
+        backend = WindmillValidationBackend(f.client, workspace="foo", script_path="u/uif/runner",
+                                            runner_receipts=receipts, runner_uid=directory.stat().st_uid)
+        adapter = ValidationAdapter(f.journal, f.adapter.fence, backend)
+        self.assertEqual((await adapter.tick(f.spec)).status, "unknown")
+        with self.assertRaisesRegex(SourceHold, "acceptance_pending"):
+            await adapter.accepted(f.spec)
+        self.assertEqual([entry[0] for entry in f.client.calls], ["get"])
+
+    async def test_failed_windmill_wrapper_cannot_qualify_a_successful_runner_receipt(self):
+        f = self.f
+        f.completed()
+        f.client.job["success"] = False
+        self.assertEqual((await f.adapter.tick(f.spec)).status, "unknown")
+        self.assertEqual([entry[0] for entry in f.client.calls], ["get"])
+
+    async def test_stale_owner_or_different_coding_receipt_prevents_validation(self):
+        f = self.f
+        f.epoch = "stale"
+        with self.assertRaisesRegex(SourceHold, "stale owner"):
+            await f.adapter.tick(f.spec)
+        f.epoch = f.spec.binding.task.epoch
+        f.coding.write_bytes(f.coding.read_bytes() + b"\n")
+        with self.assertRaisesRegex(SourceHold, "original_coding"):
+            await f.adapter.tick(f.spec)
+        self.assertEqual(f.client.calls, [])
+
+
 class ValidationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -120,6 +250,13 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(proof.receipt_sha256, sha(wire(receipt)))
         self.assertEqual([call[0] for call in f.client.calls], ["get", "post", "get", "get"])
         self.assertTrue(all(call[1].endswith(f.spec.windmill_job_id) for call in f.client.calls if call[0] == "get"))
+
+    def test_issue_journal_keeps_its_original_serialization(self):
+        f = self.f
+        original = json.dumps(dict(stage="validation", spec=asdict(f.spec), backend=f.adapter.backend.registration),
+                              sort_keys=True, allow_nan=False,
+                              default=lambda value: value.decode() if isinstance(value, bytes) else str(value))
+        self.assertEqual(f.adapter._pin(f.spec), original)
 
     async def test_retained_missing_job_does_not_submit(self):
         f = self.f

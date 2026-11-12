@@ -1,10 +1,11 @@
 """Bind the current coordinator's qualified context to its selected source."""
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import InitVar, asdict, dataclass
 import logging
 from pathlib import Path
 import re
+from typing import TYPE_CHECKING
 from uuid import UUID
 from weakref import ref
 
@@ -12,6 +13,18 @@ from .source import (
     SourceHold, acquire_checkout, branch_name, exact_path, file_digest, git, oid,
     require_local_git_storage, verify_checkout,
 )
+
+if TYPE_CHECKING:
+    from .task_identity import LedgerTaskEnvelope
+
+LEDGER_DISPATCH_REPORT = "uif-dispatch-report/2"
+LEDGER_DISPATCH_INTENT = "uif-dispatch-intent/2"
+LEDGER_DISPATCH_INTENT_FIELDS = frozenset({
+    "schema", "task", "admission", "operation_id", "attempt", "workspace", "source",
+    "source_head", "source_tree", "source_branch", "acquisition_sha256", "accepted_sha256",
+    "supervisor_sha256", "requested_model", "requested_effort", "pins", "manifest_sha256",
+    "request_sha256", "lease_id", "pool_database", "worker_binding",
+})
 
 
 @dataclass(frozen=True)
@@ -91,6 +104,7 @@ class QualifiedContext:
     manifest: Mapping
     source: Path
     ledger: LedgerAdmission | None = None
+    task: "LedgerTaskEnvelope | None" = None
 
 
 @dataclass(frozen=True)
@@ -161,7 +175,29 @@ class SourceBoundary:
             raise SourceHold("manifest_issue_binding")
         if "stage" in tasks[issue.identifier]:
             raise SourceHold("nonimplementation_workspace_refused")
-        selected = self.selected_source(profile, issue)
+        return self._bind_source(profile, issue, context, ledger)
+
+    def _bind_ledger_task(self, task):
+        from .ledger import ledger_task_target, verify_ledger_task_input
+
+        context = self.qualify_context(task)
+        ledger = context.ledger
+        if not isinstance(ledger, LedgerAdmission) or context.task != task:
+            raise SourceHold("uif_ledger_admission_required")
+        ledger.require_implementation()
+        identifier = task.key.workspace_key
+        tasks = context.manifest.get("tasks")
+        if (context.manifest.get("project_id") != UIF.project_id
+                or not isinstance(tasks, dict) or set(tasks) != {identifier}):
+            raise SourceHold("uif_ledger_task_input_binding")
+        verify_ledger_task_input(tasks[identifier], ledger_task_target(task.key, task.source_sha256))
+        if "stage" in tasks[identifier]:
+            raise SourceHold("nonimplementation_workspace_refused")
+        return self._bind_source(UIF, task, context, ledger)
+
+    def _bind_source(self, profile, identity, context, ledger):
+        manifest = context.manifest
+        selected = self.selected_source(profile, identity)
         runtime, checkout = exact_path(context.runtime), exact_path(selected.checkout)
         acquisition = exact_path(selected.acquisition)
         if (not runtime.is_relative_to(self.runtime_root)
@@ -179,20 +215,32 @@ class SourceBoundary:
         return runtime, selected, ledger
 
     def ensure_workspace(self, issue, workspace_root, *, require_ledger=False):
-        runtime, selected, ledger = self._bind(issue, require_ledger=require_ledger)
+        return self._ensure_workspace(workspace_root, issue.identifier,
+                                      lambda: self._bind(issue, require_ledger=require_ledger))
+
+    def ensure_ledger_workspace(self, task, workspace_root):
+        from .task_identity import LedgerTaskEnvelope
+
+        if not isinstance(task, LedgerTaskEnvelope):
+            raise SourceHold("uif_ledger_task_claim_required")
+        return self._ensure_workspace(workspace_root, task.key.workspace_key,
+                                      lambda: self._bind_ledger_task(task))
+
+    def _ensure_workspace(self, workspace_root, identifier, bind):
+        runtime, selected, ledger = bind()
         if exact_path(workspace_root) != self.coordinator_runtime / "workspaces":
             raise SourceHold("workspace_outside_coordinator_runtime")
-        target = runtime / "workspaces" / issue.identifier
+        target = runtime / "workspaces" / identifier
 
         def recheck():
-            if self._bind(issue, require_ledger=require_ledger) != (runtime, selected, ledger):
+            if bind() != (runtime, selected, ledger):
                 raise SourceHold("workspace_selection_changed")
             verify_checkout(selected.checkout, selected.head, selected.tree, selected.branch)
 
         created = acquire_checkout(selected.checkout, target, head=selected.head, tree=selected.tree,
                                    reference="refs/heads/" + selected.branch, branch=selected.branch,
                                    recheck=recheck)
-        return Workspace(target, issue.identifier, created)
+        return Workspace(target, identifier, created)
 
 
 def acquire_uif_task_source(repository, destination, *, head, tree, branch, evidence, sha256, owner_guard):
@@ -237,13 +285,69 @@ def bind_workspace_receiver(orchestrator, workspace_module, *, boundary, polled_
 
 @dataclass(frozen=True)
 class DispatchReportBinding:
-    issue: PolledIssue
+    issue: PolledIssue | None
     attempt_number: int | None
     workspace: Path
     operation_id: str
     receipt_path: Path
     receipt_sha256: str
     ledger: LedgerAdmission | None = None
+    # Existing stage journals use dataclasses.asdict recursively for v1.
+    task: InitVar["LedgerTaskEnvelope | None"] = None
+
+    def __post_init__(self, task):
+        if task is not None:
+            from .ledger import verify_ledger_task_admission
+
+            verify_ledger_task_admission(task, self.ledger)
+            self.ledger.require_implementation()
+            if (self.issue is not None or self.operation_id != task.original_operation_id
+                    or (self.attempt_number is not None
+                        and (type(self.attempt_number) is not int or self.attempt_number < 0))
+                    or not isinstance(self.workspace, Path) or not isinstance(self.receipt_path, Path)
+                    or exact_path(self.workspace).name != task.key.workspace_key
+                    or self.workspace.parent.name != "workspaces"
+                    or exact_path(self.receipt_path) != self.workspace.parent.parent / "attempts"
+                    / task.key.workspace_key / "dispatch-intent.json"
+                    or not isinstance(self.receipt_sha256, str)
+                    or not re.fullmatch(r"[a-f0-9]{64}", self.receipt_sha256)):
+                raise SourceHold("uif_ledger_dispatch_report_binding")
+        elif self.issue is None:
+            raise SourceHold("uif_ledger_dispatch_report_binding")
+        object.__setattr__(self, "task", task)
+
+    def to_record(self):
+        record = asdict(self)
+        record.update(workspace=str(self.workspace), receipt_path=str(self.receipt_path))
+        if self.task is not None:
+            del record["issue"]
+            record.update(schema=LEDGER_DISPATCH_REPORT, task=self.task.to_record())
+        return record
+
+    @classmethod
+    def from_ledger_record(cls, record, *, snapshot_path):
+        from .task_identity import LedgerTaskEnvelope
+
+        expected = {"schema", "task", "attempt_number", "workspace", "operation_id",
+                    "receipt_path", "receipt_sha256", "ledger"}
+        if (not isinstance(record, dict) or set(record) != expected
+                or record["schema"] != LEDGER_DISPATCH_REPORT
+                or not isinstance(record["ledger"], dict)
+                or not all(isinstance(record[name], str) for name in ("workspace", "receipt_path"))):
+            raise SourceHold("uif_ledger_dispatch_report_shape")
+        try:
+            admission = LedgerAdmission(**record["ledger"])
+        except TypeError as error:
+            raise SourceHold("uif_ledger_dispatch_report_shape") from error
+        if asdict(admission) != record["ledger"]:
+            raise SourceHold("uif_ledger_dispatch_report_shape")
+        task = LedgerTaskEnvelope.from_record(record["task"], snapshot_path=snapshot_path)
+        workspace = exact_path(record["workspace"])
+        receipt = exact_path(record["receipt_path"])
+        if str(workspace) != record["workspace"] or str(receipt) != record["receipt_path"]:
+            raise SourceHold("uif_ledger_dispatch_report_shape")
+        return cls(None, record["attempt_number"], workspace, record["operation_id"],
+                   receipt, record["receipt_sha256"], admission, task=task)
 
 
 def bind_uif_lifecycle(orchestrator, workspace_module, owner, *, boundary, polled_issue, report_attempt):

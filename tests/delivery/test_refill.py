@@ -1,9 +1,12 @@
 """Verify the refill predecessor through the canonical publication and ledger."""
 
 from dataclasses import replace
+import json
 
 from test_publication import OPERATION, PREDECESSOR, SNAPSHOT, STORE, PublicationFixture
 from uif.ledger import CurrentRow, RecoveredLedger, RowKey
+from uif.native_publisher import inner_response
+from uif.publication import fingerprint
 from uif.refill import DeliveryCompletion, VerifiedRefill
 from uif.source import SourceHold
 from uif.stokowski import UIF
@@ -56,3 +59,56 @@ class RefillTests(PublicationFixture):
         with self.assertRaisesRegex(SourceHold, "publication_drift"):
             self.refill.verify_refill(OPERATION)
         self.assertEqual([call["mode"] for call in self.calls()], ["invoke", "observe"])
+
+
+class LedgerRefillTests(PublicationFixture):
+    ledger_only = True
+
+    def test_issue_free_completion_uses_original_row_and_operation_for_refill(self):
+        accepted = self.publisher.consume_boundary(self.request)
+        completed = DeliveryCompletion(accepted, "completed", "4" * 64)
+        refill = VerifiedRefill(STORE, {OPERATION: completed}.get, self.publisher)
+        self.assertEqual(refill.verify_refill(OPERATION), RowKey(STORE, PREDECESSOR))
+        self.assertNotIn("issue", accepted.request.to_record())
+        self.assertEqual(accepted.request.to_record()["task"], self.request.task.to_record())
+        with self.assertRaisesRegex(SourceHold, "final_outcome_required"):
+            refill.verify_refill(self.request.invocation_id)
+        self.assertEqual([call["mode"] for call in self.calls()], ["invoke", "observe"])
+
+    def test_actual_owner_persists_and_refills_from_issue_free_completion(self):
+        from test_owner_runtime import OwnerRuntimeTests
+
+        fixture = OwnerRuntimeTests()
+        self.addCleanup(fixture.doCleanups)
+        fixture.setUp()
+        key = fixture.prepare_ledger_inputs(state="reconciled-for-pickup", operation=OPERATION)
+        authority = fixture.authority()
+        task = authority.claim_ledger_task(key)
+        admission = authority.admission.ledger_context(task).ledger
+        self.request = replace(self.request, admission=admission, task=task)
+        ready = self.result()["receipt"]["body"]
+        inner = {**self.request.envelope(observe=False)["request"], "mode": "observe"}
+        ready["intent"].update(request=inner, request_sha256=fingerprint(inner),
+                               invocation_id=self.request.readiness_invocation_id)
+        response = inner_response(inner, "ready")
+        ready["terminal"].update(response=response, response_sha256=fingerprint(response), evidence=None)
+        reference = fixture.ref("publisher-ready.json", ready)
+        self.request = replace(self.request, readiness_receipt_sha256=reference["sha256"])
+        self.write_reply(self.result())
+
+        with authority.lock():
+            catalogue, pin = authority.catalogue()
+            catalogue["rows"][task.key.row_id]["publication_readiness"] = reference
+            authority._replace_catalogue(catalogue, pin)
+        publisher = replace(self.publisher, fence=authority.publication_fence)
+        authority.register_publisher(publisher)
+        accepted = publisher.consume_boundary(self.request)
+        completed = authority.complete_publication(accepted)
+        self.assertEqual(authority.read_completion(OPERATION), completed)
+        self.assertEqual(authority.verify_refill(OPERATION), RowKey(key.store_id, key.row_id))
+
+        receipt = json.loads((fixture.fixture.runtime / "delivery-completion.json").read_bytes())
+        self.assertEqual(receipt["schema"], "uif-owner-delivery-completion/2")
+        self.assertEqual(receipt["publication"]["request"], self.request.to_record())
+        self.assertNotIn("issue", receipt["publication"]["request"])
+        self.assertEqual([call["mode"] for call in self.calls()], ["invoke", "observe", "observe"])

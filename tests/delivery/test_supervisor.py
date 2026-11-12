@@ -10,13 +10,15 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import time
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
 from uif.dispatch import MODEL, SCHEMA, _digest, _lease_id, read_outcome
 from uif.source import SourceHold, file_digest, git
 from uif.stokowski import DispatchReportBinding, LedgerAdmission, PolledIssue, UIF
+from uif.task_identity import LedgerTaskKey
 from uif import supervisor
+import test_guard_dropper as guard_fixtures
 
 
 CHILD = r"""
@@ -123,6 +125,42 @@ def _put(path, value):
     path.write_text(json.dumps(value))
     path.chmod(0o600)
     return file_digest(path)
+
+
+class LedgerGuardTests(TestCase):
+    @skipUnless(not getattr(guard_fixtures.GuardTests, "__unittest_skip__", False),
+                "requires an unprivileged Linux x86_64 C toolchain")
+    def test_native_guard_requires_exact_ledger_key_and_coding_paths(self):
+        fixture = guard_fixtures.GuardTests()
+        self.addCleanup(fixture.doCleanups)
+        fixture.setUp()
+        key = LedgerTaskKey("fixture-store", "row:one").workspace_key
+        other_key = LedgerTaskKey("fixture-store", "row:two").workspace_key
+        attempt = fixture.attempt.with_name(key)
+        workspace = fixture.workspace.with_name(key)
+        workspace.mkdir(mode=0o700)
+        attempt.mkdir(mode=0o700)
+        fixture.paths("workspace-write", workspace=workspace, attempt=attempt)
+        for changed in (key[:-1], key + "-suffix", key.upper(), key[:-1] + "g"):
+            with self.subTest(changed=changed):
+                fixture.paths("workspace-write", workspace=workspace.with_name(changed),
+                              attempt=attempt.with_name(changed), expected=126)
+        fixture.paths("workspace-write", workspace=fixture.workspace, attempt=attempt, expected=126)
+        fixture.paths("workspace-write", workspace=workspace.with_name(other_key), attempt=attempt, expected=126)
+        fixture.paths("workspace-write", workspace=fixture.root / "other/workspaces" / key,
+                      attempt=attempt, expected=126)
+        fixture.paths("read-only", workspace=workspace, attempt=attempt.with_name("review-" + key), expected=126)
+        slot = "a" * 64
+        review = fixture.root / slot / "attempts" / ("review-" + key + "-" + slot[:16])
+        projection = fixture.root / slot / "workspaces" / key
+        fixture.paths("read-only", workspace=projection, attempt=review)
+        fixture.paths("workspace-write", workspace=projection, attempt=review, expected=126)
+        fixture.paths("read-only", workspace=projection,
+                      attempt=review.with_name(review.name[:-1] + "b"), expected=126)
+        fixture.paths("read-only", workspace=workspace, attempt=review, expected=126)
+        fixture.invoke("dir", workspace)
+        workspace.chmod(0o770)
+        fixture.invoke("dir", workspace, expected=126)
 
 
 class SupervisorTests(TestCase):

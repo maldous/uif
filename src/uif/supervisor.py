@@ -19,7 +19,10 @@ import tempfile
 import time
 from uuid import UUID
 
-from uif.dispatch import MODEL, SCHEMA, _digest, _lease_id, _record, _supervisor_identity, _sync_directory
+from uif.dispatch import (
+    CAPACITY_REFUSALS, LEDGER_RECEIPT, MODEL, SCHEMA, _digest, _invocation, _lease_id, _record,
+    _supervisor_identity, _sync_directory, capacity_no_start_receipt,
+)
 from uif.source import SourceHold, exact_path, file_digest, git, verify_checkout
 from uif.stokowski import LedgerAdmission, UIF
 
@@ -147,19 +150,32 @@ def _pin(value):
     return value
 
 
-def _inputs(runtime, issue):
-    if not re.fullmatch(r"UIF-[1-9][0-9]*", issue) or issue in {"UIF-106", "UIF-137"}:
+def _inputs(runtime, issue, *, task=None):
+    if task is None and (not re.fullmatch(r"UIF-[1-9][0-9]*", issue) or issue in {"UIF-106", "UIF-137"}):
         raise SourceHold("uif_supervisor_issue")
     directory = exact_path(runtime / "attempts" / issue)
     _owned_dir(directory, runtime)
     dispatch, dispatch_sha = _record(directory / "dispatch-intent.json")
     ledger = LedgerAdmission(**dispatch["admission"])
     ledger.require_implementation()
-    identity = dispatch["issue"]
-    issue_id = identity["issue_id"]
-    if (dispatch["schema"] != SCHEMA or identity["identifier"] != issue
-            or (identity["project_id"], identity["project_slug"]) != (UIF.project_id, UIF.project_slug)
-            or str(UUID(issue_id)) != issue_id or dispatch["source"] != UIF.repository
+    if task is None:
+        identity = dispatch["issue"]
+        issue_id = identity["issue_id"]
+        identity_matches = (dispatch["schema"] == SCHEMA and identity["identifier"] == issue
+                            and (identity["project_id"], identity["project_slug"]) == (UIF.project_id, UIF.project_slug)
+                            and str(UUID(issue_id)) == issue_id)
+    else:
+        from uif.ledger import ledger_task_target, verify_ledger_task_admission, verify_ledger_task_input
+        from uif.stokowski import LEDGER_DISPATCH_INTENT, LEDGER_DISPATCH_INTENT_FIELDS
+
+        verify_ledger_task_admission(task, ledger)
+        identity_matches = (set(dispatch) == LEDGER_DISPATCH_INTENT_FIELDS
+                            and dispatch["schema"] == LEDGER_DISPATCH_INTENT
+                            and dispatch["task"] == task.to_record() and task.key.workspace_key == issue
+                            and dispatch["operation_id"] == task.original_operation_id
+                            and (dispatch["attempt"] is None
+                                 or (type(dispatch["attempt"]) is int and dispatch["attempt"] >= 0)))
+    if (not identity_matches or dispatch["source"] != UIF.repository
             or (dispatch["requested_model"], dispatch["requested_effort"]) != (MODEL, "medium")
             or file_digest(Path(__file__)) != _pin(dispatch["supervisor_sha256"])):
         raise SourceHold("uif_supervisor_dispatch_binding")
@@ -168,10 +184,14 @@ def _inputs(runtime, issue):
         raise SourceHold("uif_supervisor_workspace_binding")
     current, _ = _record(runtime / "current-admission.json", _pin(dispatch["pins"]["admission_sha256"]))
     claim = current.get("ledger")
-    if (type(current.get("version")) is not int or current["version"] != 1
-            or (current["issue"], current["issue_id"], current["owner"]) != (issue, issue_id, ledger.owner)
-            or not isinstance(claim, dict)
-            or any(claim.get(field) != getattr(ledger, field) for field in LEDGER_FIELDS)):
+    if task is None:
+        claim_matches = ((current["issue"], current["issue_id"]) == (issue, issue_id)
+                         and isinstance(claim, dict)
+                         and all(claim.get(field) == getattr(ledger, field) for field in LEDGER_FIELDS))
+    else:
+        claim_matches = (claim == task.to_record() and not {"issue", "issue_id"} & current.keys())
+    if (type(current.get("version")) is not int or current["version"] != (1 if task is None else 2)
+            or current["owner"] != ledger.owner or not claim_matches):
         raise SourceHold("uif_supervisor_claim_binding")
     for name, expected in current["inputs"].items():
         if file_digest(name) != _pin(expected):
@@ -181,19 +201,26 @@ def _inputs(runtime, issue):
     policy, _ = _record(runtime / "capacity-policy.json", _pin(current["policy_sha256"]))
     installation, _ = _record(runtime / "installation.json", _pin(current["installation_sha256"]))
     provider, _ = _record(runtime / "provider-proof.json", _pin(dispatch["pins"]["provider_sha256"]))
-    task = manifest["tasks"][issue]
+    specification = manifest["tasks"][issue]
     head, tree, branch = (dispatch[name] for name in ("source_head", "source_tree", "source_branch"))
-    binding = dict(branch=branch, head=head, owner=ledger.owner, write_roots=task["allowed_paths"],
-                   resources=task["resources"], task_sha256=_digest(
+    binding = dict(branch=branch, head=head, owner=ledger.owner, write_roots=specification["allowed_paths"],
+                   resources=specification["resources"], task_sha256=_digest(
                        dict(runtime=str(runtime), manifest=manifest, request=request)))
-    lease = _lease_id(runtime, manifest, issue)
+    lease = _lease_id(runtime, manifest, issue, ledger_only=task is not None)
+    request_fields = {"prompt", "timeout_seconds"}
+    if task is not None:
+        target = ledger_task_target(task.key, task.source_sha256)
+        verify_ledger_task_input(specification, target)
+        verify_ledger_task_input(request, target)
+        request_fields.add("ledger_task")
     if (manifest["project_id"] != UIF.project_id or set(manifest["tasks"]) != {issue}
             or (manifest["base_revision"], manifest["branch"]) != (head, branch)
-            or (task["issue_id"], task["owner"]) != (issue_id, ledger.owner) or "stage" in task
+            or specification["owner"] != ledger.owner or "stage" in specification
+            or (task is None and specification["issue_id"] != issue_id)
             or (dispatch["manifest_sha256"], dispatch["request_sha256"])
             != (current["manifest_sha256"], current["request_sha256"])
             or dispatch["worker_binding"] != binding or dispatch["lease_id"] != lease
-            or set(request) != {"prompt", "timeout_seconds"} or not isinstance(request["prompt"], str)
+            or set(request) != request_fields or not isinstance(request["prompt"], str)
             or not request["prompt"].strip() or type(request["timeout_seconds"]) is not int
             or not 1 <= request["timeout_seconds"] <= 600):
         raise SourceHold("uif_supervisor_runtime_inputs")
@@ -507,11 +534,33 @@ def finish_attempt(pool, lease, receipt_path, result):
         pool.finish(lease, True, result["status"])
 
 
-def execute(runtime, issue):
+def execute(runtime, issue=None, *, ledger_workspace=None, invocation_id=None):
     runtime = exact_path(runtime)
+    task = None
+    cfg = None
+    if ledger_workspace is not None:
+        from uif.task_identity import LedgerTaskEnvelope
+
+        if issue is not None or not re.fullmatch(r"ledger-[0-9a-f]{64}", ledger_workspace) or not _invocation(invocation_id):
+            raise SourceHold("uif_supervisor_ledger_invocation")
+        issue = ledger_workspace
+        directory = exact_path(runtime / "attempts" / issue)
+        _owned_dir(directory, runtime)
+        dispatch, original_sha = _record(directory / "dispatch-intent.json")
+        claim, _ = _record(runtime / "current-admission.json", _pin(dispatch["pins"]["admission_sha256"]))
+        installation, _ = _record(runtime / "installation.json", _pin(claim["installation_sha256"]))
+        cfg = prepare_guarded_runtime(runtime, installation, role_launch=True)
+        if "role_broker" not in cfg:
+            raise SourceHold("uif_supervisor_role_launch_required")
+        task = LedgerTaskEnvelope.from_record(dispatch["task"], snapshot_path=cfg["authority"].snapshot_path)
+    elif issue is None or invocation_id is not None:
+        raise SourceHold("uif_supervisor_ledger_invocation")
     (dispatch, dispatch_sha, directory, workspace, binding, lease, request, policy,
-     installation, provider) = _inputs(runtime, issue)
-    cfg = prepare_guarded_runtime(runtime, installation, role_launch=True)
+     installation, provider) = _inputs(runtime, issue, task=task)
+    if task is None:
+        cfg = prepare_guarded_runtime(runtime, installation, role_launch=True)
+    elif dispatch_sha != original_sha:
+        raise SourceHold("uif_supervisor_dispatch_binding")
     if (cfg["pool_root"] != exact_path(policy["symphony"]["pool_path"])
             or dispatch["pool_database"] != str(cfg["pool_root"] / "state.sqlite")):
         raise SourceHold("uif_supervisor_pool_binding")
@@ -521,22 +570,37 @@ def execute(runtime, issue):
         authority = cfg["authority"]
         admission = LedgerAdmission(**dispatch["admission"])
         with authority.lock(operation=admission.original_operation_id, wait=5):
-            entry, current_runtime = authority._active(admission, PolledIssue(**dispatch["issue"]))
-            recorded, _ = _record(directory / "controller-supervisor.json")
+            polled = PolledIssue(**dispatch["issue"]) if task is None else None
+            fence_args = {} if task is None else {"task": task}
+            entry, current_runtime = authority._active(admission, polled, **fence_args)
+            recorded, handoff_sha = _record(directory / "controller-supervisor.json")
             expected = dict(**_supervisor_identity(os.getpid()), operation_id=admission.original_operation_id,
                             dispatch_sha256=dispatch_sha)
+            if task is not None:
+                expected["invocation_id"] = invocation_id
+                selected = authority._source(entry)
+                current, _ = _record(runtime / "current-admission.json", dispatch["pins"]["admission_sha256"])
+                if (str(selected.checkout) != current["source"] or selected.repository != dispatch["source"]
+                        or selected.accepted_branch != UIF.accepted_branch or selected.head != dispatch["source_head"]
+                        or selected.tree != dispatch["source_tree"] or selected.branch != dispatch["source_branch"]
+                        or selected.accepted_sha256 != dispatch["accepted_sha256"]
+                        or selected.acquisition_sha256 != dispatch["acquisition_sha256"]
+                        or file_digest(selected.accepted_evidence) != selected.accepted_sha256
+                        or file_digest(selected.acquisition) != selected.acquisition_sha256):
+                    raise SourceHold("uif_supervisor_ledger_source")
             if (current_runtime != runtime or recorded != expected
                     or entry["claim"]["sha256"] != dispatch["pins"]["admission_sha256"]
                     or file_digest(directory / "dispatch-intent.json") != dispatch_sha):
                 raise SourceHold("uif_supervisor_controller_handoff")
             return _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, workspace,
-                                    binding, lease, request, policy, provider)
+                                    binding, lease, request, policy, provider, task=task,
+                                    invocation_id=invocation_id, handoff_sha=handoff_sha)
     return _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, workspace,
                             binding, lease, request, policy, provider)
 
 
 def _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, workspace,
-                     binding, lease, request, policy, provider):
+                     binding, lease, request, policy, provider, *, task=None, invocation_id=None, handoff_sha=None):
     capacity = load_capacity(cfg)
     stopping = False
 
@@ -559,7 +623,17 @@ def _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, wor
             dispatch_sha256=dispatch_sha, operation_id=dispatch["admission"]["original_operation_id"],
             lease=lease))
         pool = capacity.Pool(cfg["pool_root"], policy)
-        admitted = pool.admit(lease, binding, provider, capacity.host_snapshot(runtime))
+        host = capacity.host_snapshot(runtime)
+        try:
+            admitted = pool.admit(lease, binding, provider, host)
+        except capacity.AdmissionError as error:
+            if task is None or str(error) not in CAPACITY_REFUSALS:
+                raise
+            result = capacity_no_start_receipt(
+                dispatch, dispatch_sha, handoff_sha, file_digest(directory / "supervisor-start.json"), str(error),
+            )
+            _exclusive(directory / "receipt.json", result)
+            return result
         if admitted.get("reused") is not False:
             raise SourceHold("uif_supervisor_existing_lease")
         result = dict(status="failed", child_tree_gone=True, child_started=False, exit_code=None)
@@ -587,17 +661,21 @@ def _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, wor
             result = dict(status="uncertain", child_tree_gone=False, exit_code=None)
             if "role_broker" in cfg:
                 from uif.controller_launch import prepare_role_launch
-                from uif.role_broker import LaunchKey
+                from uif.role_broker import LaunchKey, LedgerLaunchKey
 
                 if cfg["role_limits"]["coding"]["max_processes"] > process_limit:
                     raise SourceHold("uif_supervisor_role_process_limit")
                 admission = dispatch["admission"]
-                key = LaunchKey(
-                    "coding", admission["store_id"], admission["row_id"], admission["source_sha256"],
-                    dispatch["issue"]["issue_id"], issue, admission["owner"], admission["epoch"],
-                    admission["original_operation_id"],
-                    "initial" if dispatch["attempt"] is None else str(dispatch["attempt"]), dispatch_sha, lease,
-                )
+                if task is None:
+                    key = LaunchKey(
+                        "coding", admission["store_id"], admission["row_id"], admission["source_sha256"],
+                        dispatch["issue"]["issue_id"], issue, admission["owner"], admission["epoch"],
+                        admission["original_operation_id"],
+                        "initial" if dispatch["attempt"] is None else str(dispatch["attempt"]), dispatch_sha, lease,
+                    )
+                else:
+                    key = LedgerLaunchKey(task.to_record(), issue, invocation_id, dispatch_sha, lease,
+                                          dispatch["attempt"], handoff_sha)
                 launch = prepare_role_launch(
                     cfg, key=key, admission_path=runtime / "current-admission.json",
                     intent_path=directory / "dispatch-intent.json", request_path=runtime / "requests" / (issue + ".json"),
@@ -623,8 +701,14 @@ def _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, wor
             result["error_type"] = type(error).__name__
             if result["child_tree_gone"] and result["status"] != "cancelled":
                 result["status"] = "failed"
-        result.update(issue=issue, lease=lease, parent_binding=binding, binding_sha256=_digest(binding),
-                      source_head=binding["head"], parent_runtime=str(runtime), attempt=issue,
+        if task is None:
+            result.update(issue=issue, attempt=issue)
+        else:
+            result.update(schema=LEDGER_RECEIPT, task=task.to_record(), workspace_key=issue,
+                          attempt=dispatch["attempt"], invocation_id=invocation_id, handoff_sha256=handoff_sha,
+                          admission_sha256=dispatch["pins"]["admission_sha256"])
+        result.update(lease=lease, parent_binding=binding, binding_sha256=_digest(binding),
+                      source_head=binding["head"], parent_runtime=str(runtime),
                       attempt_path=str(directory), accepted_delivery=False, origin="native-coding",
                       declared_resources=binding["resources"], provider_route="codex-chatgpt",
                       requested_model=MODEL, requested_effort="medium", dispatch_sha256=dispatch_sha,
@@ -639,11 +723,15 @@ def _execute_attempt(cfg, runtime, issue, dispatch, dispatch_sha, directory, wor
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", required=True, type=Path)
-    parser.add_argument("--issue", required=True)
+    identity = parser.add_mutually_exclusive_group(required=True)
+    identity.add_argument("--issue")
+    identity.add_argument("--ledger-workspace")
+    parser.add_argument("--invocation-id")
     args = parser.parse_args()
     os.umask(0o077)
     try:
-        result = execute(args.runtime, args.issue)
+        result = execute(args.runtime, args.issue, ledger_workspace=args.ledger_workspace,
+                         invocation_id=args.invocation_id)
     except (ValueError, OSError, RuntimeError, KeyError, TypeError):
         # Caller reads the exact original files. CLI stdout contains no input,
         # credential, or exception bodies and cannot authorize a retry.

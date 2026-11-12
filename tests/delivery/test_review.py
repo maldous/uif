@@ -6,12 +6,17 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from uif.review import NativeReviewBackend, ORIGIN, ReviewAdapter, ReviewSpec
+from uif.review import LEDGER_ORIGIN, NativeReviewBackend, ORIGIN, ReviewAdapter, ReviewSpec
 from uif.source import SourceHold
-from uif.validation import sha, wire
+from uif.stokowski import UIF
+from uif.validation import decode, sha, wire
 
-from test_validation import ValidationFixture
+from test_validation import LedgerValidationFixture, ValidationFixture
+
+
+REVIEW_INVOCATION = "259e7bd1-4729-4f6d-9dfa-d5f31f3c5b91"
 
 
 class ReviewTests(unittest.IsolatedAsyncioTestCase):
@@ -29,19 +34,27 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         self.executable.chmod(0o700)
         self.db = f.root / "state.sqlite"
         with sqlite3.connect(self.db) as db:
-            db.execute("CREATE TABLE leases (id TEXT PRIMARY KEY,binding TEXT,fingerprint TEXT,status TEXT,outcome TEXT)")
+            db.execute("CREATE TABLE IF NOT EXISTS leases "
+                       "(id TEXT PRIMARY KEY,binding TEXT,fingerprint TEXT,status TEXT,outcome TEXT)")
         self.put_lease("coding-lease", f.author_binding)
-        self.directory = f.root / "attempts" / "review-UIF-1"
-
         binding = f.spec.binding
+        self.directory = f.root / "attempts" / ("review-" + binding.workspace_key)
         ledger = binding.dispatch.ledger
         self.source = dict(root=str(binding.candidate), head=binding.head, base=binding.base, tree=binding.tree,
                            branch=binding.branch, outputs=f.files, files_sha256=sha(wire(f.files)))
         self.pool = dict(owner=self.reviewer, mode="native-review-read-only", write_roots=[],
                          read_roots=[str(binding.candidate)], head=binding.head, branch=binding.branch,
                          source_sha256=self.source["files_sha256"], task_sha256="a" * 64, resources={})
+        target = {"issue": "UIF-1"}
+        origin = ORIGIN
+        invocation = None
+        if binding.task is not None:
+            origin = LEDGER_ORIGIN
+            invocation = REVIEW_INVOCATION
+            target = dict(task=binding.task.to_record(), workspace_key=binding.workspace_key,
+                          invocation_id=invocation, lease="review-lease")
         self.policy = dict(
-            schema=ORIGIN, project_id=binding.dispatch.issue.project_id, issue="UIF-1",
+            schema=origin, project_id=UIF.project_id, **target,
             owner=f.owner, reviewer_owner=self.reviewer, current_runtime=str(f.root),
             validation_identity=self.proof.operation_key, stage_identity=self.proof.operation_key,
             validation_receipt=dict(sha256=self.proof.receipt_sha256, windmill_job_id=self.proof.windmill_job_id,
@@ -57,7 +70,8 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         policy = f.root / "review.json"
         policy.write_bytes(wire(self.policy))
         self.spec = ReviewSpec(f.spec, self.proof.receipt_sha256, self.reviewer, "review-lease", policy, self.directory,
-                               sha(policy.read_bytes()), wire(self.pool), first_submission=True)
+                               sha(policy.read_bytes()), wire(self.pool), first_submission=True,
+                               invocation_id=invocation)
         self.backend = NativeReviewBackend(self.executable, executable_sha256=sha(self.executable.read_bytes()),
                                            evidence_uid=os.getuid(), pool_database=self.db)
         self.adapter = ReviewAdapter(f.journal, f.adapter.fence, self.backend, validation=f.adapter)
@@ -70,12 +84,13 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
     def review_receipt(self, *, session="review-session", verdict="accept"):
         self.directory.mkdir(parents=True, exist_ok=True)
         self.put_lease(self.spec.lease, self.pool)
-        artifact = dict(schema=ORIGIN, source=self.source, verdict=verdict,
+        artifact = dict(schema=self.spec.origin, source=self.source, verdict=verdict,
                         findings=[] if verdict == "accept" else ["Missing regression coverage"])
         events = b"\n".join([wire(dict(type="thread.started", thread_id=session)), wire(dict(type="turn.completed"))])
-        request = dict(kind=ORIGIN, policy=dict(path=str(self.spec.policy), sha256=self.spec.policy_sha256))
+        request = self.backend._request(self.spec)
         receipt = dict(
-            origin=ORIGIN, issue="UIF-1", lease=self.spec.lease, parent_binding=self.pool, status="succeeded",
+            origin=self.spec.origin, **self.spec.target_record(),
+            lease=self.spec.lease, parent_binding=self.pool, status="succeeded",
             binding_sha256=sha(wire(self.pool)), request=request, policy_sha256=sha(wire(self.policy)),
             accepted_delivery=False, child_tree_gone=True, turn_completed=True, session_id=session,
             source_before=self.source["files_sha256"], source_after=self.source["files_sha256"],
@@ -184,3 +199,45 @@ class ReviewTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(SourceHold, "validation_receipt_binding"):
             await self.adapter.tick(replace(self.spec, validation_receipt_sha256="f" * 64))
         self.assertFalse((self.f.root / "launched").exists())
+
+
+async def ledger_review_fixture(test):
+    fixture = ReviewTests()
+    fixture.addCleanup = test.addCleanup
+    with patch(__name__ + ".ValidationFixture", LedgerValidationFixture):
+        await fixture.asyncSetUp()
+    return fixture
+
+
+class LedgerReviewTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.f = await ledger_review_fixture(self)
+
+    async def test_accept_carries_the_original_ledger_task_and_distinct_reviewer(self):
+        f = self.f
+        raw = f.review_receipt()
+        self.assertEqual((await f.adapter.tick(f.spec)).status, "succeeded")
+        evidence = await f.adapter.accepted(f.spec)
+        result = decode(evidence.receipt)
+        self.assertEqual(evidence.binding.task, f.f.spec.binding.task)
+        self.assertEqual(evidence.reviewer, f.reviewer)
+        self.assertEqual(evidence.receipt, raw)
+        self.assertEqual(result["task"], evidence.binding.task.to_record())
+        self.assertEqual(result["workspace_key"], evidence.binding.workspace_key)
+        self.assertEqual(result["invocation_id"], REVIEW_INVOCATION)
+        self.assertNotEqual(result["invocation_id"], evidence.binding.dispatch.operation_id)
+        self.assertNotIn("issue", result)
+
+    async def test_changed_invocation_in_original_receipt_quarantines(self):
+        f = self.f
+        original = decode(f.review_receipt())
+        original["invocation_id"] = "ac61804e-2a42-4806-b16b-8c660a5cf1a2"
+        (f.directory / "receipt.json").write_bytes(wire(original))
+        self.assertEqual((await f.adapter.tick(f.spec)).status, "quarantined")
+
+    def test_author_or_write_root_never_qualifies(self):
+        f = self.f
+        with self.assertRaisesRegex(SourceHold, "read_only_binding"):
+            replace(f.spec, reviewer=f.f.owner)
+        with self.assertRaisesRegex(SourceHold, "read_only_binding"):
+            replace(f.spec, pool_binding_json=wire(dict(f.pool, write_roots=[str(f.f.candidate)])))

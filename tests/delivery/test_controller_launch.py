@@ -1,17 +1,23 @@
 """Exercise the controller boundary with disposable role-return records."""
 
+from dataclasses import replace
+import fcntl
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+from uif import role_broker
 from uif.controller_launch import _replace_file, prepare_role_launch
 from uif.dispatch import _encode, _seal_supervisor_start, _supervisor_identity
-from uif.role_broker import LaunchKey, LaunchObservation, projection_digest
-from uif.source import file_digest
+from uif.ledger import SNAPSHOT_SHA256
+from uif.role_broker import LedgerReviewLaunchKey, LaunchKey, LaunchObservation, projection_digest
+from uif.source import SourceHold, file_digest
+from uif.task_identity import LedgerTaskKey
 from uif.supervisor import finish_attempt, run_registered_role_turn
 
 
@@ -95,6 +101,73 @@ class ControllerLaunchTests(TestCase):
         self.assertEqual((self.workspace / "source").read_bytes(), b"approved fixture output\n")
         self.assertEqual((self.workspace / ".git" / "identity").read_bytes(), b"controller\n")
         self.assertEqual(self.calls, ["start"])
+
+    def test_ledger_review_seals_exact_policy_invocation_and_read_only_lease(self):
+        row = LedgerTaskKey("store", "review:row")
+        task = dict(schema="uif-ledger-task/1", store_id=row.store_id, row_id=row.row_id,
+                    snapshot_sha256=SNAPSHOT_SHA256, source_sha256="b" * 64,
+                    owner="author", epoch="epoch", original_operation_id="original operation / 4")
+        runtime = self.root / "runtime"
+        directory = runtime / "attempts" / ("review-" + row.workspace_key)
+        workspace = runtime / "contributions" / row.workspace_key / "candidate"
+        for path in (directory, workspace):
+            path.mkdir(mode=0o700, parents=True)
+        shutil.copyfile(self.workspace / "source", workspace / "source")
+        policy_path = runtime / "review-policy.json"
+        intent_path = directory / "intent.json"
+        admission_path = runtime / "current-admission.json"
+        request_path = directory / "request.json"
+        lease = "review-lease"
+        target = dict(task=task, workspace_key=row.workspace_key,
+                      invocation_id="1765ee92-55d6-4012-a889-95e65555711d", lease=lease)
+        binding = dict(mode="native-review-read-only", owner="reviewer", read_roots=[str(workspace)], write_roots=[],
+                       resources=dict(cpu_millis=100, memory_bytes=1048576), head="1" * 40,
+                       branch="feature/review", source_sha256="2" * 64)
+        self.put(policy_path, _encode(dict(schema=role_broker.LEDGER_REVIEW_ORIGIN, **target,
+                 current_runtime=str(runtime), require_stopped_child=True, owner=task["owner"],
+                 reviewer_owner=binding["owner"], resources=binding["resources"],
+                 source=dict(root=str(workspace), head=binding["head"], branch=binding["branch"],
+                             files_sha256=binding["source_sha256"]))))
+        policy_sha = file_digest(policy_path)
+        self.put(intent_path, _encode(dict(lease=lease, binding=binding, phase="spawn-pending", history=[],
+                 request=dict(kind=role_broker.LEDGER_REVIEW_ORIGIN, **target,
+                              policy=dict(path=str(policy_path), sha256=policy_sha)))))
+        self.put(admission_path, _encode(dict(version=2, ledger=task, owner=task["owner"])))
+        work = dict(prompt="offline review fixture", timeout_seconds=2)
+        self.put(request_path, _encode(work))
+        key = LedgerReviewLaunchKey(task, row.workspace_key, target["invocation_id"], file_digest(intent_path), lease)
+        self.cfg["role_limits"]["review"] = self.cfg["role_limits"]["coding"]
+        args = dict(key=key, admission_path=admission_path, intent_path=intent_path, request_path=request_path,
+                    workspace=workspace, policy_sha256=policy_sha)
+        with self.assertRaisesRegex(SourceHold, "review_scope"):
+            prepare_role_launch(self.cfg, **args, pool_binding={**binding, "write_roots": ["source"]})
+        launch = prepare_role_launch(self.cfg, **args, pool_binding=binding)
+        with self.assertRaisesRegex(SourceHold, "review_scope"):
+            run_registered_role_turn(self.cfg, launch, directory=directory, workspace=workspace,
+                                     write_roots=("source",), output_bytes=100, stop=lambda: False)
+        slot = self.root / launch.slot
+        self.assertEqual(role_broker._request(slot, os.getuid()), launch)
+        self.assertEqual((slot / "review-policy.json").read_bytes(), policy_path.read_bytes())
+        locks = self.root / "operation-locks"
+        locks.mkdir(mode=0o700)
+        lock = locks / (role_broker._digest([key.store_id, key.operation_id]) + ".lock")
+        lock.touch(mode=0o600)
+        database = self.root / "pool.sqlite"
+        database.touch(mode=0o600)
+        with sqlite3.connect(database) as db:
+            db.execute("CREATE TABLE leases (id TEXT, fingerprint TEXT, status TEXT)")
+            db.execute("INSERT INTO leases VALUES (?, ?, 'running')", (lease, role_broker._digest(binding)))
+        helper_cfg = dict(controller_uid=os.getuid(), pool_database=str(database), operation_locks=str(locks))
+        with lock.open("rb") as stream:
+            fcntl.flock(stream, fcntl.LOCK_EX)
+            self.assertEqual(role_broker._check_original(helper_cfg, slot, launch), (work, binding["resources"]))
+            other = replace(key, invocation_id="00000000-0000-4000-8000-000000000001")
+            with self.assertRaisesRegex(role_broker.LaunchHold, "ledger_review_intent"):
+                role_broker._check_original(helper_cfg, slot, replace(launch, key=other))
+            with sqlite3.connect(database) as db:
+                db.execute("UPDATE leases SET status='failed'")
+            with self.assertRaisesRegex(role_broker.LaunchHold, "role_launch_lease"):
+                role_broker._check_original(helper_cfg, slot, launch)
 
     def test_verified_cleanup_with_scope_violation_imports_nothing(self):
         launch = self.prepare()

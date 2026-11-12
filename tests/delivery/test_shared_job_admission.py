@@ -50,6 +50,8 @@ class SharedJobTests(TestCase):
         self.root = root
         self.runtime, self.execution = root / "controller", root / "neutral"
         self.execution.mkdir(mode=0o700)
+        self.runner_control = root / "runner"
+        self.runner_control.mkdir(mode=0o700)
         self.receipts = self.runtime / "stopped"
         self.database = self.runtime / "pool/state.sqlite"
         for directory in (self.runtime, self.receipts, self.database.parent,
@@ -81,6 +83,7 @@ class SharedJobTests(TestCase):
         self.config = {
             "descriptor_sha256": "a" * 64, "runner_sha256": "b" * 64,
             "capacity_policy": {"sha256": "c" * 64}, "execution_root": str(self.execution),
+            "runner_control": str(self.runner_control),
             "read_roots": [str(self.execution)], "write_roots": [str(self.execution)],
             "protected_roots": [str(self.execution / "protected")],
             "stopped_receipts": str(self.receipts), "timeout_seconds": 90,
@@ -160,6 +163,27 @@ class SharedJobTests(TestCase):
         provider = dict(route="codex-chatgpt", checked_at=time.time(), available=True, session_ceiling=1)
         pool = (backend or self.capacity).Pool(self.database.parent, self.policy if policy is None else policy)
         return pool.admit(name, binding, provider, self.capacity.host_snapshot(self.execution))
+
+    def test_host_disk_reserve_uses_runner_storage_not_project_quota(self):
+        self.policy["host"]["disk_reserve_bytes"] = 70 * 1024**3
+        self.adapter = self.open()
+        available = {self.execution: 16 * 1024**2, self.runner_control: 80 * 1024**3}
+
+        def snapshot(path):
+            return dict(available_disk_bytes=available[path], available_memory_bytes=1024**3,
+                        cpu_millis=1000)
+
+        with patch.object(self.capacity, "host_snapshot", side_effect=snapshot) as measure:
+            self.assertEqual(self.call("admit")["status"], "admitted")
+            measure.assert_called_once_with(self.runner_control)
+
+            available[self.runner_control] = 69 * 1024**3
+            another = deepcopy(self.binding)
+            another["job_id"] = "other-job"
+            another["resources"]["write_roots"] = [str(self.execution / "other")]
+            self.assertEqual(self.call("admit", another)["status"], "refused")
+            self.assertEqual(measure.call_count, 2)
+        self.assertEqual(len(self.pool.status()), 1)
 
     def test_original_lease_and_observation_only_retry_after_lost_reply(self):
         # Commit via the actual retained transaction, then lose the adapter response.

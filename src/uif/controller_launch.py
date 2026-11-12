@@ -1,6 +1,5 @@
 """Seal and consume one controller-owned role launch without sharing authority."""
 
-from dataclasses import asdict
 from hashlib import sha256
 import os
 from pathlib import Path
@@ -10,7 +9,10 @@ from tempfile import NamedTemporaryFile
 import time
 
 from .dispatch import _digest, _encode, _record, _sync_directory
-from .role_broker import MAX_RECORD, LaunchObservation, LaunchRequest, projection_digest, slot_for_lease
+from .role_broker import (
+    MAX_RECORD, LedgerLaunchKey, LedgerReviewLaunchKey, LaunchObservation, LaunchRequest,
+    projection_digest, slot_for_lease,
+)
 from .source import SourceHold, exact_path, file_digest
 
 
@@ -36,6 +38,32 @@ def prepare_role_launch(cfg, *, key, admission_path, intent_path, request_path, 
     paths = {name: exact_path(path) for name, path in (
         ("admission.json", admission_path), ("intent.json", intent_path), ("request.json", request_path),
     )}
+    if isinstance(key, LedgerLaunchKey):
+        runtime = paths["admission.json"].parent
+        attempt = runtime / "attempts" / key.workspace_key
+        if (paths["admission.json"].name != "current-admission.json"
+                or paths["intent.json"] != attempt / "dispatch-intent.json"
+                or paths["request.json"] != runtime / "requests" / (key.workspace_key + ".json")
+                or workspace != runtime / "workspaces" / key.workspace_key):
+            raise SourceHold("uif_controller_launch_workspace")
+        paths["controller-supervisor.json"] = exact_path(attempt / "controller-supervisor.json")
+    elif isinstance(key, LedgerReviewLaunchKey):
+        runtime = paths["admission.json"].parent
+        original = runtime / "attempts" / ("review-" + key.workspace_key) / "intent.json"
+        if (paths["admission.json"].name != "current-admission.json" or paths["intent.json"] != original
+                or paths["request.json"] != original.with_name("request.json")
+                or workspace not in (runtime / "workspaces" / key.workspace_key,
+                                     runtime / "contributions" / key.workspace_key / "candidate")
+                or pool_binding.get("mode") != "native-review-read-only"
+                or pool_binding.get("read_roots") != [str(workspace)] or pool_binding.get("write_roots") != []):
+            raise SourceHold("uif_controller_launch_review_scope")
+        intent, _ = _record(original, key.intent_sha256)
+        policy = intent["request"]["policy"]
+        path = exact_path(policy["path"])
+        if (policy["sha256"] != policy_sha256 or not path.is_relative_to(runtime)
+                or path.is_relative_to(workspace)):
+            raise SourceHold("uif_controller_launch_review_policy")
+        paths["review-policy.json"] = path
     if not all(path.is_relative_to(control) for path in (*paths.values(), workspace)):
         raise SourceHold("uif_controller_launch_custody")
     records = {}
@@ -46,6 +74,12 @@ def prepare_role_launch(cfg, *, key, admission_path, intent_path, request_path, 
             raise SourceHold("uif_controller_launch_input_drift")
     if sha256(records["intent.json"]).hexdigest() != key.intent_sha256:
         raise SourceHold("uif_controller_launch_intent")
+    if (isinstance(key, LedgerLaunchKey)
+            and sha256(records["controller-supervisor.json"]).hexdigest() != key.handoff_sha256):
+        raise SourceHold("uif_controller_launch_handoff")
+    if (isinstance(key, LedgerReviewLaunchKey)
+            and sha256(records["review-policy.json"]).hexdigest() != policy_sha256):
+        raise SourceHold("uif_controller_launch_review_policy")
     budget = cfg["role_limits"][key.role]["max_projection_bytes"]
     digest = projection_digest(workspace, budget, custody_root=control)
     request = LaunchRequest(key, slot, sha256(records["admission.json"]).hexdigest(),
@@ -68,7 +102,7 @@ def prepare_role_launch(cfg, *, key, admission_path, intent_path, request_path, 
     _write_new(directory / "fence.json", _encode(dict(
         schema="uif-role-launch/1", request_sha256=request.digest, lease=key.lease_id,
         binding_sha256=_digest(pool_binding))))
-    _write_new(directory / "launch.json", _encode(asdict(request)))
+    _write_new(directory / "launch.json", _encode(request.to_record()))
     _sync_directory(directory)
     cfg["_fresh_role_launch"] = request
     return request
@@ -206,11 +240,24 @@ def _import_return(cfg, request, observation, workspace, directory, write_roots,
 
 def run_role_launch(cfg, launch, *, directory, workspace, write_roots, output_bytes, stop):
     """Use one helper start, exact observation and trusted original cleanup evidence."""
+    if isinstance(launch.key, LedgerReviewLaunchKey):
+        policy, _ = _record(cfg["controller_root"] / launch.slot / "review-policy.json", launch.policy_sha256)
+        if (write_roots or str(workspace) != policy["source"]["root"]
+                or directory != exact_path(policy["current_runtime"]) / "attempts" / ("review-" + launch.key.workspace_key)):
+            raise SourceHold("uif_controller_launch_review_scope")
     broker = cfg["role_broker"]
     fresh = cfg.get("_fresh_role_launch") is launch
     if fresh:
         del cfg["_fresh_role_launch"]
     request, _ = _record(cfg["controller_root"] / launch.slot / "request.json", launch.request_sha256)
+    if isinstance(launch.key, LedgerLaunchKey):
+        from .ledger import ledger_task_target, verify_ledger_task_input
+        from .task_identity import LedgerTaskKey
+
+        task = launch.key.task
+        verify_ledger_task_input(request, ledger_task_target(
+            LedgerTaskKey(task["store_id"], task["row_id"]), task["source_sha256"]))
+        del request["ledger_task"]
     timeout = request.get("timeout_seconds")
     if (set(request) != {"prompt", "timeout_seconds"} or not isinstance(request["prompt"], str)
             or not request["prompt"].strip() or type(timeout) is not int or not 1 <= timeout <= 600):

@@ -33,7 +33,7 @@ class VerifiedRefill:
                 "uif_refill_final_outcome_required")
         publication = completed.publication
         request = publication.request
-        require(request.admission.original_operation_id == original_operation_id
+        require(request.original_operation_id == original_operation_id
                 and request.key.store_id == self.store_id, "uif_refill_completion_binding")
         # The historical completion fence authorizes readback only. Its scope
         # keeps final-outcome, intent and readback checks in the same transaction.

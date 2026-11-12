@@ -1,7 +1,7 @@
 """Run the UIF publisher command and readback against disposable Git state."""
 
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import asdict, replace
 import json
 from pathlib import Path
 import subprocess
@@ -12,10 +12,11 @@ from uuid import UUID
 from uif.ledger import SNAPSHOT_SHA256, read_snapshot
 from uif.publication import (
     GitReadback, PublicationRequest, Publisher, PublisherCommand, PublisherReceiptPaths, accepted_result,
-    fingerprint, record_digest,
+    fingerprint, record_digest, wire,
 )
 from uif.source import SourceHold, file_digest
 from uif.stokowski import LedgerAdmission, PolledIssue, UIF
+from uif.task_identity import LedgerTaskEnvelope, LedgerTaskKey
 
 SNAPSHOT = Path(__file__).resolve().parents[2] / "README.md"
 STORE = "fixture-original-uif-store"
@@ -61,6 +62,8 @@ class ExistingOwner:
 
 
 class PublicationFixture(TestCase):
+    ledger_only = False
+
     def setUp(self):
         self.root = Path(self.enterContext(TemporaryDirectory()))
         self.work = self.root / "work"
@@ -104,6 +107,12 @@ class PublicationFixture(TestCase):
             readiness_receipt_sha256="1" * 64, publisher_operation_id="2" * 64,
             invocation_id=str(UUID(int=4)),
         )
+        if self.ledger_only:
+            task = LedgerTaskEnvelope(
+                LedgerTaskKey(STORE, PREDECESSOR), admission.snapshot_sha256, admission.source_sha256,
+                admission.owner, admission.epoch, admission.original_operation_id, snapshot_path=SNAPSHOT,
+            )
+            self.request = replace(self.request, issue=None, task=task)
         self.owner = ExistingOwner(self.request)
         self.closure = "3" * 64
         self.paths = PublisherReceiptPaths(self.root / "accepted", self.root / "claim")
@@ -133,13 +142,14 @@ class PublicationFixture(TestCase):
     def result(self, *, stopped=True):
         inner = self.request.envelope(observe=False)["request"]
         request_sha = fingerprint(inner)
+        version = inner["version"]
         response = {
             **{key: val for key, val in inner.items() if key != "mode"},
-            "kind": "native-publisher-response-v1", "phase": "integration",
+            "kind": f"native-publisher-response-v{version}", "phase": "integration",
             "request_sha256": request_sha, "status": "verified",
         }
         record = {
-            "version": 1, "kind": "native-publisher-invocation-record-v1",
+            "version": version, "kind": f"native-publisher-invocation-record-v{version}",
             "intent": {
                 "request": inner, "request_sha256": request_sha, "closure_sha256": self.closure,
                 "invocation_id": self.request.invocation_id, "operation_id": self.request.publisher_operation_id,
@@ -154,7 +164,8 @@ class PublicationFixture(TestCase):
             },
         }
         fact = {
-            "schema": "uif-accepted-project-source/1", "repository": UIF.repository,
+            "schema": f"uif-accepted-project-source/{version}", "repository": UIF.repository,
+            **({key: inner[key] for key in ("task", "workspace_key")} if version == 2 else {}),
             "branch": UIF.accepted_branch, "head": self.merge, "tree": self.request.source_tree,
             "parents": [self.request.source_base, self.request.source_head],
             "base": self.request.source_base, "candidate_head": self.request.source_head,
@@ -164,7 +175,7 @@ class PublicationFixture(TestCase):
             **{key: inner[key] for key in ("operation_id", "unit_sha256", "packet_sha256")},
         }
         return {
-            "version": 1, "kind": "native-publisher-invocation-v1",
+            "version": version, "kind": f"native-publisher-invocation-v{version}",
             "request_sha256": request_sha, "invocation_id": self.request.invocation_id,
             "operation_id": self.request.publisher_operation_id, "status": "complete",
             "response": response, "receipt": {"body": record, "sha256": record_digest(record)},
@@ -181,6 +192,20 @@ class PublicationFixture(TestCase):
 
 
 class PublicationTests(PublicationFixture):
+    def test_issue_backed_invocation_retains_the_v1_wire(self):
+        request = self.request
+        self.assertEqual(wire(request.to_record()), wire(asdict(request)))
+        inner = {
+            "version": 1, "mode": request.effect_mode, "operation_id": request.publisher_operation_id,
+            "issue_id": request.issue.issue_id, "project_id": request.issue.project_id,
+            "owner": request.admission.owner, "unit_sha256": request.unit_sha256,
+            "packet_sha256": request.packet_sha256, "source_sha256": request.source_sha256,
+        }
+        for observe, mode in ((False, "invoke"), (True, "observe")):
+            self.assertEqual(wire(request.envelope(observe=observe)), wire({
+                "version": 1, "mode": mode, "invocation_id": request.invocation_id, "request": inner,
+            }))
+
     def test_publisher_observes_existing_intent_with_original_inner_request(self):
         accepted = self.publisher.consume_boundary(self.request)
         self.assertEqual(accepted.head, self.merge)
@@ -316,3 +341,32 @@ class PublicationTests(PublicationFixture):
         self.write_reply(reply)
         with self.assertRaisesRegex(SourceHold, "readback_source"):
             self.publisher.consume_boundary(self.request)
+
+
+class LedgerPublicationTests(PublicationFixture):
+    ledger_only = True
+
+    def test_request_codec_binds_original_task_and_opaque_operation(self):
+        request = self.request
+        record = request.to_record()
+        self.assertNotIn("issue", record)
+        self.assertEqual(record["task"], request.task.to_record())
+        self.assertEqual(request.envelope(observe=False)["request"]["workspace_key"], request.task.key.workspace_key)
+        self.assertEqual(PublicationRequest.from_ledger_record(record, snapshot_path=SNAPSHOT).to_record(), record)
+        self.assertEqual(request.original_operation_id, OPERATION)
+        self.assertNotEqual(request.original_operation_id, request.invocation_id)
+        for change, reason in (
+            ({"workspace_key": "other"}, "request_shape"),
+            ({"issue": None}, "request_shape"),
+            ({"task": {**record["task"], "epoch": "other"}}, "claim_drift"),
+        ):
+            with self.subTest(change=change), self.assertRaisesRegex(SourceHold, reason):
+                PublicationRequest.from_ledger_record({**record, **change}, snapshot_path=SNAPSHOT)
+
+    def test_acceptance_cannot_substitute_task_with_recomputed_facet_digest(self):
+        value = self.result()
+        fact = value["accepted_source"]["fact"]
+        fact["task"] = {**fact["task"], "owner": "different-owner"}
+        value["accepted_source"]["reference"]["sha256"] = record_digest(fact)
+        with self.assertRaisesRegex(SourceHold, "accepted_task"):
+            accepted_result(value, self.request, self.request.envelope(observe=False), self.publisher.command)

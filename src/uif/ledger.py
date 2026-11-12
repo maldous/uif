@@ -1,7 +1,7 @@
 """Read original UIF reconciliation identities and qualify existing admissions."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -9,7 +9,7 @@ import re
 from types import MappingProxyType
 
 from .source import SourceHold, exact_path
-from .stokowski import UIF, LedgerAdmission, PolledIssue, SourceBoundary, bind_uif_lifecycle
+from .stokowski import LEDGER_DISPATCH_INTENT, UIF, LedgerAdmission, PolledIssue, SourceBoundary, bind_uif_lifecycle
 
 SNAPSHOT_SHA256 = "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c"
 SECTIONS = {
@@ -126,13 +126,38 @@ def _identity(value):
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
+def ledger_task_target(key, source_sha256):
+    """Identity carried by inputs prepared before the original operation is bound."""
+    return dict(store_id=key.store_id, row_id=key.row_id,
+                snapshot_sha256=SNAPSHOT_SHA256, source_sha256=source_sha256)
+
+
+def verify_ledger_task_input(record, target):
+    issue_fields = {"issue", "issue_id", "identifier", "project_id", "project_slug", "linear"}
+    if not isinstance(record, dict) or issue_fields & record.keys() or record.get("ledger_task") != target:
+        raise SourceHold("uif_ledger_task_input_binding")
+
+
+def verify_ledger_task_admission(task, admission):
+    from .task_identity import LedgerTaskEnvelope, SCHEMA as LEDGER_TASK_SCHEMA
+
+    if not isinstance(task, LedgerTaskEnvelope) or not isinstance(admission, LedgerAdmission):
+        raise SourceHold("uif_ledger_task_claim_required")
+    expected = dict(schema=LEDGER_TASK_SCHEMA, **ledger_task_target(
+        RowKey(admission.store_id, admission.row_id), admission.source_sha256),
+        owner=admission.owner, epoch=admission.epoch, original_operation_id=admission.original_operation_id)
+    if task.to_record() != expected or task.snapshot_sha256 != admission.snapshot_sha256:
+        raise SourceHold("uif_ledger_task_claim_drift")
+
+
 class RecoveredLedger:
     """Read-only boundary for the existing selector and claim machinery."""
 
     def __init__(self, snapshot_path, *, store_id, read_current, verify_refill):
         if not _identity(store_id) or not callable(read_current) or not callable(verify_refill):
             raise SourceHold("uif_ledger_owner_registration")
-        self.rows = read_snapshot(snapshot_path)
+        self.snapshot_path = exact_path(snapshot_path)
+        self.rows = read_snapshot(self.snapshot_path)
         self.store_id = store_id
         self.read_current = read_current
         self.verify_refill = verify_refill
@@ -243,13 +268,33 @@ class RecoveredLedger:
             raise SourceHold("uif_ledger_dispatch_already_intended")
         return context
 
-    def verify_dispatch(self, admission, issue, *, operation_id, receipt_path, receipt_sha256):
-        current = self._eligible_claim(admission, issue)
+    def qualify_ledger_context(self, context, task):
+        verify_ledger_task_admission(task, context.ledger)
+        return self.qualify_context(context, None)
+
+    def verify_dispatch(self, admission, issue, *, operation_id, receipt_path, receipt_sha256, task=None):
+        if (issue is None) != (task is not None):
+            raise SourceHold("uif_ledger_task_claim_drift")
+        if task is None:
+            current = self._eligible_claim(admission, issue)
+        else:
+            verify_ledger_task_admission(task, admission)
+            current = self.verify_claim(admission, issue)
+            admission.require_implementation()
+            if current.dispatch_intent is None:
+                self._prior_effect(current)
         if current.operation_id != operation_id:
             raise SourceHold("uif_ledger_dispatch_operation_drift")
         expected = CurrentDispatchIntent(operation_id, exact_path(receipt_path), receipt_sha256)
         if not _digest(receipt_sha256) or current.dispatch_intent != expected:
             raise SourceHold("uif_ledger_dispatch_intent_drift")
+        if task is not None:
+            from .admission import _record
+
+            record = _record(dict(path=str(expected.receipt_path), sha256=receipt_sha256))
+            if (record.get("schema") != LEDGER_DISPATCH_INTENT or record.get("task") != task.to_record()
+                    or record.get("operation_id") != operation_id or record.get("admission") != asdict(admission)):
+                raise SourceHold("uif_ledger_dispatch_intent_drift")
 
 
 @dataclass(frozen=True)

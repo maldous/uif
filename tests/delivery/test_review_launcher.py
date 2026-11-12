@@ -8,7 +8,7 @@ from unittest.mock import patch
 import test_review
 import uif
 
-from uif import supervisor as shared_supervisor
+from uif import role_broker, supervisor as shared_supervisor
 from uif.role_broker import LaunchObservation, projection_digest, slot_for_lease
 from uif.review_launcher import (
     ReviewAttempt, ReviewInvocation, ReviewLauncher, ReviewLaunchSelection, ReviewSettings,
@@ -121,7 +121,7 @@ class ReviewLauncherTests(unittest.IsolatedAsyncioTestCase):
                              usage=(1, 4096), host_pressure=None, process_limit=4, role=None, max_processes=4):
         f = self.fixture
         runtime = f.f.root
-        (runtime / "attempts").mkdir(mode=0o700)
+        (runtime / "attempts").mkdir(mode=0o700, exist_ok=True)
         records = {
             "installation.json": {"supervisor_policy_sha256": "d" * 64},
             "capacity-policy.json": {
@@ -133,7 +133,7 @@ class ReviewLauncherTests(unittest.IsolatedAsyncioTestCase):
         for name, record in records.items():
             (runtime / name).write_bytes(wire(record))
         selection = ReviewLaunchSelection(f.spec, *(sha(wire(record)) for record in records.values()))
-        invocation = ReviewInvocation(runtime, "UIF-1", f.spec.policy, f.spec.policy_sha256)
+        invocation = ReviewInvocation.for_spec(f.spec)
         review = f.adapter
         if stage is not None:
             review.journal.save(review._journal_key(f.spec), review._pin(f.spec), stage)
@@ -236,12 +236,20 @@ class ReviewLauncherTests(unittest.IsolatedAsyncioTestCase):
             self.role_calls.append("start")
             key = launch.key
             admission = f.spec.binding.dispatch.ledger
-            self.assertEqual((key.role, key.store_id, key.row_id, key.owner, key.epoch, key.operation_id),
-                             ("review", admission.store_id, admission.row_id, admission.owner,
-                              admission.epoch, admission.original_operation_id))
-            self.assertEqual((key.row_source_sha256, key.issue_id, key.issue_identifier, key.attempt_id, key.lease_id),
-                             (admission.source_sha256, f.spec.binding.dispatch.issue.issue_id,
-                              "UIF-1", f.directory.name, f.spec.lease))
+            self.assertEqual((key.role, key.store_id, key.operation_id, key.lease_id),
+                             ("review", admission.store_id, admission.original_operation_id, f.spec.lease))
+            if f.spec.binding.task is None:
+                self.assertEqual((key.row_id, key.owner, key.epoch),
+                                 (admission.row_id, admission.owner, admission.epoch))
+                self.assertEqual((key.row_source_sha256, key.issue_id, key.issue_identifier, key.attempt_id),
+                                 (admission.source_sha256, f.spec.binding.dispatch.issue.issue_id,
+                                  "UIF-1", f.directory.name))
+            else:
+                self.assertEqual(key.task, f.spec.binding.task.to_record())
+                self.assertEqual(key.workspace_key, f.spec.binding.workspace_key)
+                self.assertEqual(key.invocation_id, f.spec.invocation_id)
+                self.assertNotIn("issue", launch.to_record()["key"])
+                self.assertEqual(decode((f.directory / "intent.json").read_bytes())["binding"]["write_roots"], [])
             self.assertEqual(launch.policy_sha256, f.spec.policy_sha256)
             self.assertEqual(launch.admission_sha256, file_digest(runtime / "current-admission.json"))
             self.assertEqual(launch.slot, slot_for_lease(f.spec.lease))
@@ -442,3 +450,48 @@ class ReviewLauncherTests(unittest.IsolatedAsyncioTestCase):
         outcome = dict(self.stopped, session_id="another-session", turn_completed=True, resolved_model=None)
         with self.assertRaisesRegex(SourceHold, "uif_review_launcher_event_readback"):
             self.attempt.qualify_result(outcome, policy, require_event_readback=True)
+
+
+class LedgerReviewLauncherTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.fixture = self.f = await test_review.ledger_review_fixture(self)
+        f = self.f
+        resources = {"output_bytes": 65536, "cpu_millis": 1000, "memory_bytes": 4096}
+        f.pool["resources"] = f.policy["resources"] = resources
+        f.spec.policy.write_bytes(wire(f.policy))
+        f.spec = replace(f.spec, policy_sha256=sha(f.spec.policy.read_bytes()), pool_binding_json=wire(f.pool))
+        self.invocation = ReviewInvocation.for_spec(f.spec)
+        self.settings = ReviewSettings("codex-chatgpt", "gpt-6.1-sol", "medium")
+        self.attempt = ReviewAttempt(f.spec, settings=self.settings, backend=f.backend, validation=f.f.adapter)
+
+    def test_cli_binds_canonical_task_and_genuine_invocation_uuid(self):
+        invocation = self.invocation
+        args = ["--runtime", str(invocation.runtime), *invocation.target_args(),
+                "--native-review-policy", str(invocation.policy),
+                "--native-review-policy-sha256", invocation.policy_sha256]
+        parsed = ReviewInvocation.parse(args)
+        self.assertEqual(parsed, invocation)
+        parsed.require(self.f.spec)
+        self.assertEqual(decode(parsed.task_json), self.f.spec.binding.task.to_record())
+        with self.assertRaisesRegex(SourceHold, "invocation_target"):
+            replace(parsed, invocation_id=self.f.spec.binding.dispatch.operation_id)
+
+    async def test_registered_ledger_review_uses_read_only_broker_and_original_receipt(self):
+        f = self.f
+        result = ReviewLauncherTests._run_with_supervisor(self, role="succeeded")
+        self.assertEqual(self.role_calls, ["start"])
+        self.assertEqual(result["status"], "succeeded")
+        self.assertEqual(result["task"], f.spec.binding.task.to_record())
+        self.assertEqual(result["invocation_id"], f.spec.invocation_id)
+        self.assertNotIn("issue", result)
+        self.assertEqual((await f.backend.inspect(f.spec)).status, "succeeded")
+        self.assertEqual((f.f.candidate / "value").read_text(), "one\n")
+
+    def test_missing_ledger_broker_cannot_fall_back_or_admit_a_lease(self):
+        with patch.object(role_broker, "LedgerReviewLaunchKey", None):
+            with self.assertRaisesRegex(SourceHold, "ledger_role_unavailable"):
+                ReviewLauncherTests._run_with_supervisor(self, role="succeeded")
+        self.assertEqual(self.calls, ["prepare"])
+        self.assertEqual(self.role_calls, [])
+        self.assertIsNone(self.f.backend._lease(self.f.spec.lease))
+        self.assertFalse(self.f.directory.exists())

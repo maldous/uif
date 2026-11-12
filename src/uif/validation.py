@@ -40,6 +40,13 @@ def identity(value):
     return isinstance(value, str) and bool(value) and value == value.strip()
 
 
+def invocation_uuid(value):
+    try:
+        return str(UUID(value)) == value
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
 def decode(raw):
     def unique(pairs):
         result = dict(pairs)
@@ -89,7 +96,9 @@ class StageBinding:
         admission = self.dispatch.ledger
         issue = self.dispatch.issue
         if (admission is None or admission.original_operation_id != self.dispatch.operation_id
-                or (issue.project_id, issue.project_slug) != (UIF.project_id, UIF.project_slug)
+                or (self.task is None and (issue is None
+                    or (issue.project_id, issue.project_slug) != (UIF.project_id, UIF.project_slug)))
+                or (self.task is not None and issue is not None)
                 or not all(oid(value) for value in (self.base, self.head, self.tree))
                 or not all(digest(value) for value in (self.dispatch.receipt_sha256, self.coding_receipt_sha256))):
             raise SourceHold("uif_stage_dispatch_binding")
@@ -99,6 +108,26 @@ class StageBinding:
             self.candidate, self.coding_receipt, self.dispatch.receipt_path
         )):
             raise SourceHold("uif_stage_outside_task_runtime")
+        if self.task is not None:
+            from .ledger import verify_ledger_task_admission
+
+            verify_ledger_task_admission(self.task, admission)
+            if (self.dispatch.workspace != runtime / "workspaces" / self.workspace_key
+                    or self.dispatch.receipt_path != runtime / "attempts" / self.workspace_key / "dispatch-intent.json"
+                    or self.candidate not in (
+                        self.dispatch.workspace, runtime / "contributions" / self.workspace_key / "candidate",
+                    )):
+                raise SourceHold("uif_stage_ledger_paths")
+
+    @property
+    def task(self):
+        return getattr(self.dispatch, "task", None)
+
+    @property
+    def workspace_key(self):
+        if self.task is not None:
+            return self.task.key.workspace_key
+        return self.dispatch.issue.identifier
 
     @property
     def row(self):
@@ -109,6 +138,14 @@ class StageBinding:
         return sha(wire([stage, self.row.store_id, self.row.row_id, self.dispatch.operation_id]))
 
     def verify(self):
+        if self.task is not None:
+            from .dispatch import read_outcome
+
+            outcome = read_outcome(self.dispatch)
+            if (outcome.status != "succeeded" or outcome.operation_id != self.dispatch.operation_id
+                    or (outcome.worker_receipt_path, outcome.worker_receipt_sha256)
+                    != (self.coding_receipt, self.coding_receipt_sha256)):
+                raise SourceHold("uif_stage_ledger_original_coding")
         coding = read_evidence(self.coding_receipt, uid=os.geteuid(), limit=1048576)
         if (file_digest(self.dispatch.receipt_path) != self.dispatch.receipt_sha256
                 or sha(coding) != self.coding_receipt_sha256):
@@ -145,14 +182,11 @@ class ValidationSpec:
 
     def __post_init__(self):
         args = decode(self.args_json)
-        try:
-            valid_job_id = str(UUID(self.windmill_job_id)) == self.windmill_job_id
-        except (ValueError, AttributeError, TypeError):
-            valid_job_id = False
-        if (not valid_job_id
+        if (not invocation_uuid(self.windmill_job_id)
                 or not isinstance(self.runner_job_id, str)
                 or re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", self.runner_job_id) is None
                 or not all(digest(v) for v in (self.operation_key, self.runner_sha256, self.capacity_policy_sha256))
+                or (self.binding.task is not None and self.operation_key != self.binding.key("validation"))
                 or type(self.first_submission) is not bool
                 or not isinstance(args, dict) or wire(args) != self.args_json
                 or args.get("job_id") != self.runner_job_id or args.get("action") != "run"
@@ -254,6 +288,15 @@ class StageJournal:
 _TERMINAL = {"succeeded", "failed", "rework", "quarantined"}
 
 
+def stage_spec_record(spec):
+    """Serialize the existing issue spec or the tagged ledger spec."""
+    record = asdict(spec)
+    if spec.binding.task is not None:
+        validation = record if isinstance(spec, ValidationSpec) else record["validation"]
+        validation["binding"]["dispatch"] = spec.binding.dispatch.to_record()
+    return record
+
+
 class _Stage:
     def __init__(self, journal, fence, backend):
         self.journal = journal
@@ -261,8 +304,12 @@ class _Stage:
         self.backend = backend
 
     def _pin(self, spec):
-        return json.dumps(dict(stage=self.stage, spec=asdict(spec), backend=self.backend.registration),
-                          sort_keys=True, allow_nan=False,
+        record = dict(stage=self.stage, spec=stage_spec_record(spec), backend=self.backend.registration)
+        if spec.binding.task is not None:
+            record.update(schema="uif-stage/2", workspace_key=spec.binding.workspace_key)
+            if self.stage == "review":
+                record["invocation_id"] = spec.invocation_id
+        return json.dumps(record, sort_keys=True, allow_nan=False,
                           default=lambda value: value.decode() if isinstance(value, bytes) else str(value))
 
     def _journal_key(self, spec):
@@ -366,8 +413,15 @@ class WindmillValidationBackend:
         try:
             raw = read_evidence(path, uid=self.runner_uid, limit=65536)
         except FileNotFoundError:
+            if spec.binding.task is not None and os.path.lexists(path.parent):
+                return _Observation("unknown")
             return None
-        return self._receipt(spec, raw)
+        observed = self._receipt(spec, raw)
+        # Preserve evidence of a prior effect without qualifying the receipt
+        # until the original Windmill invocation also binds it.
+        if spec.binding.task is not None and observed.status != "quarantined":
+            return _Observation("unknown")
+        return observed
 
     async def inspect(self, spec):
         response = await self.client.get(f"/w/{self.workspace}/jobs_u/get/{spec.windmill_job_id}",
@@ -406,8 +460,9 @@ class WindmillValidationBackend:
         if result.get("job_id") != spec.runner_job_id:
             return _Observation("quarantined")
         observed = self._receipt(spec, wire(result["receipt"]))
-        if observed.status == "succeeded" and result.get("job_succeeded") is not True:
-            return _Observation("unknown")
+        if observed.status == "succeeded":
+            if result.get("job_succeeded") is not True or (spec.binding.task is not None and job["success"] is not True):
+                return _Observation("unknown")
         return observed
 
     async def submit(self, spec):
