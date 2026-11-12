@@ -1,6 +1,21 @@
 # Windmill/MCP instruction reference feasibility
 
-## Verified interfaces, 2026-11-10
+## Current workspace checkpoint, 2026-11-12
+
+The current coordinator reports a fresh generic Foo Workspace inventory containing
+only workspace `foo`, display name `Foo`. Follow the
+[workspace routing checkpoint](windmill-workspace.md) when choosing a current
+tool. The fixed `windmill_foo_root_chat_foo_root_jobs` wrapper still advertises
+`offmenu`, a disabled label and no workspace argument. Do not invoke it or infer
+that the generic connection's migration retargeted the fixed wrapper.
+
+The authoring-guide and deployed-identity observations below are dated November
+10. Their advisory `prompt_for_ai` finding is retained with that provenance; it
+does not prove current schema deployment, policy loading, enforcement or runtime
+health. The existing recovery owner retains source/configuration/validator
+migration assessment. This change adds guidance only.
+
+## Historical interface observations, 2026-11-10
 
 The connected Foo MCP `get_instructions(subject="script", language="python3")`
 response explicitly supports an input schema top-level `prompt_for_ai` string
@@ -13,7 +28,7 @@ these existing deployed identities in workspace `offmenu`:
 - `u/admin/offmenu_delivery_dispatch`: typed dispatch with exact reviewed-source
   identity validation and immutable job IDs. No invocation was performed here.
 
-The root tool currently exposes action, command, cwd, job_id and timeout_seconds;
+The root tool at that observation exposed action, command, cwd, job_id and timeout_seconds;
 it has no declared policy-version/hash parameter. Do not pass invented arguments.
 The existing repository qualification and API declarations are evidence of
 proposed/recovered contracts, not proof of current deployment or semantic policy
@@ -54,7 +69,7 @@ readback. It must not become an added product-delivery gate or a way to bypass
 an existing denied action. This investigation changes no production runner,
 service, authentication, permissions, credentials, scheduler or deployment.
 
-## Current outcome
+## Historical outcome, 2026-11-10
 
 Portable repository policy copies and an offline consistency checker are prepared.
 They validate instruction distribution only. No universal MCP enforcement,
