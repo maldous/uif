@@ -51,7 +51,7 @@
     "src/uif/review_launcher.py": "1c2120256bf13bb2d80911e7401b9fdf3eb135daacbc785b790de2af368fd291",
     "src/uif/review_selector.py": "00660f9a42ca6ac69610231b353b55af54ea769b2fdf13d2a9b05407815e28ee",
     "src/uif/role.py": "80c477ad0c074f62de0e1a18e8ba5330c768bd147143df36b0962a0656586a43",
-    "src/uif/role_broker.py": "8ba16f754e9da3b4bc8c284e3ba452e3ba36ccfe5a5977ad92acc7999932fdb3",
+    "src/uif/role_broker.py": "a01eb453bb083759bae6ef1a85614d12c607bdb5f165c0b021c639a12321e422",
     "src/uif/shared_job_admission.py": "78121ac8b4faa07740a025135be214dc582b6bea51caa902bf04f66e9d7fd379",
     "src/uif/source.py": "7eda6b85694a9dcf119e8e591e53955e1f1982eccd8d0aa1afae6ed674ad7d9c",
     "src/uif/stokowski.py": "85900a09d5dda84cf0d7174365e2191d53c1bd7b3a6d8054b4cfc347df491023",

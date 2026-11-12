@@ -1261,17 +1261,17 @@ def _neutral_logs(role, request, logs):
         os.close(directory)
 
 
-def _project_devices(root):
+def _private_null_device(root):
     device_root = root / "dev"
     device_root.mkdir(mode=0o755)
-    # This dedicated mount enables just the null device used by Git.
+    # The dedicated mount enables only the null device.
     _mount("tmpfs", device_root, "tmpfs", 2 | 8, "mode=0755,size=4096,nr_inodes=4")
     null = device_root / "null"
     os.mknod(null, stat.S_IFCHR | 0o600, os.makedev(1, 3))
     null.chmod(0o666)
 
 
-def _private_root(root, entries, ordinary_mounts=(), *, project_work=False):
+def _private_root(root, entries, ordinary_mounts=(), *, private_null=False):
     # No recursive bind of a host tree. MS_PRIVATE prevents propagation in
     # either direction. Child mounts are visible only in this mount namespace.
     _mount(None, "/", None, 16384 | 262144)
@@ -1293,8 +1293,8 @@ def _private_root(root, entries, ordinary_mounts=(), *, project_work=False):
         _mount(None, mountpoint, None, 4096 | 32 | 2 | 4 | int(readonly))
     if ordinary_mounts:
         _neutral_mounts(root, ordinary_mounts)
-    if project_work:
-        _project_devices(root)
+    if private_null:
+        _private_null_device(root)
     proc = root / "proc"
     proc.mkdir(mode=0o700)
     _mount("proc", proc, "proc", 2 | 4 | 8)
@@ -1313,19 +1313,14 @@ def _close_except(*kept):
 
 
 def _namespace_init(root, entries, command, stdin, stdout, stderr, ready, gate, *,
-                    ordinary_mounts=(), cwd="/", child_env=ENV, cpu_ids=(), project_work=False):
+                    ordinary_mounts=(), cwd="/", child_env=ENV, cpu_ids=(), private_null=False):
     for fd, source in enumerate((stdin, stdout, stderr)):
         os.dup2(source, fd, inheritable=True)
     mount_fds = [item[0] for item in ordinary_mounts]
     _close_except(ready, gate, *mount_fds)
     if cpu_ids:
         os.sched_setaffinity(0, cpu_ids)
-    if project_work:
-        _private_root(root, entries, ordinary_mounts, project_work=True)
-    elif ordinary_mounts:
-        _private_root(root, entries, ordinary_mounts)
-    else:
-        _private_root(root, entries)
+    _private_root(root, entries, ordinary_mounts, private_null=private_null)
     for fd in mount_fds:
         os.close(fd)
     os.chdir(cwd)
@@ -1411,7 +1406,8 @@ def _spawn_isolated(cg, cg_id, root, entries, command, logs, witness, request, s
                 fd = os.open("/dev/null", os.O_RDONLY | os.O_CLOEXEC) if ordinary_mounts else stdin_r
                 _namespace_init(root, entries, command, fd, logs[0].fileno(), logs[1].fileno(),
                                 ready_w, gate_r, ordinary_mounts=ordinary_mounts, cwd=cwd,
-                                child_env=child_env, cpu_ids=cpu_ids, project_work=project_work)
+                                child_env=child_env, cpu_ids=cpu_ids,
+                                private_null=project_work or isinstance(request, LaunchRequest))
             except BaseException as error:
                 try:
                     os.write(ready_w, b"E" + _wire(_startup_error(error, "namespace-init"))[:1024])

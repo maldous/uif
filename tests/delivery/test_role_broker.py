@@ -291,6 +291,36 @@ class BrokerTests(unittest.TestCase):
                                      broker._digest(started))
                     gate.assert_called_once()
 
+    def test_private_root_exposes_only_the_null_device_when_selected(self):
+        for private_null in (False, True):
+            root = self.root / f"devices-{private_null}"
+            root.mkdir()
+            with (patch.object(broker, "_mount") as mount,
+                  patch.object(broker.os, "chroot"), patch.object(broker.os, "chdir"),
+                  patch.object(broker.os, "getpid", return_value=1),
+                  patch.object(broker.os, "mknod", side_effect=lambda path, *_: path.touch()) as node):
+                broker._private_root(root, [], private_null=private_null)
+            if private_null:
+                null = root / "dev/null"
+                node.assert_called_once_with(null, broker.stat.S_IFCHR | 0o600, os.makedev(1, 3))
+                mount.assert_any_call("tmpfs", null.parent, "tmpfs", 2 | 8, "mode=0755,size=4096,nr_inodes=4")
+                self.assertEqual(list(null.parent.iterdir()), [null])
+                self.assertEqual(null.stat().st_mode & 0o777, 0o666)
+            else:
+                node.assert_not_called()
+                self.assertFalse((root / "dev").exists())
+            self.assertNotIn(Path("/dev"), [call.args[0] for call in mount.call_args_list])
+
+    def test_typed_namespace_init_selects_null_before_readiness(self):
+        with (patch.object(broker, "_close_except"), patch.object(broker.os, "dup2"),
+              patch.object(broker.os, "chdir"), patch.object(broker.os, "close"),
+              patch.object(broker.os, "write") as ready,
+              patch.object(broker, "_private_root", side_effect=PermissionError("fixture")) as prepare):
+            with self.assertRaises(PermissionError):
+                broker._namespace_init(self.root, [], ["/guard"], 3, 4, 5, 6, 7, private_null=True)
+            prepare.assert_called_once_with(self.root, [], (), private_null=True)
+            ready.assert_not_called()
+
     def test_namespace_failure_is_recorded_without_releasing_command(self):
         witness = self.directory / "startup-witness"
         witness.mkdir(mode=0o700)
