@@ -9,9 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / 'config/windmill'
-TRANSPORT = {'workspace': 'offmenu', 'path': 'u/admin/foo_root_jobs',
-             'endpoint': 'https://windmill.aldous.info/api/mcp/w/offmenu/mcp',
-             'ssh_account': 'offmenu-wm', 'protocol': 'foo-root-exec-v1'}
+TRANSPORT = {'workspace': 'foo', 'path': 'u/admin/foo_root_jobs',
+             'endpoint': 'https://windmill.aldous.info/api/mcp/w/foo/mcp',
+             'protocol': 'foo-root-exec-v1'}
+MOCK_CREDENTIAL = 'synthetic:foo-root-runner'
 
 
 OBSERVED_DIGEST = '5cbecd6b800d48b8c4e009e3d0f9ef02009a184bdfc79d3b7646a4819f9049c9'
@@ -38,11 +39,13 @@ def validate():
         raise ValueError('fixed observation/evidence pin mismatch')
     if m['owner_repository'] != 'maldous/uif' or m['blockers'] != REQUIRED_BLOCKERS:
         raise ValueError('ownership or qualification gaps drift')
-    if m['version'] != 1 or m['preserve_transport'] != TRANSPORT:
+    if m['version'] != 1 or m['target_transport'] != TRANSPORT:
         raise ValueError('transport identity drift')
-    if m['workspace'] != {'id': None, 'display_name': 'Foo', 'state': 'requires-explicit-target'}:
+    if m['workspace'] != {'id': 'foo', 'display_name': 'Foo', 'state': 'active-identity-observed'}:
         raise ValueError('target identity drift')
-    if m['credential'] != {'reference': 'u/admin/foo_ssh_key_20261027', 'destination': 'existing-offmenu-only', 'new_destination_authorized': False}:
+    if m['recreation_workspace'] != {'id': None, 'state': 'requires-explicit-isolated-target'}:
+        raise ValueError('recreation workspace must be selected separately')
+    if m['credential'] != {'reference': None, 'destination': 'unqualified', 'new_destination_authorized': False}:
         raise ValueError('credential destination drift')
     if m['runner'] != {'path': 'u/admin/foo_root_jobs', 'principal': 'foo-runner',
                        'permissions': ['execute:foo-root-jobs', 'read:own-job-status'],
@@ -90,7 +93,7 @@ def validate_request(request):
 class MockCredentialResolver:
     """Opaque synthetic handle only: no environment, key store or provider reads."""
     def resolve(self, reference):
-        if reference != 'u/admin/foo_ssh_key_20261027':
+        if reference != MOCK_CREDENTIAL:
             raise ValueError('unknown credential reference')
         return object()
 
@@ -135,7 +138,7 @@ class WhiteRoom:
                     self.db.execute('INSERT INTO jobs VALUES (?,?)', (job, 'uncertain'))
             if previous is None:
                 try:
-                    reply = self.transport.identity(self.resolver.resolve('u/admin/foo_ssh_key_20261027'))
+                    reply = self.transport.identity(self.resolver.resolve(MOCK_CREDENTIAL))
                     if reply != {'host': 'foo', 'protocol': 'foo-root-exec-v1', 'state': 'succeeded'}:
                         raise ValueError('mock identity mismatch')
                     with self.db:
@@ -151,17 +154,18 @@ class WhiteRoom:
 def plan():
     m = validate()
     return {'mode': 'plan-only', 'runtime_mutations': [], 'live_recreation_verified': False,
-            'target': m['workspace'], 'preserve_transport': TRANSPORT, 'blockers': m['blockers'],
+            'target': m['workspace'], 'target_transport': TRANSPORT,
+            'recreation_workspace': m['recreation_workspace'], 'blockers': m['blockers'],
             'steps': [
                 'Reconcile live native jobs and all consumers under one migration owner.',
                 'Preserve approved source/config with hashes and prove restore without reading denied source.',
-                'Qualify deployed source/schema and protocol pins; retain current transport.',
+                'Qualify the neutral runner source, schema, protocol and private grant for foo.',
                 'Obtain action-time approval for new credential destination and persistent access.',
-                'Create isolated test workspace through authorized admin flow; inject credentials externally.',
+                'Qualify in approved disposable custody before proposing any change to the existing foo workspace.',
                 'Verify fresh-child identity, same-job status and terminal receipt independently.',
-                'Switch verified consumers only with rollback to preserved offmenu transport available.',
+                'Switch verified consumers only after explicit cutover approval and verified preimages.',
                 'Reconcile residual contents; request exact confirmation for any irreversible removal.'],
-            'rollback': ['Keep old workspace, MCP endpoint, root script and credential binding intact.',
+            'rollback': ['Keep historical resources intact and restore only the exact authorized preimages.',
                          'Restore only from verified custody after reviewing uncertain operations.',
                          'Keep project schedules disabled; do not re-enable as automatic rollback.']}
 
