@@ -282,22 +282,8 @@
         "cix",
         "anqr"
       ],
-      "expected": {
-        "workspace": "offmenu",
-        "path": "u/admin/foo_root_jobs",
-        "tool": "mcp__codex_apps__windmill_foo_root_chat_foo_root_jobs",
-        "parameters": [
-          "action",
-          "command",
-          "cwd",
-          "job_id",
-          "timeout_seconds"
-        ],
-        "enabled": true,
-        "host": "foo",
-        "protocol": "foo-root-exec-v1"
-      },
-      "declaration_source": "Windmill deployed script and terminal host identity receipt, 2026-11-09",
+      "expected": null,
+      "declaration_source": "Foo Workspace OAuth exposes foo at https://windmill.aldous.info/api/mcp/w/foo/mcp; private root runner binding and grant remain unqualified",
       "max_age_seconds": 300
     },
     {
@@ -313,7 +299,7 @@
         "anqr"
       ],
       "expected": null,
-      "declaration_source": "Windmill offmenu list_workers: declare task-specific tags/capacity before admission",
+      "declaration_source": "Windmill workspace foo: declare task-specific worker tags and capacity before admission",
       "max_age_seconds": 300
     },
     {
@@ -329,7 +315,7 @@
         "anqr"
       ],
       "expected": {
-        "unit": "offmenu-stokowski-current.service",
+        "unit": "uif-stokowski.service",
         "active_state": "active",
         "sub_state": "running"
       },
@@ -344,12 +330,8 @@
       "projects": [
         "offmenu"
       ],
-      "expected": {
-        "workspace": "offmenu",
-        "path": "u/admin/foo_jobs_20261027",
-        "dispatch": "u/admin/offmenu_delivery_dispatch"
-      },
-      "declaration_source": "https://github.com/maldous/offmenu/blob/develop/tools/delivery/README.md",
+      "expected": null,
+      "declaration_source": "Product-specific bridge in workspace foo requires explicit qualification; prior bridge is historical",
       "max_age_seconds": 300
     }
   ],

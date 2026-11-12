@@ -1,11 +1,11 @@
 {
   "version": 1,
   "owner_repository": "maldous/uif",
-  "purpose": "Foo-only desired target; offline qualification only",
+  "purpose": "Foo-only desired target; source qualification without an approved private runner grant",
   "workspace": {
-    "id": null,
+    "id": "foo",
     "display_name": "Foo",
-    "state": "requires-explicit-target"
+    "state": "oauth-visible-root-grant-unverified"
   },
   "runner": {
     "path": "u/admin/foo_root_jobs",
@@ -17,15 +17,14 @@
     "privilege_state": "proposed-not-granted"
   },
   "credential": {
-    "reference": "u/admin/foo_ssh_key_20261027",
-    "destination": "existing-offmenu-only",
+    "reference": null,
+    "destination": "unqualified",
     "new_destination_authorized": false
   },
-  "preserve_transport": {
-    "workspace": "offmenu",
+  "target_transport": {
+    "workspace": "foo",
     "path": "u/admin/foo_root_jobs",
-    "endpoint": "https://windmill.aldous.info/api/mcp/w/offmenu/mcp",
-    "ssh_account": "offmenu-wm",
+    "endpoint": "https://windmill.aldous.info/api/mcp/w/foo/mcp",
     "protocol": "foo-root-exec-v1"
   },
   "dependencies": {
@@ -34,7 +33,7 @@
   },
   "source": {
     "mock_path": "tools/windmill/white_room.py",
-    "mock_sha256": "a5cfa4da9143c8c407e8245adbea4f095bc46373cb4b1a009848528bd3d318d8",
+    "mock_sha256": "8015a6b3d37eb964a638b718541a0c918aa7da5027211cbe75b6baae7b6b8dc9",
     "deployed_runner_sha256": null,
     "host_protocol_sha256": null,
     "live_source_status": "unqualified-source-preservation-required"
