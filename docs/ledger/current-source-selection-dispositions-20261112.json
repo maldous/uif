@@ -1,0 +1,116 @@
+{
+  "schema": "uif-bounded-current-source-selection-assessment/v2",
+  "checkpoint_date": "2026-11-12",
+  "scope": "Completed bounded source assessment and current implementation choices for two existing original IDs. Both original source outcomes remain partial for the actual selected ledger-only consumer; exact documentation review/publication pending.",
+  "provenance": {
+    "documentation_base": "0be57dca1940042233ecd5300342f57a3fe25049",
+    "decision_owner": "Existing UIF accountable owner and canonical integration writer",
+    "direction": "The UIF owner retains the reviewed current UIF implementations as positive choices within their implemented issue-backed branch. The newly confirmed ledger-only task-identity source gap prevents completing either original current-source outcome. No historical equality or recovery is inferred.",
+    "policy_version": "1.2.3",
+    "policy_sha256": "7661157148bcd61499f2198aec5e0b22124b30bbf5c535f2117813fdfceb2459",
+    "selected_repository": "maldous/uif",
+    "selected_source_commit": "fa39bfdb0d1161efc67e93cccebc21a9101306f0",
+    "selected_source_tree": "153a9853d6141fa5faaee4f61298018acc23fe09",
+    "independent_source_review_sha256": "ab5c872025b19d2a3a5ee365903b3aa99855855ed5cd478371e6831008f4ab15",
+    "source_manifest_path": "config/delivery/stokowski-control.json",
+    "source_manifest_sha256": "4b10dc24684a35eef87967ee1c756836d1b7071eb97650c135bf57cc176ce8f3",
+    "published_source_PR": "https://github.com/maldous/uif/pull/42",
+    "publication_limit": "The selected implementation is immutable reviewed PR42 source, not implementation already merged into the documentation base. The owner reports a later CI-only d585032 update and passing hosted qualification; this unit does not refresh or extend those reports.",
+    "source_review_limit": "Independent acceptance is scoped source evidence. The actual-path findings below remain open; no complete selected-composition, installation or production acceptance is asserted."
+  },
+  "records": [
+    {
+      "original_id": "guard-policy-source-disposition",
+      "original_routing_identity": "uif-ledger-20261111-023",
+      "original_goal": "Resolve retained guard-policy differences against the actual current requirement and selected source (UIF-216).",
+      "original_row_source_outcome": "partial",
+      "assessment_completed": true,
+      "owner_adopted_implementation_choice": true,
+      "decision": "Retain fa39 UIF guard, broker and supervisor as the selected implementation within the existing issue-backed UIF branch, replacing historical OffMenu guard assumptions only within that implemented scope.",
+      "credited_implemented_scope": "Explicit UIF role/policy bindings in the reviewed source remain valid positive source evidence. This is not unconditional completion of current guard-policy selection, old guard equality or historical recovery.",
+      "implemented_source": [
+        {"path": "tools/delivery/uif_coding_child_guard.c", "symbols": ["binding-header requirements", "check_attempt", "main"], "sha256": "c8eacfe9ddc9aab550bf7b733575c8dbd37cd7bba923e986a41737e696cf809b"},
+        {"path": "src/uif/supervisor.py", "symbols": ["_installed", "run_registered_role_turn"], "sha256": "4bc17e161506483b9e8d0dac3cf1892d5f5805fd92619fb726842bee4093d2a5"},
+        {"path": "src/uif/role_broker.py", "symbols": ["RoleBroker", "_check_original", "_namespace_init"], "sha256": "f48588d44888781461f659e30cc907a90e5c6b282d116f7af0322c18fe5d6a39"}
+      ],
+      "actual_selected_consumer_gap": "The guard's issue_length at line 308 requires UIF-[1-9][0-9]*. check_attempt at lines 315-362 requires attempt/workspace names derived from that issue identity. Five currently selected restart rows have issue=None. Honest typed ledger-only identity must reach the guarded native path as well as owner/intake; no fake UIF issue or guard bypass is permitted.",
+      "remaining_source_work": "The existing source owner must supply and independently review the actual ledger-only task identity through owner/intake, attempt/workspace binding and guarded execution. Until then this original row remains partial. This is a current source-consumer incompatibility, not an installation or additional production gate.",
+      "preserved_limits": [
+        "The guard requires qualified fixed binding headers, native/descriptor pins and role identities; a source choice does not supply installed values or permit compilation/installation against arbitrary inputs.",
+        "Actual owner registration, runtime closure, permissions, custody, fencing and production qualification remain with their existing owners.",
+        "Historical OffMenu source, receipts and custody remain preserved; no old source equivalence, cleanup or permission change is selected."
+      ],
+      "source_review_and_publication_pending": true
+    },
+    {
+      "original_id": "r070-r071-dependency-selection",
+      "original_routing_identity": "uif-ledger-20261111-028",
+      "original_goal": "Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation (UIF-216).",
+      "original_row_source_outcome": "partial",
+      "assessment_completed": true,
+      "owner_adopted_implementation_choice": true,
+      "decision": "Select fa39 acquire_checkout and the implemented issue-backed SelectedSource -> SourceBoundary -> receiver/current OwnerAuthority chain in place of that current UIF route's historical clone_current_workspace dependency.",
+      "credited_implemented_scope": "The generic acquisition helper and implemented issue-backed consumer mapping are selected together. Preserve R071's equivalent retained 5b8 component credit without rebuilding old helpers or recovering old history. This credit does not complete the original current-source selection outcome for the actual ledger-only consumer.",
+      "implemented_source": [
+        {"path": "src/uif/source.py", "symbols": ["acquire_checkout", "repository_identity", "verify_checkout"], "sha256": "7eda6b85694a9dcf119e8e591e53955e1f1982eccd8d0aa1afae6ed674ad7d9c"},
+        {"path": "src/uif/stokowski.py", "symbols": ["SelectedSource", "SourceBoundary.ensure_workspace", "acquire_uif_task_source", "bind_workspace_receiver"], "sha256": "790fab16087cd688fdace971e03b144ae09259b9afdcd9f16f04f506ebf60418"},
+        {"path": "src/uif/owner_runtime.py", "symbols": ["OwnerAuthority.selected_source", "OwnerAuthority.validation_adapter", "bind_owner_coordinator"], "sha256": "09a6fa203f8a2578ee2c5f3d4cfdc4223a4a5813f6b414e45a1eaf6a56f466b2"},
+        {"path": "src/uif/validation.py", "symbols": ["StageBinding", "WindmillValidationBackend", "ValidationAdapter"], "sha256": "7990ccf216117f0eee460d494225e1c9ded792ba39835459f852dc835b6ba8fe"}
+      ],
+      "consumer_mapping": "For issue-backed work, OwnerAuthority supplies the selected source and qualified context; SourceBoundary binds repository/profile, issue, manifest and source-evidence pins; the receiver invokes acquire_checkout and retains uncertain/terminal workspaces. The owner-stage validation adapter consumes the selected source/attempt binding. All selected files are pinned by the same fa39 control-role manifest and accepted integrated-source review.",
+      "known_current_intake_gap": "SourceBoundary._bind requires a valid Linear UUID and identifier. The owner reports bind_owner_coordinator filters actual Linear-client results and skips catalogue rows with issue=None; five selected restart rows are genuinely issue-unmapped. A typed ledger-only intake/consumer route remains missing, and the guard also requires issue-derived attempt/workspace names. Do not invent Linear issues or claim pickup of those rows.",
+      "gap_boundary": "The generic acquisition helper and implemented issue-backed mapping retain their accepted credit. But the actual selected ledger-only consumer is unimplemented across owner/intake and guarded execution, so this original source-selection row remains partial rather than being closed through a narrower branch. The existing source owners retain the correction; installation is not the remedy or the source gate.",
+      "preserved_limits": [
+        "Accepted source facts, current owner guards, exact refs/head/tree/branch, destination custody and no-replace checks remain required by the selected implementation.",
+        "This choice does not qualify a current repository, recover an old checkout, admit a task, create an accepted ref or authorize publication.",
+        "Product adapters retain their separately acquired sealed sources; no product route or historical Git exclusion is changed."
+      ],
+      "source_review_and_publication_pending": true
+    }
+  ],
+  "open_actual_path_findings": [
+    {
+      "finding": "Typed ledger-only identity absent through owner/intake and guarded native execution",
+      "selection_impact": "Directly affects both original source rows. Positive guard and acquisition choices remain scoped to the implemented issue-backed branch; both original outcomes remain partial until the actual selected ledger-only consumer is implemented and reviewed. No new test or production requirement is introduced."
+    },
+    {
+      "finding": "Publication outer timeout",
+      "selection_impact": "Concerns publisher execution/terminal recovery and remains a required source correction for affected publication use. Existing issue-backed guard/acquisition credit does not waive it or establish coherent full source or production acceptance."
+    },
+    {
+      "finding": "Incident-write qualification",
+      "selection_impact": "Concerns ordinary-job failure/incident handling and remains with its existing source owner. No incident persistence, coherent full source or host route is qualified by this assessment."
+    },
+    {
+      "finding": "Cancellation/settled-success Pool race and writer fence",
+      "selection_impact": "Concerns lifecycle settlement and effect authority. These source choices neither exercise nor waive that boundary. They do not assert safe dispatch, capacity release, publication or complete source-composition correctness while the affected corrections remain open."
+    }
+  ],
+  "out_of_scope_source_rows": {
+    "assets-validator-composition-disposition": "Still requires the exact current role-map or supersession disposition and review for the distinct 996b adoption-assets and b850 validator/schema composition; genuine affected source corrections remain required. Installation is not its source gate.",
+    "canonical-v1-selected-composition": "Still requires exact current producer/schema/sealer/settings/assets/operator selection or supersession mapping and review; generic fa39 modules do not prove old canonical-V1 equality. Installation is not its source gate."
+  },
+  "accounting": {
+    "historical_at_documentation_base": {"owner_dispositioned": 48, "remaining": 59},
+    "current_canonical_owner_receipt": {
+      "commit": "612bcd9211a782995dac51147333b811aa32ae41",
+      "PR": 43,
+      "state": "merged, as reported by the current UIF owner; no new remote read in this unit",
+      "owner_dispositioned": 56,
+      "remaining": 51
+    },
+    "extra_original_ID_delta_this_unit": 0,
+    "limit": "This completes an assessment, not either original source outcome. Both original rows remain partial within the current 51 remaining records. There is no extra count projection or source-closure delta unless a full source outcome is separately demonstrated and accepted later. Primary accounting and PR43 files are not rewritten.",
+    "original_action_ids": 213,
+    "nonadditive_reference_ids": 11,
+    "README_unchanged": true
+  },
+  "effects_and_holds": {
+    "source_code_or_permissions_changed": false,
+    "new_tests_or_runtime_qualification": false,
+    "host_MCP_dispatch_or_external_publication": false,
+    "claims_or_new_tasks_created": false,
+    "combined_shared_operation_holds_preserved": true,
+    "actual_input_bootstrap_installation_and_production_rows_remain_separate": true
+  }
+}
