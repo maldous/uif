@@ -315,7 +315,7 @@
         "anqr"
       ],
       "expected": {
-        "unit": "offmenu-stokowski-current.service",
+        "unit": "uif-stokowski.service",
         "active_state": "active",
         "sub_state": "running"
       },

@@ -1,0 +1,33 @@
+{
+  "uid": null,
+  "gid": null,
+  "store_id": null,
+  "cpu_ids": [],
+  "execution_root": null,
+  "execution_uid": null,
+  "runner_control": null,
+  "runner_uid": null,
+  "runner_gid": null,
+  "read_roots": [],
+  "write_roots": [],
+  "protected_roots": [],
+  "descriptor_sha256": null,
+  "runner_sha256": null,
+  "capacity_policy_sha256": null,
+  "registration_sha256": null,
+  "policy_fingerprint": null,
+  "limits": {
+    "workers": null,
+    "overhead_processes": null,
+    "cpu_millis": null,
+    "memory_bytes": null,
+    "io_slots": null,
+    "output_bytes": null
+  },
+  "timeout_seconds": null,
+  "memory_reserve_bytes": null,
+  "disk_reserve_bytes": null,
+  "setpriv": {"path": null, "sha256": null, "target": "/usr/bin/setpriv"},
+  "bash": {"path": null, "sha256": null, "target": "/bin/bash"},
+  "runtime_files": []
+}

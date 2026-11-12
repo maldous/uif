@@ -1,0 +1,11 @@
+{
+  "schema": "uif-coding-supervisor/2",
+  "runtime_root": "/var/lib/uif-stokowski/runtime",
+  "coordinator_runtime": "/var/lib/uif-stokowski/runtime/coordinator",
+  "pool_root": "/var/lib/uif-stokowski/runtime/pool",
+  "uid": null,
+  "capacity": {"path": null, "sha256": null},
+  "role_helper": {"path": "/usr/local/libexec/uif-role-helper", "sha256": null},
+  "role_policy": {"path": "/etc/uif/role-launch.json", "sha256": null},
+  "owner_registration": {"path": "/etc/uif-stokowski/owner-runtime.json", "sha256": null}
+}
