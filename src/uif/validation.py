@@ -455,13 +455,26 @@ class WindmillValidationBackend:
                 result = decode(result)
             except ValueError:
                 result = None
-        if not isinstance(result, dict) or not isinstance(result.get("receipt"), dict):
+        if not isinstance(result, dict):
+            return self._original(spec) or _Observation("unknown")
+        if "receipt" in result:
+            receipt = result["receipt"]
+            if not isinstance(receipt, dict):
+                return self._original(spec) or _Observation("unknown")
+        elif (self.workspace, self.script_path) == ("foo", "u/admin/foo_jobs") and "namespace" in result:
+            request_sha256 = decode(spec.args_json).get("request_sha256")
+            if (result["namespace"] != "uif-foo-user-job/1" or result.get("workspace") != self.workspace
+                    or not digest(request_sha256) or result.get("request_sha256") != request_sha256):
+                return _Observation("quarantined")
+            receipt = result
+        else:
             return self._original(spec) or _Observation("unknown")
         if result.get("job_id") != spec.runner_job_id:
             return _Observation("quarantined")
-        observed = self._receipt(spec, wire(result["receipt"]))
+        observed = self._receipt(spec, wire(receipt))
         if observed.status == "succeeded":
-            if result.get("job_succeeded") is not True or (spec.binding.task is not None and job["success"] is not True):
+            if (result.get("job_succeeded") is not True
+                    or ((receipt is result or spec.binding.task is not None) and job["success"] is not True)):
                 return _Observation("unknown")
         return observed
 

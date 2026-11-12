@@ -217,6 +217,60 @@ class LedgerValidationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await f.adapter.tick(f.spec)).status, "unknown")
         self.assertEqual([entry[0] for entry in f.client.calls], ["get"])
 
+    def flat_result(self):
+        f = self.f
+        request_sha256 = "a" * 64
+        spec = replace(f.spec, args_json=wire(dict(decode(f.spec.args_json), request_sha256=request_sha256)),
+                       first_submission=False)
+        receipt = dict(f.completed(), namespace="uif-foo-user-job/1", workspace="foo",
+                       request_sha256=request_sha256, job_succeeded=True, incident=None)
+        f.client.job.update(script_path="u/admin/foo_jobs", args=decode(spec.args_json), result=receipt)
+        backend = WindmillValidationBackend(f.client, workspace="foo", script_path="u/admin/foo_jobs")
+        return spec, receipt, backend
+
+    async def test_flat_foo_result_qualifies_the_original_job_without_submission(self):
+        f = self.f
+        spec, receipt, backend = self.flat_result()
+        f.client.job["result"] = wire(receipt).decode()
+        adapter = ValidationAdapter(f.journal, f.adapter.fence, backend)
+        self.assertEqual((await adapter.tick(spec)).status, "succeeded")
+        self.assertEqual((await adapter.accepted(spec)).receipt, wire(receipt))
+        self.assertEqual((await adapter.tick(spec)).status, "succeeded")
+        self.assertEqual(f.client.calls, [("get", f"/w/foo/jobs_u/get/{spec.windmill_job_id}")])
+
+    async def test_flat_foo_result_retains_original_binding_and_terminal_checks(self):
+        f = self.f
+        spec, receipt, backend = self.flat_result()
+        job = dict(f.client.job)
+        for field, value, expected in (
+            ("request_sha256", "0" * 64, "quarantined"),
+            ("workspace", "other", "quarantined"),
+            ("namespace", "other", "quarantined"),
+            ("job_id", "other", "quarantined"),
+            ("command_sha256", "0" * 64, "quarantined"),
+            ("runner_sha256", "0" * 64, "quarantined"),
+            ("capacity_policy_sha256", "0" * 64, "quarantined"),
+            ("child_tree_gone", False, "unknown"),
+            ("reconcile_required", True, "unknown"),
+            ("exit_code", 1, "unknown"),
+            ("job_succeeded", False, "unknown"),
+            ("receipt", None, "unknown"),
+        ):
+            with self.subTest(field=field):
+                f.client.job = dict(job, result=dict(receipt, **{field: value}))
+                self.assertEqual((await backend.inspect(spec)).status, expected)
+        for updates, expected in (
+            (dict(args=dict(job["args"], command="other")), "quarantined"),
+            (dict(id="276d1a06-a722-432c-91e3-2701f927c4a5"), "quarantined"),
+            (dict(success=False), "unknown"),
+        ):
+            f.client.job = dict(job, **updates)
+            self.assertEqual((await backend.inspect(spec)).status, expected)
+        for status in ("failed", "timed_out", "cancelled"):
+            f.client.job = dict(job, result=dict(receipt, status=status, job_succeeded=False, exit_code=1))
+            self.assertEqual((await backend.inspect(spec)).status, "failed")
+        self.assertTrue(all(call[0] == "get" for call in f.client.calls))
+
     async def test_stale_owner_or_different_coding_receipt_prevents_validation(self):
         f = self.f
         f.epoch = "stale"
