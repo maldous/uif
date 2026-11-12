@@ -1,0 +1,159 @@
+{
+  "schema": "uif-current-source-successor-dispositions/1",
+  "date": "2026-11-12",
+  "accountable_owner": "uif-platform-owner",
+  "publication_base": "8ddda41c8627843fa4096f65d3d0fee89f37aac1",
+  "scope": "Four existing current source-only obligations; immutable successor selection and original-clause reconciliation. This documentary proposal adds no task, implementation, registration, runtime or shared effect.",
+  "snapshot": {
+    "path": "README.md",
+    "sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+    "git_blob": "e9f75a1f617efc49020d5f396a767cfb8106f24e",
+    "original_action_ids": 213,
+    "nonadditive_references": 11,
+    "bytes_unchanged": true
+  },
+  "policy": {
+    "version": "1.2.4",
+    "sha256": "4b88a8be6d6f4d8bbd721a1f22bd3d47250d5391be220b5ed77011249e226fa9",
+    "adoption_changed": false
+  },
+  "accepted_source": {
+    "commit": "bc979c8ea577b114f1e259ea1087a85e9476f2e1",
+    "tree": "f5128b1d36fd69b233681c3af540ad83f8d20c85",
+    "full_patch_from_176c237_sha256": "ece03143bf24b8caa4b180b5a0a675cf4272359ab26c84c2bd40834390025c2d",
+    "packet": "/tmp/uif-ledger-final-policy-access-20261112",
+    "manifest_sha256": "5cdfca63fa993283ccc98cb3645cc37fcfadebb19e467e0b83d7fd7f2ce54316",
+    "checksum_list_sha256": "f50742219f09e5d301619866a4cb04e4ac56e2aa02e252a98b87ebd6cca538ed",
+    "review_path": "/tmp/uif-parent-independent-review-20261111/ledger-coordinator-bc979c8.dAVuum/review.md",
+    "review_sha256": "baba59062027bb5457d4ac1fa6e8fbf60af28d1db1ac484690c8f87d3547b228"
+  },
+  "evidence_provenance": {
+    "current_component_decisions": "docs/ledger/current-source-owner-decisions-176c237-20261112.json",
+    "prior_clause_count": 14,
+    "current_handoff": "Trusted internal finite result from Morgan: accepted selected typed coordinator; delta from444f008 and full patch from176c237 reconstruct exact tree. Row-local unreadable/missing/wrong-digest policies hold only that row while another independent eligible row proceeds. Shared Pool errors/full Pool/unresolved original claims hold. Five targeted tests passed; prior 180 integration and45 independent tests retain unchanged-code scope, including concurrency, stop drainage, original-effect recovery and authenticated no-start refusal. 43 control pins,119 archive files,26 package/wheel/installed modules, byte-identical helper, isolated installed console entrypoints without PYTHONPATH and real Foo/review/publisher adapter construction verified without transport effects. Capacity refusal holds original and grants no replay authority.",
+    "verification_custody": "Existing Foo integrator and independent reviewer verified source bytes, exact tree reconstruction, pins, installed imports and bounded regressions. The durable UIF owner receives and selects this exact finite acceptance, and verifies the canonical original clauses through GitHub MCP. No duplicate cloud source archive is claimed.",
+    "source_publication_state": "Frozen accepted Foo source; this documentary PR does not publish or merge the implementation.",
+    "prior_176c237_component_pins": "Retained as historical/component provenance in the preceding decision; do not represent them as current bc979c8 file hashes."
+  },
+  "operator_selection": {
+    "state": "selected_independently_accepted_executable_source",
+    "behavior": "Open original owner/config authority; typed intake and guarded dispatch; bind and drive validation/review/publication adapters; preserve original recovery and authenticated no-start refusal; verify terminal original publication before distinct successor refill. Reuse the existing Pool, locks and ownership store.",
+    "row_local_policy_behavior": "Unreadable, missing or wrong-digest row policy holds that row while another independently eligible row may proceed. Shared Pool errors/full Pool and unresolved original claims retain their actual holds.",
+    "capacity_refusal": "Retain the original for reconciliation; no replay or second-attempt authority.",
+    "acceptance_boundary": "Source construction, isolated installed imports and offline operating path; no external transport or live effects."
+  },
+  "records": [
+    {
+      "original_id": "guard-policy-source-disposition",
+      "original_routing_key": "uif-ledger-20261111-023",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Resolve retained guard-policy differences against the actual current requirement and selected source.",
+      "prior_source_selection": "UIF guard/dropper/broker and typed launch forms at 176c237, including the accepted isolated package closure. Retained OffMenu guard is lineage, not current policy authority.",
+      "prior_selected_clauses": [
+        "guard.confinement",
+        "guard.launch_forms",
+        "guard.entrypoint"
+      ],
+      "remaining_source_clause_satisfied": "canonical.operator",
+      "current_owner_selection": "Select the exact independently accepted bc979c8 coherent typed composition, preserving the component selections and provenance recorded at 176c237.",
+      "disposition": "fulfilled_current_source_selection_and_reconciliation",
+      "fulfillment_scope": "Original source-only selection/composition obligation. No historical byte equality or recovery, installed qualification, live delivery or product/shared effect is asserted.",
+      "source_review": "#/accepted_source",
+      "runtime_requirements": "#/separate_live_requirements"
+    },
+    {
+      "original_id": "r070-r071-dependency-selection",
+      "original_routing_key": "uif-ledger-20261111-028",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Select dependency-complete current acquisition source with accepted consumer/validation mapping; R070 needs clone_current_workspace and R071 already has equivalent retained 5b8 representation.",
+      "prior_source_selection": "For this current consumer, select source.acquire_checkout and the typed owner/source receiver chain instead of clone_current_workspace. Preserve R071 retained 5b8 component credit and separate custody/history duties.",
+      "prior_selected_clauses": [
+        "acquisition.replacement",
+        "acquisition.typed_consumer",
+        "acquisition.stages"
+      ],
+      "remaining_source_clause_satisfied": "canonical.operator",
+      "current_owner_selection": "Select the exact independently accepted bc979c8 coherent typed composition, preserving the component selections and provenance recorded at 176c237.",
+      "disposition": "fulfilled_current_source_selection_and_reconciliation",
+      "fulfillment_scope": "Original source-only selection/composition obligation. No historical byte equality or recovery, installed qualification, live delivery or product/shared effect is asserted.",
+      "source_review": "#/accepted_source",
+      "runtime_requirements": "#/separate_live_requirements"
+    },
+    {
+      "original_id": "assets-validator-composition-disposition",
+      "original_routing_key": "uif-ledger-20261111-024",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Resolve the distinct 996b adoption-assets and b850 validator/schema source composition with exact current pins and acceptance.",
+      "prior_source_selection": "Select the pinned UIF control package, launch/guard assets and strict task/stage/publication validators. Historical 996b and b850 are distinct provenance, not mandatory current inputs or claimed equal/recovered bytes.",
+      "prior_selected_clauses": [
+        "assets.replacement",
+        "assets.validators"
+      ],
+      "remaining_source_clause_satisfied": "canonical.operator",
+      "current_owner_selection": "Select the exact independently accepted bc979c8 coherent typed composition, preserving the component selections and provenance recorded at 176c237.",
+      "disposition": "fulfilled_current_source_selection_and_reconciliation",
+      "fulfillment_scope": "Original source-only selection/composition obligation. No historical byte equality or recovery, installed qualification, live delivery or product/shared effect is asserted.",
+      "source_review": "#/accepted_source",
+      "runtime_requirements": "#/separate_live_requirements"
+    },
+    {
+      "original_id": "canonical-v1-selected-composition",
+      "original_routing_key": "uif-ledger-20261111-034",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Reconcile the exact selected canonical-V1 producer/schema/sealer/settings/assets/operator source pairs and independent reviews into one coherent source composition.",
+      "prior_source_selection": "Select the six concrete current UIF source roles below. Current schema labels prove no historical V1 equality. Producer/schema/sealer/settings/assets have reviewed implementations; the executable long-running operator edge remains missing.",
+      "prior_selected_clauses": [
+        "canonical.producer",
+        "canonical.schema",
+        "canonical.sealing",
+        "canonical.settings",
+        "canonical.assets",
+        "canonical.operator"
+      ],
+      "remaining_source_clause_satisfied": "canonical.operator",
+      "current_owner_selection": "Select the exact independently accepted bc979c8 coherent typed composition, preserving the component selections and provenance recorded at 176c237.",
+      "disposition": "fulfilled_current_source_selection_and_reconciliation",
+      "fulfillment_scope": "Original source-only selection/composition obligation. No historical byte equality or recovery, installed qualification, live delivery or product/shared effect is asserted.",
+      "source_review": "#/accepted_source",
+      "runtime_requirements": "#/separate_live_requirements"
+    }
+  ],
+  "separate_live_requirements": [
+    "Operative store/owner/epoch, current effect/claim and original operation/lease/receipt join; five epoch1 proposals remain unknown/held,ready0.",
+    "Selected deployed validation script and actual request/receipt contract; source adapter needed only if that selected contract is incompatible.",
+    "Installed reviewer/publisher/role/native/CPU and scoped grants, current runtime custody and authorized effect readback.",
+    "Real live pickup/refill and BAU proof; offline local Git/Pool with substituted transports/children does not establish it."
+  ],
+  "counting": {
+    "domain_labels": {
+      "UIF_readiness": 73,
+      "discovery_routing": 34
+    },
+    "assessed_records": 107,
+    "accepted_before_this_proposal": {
+      "dispositioned": 57,
+      "current": 50,
+      "partial_current": 12,
+      "engineering": 12,
+      "shared": 26
+    },
+    "proposed_after_acceptance_and_merge": {
+      "dispositioned": 61,
+      "current": 46,
+      "partial_current": 12,
+      "engineering": 8,
+      "shared": 26
+    },
+    "meaning": "Four source-only obligations fulfilled. Existing 34 unavailable/unfulfilled legacy dispositions remain such; totals never mean completed implementations.",
+    "count_changes_before_acceptance_and_merge": 0
+  },
+  "holds": {
+    "neutral_ec6_packet": "approved ec6 packet unchanged; five accounts and original Pool transfer staged and verified; finite proof authentication blocked before admission; temporary key/sudo access withdrawn; persistent route not enabled",
+    "five_epoch1_restart_rows": "unknown original effect; held; ready=0",
+    "live_Stokowski": "held",
+    "ledger_pickup_refill": "held",
+    "native_roles": "held",
+    "combined_shared_effects": "held",
+    "original_history_and_restrictions": "preserved"
+  }
+}
