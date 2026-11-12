@@ -265,6 +265,73 @@ class RouteTests(unittest.TestCase):
         exchange.assert_not_called()
         opener.assert_not_called()
 
+    def test_proof_expiring_during_credential_lookup_does_not_open_ssh(self):
+        first, _, registration, scope, env = self.proof_fixture()
+        now = scope.expires - 1
+
+        def get_variable(name):
+            nonlocal now
+            if name == front.ROUTE:
+                return registration
+            self.assertEqual(name, self.front_config["credential_reference"])
+            now = scope.expires
+            return "synthetic-credential"
+
+        with (patch.dict(os.environ, env, clear=True),
+              patch.dict("sys.modules", {"wmill": SimpleNamespace(get_variable=get_variable)}),
+              patch.object(front.time, "time", side_effect=lambda: now),
+              patch.object(front, "_PROOF_SCOPE", scope),
+              patch.object(front, "exchange") as exchange,
+              patch.object(front, "build_opener") as opener):
+            with self.assertRaisesRegex(ValueError, "proof_window"):
+                front.main(**self.front_args(first))
+        exchange.assert_not_called()
+        opener.assert_not_called()
+
+    def test_proof_expiring_during_ssh_setup_does_not_send_request(self):
+        self.front_config["host_key"] = "Zml4dHVyZQ=="
+        first, _, registration, scope, env = self.proof_fixture()
+        for expires_during in ("open_session", "exec_command"):
+            with self.subTest(expires_during=expires_during):
+                now = scope.expires - 1
+                channel = MagicMock()
+                channel.__enter__.return_value = channel
+                ssh = MagicMock()
+                ssh.__enter__.return_value = ssh
+                transport = ssh.get_transport.return_value
+
+                def open_session(**_):
+                    nonlocal now
+                    if expires_during == "open_session":
+                        now = scope.expires
+                    return channel
+
+                def exec_command(_):
+                    nonlocal now
+                    now = scope.expires
+
+                transport.open_session.side_effect = open_session
+                channel.exec_command.side_effect = exec_command
+                paramiko = SimpleNamespace(Ed25519Key=Mock(), SSHClient=Mock(return_value=ssh),
+                                           RejectPolicy=Mock())
+                wmill = SimpleNamespace(get_variable=Mock(side_effect=[registration, "synthetic-credential"]))
+                with (patch.dict(os.environ, env, clear=True),
+                      patch.dict("sys.modules", {"wmill": wmill, "paramiko": paramiko}),
+                      patch.object(front.time, "time", side_effect=lambda: now),
+                      patch.object(front, "_PROOF_SCOPE", scope),
+                      patch.object(front, "build_opener") as opener):
+                    with self.assertRaisesRegex(ValueError, "proof_window"):
+                        front.main(**self.front_args(first))
+                ssh.connect.assert_called_once()
+                if expires_during == "open_session":
+                    channel.exec_command.assert_not_called()
+                else:
+                    channel.exec_command.assert_called_once_with(front.COMMAND)
+                channel.sendall.assert_not_called()
+                channel.__exit__.assert_called_once()
+                ssh.__exit__.assert_called_once()
+                opener.assert_not_called()
+
     def test_wrong_receipt_identity_is_held_with_no_second_call(self):
         req = self.run_request()
         bad = self.jobs._binding(req) | {"status": "unknown", "job_id": "different"}

@@ -45,6 +45,15 @@ class _ProofScope(NamedTuple):
 _PROOF_SCOPE: _ProofScope | None = None
 
 
+class _ProofWindowClosed(ValueError):
+    pass
+
+
+def _check_proof_window(scope):
+    if scope is not None and not 0 < scope.not_before <= time.time() < scope.expires:
+        raise _ProofWindowClosed("proof_window")
+
+
 def wire(data):
     return json.dumps(data, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
@@ -127,7 +136,7 @@ def request(cfg, action, job_id, request_sha256, command, mode, timeout_seconds,
 def _proof_request(scope, action, job_id, request_sha256, command, mode, timeout_seconds, resources):
     require(scope.permissioned_as and os.environ.get("WM_PERMISSIONED_AS") == scope.permissioned_as,
             "proof_actor")
-    require(0 < scope.not_before <= time.time() < scope.expires, "proof_window")
+    _check_proof_window(scope)
     require(matches(PIN, scope.route_sha256) and matches(PIN, scope.descriptor_sha256)
             and len(scope.requests) == 2 and scope.requests[0][0] != scope.requests[1][0]
             and all(matches(ID, job) and matches(PIN, digest) and actions
@@ -139,7 +148,7 @@ def _proof_request(scope, action, job_id, request_sha256, command, mode, timeout
                    command, mode, timeout_seconds, resources)
 
 
-def exchange(cfg, req, secret):
+def exchange(cfg, req, secret, *, proof_scope=None):
     import paramiko
 
     key = paramiko.Ed25519Key(data=base64.b64decode(cfg["host_key"], validate=True))
@@ -147,13 +156,17 @@ def exchange(cfg, req, secret):
     with paramiko.SSHClient() as ssh:
         ssh.get_host_keys().add(cfg["host"], key.get_name(), key)
         ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
+        _check_proof_window(proof_scope)
         ssh.connect(cfg["host"], username=cfg["user"], pkey=private, allow_agent=False,
                     look_for_keys=False, timeout=10, banner_timeout=10, auth_timeout=10)
         channel = ssh.get_transport().open_session(timeout=10)
         with channel:
             channel.settimeout(10)
+            _check_proof_window(proof_scope)
             channel.exec_command(COMMAND)
-            channel.sendall(wire(req))
+            payload = wire(req)
+            _check_proof_window(proof_scope)
+            channel.sendall(payload)
             channel.shutdown_write()
             deadline = time.monotonic() + (req["timeout_seconds"] + 30 if req["action"] == "run" else 20)
             raw = bytearray()
@@ -252,9 +265,13 @@ def main(action: str, job_id: str, request_sha256: str, command: str = None, mod
     else:
         require(sha(registration.encode()) == scope.route_sha256
                 and cfg["descriptor_sha256"] == scope.descriptor_sha256, "proof_route")
-        require(time.time() < scope.expires, "proof_window")
+        _check_proof_window(scope)
     try:
-        result = receipt(cfg, req, exchange(cfg, req, wmill.get_variable(cfg["credential_reference"])))
+        secret = wmill.get_variable(cfg["credential_reference"])
+        _check_proof_window(scope)
+        result = receipt(cfg, req, exchange(cfg, req, secret, proof_scope=scope))
+    except _ProofWindowClosed:
+        raise
     except Exception:
         # Only the exact original request may be inspected after a lost response.
         return dict(namespace=NAMESPACE, workspace=WORKSPACE, descriptor_sha256=cfg["descriptor_sha256"],

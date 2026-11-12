@@ -23,7 +23,7 @@
     "config/delivery/role-launch.example.json": "09a58a18d2f90950c6b78749bd0293a02011663ac50997513d5a4edfe010621b",
     "config/delivery/role-supervisor.example.json": "4654701ba14e564c6706ce3c6bb48e680e5e1f70c32ddbc8fbd06bae4da5b3d0",
     "config/delivery/shared-job-admission.example.json": "e337c0f725633f36c46f83d0c4f914071cf590bdd091dfba092341e3c4176f8b",
-    "config/windmill/source/foo_jobs.py": "9cea323a7afa970992331ec34565311ab8db511696eae7c1beaa529ef3465ce1",
+    "config/windmill/source/foo_jobs.py": "353fe127b3369500b13e088617013598aee3ed4d20edaec2d0650db6f6317c77",
     "config/windmill/source/foo_jobs.schema.json": "c7d745a2d989ee7b358593e0e67a3bf7d5a233cf9df29e37726f5444e2f2bf9f",
     "deploy/stokowski/uif-coding-dropper.sh": "c10c05f77677c52596c3820e9645c74a30a167d0585730a485f719cb7725cb47",
     "deploy/stokowski/uif-neutral-capacity.patch": "be73e5c28fd33f96693b69b062cc082eec1219521232e5db866819460c9dbd28",
