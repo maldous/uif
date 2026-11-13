@@ -1,0 +1,77 @@
+{
+  "kind": "CQ original-row private-return evidence contribution; not a new execution or shared closure",
+  "UTC": "2026-11-13T21:50:48.478598+00:00",
+  "original_row": "cq.profile.qualify_private_return",
+  "allocation_source": "maldous/uif README.md at f982b939ae917c0b5aa6e2e6db118d851e273aed, CQ26 clause: bounded typed evidence return and deterministic current-owner review routing",
+  "scope": "Completed current finite direct-cloud source-assessment profile only; historical74eunit, automatedcontroller/Foo/Poolreturns and fullUIF178qualification remain distinct",
+  "project_uuid": "98c8070a-2fb0-438c-9358-634064bf3cca",
+  "profile_id": "cq-direct-owner-cloud-six-source-files/1",
+  "profile_sha256": "dd587810c5c6b3b452dd0a20f8a1997f9a425318f3a6e44f1c03e4cacb356f92",
+  "contract_sha256": "b8f0c480e66f0135450dcb1968b91dcbb4f9aa6fd39d9d9bd06a90d9ec31f329",
+  "source_commit": "489ee5b799ba8176616df19ad57f699b275e886e",
+  "source_tree": "013ec47bb0e31aeefff3b21f6d2bb3a098680b90",
+  "existing_execution_id": "106af8a1-4cb6-4c25-ae87-fc256693aace",
+  "result_sha256": "e56272aff879e19d6a19b30c7b65bf8236b5c28be50ad68c80789e59857427e0",
+  "result_bytes": 9670,
+  "accepted_result_cap": 65536,
+  "cap_origin": "New explicit UIF owner selection for this finite direct-cloud profile; not prior platform authority.",
+  "private_return": {
+    "intended_destination": "durable CircularQuay delivery owner via existing private owner/Morgan relay",
+    "actual_receiver_thread": "6af4e68c-e678-8191-ac25-7b98df80c010",
+    "actual_return_route": "Existing UIF owner -> Morgan private owner relay -> this durable CQ owner; initialarchiveintakefailed, then exactexistingtextartifactsdeliveredwithoriginalhashes. No newexecution or publicstatuspost.",
+    "received_result_identity": "Exact9670bytes ande56272SHAverified; rawtransportentitycopyretainedseparately; resultsource/inputhashes/profile/schema/receiptcrossbindingsverified inownerreview",
+    "schema_sha256": "190c1d4c9290499a52af7cba21d73bce60f8c74eeb1fb2828a1b7edb9763a6e4",
+    "owner_review_sha256": "4961f166c2aed057a322c41b66f48b7870d07007fb6c69270a49cdf20ed01da3",
+    "owner_disposition": "Acceptedcurrentread-onlysix-filesourceassessmentwithdocumentedcompatibilitygap; notruntimecertification"
+  },
+  "reported_result_boundaries": [
+    {
+      "case": "destination",
+      "refused": true,
+      "reason": "wrong_destination",
+      "external_submissions": 0
+    },
+    {
+      "case": "oversized_result",
+      "refused": true,
+      "reason": "oversized_result",
+      "external_submissions": 0
+    },
+    {
+      "case": "substituted_result_source",
+      "refused": true,
+      "reason": "substituted_result_source",
+      "external_submissions": 0
+    },
+    {
+      "case": "substituted_result_assessment",
+      "refused": true,
+      "reason": "substituted_result_template",
+      "external_submissions": 0
+    },
+    {
+      "case": "substituted_result_input",
+      "refused": true,
+      "reason": "substituted_result_inputs",
+      "external_submissions": 0
+    },
+    {
+      "case": "missing_required_result_field",
+      "refused": true,
+      "reason": "result_fields",
+      "external_submissions": 0
+    },
+    {
+      "case": "existing_or_uncertain_local_execution",
+      "refused": true,
+      "reason": "existing_or_uncertain_local_execution_requires_owner_reconciliation",
+      "result_and_receipt_unchanged": true,
+      "external_submissions": 0
+    }
+  ],
+  "boundary_evidence_sha256": "1b39408c9ede75bd30645fb1bd8c6918a0c0ccf04a6f004a798471ba9f264aa3",
+  "qualification_limit": "These are actual reported refusals of the finite local validator over retained evidence. RunnerimplementationnotindependentlyauditedbyCQ; this doesnotprovelive transport/OSprivacyor sharedharnessadmission, successor/refill/recovery.",
+  "original_row_disposition": "Current per-unit typedprivate return and actual current-owner acceptance contribution delivered. UIFsolewriter decides exact original-row accounting; no fullsharedprofileclosure declared.",
+  "effects": "Private evidence reconciliation only; no new runner, tests, external submissions, source/config/runtime/publication/alias/permission or canonicalledger change.",
+  "collection_boundary": "Distinct from already incorporated shared-publication-execute-cq packet; do not reexport/recount that publication contribution."
+}
