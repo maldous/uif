@@ -1,0 +1,28 @@
+{
+  "schema": "uif-shared-job-registration/1",
+  "controller_uid": null,
+  "runner_uid": null,
+  "runner_control": null,
+  "owner_registration": {"path": "/etc/uif-stokowski/owner-runtime.json", "sha256": null},
+  "capacity": {
+    "path": null,
+    "sha256": "db72ff2b7b1afb01250c7f9060fdcd26b6dcca667ad2aa688784e085d84ae7e8"
+  },
+  "capacity_policy": {"path": null, "sha256": null},
+  "descriptor_sha256": null,
+  "runner_sha256": null,
+  "execution_root": null,
+  "read_roots": [],
+  "write_roots": [],
+  "protected_roots": [],
+  "stopped_receipts": null,
+  "limits": {
+    "workers": null,
+    "overhead_processes": null,
+    "cpu_millis": null,
+    "memory_bytes": null,
+    "io_slots": null,
+    "output_bytes": null
+  },
+  "timeout_seconds": null
+}

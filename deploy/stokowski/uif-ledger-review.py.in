@@ -1,0 +1,15 @@
+#!@UIF_RELEASE_PYTHON@ -IB
+"""Render the fixed owner and review pins before installing this finite worker."""
+
+from pathlib import Path
+import sys
+
+from uif.ledger_coordinator_bindings import run_review_worker
+
+OWNER = {"path": "@UIF_OWNER_REGISTRATION@", "sha256": "@UIF_OWNER_REGISTRATION_SHA256@"}
+REVIEW = {"path": "@UIF_REVIEW_REGISTRATION@", "sha256": "@UIF_REVIEW_REGISTRATION_SHA256@"}
+
+if __name__ == "__main__":
+    raise SystemExit(run_review_worker(
+        sys.argv[1:], invoked_path=Path(sys.argv[0]), owner=OWNER, review=REVIEW,
+    ))

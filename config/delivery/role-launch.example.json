@@ -1,0 +1,34 @@
+{
+  "schema": "uif-role-launch/1",
+  "attempt_isolation": "uif-role-attempt-namespaces/1",
+  "controller_uid": null,
+  "controller_gid": null,
+  "controller_root": "/var/lib/uif-stokowski/runtime",
+  "operation_locks": "/var/lib/uif-stokowski/runtime/operation-locks",
+  "pool_database": "/var/lib/uif-stokowski/runtime/pool/state.sqlite",
+  "cgroup_root": "/sys/fs/cgroup/uif-role-attempts",
+  "roles": {
+    "coding": {
+      "uid": null,
+      "gid": null,
+      "root": "/var/lib/uif-role-attempts/coding",
+      "auth_reference": null,
+      "max_processes": null,
+      "max_projection_bytes": null,
+      "runtime_files": [{"path": null, "sha256": null, "target": null}],
+      "dropper": {"path": "/usr/local/libexec/uif-coding-dropper", "sha256": null},
+      "guard": {"path": "/usr/local/libexec/uif-coding-child-guard", "sha256": null}
+    },
+    "review": {
+      "uid": null,
+      "gid": null,
+      "root": "/var/lib/uif-role-attempts/review",
+      "auth_reference": null,
+      "max_processes": null,
+      "max_projection_bytes": null,
+      "runtime_files": [{"path": null, "sha256": null, "target": null}],
+      "dropper": {"path": "/usr/local/libexec/uif-review-dropper", "sha256": null},
+      "guard": {"path": "/usr/local/libexec/uif-review-child-guard", "sha256": null}
+    }
+  }
+}

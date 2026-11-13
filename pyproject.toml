@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools==68.1.2", "wheel==0.42.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uif-stokowski-control"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+uif-ledger-coordinator = "uif.ledger_coordinator:main"
+uif-coding-supervisor = "uif.supervisor:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
