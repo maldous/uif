@@ -3,19 +3,27 @@
 from dataclasses import dataclass
 import os
 
-from uif.host_jobs import lease_id
+from uif.host_jobs import lease_id, sha as host_sha, wire as host_wire
 from uif.ledger import RowKey
-from uif.publication import PublisherReceiptPaths, fingerprint, record_digest
+from uif.publication import PublicationRequest, PublisherReceiptPaths, fingerprint, record_digest
 from uif.source import SourceHold, exact_path, oid
 from uif.stokowski import UIF
-from uif.validation import decode, invocation_uuid, read_evidence, sha, wire
+from uif.validation import decode, digest, invocation_uuid, read_evidence, sha, wire
 
 
-def _observation(authority, task, field, schema):
-    if (task.get("store_id"), task.get("owner"), task.get("epoch")) != (
-            authority.store_id, authority.owner, authority.epoch):
+def _observation(authority, task, field, schema, *, publication_envelope=None):
+    if task.get("store_id") != authority.store_id:
         raise SourceHold("uif_mcp_stage_owner")
     entry, runtime = authority.admission._entry(RowKey(task["store_id"], task["row_id"]))
+    if (task.get("owner"), task.get("epoch")) != (authority.owner, authority.epoch):
+        # Publisher has already rechecked the historical fence. Bind this
+        # catalogue read to the exact durable intent again before using its pin.
+        if publication_envelope is None or publication_envelope.get("mode") != "observe":
+            raise SourceHold("uif_mcp_stage_owner")
+        original = PublicationRequest.from_ledger_record(entry.get("publication_intent"),
+                                                         snapshot_path=authority.snapshot_path)
+        if original.envelope(observe=True) != publication_envelope:
+            raise SourceHold("uif_mcp_stage_original_intent")
     ref = entry.get(field)
     if ref is None:
         raise FileNotFoundError(field)
@@ -58,40 +66,78 @@ class MCPValidationClient:
             raise SourceHold("uif_mcp_validation_claim")
         task = current["ledger"]
         record = _observation(self.authority, task, "mcp_validation_observation", "uif-mcp-validation/1")
-        if set(record) != {"schema", "task", "job", "runner_receipt"}:
+        required = {"schema", "task", "job", "runner_receipt"}
+        if not required <= record.keys() or set(record) - required - {"runner_release"}:
             raise SourceHold("uif_mcp_validation_shape")
         job = record["job"]
         if (not isinstance(job, dict) or not invocation_uuid(job.get("id"))
                 or path != f"/w/foo/jobs_u/get/{job['id']}" or follow_redirects is not False):
             raise SourceHold("uif_mcp_validation_job")
         if job.get("type") == "CompletedJob":
-            self._check_receipt(job, record["runner_receipt"])
+            job = {**job, "result": self._verified_result(job, record["runner_receipt"],
+                                                         record.get("runner_release"))}
         return _JobResponse(wire(job))
 
-    def _check_receipt(self, job, receipt):
+    def _verified_result(self, job, receipt, release):
         flat = job.get("result")
         if isinstance(flat, str):
             flat = decode(flat)
-        if receipt is None and (flat is None or isinstance(flat, dict) and flat.get("status") == "unknown"):
+        if receipt is None:
             raise FileNotFoundError("original runner receipt")
         args = job.get("args")
         if (not isinstance(flat, dict) or not isinstance(args, dict) or not isinstance(receipt, dict)
-                or flat != {**receipt, "job_succeeded": flat.get("job_succeeded"), "incident": flat.get("incident")}
                 or not {"job_succeeded", "incident"} <= flat.keys()
                 or {"job_succeeded", "incident"} & receipt.keys()):
             raise SourceHold("uif_mcp_validation_runner_receipt")
-        expected = {
+        identity = {
             "workspace": "foo", "namespace": "uif-foo-user-job/1",
             "job_id": args.get("job_id"), "request_sha256": args.get("request_sha256"),
             "descriptor_sha256": self.descriptor_sha256,
         }
-        if any(key not in receipt or receipt[key] != value for key, value in expected.items()):
+        if any(key not in receipt or receipt[key] != value for key, value in identity.items()):
             raise SourceHold("uif_mcp_validation_runner_binding")
-        if receipt.get("status") in {"succeeded", "failed", "timed_out", "cancelled"}:
-            if (receipt.get("lease_id") != lease_id(receipt)
-                    or any(name not in args or name not in receipt or args[name] != receipt[name]
-                           for name in ("mode", "resources", "timeout_seconds"))):
-                raise SourceHold("uif_mcp_validation_runner_lease")
+        terminal = receipt.get("status") in {"succeeded", "failed", "timed_out", "cancelled"}
+        result = {**receipt, "job_succeeded": flat["job_succeeded"], "incident": flat["incident"]}
+        if terminal:
+            binding = self._terminal_binding(receipt, args, identity)
+            # The host returns the same terminal bytes with reconciliation set
+            # while its lease release is outstanding. Windmill retains that reply.
+            pending = {**result, "reconcile_required": True, "job_succeeded": False}
+            if wire(flat) == wire(pending):
+                result["job_succeeded"] = receipt["status"] == "succeeded"
+            elif wire(flat) != wire(result):
+                raise SourceHold("uif_mcp_validation_runner_receipt")
+            self._check_release(release, receipt, binding)
+        elif wire(flat) != wire(result):
+            raise SourceHold("uif_mcp_validation_runner_receipt")
+        return result
+
+    @staticmethod
+    def _terminal_binding(receipt, args, identity):
+        request_fields = ("mode", "resources", "timeout_seconds")
+        pin_fields = ("command_sha256", "capacity_policy_sha256", "runner_sha256")
+        if (receipt.get("lease_id") != lease_id(identity)
+                or receipt.get("child_tree_gone") is not True
+                or receipt.get("reconcile_required") is not False
+                or any(name not in args or name not in receipt or wire(args[name]) != wire(receipt[name])
+                       for name in request_fields)
+                or any(not digest(receipt.get(name)) for name in pin_fields)):
+            raise SourceHold("uif_mcp_validation_runner_lease")
+        return {**identity, **{name: receipt[name] for name in (*request_fields, *pin_fields)}}
+
+    @staticmethod
+    def _check_release(release, receipt, binding):
+        if release is None:
+            raise FileNotFoundError("original runner lease release")
+        expected = {
+            "schema": "uif-shared-job-admission/1", "status": "finished",
+            "binding_sha256": host_sha(host_wire(binding)), "lease_id": receipt["lease_id"],
+            "receipt_sha256": host_sha(host_wire(receipt)),
+        }
+        outcome = "failed" if receipt["status"] == "timed_out" else receipt["status"]
+        pool_status = "finished" if outcome == "succeeded" else "failed"
+        if release not in (expected, {**expected, "outcome": outcome, "pool_status": pool_status}):
+            raise SourceHold("uif_mcp_validation_runner_release")
 
     async def post(self, *args, **kwargs):
         raise SourceHold("uif_mcp_validation_owner_submission_only")
@@ -110,7 +156,8 @@ class MCPPublisherCommand:
         inner = envelope["request"]
         task = inner["task"]
         try:
-            record = _observation(self.authority, task, "mcp_publication_observation", "uif-mcp-publication/1")
+            record = _observation(self.authority, task, "mcp_publication_observation", "uif-mcp-publication/1",
+                                  publication_envelope=envelope)
         except FileNotFoundError as error:
             raise SourceHold("uif_mcp_publication_owner_observation_pending") from error
         if (set(record) != {"schema", "task", "publisher_uid", "envelope", "response",
@@ -155,7 +202,8 @@ class MCPGitReadback:
         request = publication.request
         try:
             record = _observation(self.authority, request.task.to_record(), "mcp_canonical_readback",
-                                  "uif-mcp-canonical-readback/1")
+                                  "uif-mcp-canonical-readback/1",
+                                  publication_envelope=request.envelope(observe=True))
         except FileNotFoundError as error:
             raise SourceHold("uif_mcp_canonical_readback_pending") from error
         expected = {
