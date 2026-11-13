@@ -1,0 +1,132 @@
+{
+  "schema_version": "foo-stokowski-drift-v1",
+  "original_id": "restart-foo-configuration-drift",
+  "original_routing_key": "uif-ledger-20261111-060",
+  "evidence": {
+    "source": "User-supplied observed owner inputs in this assignment; not independently inspected",
+    "recorded_date": "2026-11-13",
+    "observation_time": null,
+    "source_baseline": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+    "branch": "feature/restart-foo-configuration-drift-host-20261113",
+    "policy_version": "1.2.4",
+    "policy_sha256": "4b88a8be6d6f4d8bbd721a1f22bd3d47250d5391be220b5ed77011249e226fa9",
+    "declaration_basis": "Explicit bounded comparison contract derived from current user requirements and supplied pins; not an independently verified accepted deployment manifest",
+    "hash_limit": "Supplied file hashes only; no bytes hashed here and no executable/source-tree hash attested"
+  },
+  "declared": {
+    "framework_owner": "uif-platform-owner",
+    "store_id": "uif-reconciliation-20261112-01",
+    "epoch": "1",
+    "service": "stokowski-foo.service",
+    "service_user": "user",
+    "service_uid": 1000,
+    "entrypoint": {
+      "mode": "installed-console-script",
+      "target": "uif.ledger_coordinator.main"
+    },
+    "source": {
+      "release": "/opt/uif-stokowski/host-platform-20261113-a1",
+      "host_runner": {
+        "path": "/opt/uif-stokowski/host-platform-20261113-a1/installation/host-runner.json",
+        "sha256": "279c2a0620e8ae5bf90b412a3d69004a086ad3a4a02118cb63ae651c0fb3e1a3"
+      },
+      "owner_registration": {
+        "path": "/etc/uif-stokowski/owner-runtime.json",
+        "sha256": "f1fd1efdd4d1979d7576230bf2a6190776ad5f0436d9d1863460ca35bdee3274"
+      }
+    },
+    "runtime_root": "/var/lib/uif-stokowski/runtime",
+    "pool_database": "/var/lib/uif-stokowski/runtime/pool/state.sqlite",
+    "project_scope": {
+      "kind": "project-neutral-foo-infrastructure",
+      "product_owner": null,
+      "isolated": true
+    }
+  },
+  "observed": {
+    "framework_owner": "uif-platform-owner",
+    "store_id": "uif-reconciliation-20261112-01",
+    "epoch": "1",
+    "service": "stokowski-foo.service",
+    "service_user": "user",
+    "service_uid": 1000,
+    "entrypoint": null,
+    "source": {
+      "release": "/opt/uif-stokowski/host-platform-20261113-a1",
+      "host_runner": {
+        "path": "/opt/uif-stokowski/host-platform-20261113-a1/installation/host-runner.json",
+        "sha256": "279c2a0620e8ae5bf90b412a3d69004a086ad3a4a02118cb63ae651c0fb3e1a3"
+      },
+      "owner_registration": {
+        "path": "/etc/uif-stokowski/owner-runtime.json",
+        "sha256": "f1fd1efdd4d1979d7576230bf2a6190776ad5f0436d9d1863460ca35bdee3274"
+      }
+    },
+    "runtime_root": "/var/lib/uif-stokowski/runtime",
+    "pool_database": "/var/lib/uif-stokowski/runtime/pool/state.sqlite",
+    "project_scope": null
+  },
+  "current_observations": {
+    "logical_identity": "UIF framework owner/store/epoch retained; OS custody is a separate identity",
+    "ownership_transfer_receipt": "01a1d49f-4366-1699-c230-9ae7f63013b4",
+    "ownership_transfer_entries": 3874,
+    "ownership_transfer_limit": "Supplied custody transfer to existing user UID1000; no Pool data move or BAU completion",
+    "legacy_owner": "offmenu-cloud-github-owner-01a1866b",
+    "legacy_service": "offmenu-stokowski-current.service",
+    "legacy_service_state": "inactive/dead",
+    "known_correction": "Use installed console entry point importing uif.ledger_coordinator.main, not python -m; the latter duplicates CoordinatorBindings class identity.",
+    "entrypoint_limit": "Correction supplied, but actual ExecStart/console executable and import identity not supplied",
+    "project_scope_limit": "Service is project-neutral Foo infrastructure by requirement; effective runtime isolation not attested"
+  },
+  "earlier_typed_controller_assumptions": {
+    "status": "historical assumptions; not current runtime proof",
+    "legacy_owner": "offmenu-cloud-github-owner-01a1866b",
+    "legacy_service": "offmenu-stokowski-current.service",
+    "source_declaration": "config/white-room.json requirement stokowski-service at the recorded local baseline expects legacy service active/running",
+    "reconciliation": "Legacy active/running expectation conflicts with supplied inactive/dead legacy state and neutral replacement service. Preserve old declaration/history; no service repair or checker reuse here.",
+    "owner_limit": "Legacy product-owner binding must not become current shared service ownership; no historical UID or typed-controller health inferred"
+  },
+  "comparison_expectation": {
+    "status": "unknown",
+    "match": 13,
+    "mismatch": 0,
+    "unknown": 5,
+    "limit": "Agreement of supplied metadata with selected expectations is not a running-state attestation; historical declaration drift remains recorded separately"
+  },
+  "unproved_outcomes": [
+    "Current stokowski-foo.service active/substate, effective ExecStart, registration consumption and CPU policy",
+    "Executable/source-tree pin, installed package import identity and full dependency inventory/closure",
+    "Effective Pool binding, integrity, mount health and data continuity beyond the supplied path",
+    "Actual cross-project isolation, admission, claim fencing, supported concurrency and recovery",
+    "Other-project runtime outcomes and five-project BAU; no independent live-state attestation"
+  ],
+  "holds": [
+    "GitHub writes/publication/PR/merge held",
+    "Other project admission unqualified",
+    "Original unknowns remain fenced",
+    "a7 coding, validation and review accepted without replay"
+  ],
+  "disposition": {
+    "state": "bounded source contribution prepared; full original runtime outcome unproved",
+    "ledger_mutation": false,
+    "inventory": "213 original IDs and 11 nonadditive refs retained in unchanged README; no new controller/store",
+    "history": "All old unknown histories and exact denied-action holds retained; CIX execution and production remain paused",
+    "next_action": "Existing UIF infrastructure owner reviews this exact contribution; obtain separately authorized bounded effective configuration evidence before dependent runtime admission. Publication remains held."
+  },
+  "verification": {
+    "checker_command": "python -B tools/delivery/check_foo_stokowski_drift.py docs/operations/foo-stokowski-drift.json",
+    "checker_exit_code": 3,
+    "checker_status": "unknown",
+    "checker_counts": {
+      "match": 13,
+      "mismatch": 0,
+      "unknown": 5
+    },
+    "test_command": "python -B -m unittest discover -s tests/delivery -p test_foo_stokowski_drift.py -v",
+    "test_exit_code": 0,
+    "tests_run": 12,
+    "test_result": "OK",
+    "scope": "Only this new offline checker tested; no host, service or other-project attestation",
+    "preservation": "README byte-identical to local HEAD, retaining all 213 original IDs and 11 refs; exactly four allowed paths added"
+  }
+}
