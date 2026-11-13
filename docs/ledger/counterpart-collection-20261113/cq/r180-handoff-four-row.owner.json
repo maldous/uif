@@ -1,0 +1,86 @@
+{
+  "kind": "CQ existing original-row completed-outcome evidence batch; no repeated execution or sharedclosure",
+  "UTC": "2026-11-13T22:14:12.380875+00:00",
+  "allocation_source": "maldous/uif README.md at f982b939ae917c0b5aa6e2e6db118d851e273aed, original CQ26 clauses",
+  "collection_inspected": "8676515326e73cf41f746930678e173705d5f10c docs/ledger/counterpart-collection-20261113/index.json",
+  "scope": "FouroriginalIDsnotyetindividualrecordsintheinspected22recordcollection. Adds exactcompletedscopedoutcomes,not a secondledger or newbacklog.",
+  "records": [
+    {
+      "original_id": "cq.r180.freeze_packet",
+      "disposition": "Complete within bounded sanitized current-packet freeze clause; no rawcredentialspan export or productacceptance",
+      "evidence": {
+        "owner_thread": "01a1a65b-27a3-7f62-92d6-316f71bc304b",
+        "owner_turn": "01a1d226-aa0b-7a23-9848-3026783e127f",
+        "library_id": "libfile_fde3_f-cfbb7d6499988191ac0f12ac1f7df842_0c82fc302be08191a8fa197415547715",
+        "file_id": "file_00000000e45881f5b5915c0b09aedcc7",
+        "version": 0,
+        "archive_bytes": 101549,
+        "archive_sha256": "a9601aa252ffa89121972c90341dc6e0ba07dc56a8362b5c2577aaa4717b9e5f",
+        "manifest_sha256": "feee79b3f8dbe61ee46e651b36267a994ed65880fae1fd7ba006ff9877797494",
+        "scope": "723pathcurrenthashindex,13payloadpaths,15packetfiles; acceptedinputrevision77435c34a8bce5b7f23f9577c8eeaaf5c98cd5ee/tree d884d7be255674a3c7877d50c8b6f57c9315a8c7 identifies the original input, not current nonGit-copy bytes",
+        "exclusions": "Two officialLiveinjectionspans inhelp.html/server.mjs excluded as potentiallycredentialbearing; originalsuntouched,originalhashes/transformationrecorded. Not fullraw-source/runtimeacceptance."
+      }
+    },
+    {
+      "original_id": "cq.r180.assess_packet",
+      "disposition": "Complete as bounded independentassessment; materialintegrationhold andunverifiedscope retained",
+      "evidence": {
+        "reviewer_thread": "01a1a102-5d55-7593-96ea-0c9ef716faa7",
+        "receipt": "/home/user/src/2026-11-12/cq-hosted-candidate-workflow/cq-r180-assess-packet.md",
+        "receipt_sha256": "2ebaa3f42457dda0c1f7db9983a060398e13589a86c433e2e73dab493ee5fe05",
+        "sanitized_delta_sha256": "f0ea19283dd62fb4342ac3e2a6403b48cf264c228759709d8646e4e55ba2594e",
+        "base_commit": "761ed69346f3394762b7159102f0dffcc0169266",
+        "base_tree": "9757c9dc088102ccfdc62a961bf022c1e250082a",
+        "verified": "IndependentnativeRootverifiedall15filesandreviewed13sanitizedpayloadpaths; Morganrelayedactualreceipt. CloudLibraryintakefailed; no claimcloudarchivevalidation.",
+        "result": "Assessmentcomplete; integrationheldas submitted. Saved-draftkeychange,unreviewedLiveCSPexception,nonapplyingpatchand20out-of-payloadindexdifferences identified. MissingHelpcompiler/localeinputs andruntimebehavior notqualified.",
+        "followthrough": "Reviewednarrowfour-filecorrection incorporatedPR21at489ee5b799ba8176616df19ad57f699b275e886e; ui.js/server.mjs/help.html remainedacceptedbytes. Otherprivate changesnotaccepted; UI/server/alias pausesretained."
+      }
+    },
+    {
+      "original_id": "cq.handoff.reconcile_publication_state",
+      "disposition": "Complete for demonstrated stale-lockstatement/currentpublicationcorrection; historicalreceipts retained",
+      "evidence": {
+        "reviewed_head": "03668e18429759aee68b2701518c1d7c1a22178a",
+        "path": "docs/next-agent-prompt.md",
+        "postimage_git_blob": "cb7f9eaebb51c2745737a1e9a23626d5ab8cd2d9",
+        "patch_sha256": "2bd0a779f6df28ce70f131fd91c3bc0a0d16c4ed2a90f992bb397429218270c3",
+        "correction": "Reconcilecurrentcheckout/remote/acceptedDarwinlocks/provenanceandoriginalreceipts; no stale firstpush or vulnerable-lock replay",
+        "accepted_publication": "https://github.com/maldous/CircularQuay/pull/20"
+      }
+    },
+    {
+      "original_id": "cq.handoff.publish_reviewed_correction",
+      "disposition": "Complete for exact reviewedPR20correction publication and remoteidentityreadback; notPR1/productreleasequalification",
+      "evidence": {
+        "pr_id": 5286182214,
+        "pr_node_id": "PR_kwDOVhN5Ec8AAAABOxS9Rg",
+        "url": "https://github.com/maldous/CircularQuay/pull/20",
+        "merged": true,
+        "merged_UTC": "2026-11-12T23:36:21Z",
+        "base_branch": "feature/initial-implementation",
+        "base_commit": "192b413662afcf9f323d4afbcaddc6452d174bd4",
+        "reviewed_head": "03668e18429759aee68b2701518c1d7c1a22178a",
+        "merge_commit": "761ed69346f3394762b7159102f0dffcc0169266",
+        "tree": "9757c9dc088102ccfdc62a961bf022c1e250082a",
+        "changed_files": [
+          "docs/next-agent-prompt.md"
+        ],
+        "diff_scope": "8additions/2deletions; stale vulnerable-lock assertion replaced by accepted-source/receipt discovery.",
+        "independent_review": "RetainedRootturn01a1d20e-200d-7683-9a54-c42b34052712acceptedone-filecorrection",
+        "actual_incorporation": "Rootturn01a1d21e-0f34-7431-a109-4df6a3eb53c6; exactMattmergeauthorizationafterdraft-onlyapproval; normalmerge, no bypass",
+        "fresh_verification": "DirectGitHubMCPPR20readbackandcloudGitancestry/tree/one-filediffcheckednow. Merge remains ancestorofacceptedb2b7a8b."
+      }
+    }
+  ],
+  "current_source": "b2b7a8b31b6f9820efcc13c9409cde9b54985a5e/tree9a67c6b7776cad8a161058daa06483e88c0d2316",
+  "historical_custody": "Originalmaintenancehistory/policies/frozenexports preservedoutsideproduct beforePR22source removal; externalreceiptSHA3444d7cc12dfa4d5de9b64db5d69564d98adc9cf4a2a79fc849778d21c6bc2c9. Git ancestry retained.",
+  "nonduplication": "Alreadyincorporated shared-publication-execute-cq and cq.profile.qualify_private_return packets are referenced as current context only, not reexported or recounted.",
+  "remaining_actual_obligations": [
+    "SRC002savedImpeccablebinding/aliasretained; migration/releasestillpaused",
+    "Unacceptedprivatefrontenddelta/locale/compiler/runtimequalificationnotcompletedbyfreezeorassessment",
+    "PR1/PR12mainproductqualificationnotcompleted; originaldenied/uncertaineffectsnotreplayed",
+    "SonarAPIcompatibilityremainsunverifiedanddoesnotgate thesecompletedsource/evidencerows"
+  ],
+  "effects": "Existingreceiptcurationplusfreshread-onlyPR20/Gitreadback; no builds, scanner, UI/server/provider, publicpublication, permission, claim or source/sharedledger mutation.",
+  "requested_writer_action": "ExistingUIFintegratorindependentlyreviews exactrow/clauses/outcomes and incorporates bounded dispositions throughitssolecollectionwriter. Preserve originalallocationcounts andcombined/sharedholds; clarify R180freeze/assessmentcompletionwithoutclaimingremainingalias/sourceintegrationcomplete."
+}

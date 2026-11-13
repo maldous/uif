@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 24,
+  "record_count": 28,
   "records": [
     {
       "project": "ANQR",
@@ -188,6 +188,34 @@
       "source_sha256": "0d9fc39150b698a16ae97786a3882bc77cda4baab67f8af79bbba650be133cce",
       "state": "PR140 mixed bundle retained in inactive custody. No wholesale adoption, public data rights, or selected current consumer is established.",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.r180.freeze_packet",
+      "source_sha256": "9d3b08278a785540fb1bebedce6be94e00ce0e66cf26af8da973a3dfd4355ae6",
+      "state": "Bounded sanitized current packet frozen. Two potentially credential-bearing spans were excluded. No raw source or product acceptance.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.r180.assess_packet",
+      "source_sha256": "28c21790ecc11e8413c333f0807f195246d8b0169e0737e2aea83fff39399470",
+      "state": "Independent sanitized assessment completed. Submitted integration stayed held. PR 21 incorporated the separate four-file correction. Broader private frontend, runtime, compiler and locale qualification remain open.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.handoff.reconcile_publication_state",
+      "source_sha256": "c214ffb2f769ee0b86281a157472c29f8a734b440aaf14da1efb63a4688cbf77",
+      "state": "Stale publication guidance reconciled in the reviewed handoff correction. Historical receipts retained.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.handoff.publish_reviewed_correction",
+      "source_sha256": "a9d4172a22a0b2d3d174b1939a3a7c03c13498444705a7d0abe984b0e5529659",
+      "state": "Exact reviewed PR 20 handoff correction merged and remote identity verified. This evidence covers the documentation correction.",
+      "evidence_group": "CQ"
     }
   ],
   "evidence_groups": {
@@ -269,7 +297,11 @@
         "cq.analyzer.original_pin_assessment",
         "cq.analyzer.owner_review",
         "shared-publication-execute-cq",
-        "cq.profile.qualify_private_return"
+        "cq.profile.qualify_private_return",
+        "cq.r180.freeze_packet",
+        "cq.r180.assess_packet",
+        "cq.handoff.reconcile_publication_state",
+        "cq.handoff.publish_reviewed_correction"
       ],
       "owner_turns": [
         "01a1d1d7-cc82-75e2-8070-7e104f3200eb",
@@ -328,6 +360,29 @@
           "owner_review_sha256": "4961f166c2aed057a322c41b66f48b7870d07007fb6c69270a49cdf20ed01da3"
         },
         "boundary": "Exact owner packet retained. Current direct-cloud return and owner acceptance only. Reported local validator refusals do not establish live transport or OS privacy, Foo or Pool return, automated controller or shared harness admission, successor/refill or recovery, historical 74e unit completion, or full UIF-178 qualification."
+      },
+      "r180_handoff_contribution": {
+        "original_ids": [
+          "cq.r180.freeze_packet",
+          "cq.r180.assess_packet",
+          "cq.handoff.reconcile_publication_state",
+          "cq.handoff.publish_reviewed_correction"
+        ],
+        "owner_packet": "docs/ledger/counterpart-collection-20261113/cq/r180-handoff-four-row.owner.json",
+        "owner_packet_sha256": "2fce79bbe81d929cf1fefbddecbd7cb1cf50ad0492bad24823a74964b9f1c5f3",
+        "owner_packet_bytes": 6769,
+        "library_id": "libfile_fde3_f-700028ba17508191ba969275d596a3d4_0c82fc302be08191a8fa197415547715",
+        "r180_assessment_receipt_sha256": "2ebaa3f42457dda0c1f7db9983a060398e13589a86c433e2e73dab493ee5fe05",
+        "pr20": {
+          "url": "https://github.com/maldous/CircularQuay/pull/20",
+          "merge_commit": "761ed69346f3394762b7159102f0dffcc0169266",
+          "reviewed_head": "03668e18429759aee68b2701518c1d7c1a22178a",
+          "tree": "9757c9dc088102ccfdc62a961bf022c1e250082a",
+          "changed_files": [
+            "docs/next-agent-prompt.md"
+          ]
+        },
+        "boundary": "Four existing documentary outcomes. The prior collection already references PR 20. These entries bind its existing evidence to the two original handoff clauses without a second publication. R180 covers the sanitized freeze and bounded assessment. Credential-span exclusions, private frontend, alias, runtime, compiler, locale, PR 1, PR 12 and Sonar compatibility limits remain in the exact owner packet."
       }
     },
     "OffMenu": {
