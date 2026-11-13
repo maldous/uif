@@ -1,0 +1,92 @@
+{
+  "kind": "Current original WP07/WP08 source-custody disposition; no implementation or shared closure",
+  "authority": {
+    "repository": "maldous/uif",
+    "source": "f982b939ae917c0b5aa6e2e6db118d851e273aed:README.md",
+    "original_ids": [
+      "offmenu-wp07",
+      "offmenu-wp08"
+    ]
+  },
+  "accepted_product": "284f2ce5b369c5b1a5bd57b9f79386e14993e3dc",
+  "rows": [
+    {
+      "original_id": "offmenu-wp07",
+      "original_clause": "Reconcile PR139 contract stack",
+      "source": {
+        "url": "https://github.com/maldous/offmenu/pull/139",
+        "pr": 139,
+        "head": "cc7811f9fc0d4f1555bf88919436c3b25e62102f",
+        "base": "d6267b36bba7db669561293bd191980e1a6b567a",
+        "branch": "integration/owned-source-identity-contract-20261027",
+        "state": "open",
+        "merged": false,
+        "files": [
+          {
+            "path": "dev/source-identity-consumer-candidate-20261027/INTEGRATION-CONTRACT.md",
+            "status": "added"
+          },
+          {
+            "path": "dev/source-identity-consumer-candidate-20261027/source-identity-contract.d.ts",
+            "status": "added"
+          },
+          {
+            "path": "dev/source-identity-consumer-candidate-20261027/source-identity-contract.typecheck.mts",
+            "status": "added"
+          },
+          {
+            "path": "dev/source-identity-consumer-candidate-20261027/source-identity-http.d.mts",
+            "status": "added"
+          },
+          {
+            "path": "dev/source-identity-consumer-candidate-20261027/source-identity-reader.d.mts",
+            "status": "added"
+          }
+        ]
+      },
+      "actual_current_reads": [
+        "Canonical current PR metadata",
+        "Exact-base/head compact five-file compare",
+        "Pinned INTEGRATION-CONTRACT.md current published source",
+        "Accepted source tree contains none of the historical dev/source-identity-consumer-candidate-20261027 prefix",
+        "Bounded maintained scanner/server source search finds no literal source-identity-client.mjs caller"
+      ],
+      "finding": "Five unimported declarations/sidecars describe partial source observations, nullable operator-owned selection, distinct namespaces and separately retained pagination. They neither select a reader nor grant canonical identity/admission. Current accepted identity mapping instead binds scanner-identifiers/identity-v2 and explicit selected-reader-null boundaries.",
+      "owner_decision": "Retain the exact open PR/head as unselected source-contract custody; do not bulk merge old declarations, wake Worker13 or reconstruct its unavailable export. A genuinely selected present caller may reuse a minimal relevant contract through normal source review; none requiring this stack is established now.",
+      "qualification_limit": "Reported historical TypeScript/20test results remain attributed source claims; not rerun or upgraded to current exact-source qualification.",
+      "remaining": "UIF writer incorporates this documentary contribution if it fulfills the original clause. No current product implementation/activation prerequisite is inferred from the retained branch alone."
+    },
+    {
+      "original_id": "offmenu-wp08",
+      "original_clause": "Reconcile PR140 source bundle",
+      "source": {
+        "url": "https://github.com/maldous/offmenu/pull/140",
+        "pr": 140,
+        "head": "29a3f5ad9f5909fc6d785b128388ea228a02e068",
+        "base": "dc39d0d7f29f0b0650be374f0e7e2111ec45c4b7",
+        "branch": "integration/reviewed-local-source-custody-20261027",
+        "state": "open",
+        "merged": false,
+        "reported_changed_files": 998
+      },
+      "actual_current_reads": [
+        "Canonical current PR metadata/description only; no bundled source/data payload read, copied or executed",
+        "Accepted source tree contains none of the historical dev/reviewed-local-source-custody-20261027 prefix"
+      ],
+      "finding": "Current PR description explicitly distinguishes retained source/recovery metadata from mixed executable-plus515curated-release blobs, with localhost-only scope and publicPublicationAccepted:false for that retained manifest. Prior source preservation is not current serving, public-target data admission, rights acceptance or source-only status for the mixed module.",
+      "owner_decision": "Preserve exact open PR/head in existing inactive custody. Do not wholesale merge, export/adopt mixed modules, replay assembly/runtime or infer rights from public repository visibility. Keep source-only and admitted-data choices separate under their existing controls.",
+      "remaining": "Only an actual selected current source consumer and exact permitted minimal slice can justify further source preparation; any mixed data/public-target action retains its explicit admission/rights/owner prerequisites. No such consumer/action is selected here.",
+      "limits": "Description-level current custody classification only; no full998file semantic audit or actual recovery/runtime revalidation claimed."
+    }
+  ],
+  "effects": {
+    "source_write": false,
+    "branch_or_PR_write": false,
+    "tests": false,
+    "historical_capture_search": false,
+    "protected_payload_read": false,
+    "shared_ledger_write": false,
+    "runtime": false
+  },
+  "not_global_acceptance": "Original rows/history preserved. Current source-custody components are documented; no shared count, PRclosure or whole-product readiness asserted."
+}

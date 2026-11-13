@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 22,
+  "record_count": 24,
   "records": [
     {
       "project": "ANQR",
@@ -174,6 +174,20 @@
       "source_sha256": "4ca498adcc08f16dc1f46f7fe97a9b3c5b972fd269c39a2b459093cd115e4295",
       "state": "Current direct-cloud six-source-file private return and CQ owner acceptance recorded as bounded evidence. Shared profile qualification and canonical closure remain outside this contribution.",
       "evidence_group": "CQ"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-wp07",
+      "source_sha256": "cb43f7eff05e244bc8595bac182dab0d353ccae3450ff4e6390853a9a0827520",
+      "state": "PR139 contract stack retained in unselected source custody. No current consumer requiring the stack is established.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-wp08",
+      "source_sha256": "0d9fc39150b698a16ae97786a3882bc77cda4baab67f8af79bbba650be133cce",
+      "state": "PR140 mixed bundle retained in inactive custody. No wholesale adoption, public data rights, or selected current consumer is established.",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -321,7 +335,9 @@
         "offmenu-locale-requirements",
         "offmenu-developer-contract-qualification",
         "offmenu-wp05",
-        "offmenu-wp06"
+        "offmenu-wp06",
+        "offmenu-wp07",
+        "offmenu-wp08"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -357,6 +373,31 @@
         "expected_sha256": "596c7269bad88beaac6dbaf067ccd6f8f27e292b7968d18092597364ccbc066a",
         "status": "coordinator handoff received; full packet bytes not yet verified in this collection",
         "attributed_scope": "main-app/scanner help matrices incl289 control nodes, navigation/identity mappings and WP07/WP08 custody dispositions; no independently ready repair claimed"
+      },
+      "wp07_wp08_source_custody": {
+        "owner_receipt": "docs/ledger/counterpart-collection-20261113/offmenu/wp07-wp08-source-custody.owner.json",
+        "owner_receipt_sha256": "18093986a952d00230a5acd3b6062a2f1b652ba2240c7a3da3514b729e7a10ee",
+        "owner_receipt_bytes": 5470,
+        "transfer_archive_sha256": "0482ca3c7e168de68b23fd42259ec95f2e9688cad300a34b07943ad7d6b4c388",
+        "transfer_manifest_sha256": "258e8a225e95b149563fcdcaafb26bb23ae1d0bf07e2d42d5d6a3a87af4d5603",
+        "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+        "allocation_git_blob": "e9f75a1f617efc49020d5f396a767cfb8106f24e",
+        "assessment_commit": "284f2ce5b369c5b1a5bd57b9f79386e14993e3dc",
+        "rows": {
+          "offmenu-wp07": {
+            "readme_line": 295,
+            "receipt_row_index": 0,
+            "pr": 139,
+            "head": "cc7811f9fc0d4f1555bf88919436c3b25e62102f"
+          },
+          "offmenu-wp08": {
+            "readme_line": 296,
+            "receipt_row_index": 1,
+            "pr": 140,
+            "head": "29a3f5ad9f5909fc6d785b128388ea228a02e068"
+          }
+        },
+        "boundary": "The WP05 assessment and PR211 terminal receipt and the WP06 custody receipt already match the existing collection. WP07 and WP08 add source custody dispositions only. No separate row revision token was supplied."
       }
     },
     "Cloud": {
