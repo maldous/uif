@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 20,
+  "record_count": 21,
   "records": [
     {
       "project": "ANQR",
@@ -160,6 +160,13 @@
       "source_sha256": "cea6caeceac3c95460d945daefffe8cdb37a3b1b50698099b50df50ff5b1de45",
       "state": "Selected export notices document Roboto OFL, attributions, marks and badges. Broader legacy inventory and chain of title remain unverified. No broader rights grant or current BAU dependency established.",
       "evidence_group": "Cloud"
+    },
+    {
+      "project": "CQ",
+      "original_id": "shared-publication-execute-cq",
+      "source_sha256": "e89d15d2165927556ac9793ad178a682ec6037db94818e6c836e6feb927cec02",
+      "state": "Current CQ PR 22 publication and remote identity verified. Evidence collected for UIF review. Historical publication effects and shared closure retain their prior dispositions.",
+      "evidence_group": "CQ"
     }
   ],
   "evidence_groups": {
@@ -239,7 +246,8 @@
       "ids": [
         "cq.profile.bind_exact_contract",
         "cq.analyzer.original_pin_assessment",
-        "cq.analyzer.owner_review"
+        "cq.analyzer.owner_review",
+        "shared-publication-execute-cq"
       ],
       "owner_turns": [
         "01a1d1d7-cc82-75e2-8070-7e104f3200eb",
@@ -255,6 +263,26 @@
         "legacy_applicability": "Original analyzer manifest/warning bytes remain unavailable; no reconstruction or fresh archival search. Current source applicability evidence is credited, without claiming the missing original assessment ran.",
         "next_actual_owner_action": "UIF maps a specifically selected CQ consumer onto the existing admission/Pool/isolation design when it is selected; CQ independent product/source work can continue. No new operation/profile grant or provider is invented here.",
         "coordinator_report": "CQ owner reports all26 original rows reconciled; full current packet remains with existing CQ custody, separate from these three collected leaves."
+      },
+      "publication_readback_contribution": {
+        "original_id": "shared-publication-execute-cq",
+        "owner_packet": "docs/ledger/counterpart-collection-20261113/cq/shared-publication-execute-cq.owner.json",
+        "owner_packet_sha256": "d4f5cad4f71716572300a25d1a67a40927a31889322875f3e5ee18e26b434a22",
+        "owner_packet_bytes": 3503,
+        "library": {
+          "id": "libfile_fde3_f-03bc673dfd1c8191a35d737ec03c95e2_0c82fc302be08191a8fa197415547715",
+          "file_id": "file_00000000589481f5a31fb5c0043b56f7",
+          "version": 0
+        },
+        "repository": "maldous/CircularQuay",
+        "pull_request": 22,
+        "merged_utc": "2026-11-13T21:01:31Z",
+        "target": "feature/initial-implementation",
+        "merge_commit": "b2b7a8b31b6f9820efcc13c9409cde9b54985a5e",
+        "reviewed_head": "f5109c3f36f10a57da38a343a75eeff54fb10cee",
+        "tree": "9a67c6b7776cad8a161058daa06483e88c0d2316",
+        "verification": "GitHub PR and Git commit metadata matched the packet. The target ref read back at the merge commit and the reviewed head and merge have the same tree.",
+        "boundary": "Current publication and readback contribution. Historical effects, canonical closure, native harness qualification, PR 1 and PR 12 remain outside this evidence."
       }
     },
     "OffMenu": {

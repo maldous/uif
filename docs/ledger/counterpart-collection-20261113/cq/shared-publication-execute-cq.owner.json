@@ -1,0 +1,52 @@
+{
+  "kind": "CQ original allocation publication contribution and accepted-checkout receipt; shared ledger mutation not performed",
+  "UTC": "2026-11-13T21:13:33.456932+00:00",
+  "original_row": "shared-publication-execute-cq",
+  "allocation_source": "maldous/uif README.md at f982b939ae917c0b5aa6e2e6db118d851e273aed; CQ26conditionalpublicationclause",
+  "current_selected_operation": "User-authorized product/maintenance separation; distinct from unavailable historical publication effects",
+  "intent_evidence": "Mattdirectedproductrepositoriesbehermeticfrommaintenanceenvironment; Morgan delegated exact authorized separation and retainedRootpublication; custody receipt completed before removals",
+  "publication": {
+    "pr_id": 5302778702,
+    "pr_node_id": "PR_kwDOVhN5Ec8AAAABPBH7Tg",
+    "url": "https://github.com/maldous/CircularQuay/pull/22",
+    "state": "closed",
+    "merged": true,
+    "merged_UTC": "2026-11-13T21:01:31Z",
+    "target": "feature/initial-implementation",
+    "reviewed_head": "f5109c3f36f10a57da38a343a75eeff54fb10cee",
+    "merge_commit": "b2b7a8b31b6f9820efcc13c9409cde9b54985a5e",
+    "tree": "9a67c6b7776cad8a161058daa06483e88c0d2316",
+    "parents": [
+      "489ee5b799ba8176616df19ad57f699b275e886e",
+      "f5109c3f36f10a57da38a343a75eeff54fb10cee"
+    ],
+    "changed_files": 81,
+    "verified": "DirectGitHubMCPpull/refreadandcloudGitreadback, plus retainedRootterminal01a1d6b6relayedbyMorgan"
+  },
+  "effective_checkout": {
+    "path": "/workspace/CircularQuay",
+    "branch": "feature/initial-implementation",
+    "head": "b2b7a8b31b6f9820efcc13c9409cde9b54985a5e",
+    "tree": "9a67c6b7776cad8a161058daa06483e88c0d2316",
+    "tracked_and_untracked_status": "clean",
+    "project_AGENTS_read": true
+  },
+  "reused_validation": {
+    "exact_tree": "9a67c6b7776cad8a161058daa06483e88c0d2316",
+    "receipt_sha256": "fb91672dcebbc8b03ee32a9f3660a22691f18d8b5096d8cf27b72a44e5986a43",
+    "scope": "Sixpublicproductpipelinechecks,35tests,902routes554files,cleancheckoutPATH/LANGonly; no repeatedtestsaftermerge"
+  },
+  "preservation_receipt_sha256": "3444d7cc12dfa4d5de9b64db5d69564d98adc9cf4a2a79fc849778d21c6bc2c9",
+  "row_disposition": "Currentauthorizedpublicationexecutedandidentityverified; readycontributionforUIFsolewriter. No inventedmappingtoanunavailableoriginaleffectorautomaticsharedclosure.",
+  "remaining_original_rows": {
+    "cq.alias001.*": "Retained; noowner-boundCodex/Nodeconsumeridentitiesinexhaustedinquiry",
+    "cq.alias002.*": "SavedImpeccablebindingretained; migration/releasepaused",
+    "cq.r181.*": "Specificprotectedreadholdunchanged",
+    "cq.r202.original_outcome": "Legacy/unavailable; no recovery",
+    "cq.profile.*": "Currentfinitedirectcloudbinding/private-resultownerreviewcredited; Foo/Pool/sharedroutequalificationnotinferred",
+    "cq.analyzer.original_*": "Historical74eunitnotrepinned/completed;currentsourceassessmentisdistinct",
+    "shared.harness.cq_*": "Normalautonomousintake/refill/recoverynotprovenbyprivateexecutionorpublication"
+  },
+  "next_authorized_source_assessment_followthrough": "ObtainexistingcompletedSonarPythonbuildJARdigest/manifest/APIreceiptfromretainedRoot; ifmanifestinspectionnotyetdone, performboundedread-onlyartifactinspectionwithoutrebuild/load/service/publication. No duplicate writer or original-unit replay.",
+  "limits": "PR1andPR12remainopen/unmerged. PR12sourcepin489ee5bnotadvancedbythispublication. No deployment, aliasmigration, runtimequalificationorwholeproductacceptance."
+}
