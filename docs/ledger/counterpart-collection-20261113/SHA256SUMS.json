@@ -1,7 +1,12 @@
 {
   "docs/ledger/counterpart-collection-20261113/anqr/ANQR-R202-1.owner.txt": "f572e22c2ab5721fac3f54e7b43fe7457774e3f714fc2bc827034b2e860bd56f",
   "docs/ledger/counterpart-collection-20261113/anqr/ANQR-R205-1.owner.txt": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b",
-  "docs/ledger/counterpart-collection-20261113/index.json": "20e154016057beda540cb3370c7834f90aebc71336945337a092371a2bae5623",
+  "docs/ledger/counterpart-collection-20261113/anqr/R215-current-classifier-disposition.txt": "86c4689876665936658abf4c400790673f05555c14aeae4e0db7a441d451ce94",
+  "docs/ledger/counterpart-collection-20261113/anqr/R215-current-package-disposition.txt": "567c03e785a87268f88092638a8e49b7dfaa4b5d604c1c510bec6821e3ef4279",
+  "docs/ledger/counterpart-collection-20261113/anqr/R215-current-package-provenance.json": "75b88b033acbc06411f9a1e7af55528623f2ea4f48496bfe0698e5753ebe3d2e",
+  "docs/ledger/counterpart-collection-20261113/anqr/transfer-manifest.owner.json": "459efa001c3192c9faf36544ce30be63348d5d61723b4352898b69c580945bc0",
+  "docs/ledger/counterpart-collection-20261113/anqr/transfer-row-index.owner.md": "a9258047210f1087f9763b01f0427046a36c5b2e827ed759ac77ceffbcbea543",
+  "docs/ledger/counterpart-collection-20261113/index.json": "bc87d267f1620b7e55b64b0690f11a5877b2e924942954a24de88cbc86fbf766",
   "docs/ledger/counterpart-collection-20261113/offmenu-version1-attributed-receipt.json": "30d715a0b18f70289708c0f37b9e034af79073b3327526cffe34fa672fabcba9",
   "docs/ledger/counterpart-collection-20261113/offmenu/portable-original-row-handoff.v1.owner.json": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c"
 }

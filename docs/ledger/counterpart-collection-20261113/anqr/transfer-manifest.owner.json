@@ -1,0 +1,93 @@
+{
+  "kind": "Private transfer index for five unchanged reviewed ANQR packets; not a ledger or completion mutation",
+  "original_allocation": {
+    "repository": "maldous/uif",
+    "path": "README.md",
+    "commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+    "git_blob": "e9f75a1f617efc49020d5f396a767cfb8106f24e",
+    "sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c"
+  },
+  "files": [
+    {
+      "path": "R205-1-comment.txt",
+      "sha256": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b",
+      "size_bytes": 12226
+    },
+    {
+      "path": "R215-current-package-disposition.txt",
+      "sha256": "567c03e785a87268f88092638a8e49b7dfaa4b5d604c1c510bec6821e3ef4279",
+      "size_bytes": 7059
+    },
+    {
+      "path": "R215-current-classifier-disposition.txt",
+      "sha256": "86c4689876665936658abf4c400790673f05555c14aeae4e0db7a441d451ce94",
+      "size_bytes": 8783
+    },
+    {
+      "path": "R202-1-comment.txt",
+      "sha256": "f572e22c2ab5721fac3f54e7b43fe7457774e3f714fc2bc827034b2e860bd56f",
+      "size_bytes": 1969
+    },
+    {
+      "path": "R215-current-package-provenance.json",
+      "sha256": "75b88b033acbc06411f9a1e7af55528623f2ea4f48496bfe0698e5753ebe3d2e",
+      "size_bytes": 47887
+    }
+  ],
+  "rows": {
+    "ANQR-R205-1": {
+      "files": [
+        "R205-1-comment.txt"
+      ],
+      "disposition": "Reviewed criterion/child reconciliation delivered; underlying product acceptance remains incomplete."
+    },
+    "ANQR-R205-2": {
+      "files": [
+        "R205-1-comment.txt"
+      ],
+      "disposition": "Toolchain/lock/commands and preserved exact-input checks credited; primary health receipt is referenced, not bundled."
+    },
+    "ANQR-R215-1": {
+      "files": [
+        "R215-current-package-disposition.txt",
+        "R215-current-package-provenance.json",
+        "R215-current-classifier-disposition.txt"
+      ],
+      "disposition": "Current provenance/notice applicability assessed; no external-transfer rights grant."
+    },
+    "ANQR-R215-2": {
+      "files": [
+        "R215-current-package-disposition.txt"
+      ],
+      "disposition": "Historical numeric-ID mapping recovery retired legacy/permanently unavailable; no approved current corpus/key migration selected."
+    },
+    "ANQR-R215-3": {
+      "files": [
+        "R215-current-package-disposition.txt",
+        "R215-current-classifier-disposition.txt"
+      ],
+      "disposition": "In-place maintenance/no-transfer decision; not selection of a complete production implementation."
+    },
+    "ANQR-R215-4": {
+      "files": [
+        "R215-current-package-disposition.txt",
+        "R215-current-classifier-disposition.txt"
+      ],
+      "disposition": "Existing source consumer/qualification mapped; no production/runtime qualification claimed."
+    },
+    "ANQR-R202-1": {
+      "files": [
+        "R202-1-comment.txt"
+      ],
+      "disposition": "Accepted finite-discovery reconciliation delivered; residual rights/extraction/runtime limits retained."
+    },
+    "ledger-historical-anqr-coverage": {
+      "files": [
+        "R215-current-package-disposition.txt"
+      ],
+      "disposition": "Eighth allocated row, ledger-discovery-20261111-030: legacy/unavailable, not successfully established historical coverage; no access retry/reconstruction."
+    }
+  },
+  "scope": "Original packet source bindings remain unchanged. PR11 and PR12 are separate supplemental merged receipts through accepted 176bb4e75f1a66f5e01cb732b9ce00b39a59575c. No eight-product-outcomes completion or original-store acceptance is asserted.",
+  "custody": "Morgan coordinates incorporation; existing UIF writer retains shared-store custody; no active reservation asserted by this index."
+}

@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 17,
+  "record_count": 20,
   "records": [
     {
       "project": "ANQR",
@@ -139,6 +139,27 @@
       "source_sha256": "c668ff98281f2972f5dac6af8b2b28052cd76334aca14db8954648084e72650e",
       "state": "Bounded current source-custody classification complete; retained source unchanged; no active current consumer selected; exact owner packet collected, no canonical shared closure mutation",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "discovery",
+      "original_id": "ledger-historical-anqr-coverage",
+      "source_sha256": "aed98a00456d40a4e805f62b8a7fbb31e1fbb2c14865b735e210cd5dc07057ae",
+      "state": "Eighth allocated row, ledger-discovery-20261111-030: legacy/unavailable, not successfully established historical coverage; no access retry/reconstruction. Evidence collected for UIF review.",
+      "evidence_group": "ANQR"
+    },
+    {
+      "project": "UIF",
+      "original_id": "portal-source-ownership-inventory",
+      "source_sha256": "9f2c0bb9c2cbd70c402deb4ff584dda7bcb51675da6fdd6d1fba589c11cf62fd",
+      "state": "Version 56 deployment lineage and 52-file runtime inventory evidenced. Broader source ownership migration and shared effects remain held.",
+      "evidence_group": "Cloud"
+    },
+    {
+      "project": "UIF",
+      "original_id": "portfolio-source-rights-inventory",
+      "source_sha256": "cea6caeceac3c95460d945daefffe8cdb37a3b1b50698099b50df50ff5b1de45",
+      "state": "Selected export notices document Roboto OFL, attributions, marks and badges. Broader legacy inventory and chain of title remain unverified. No broader rights grant or current BAU dependency established.",
+      "evidence_group": "Cloud"
     }
   ],
   "evidence_groups": {
@@ -159,7 +180,39 @@
       "source": "b69cf31b79b6aad3a1fab5fea55a78bcb7a3e81e",
       "packet_expected_sha256": "86c4689876665936658abf4c400790673f05555c14aeae4e0db7a441d451ce94",
       "boundary": "Current in-place classifier selection; no transfer, rights grant or overall product baseline. R202 finite discovery accepted; R205 18-criterion/six-child crosswalk source-model only. Same171 tests credited, not342. R215-2 historical numeric-ID recovery is legacy/permanently unavailable; no archive search. Future selected translation needs authoritative corpus/key/locale/rights, not a blocker to classifier.",
-      "current_owner_report": "Existing ANQR owner confirms all seven original clauses reconciled at bounded scope; no additional independently selected implementation is waiting. Broader rights/baseline/consumer and product obligations retain their stated boundaries."
+      "current_owner_report": "Existing ANQR owner confirms all seven original clauses reconciled at bounded scope; no additional independently selected implementation is waiting. Broader rights/baseline/consumer and product obligations retain their stated boundaries.",
+      "verified_private_bundle": {
+        "archive": "anqr-ledger-disposition-bundle-20261113.zip",
+        "archive_sha256": "5860b0968fcc798df469293f476bea43a5161fc8d1974f1ed4d96408cba36d27",
+        "manifest": "docs/ledger/counterpart-collection-20261113/anqr/transfer-manifest.owner.json",
+        "row_index": "docs/ledger/counterpart-collection-20261113/anqr/transfer-row-index.owner.md",
+        "payload_paths": {
+          "R205-1-comment.txt": "docs/ledger/counterpart-collection-20261113/anqr/ANQR-R205-1.owner.txt",
+          "R215-current-package-disposition.txt": "docs/ledger/counterpart-collection-20261113/anqr/R215-current-package-disposition.txt",
+          "R215-current-classifier-disposition.txt": "docs/ledger/counterpart-collection-20261113/anqr/R215-current-classifier-disposition.txt",
+          "R202-1-comment.txt": "docs/ledger/counterpart-collection-20261113/anqr/ANQR-R202-1.owner.txt",
+          "R215-current-package-provenance.json": "docs/ledger/counterpart-collection-20261113/anqr/R215-current-package-provenance.json"
+        },
+        "evidenced_rows": [
+          "ANQR-R205-1",
+          "ANQR-R205-2",
+          "ANQR-R215-1",
+          "ANQR-R215-2",
+          "ANQR-R215-3",
+          "ANQR-R215-4",
+          "ANQR-R202-1",
+          "ledger-historical-anqr-coverage"
+        ],
+        "supplemental_owner_report": {
+          "repository": "maldous/anqr-v3",
+          "accepted_commit": "176bb4e75f1a66f5e01cb732b9ce00b39a59575c",
+          "merged_pull_requests": [
+            11,
+            12
+          ]
+        },
+        "boundary": "Eight bounded dispositions including the existing discovery row. Original b69cf31 scope retained. Legacy recovery remains retired/unavailable and external transfer rights remain ungranted. No product completion, production qualification or shared acceptance."
+      }
     },
     "CIX": {
       "ids": [
@@ -246,12 +299,44 @@
         "status": "coordinator handoff received; full packet bytes not yet verified in this collection",
         "attributed_scope": "main-app/scanner help matrices incl289 control nodes, navigation/identity mappings and WP07/WP08 custody dispositions; no independently ready repair claimed"
       }
+    },
+    "Cloud": {
+      "ids": [
+        "portal-source-ownership-inventory",
+        "portfolio-source-rights-inventory"
+      ],
+      "issue": "UIF-220",
+      "original_routes": {
+        "portal-source-ownership-inventory": "uif-ledger-20261111-057",
+        "portfolio-source-rights-inventory": "uif-ledger-20261111-058"
+      },
+      "repository": "maldous/aldous-info-platform",
+      "documentation_commit": "0818f4f7a1360d420e860d92e56f378719ca4981",
+      "documentation_tree": "7fdd0fdb63a2294110ea79b16a1748f2aeeab0e7",
+      "documentation_blobs": {
+        "docs/EXPORT_SCOPE.md": "ed0c85d36888fe852dabebb93d6ac03813d1ab57",
+        "docs/published-assets.sha256.json": "ba46cc1a11ccb692e1a91d4b2d987a3adca26c8d",
+        "THIRD_PARTY_NOTICES.md": "544df21fb35fd4bf9fc2686a1d8b498fca3456c0"
+      },
+      "runtime_main_commit": "f0700c824123cbe6c16c6bea6bc3399c76b67b83",
+      "sites_source_v56": "03997393bb021ee7bd58b8f77a512120e41bd8f2",
+      "sites_source_v55": "14f65250890867d5981cb5054cc9f596189f666e",
+      "deployment_owner_report": {
+        "id": "appgdep_6af68d0932008191b50cc52793c14f3c",
+        "origin": "aldous.info",
+        "published_utc": "2026-11-13T04:07:50Z"
+      },
+      "verification": "Documentation commit is outside public main and has an identical dist tree. All 52 public main runtime files match the documentary asset manifest. Deployment ID is attributed to the Cloud owner.",
+      "boundary": "Selected public export and current deployment lineage only. Rights, broader ownership, runtime/theme custody and combined effects retain their separate dispositions."
     }
   },
-  "byte_verification": "Two copied ANQR owner texts and the exact OffMenu version1 four-row packet are now locally SHA-256 verified. Other packets remain attributed conversation evidence with expected hashes. Prior receiving failures remain recorded; no unavailable historical payload was reconstructed.",
+  "byte_verification": "Five exact ANQR owner payloads verified against the private archive and its manifest, including two existing copies. The Cloud documentary tree, three Git blobs and 52 public runtime asset hashes were independently verified. Prior verification and receiving records remain in the collection.",
   "materialized_owner_files": {
     "ANQR-R202-1.owner.txt": "f572e22c2ab5721fac3f54e7b43fe7457774e3f714fc2bc827034b2e860bd56f",
-    "ANQR-R205-1.owner.txt": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b"
+    "ANQR-R205-1.owner.txt": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b",
+    "R215-current-package-disposition.txt": "567c03e785a87268f88092638a8e49b7dfaa4b5d604c1c510bec6821e3ef4279",
+    "R215-current-classifier-disposition.txt": "86c4689876665936658abf4c400790673f05555c14aeae4e0db7a441d451ce94",
+    "R215-current-package-provenance.json": "75b88b033acbc06411f9a1e7af55528623f2ea4f48496bfe0698e5753ebe3d2e"
   },
   "prior_denials": {
     "PR50": "merge stopped; no publication/merge reroute through this branch",

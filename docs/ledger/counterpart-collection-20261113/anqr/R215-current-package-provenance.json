@@ -1,0 +1,874 @@
+{
+  "kind": "Current maintained source provenance evidence for ANQR-R215-1; not rights clearance, new ledger or product acceptance",
+  "source": "b69cf31b79b6aad3a1fab5fea55a78bcb7a3e81e",
+  "generated_utc": "2026-11-13T06:06:46.457359+00:00",
+  "shallow": "false",
+  "module_count": 39,
+  "conventional_notice_paths": [],
+  "package_license": null,
+  "modules": [
+    {
+      "path": "src/capabilities/analysis/payloadclassification.ts",
+      "blob": "3265fb32dd9f56510ba46d273f36ac8efbe16ea6",
+      "sha256": "3c91df8ed17bfbba736de7fef2ad2b7fa7db1b85d50bed522375541ca3166500",
+      "path_commit_count": 6,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "1cf44ce093028f77bbf6a4db67ae1d0600570283",
+        "date": "2026-09-03T08:18:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the wrap-up cycle's landed work"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/analysis/qrdecoding.ts",
+      "blob": "dd6de7cb08244e6dd3647b179618623f0c521be2",
+      "sha256": "3640a7570cb2b6145108878ec200d311f93571ba3433993273c8d5b7ca48727f",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/analysis/scansafetyvalidation.ts",
+      "blob": "cfa50acaddeabd74c5607033da2d439ff3d679af",
+      "sha256": "f4d44b899e85bdf93c06ceee36af77da17baddbe50357ba53cdc8e0f81d26d4a",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/analysis/structuralinspection.ts",
+      "blob": "2800d81e80c5d1433e48c5879dceba0ff6eef340",
+      "sha256": "9b690cf28a0b26cc87b7dbcf648b0c57331df68544c86e6fbf5539ee6163e4d6",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/analysis/unsafecustomisationdiagnosis.ts",
+      "blob": "d857b5175395a36e9440f794fc483a7bdadc3bd2",
+      "sha256": "8266a290cc22ec50ad99d1e4851417fa9bfce3d2fb30b78b671a4a642914cfdc",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/creation/encodingcontrolsurface.ts",
+      "blob": "355e172c9b9e9982f680359bef9a2168c29a3c50",
+      "sha256": "446f7d5a211566dcd7829b8324c5db3bec51bf9aaf1c1ad4dcab77f4a0a53435",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/creation/qrartefactcreation.ts",
+      "blob": "76bb7cd1ba437d26f4f03bcff68d3bf5e8f9dcab",
+      "sha256": "113f91e84eec6d40fc70daa188d5cc6b106cdb86a020e2077ebfe29fa1db325b",
+      "path_commit_count": 6,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "1cf44ce093028f77bbf6a4db67ae1d0600570283",
+        "date": "2026-09-03T08:18:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the wrap-up cycle's landed work"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/creation/scansafeoutput.ts",
+      "blob": "2359914d6320f2472ade3632d9caa39adc19e811",
+      "sha256": "2976a9ac0fdc755b7d9187f46306bba471b256dece8521365bf83e45167db4da",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/distribution/artefactexport.ts",
+      "blob": "c28433f754228b925073610adf80fc7623e0bc51",
+      "sha256": "23fe86eebd3144b50a45cbfdc6247154b8b595b56e5531914f75c84f80605665",
+      "path_commit_count": 3,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [
+        {
+          "line": 447,
+          "text": "* geometries are derived from the same predicates export uses, so a pair"
+        }
+      ],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/distribution/httpapidelivery.ts",
+      "blob": "f2c5bf6b0b1927eded1040b9be9f0eedcfd85e8f",
+      "sha256": "f6b208b6ac120921f8d00c50c5e9f11d1d5f0d0d6914af802bd70c0c3810a943",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/distribution/mcpdelivery.ts",
+      "blob": "4ee14e338bc91bbe788cbca76b4d2a795d8363bd",
+      "sha256": "9b074546f8e4a8db4246142c6a37c8ecd0fa88964edb85867d6c131e41e7a5e5",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/distribution/shareablerepresentation.ts",
+      "blob": "75632f054121f5e5e7493a66e6a74bb4c272c90c",
+      "sha256": "20e1b59f6b16b4123820356c68b749df058add136a566ee0ddde93c5002c409e",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/enterprise/programmaticgeneration.ts",
+      "blob": "a77229aede229a809422e1e35baf55c641271e32",
+      "sha256": "cbc34d44c599fa1067eef269378324e2c5f62d7207147da9868825a2e6dd41ec",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/experience/accessibleinteraction.ts",
+      "blob": "4df61fc452851cb5be7ad8b2a18f78fdcb06deae",
+      "sha256": "96fbb3c3513b5f88aeee5969760236bfaf8cfef73a5d88b5ecc0185a8ce42c06",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/experience/capabilitygallery.ts",
+      "blob": "dc5a3a2581fa1977324b84b175f61775f924c3e7",
+      "sha256": "9421bf09bc204d4ae80a85dd5938bec47b4407080bb2c71699bb8b18bad6cc53",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/experience/guidedonboarding.ts",
+      "blob": "6d689dc5f331c358afbd661fb1d8d6726dac0a07",
+      "sha256": "c0d81b97cbf147335d201ccf2db1ce9efda6191e5c618b6b7ab72be8106dc987",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/experience/responsivewebdelivery.ts",
+      "blob": "6adb295db901c39450abc48aba726d5409ad4e43",
+      "sha256": "944fbe19731503bad2fef6c7b5daf7876db8d82641238b9039ec3eb446dbac26",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [
+        {
+          "line": 97,
+          "text": "* Creates a viewport descriptor. The size is derived from width when omitted."
+        },
+        {
+          "line": 333,
+          "text": "* only presentation hints (option group collapse state) are derived from the"
+        }
+      ],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/bidirectionaltextsupport.ts",
+      "blob": "a147432ea0902af991184344d877af7c0152ca31",
+      "sha256": "1a462e8dedf4c7bb751d628f844e7977a0c26e786191b5476a5e27f7057c5854",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/communitytranslationcontribution.ts",
+      "blob": "ea5251e5420942c1ed908941e3ed257f774972d1",
+      "sha256": "44237958201ca3c83317eefd15118ca73f923d6cafcd0ef0cfa2e51d9773ce39",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [
+        {
+          "line": 52,
+          "text": "'footer.copyright',"
+        }
+      ],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/interfacelocalisation.ts",
+      "blob": "c784de374c0a567843830ce5eb7ea5ed0929f98d",
+      "sha256": "25d40be0bbbb29f38c239758ff16094ab60165a1735b16f28c9596a477875e36",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/localenegotiation.ts",
+      "blob": "b80420923c2cf4858614a3b693b5f12c58e81628",
+      "sha256": "98e56c2241d5bbc0b273ee8c01c19f17a7787057a3f6cbc8720d6d7a6ea3727d",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "7ffd26d61be89c66a5158dc74eae2efe33995510",
+        "date": "2026-09-02T10:56:49+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Realise the first ANQR capability from the ANQR profile"
+      },
+      "introduction_message": "Realise the first ANQR capability from the ANQR profile\n\nThe locale negotiation capability, selected by Hermes from ANQR profile\nrevision 2 and realised into this repository rather than into USF Core.\n\nThe module and its conformance test were produced as separate work units, so\nthe implementation did not author the evidence that satisfies it. Four facets\nexecuted inside the repository confinement and four passed.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "7ffd26d61be89c66a5158dc74eae2efe33995510",
+        "date": "2026-09-02T10:56:49+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Realise the first ANQR capability from the ANQR profile"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/localetypography.ts",
+      "blob": "1ac582ac65770152071d5870b9e7493ee69a548b",
+      "sha256": "be58e5bea2234c6370ebefe46d7c2974f4cb88368d857873d44883c2665fdd07",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/localisedstaticcontent.ts",
+      "blob": "b5d1e2e2ecea2e7075c3cf441df8a86dae69798d",
+      "sha256": "8678a809ae5e3a7bb70498cd15bb4bf0ed9bfa162945c9e663286120f4ae68d5",
+      "path_commit_count": 3,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/localisation/multilingualdiscoverability.ts",
+      "blob": "35fc7d901a8f3c4c9eca2473deaea14c42dedd91",
+      "sha256": "4d00df0bd609b568dbffd11f6f2fdf50b694e6c92153df1e0eee67642d4db7f0",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/payload/custompayloaddefinition.ts",
+      "blob": "cdeb936bd29c9f7af59c21d03b8464e27fb3f9e6",
+      "sha256": "8c53a8b5c4e4a27e151bd88868e560e3330df662c056875f170c3f395b9408a9",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/payload/paymentpayloadrepresentation.ts",
+      "blob": "087b1f17faca043f94968192cbcaf31b00b6684d",
+      "sha256": "7340d48637bdf26705b8a0b80a706f462a1afd0dba60f00f523cc744027a0cab",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [
+        {
+          "line": 217,
+          "text": "* only when a vector derived from that published standard is present in the"
+        },
+        {
+          "line": 219,
+          "text": "* The \"derived from\" check is gated by the audit: it must confirm that the"
+        },
+        {
+          "line": 257,
+          "text": "message: `Scheme \"${kind}\" has no vector derived from a published standard; lexical plausibility is not conformance.`,"
+        }
+      ],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/payload/productidentitypayload.ts",
+      "blob": "e362d5e72042b03de57a31ffa5fc366a8c1f036c",
+      "sha256": "a70271695c5bbab56541f6dcb4d4bafc0e9f603ce1a9a40909d598ea33f3c788",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/payload/structuredpayloadrepresentation.ts",
+      "blob": "ed08f0d5e799f0cd93d8e79cccdfc756bdaaeba9",
+      "sha256": "b733c3de65e8e4c4c213965ea52a83ea71c6029e631d1673e9f9ecf939a61762",
+      "path_commit_count": 3,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "2a69563883f58bf1fef985f9e90df80531fd8797",
+        "date": "2026-09-02T21:27:47+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at restart boundary"
+      },
+      "notice_matches": [],
+      "import_lines": [
+        "import * as crypto from 'node:crypto';"
+      ]
+    },
+    {
+      "path": "src/capabilities/presentation/animatedartefact.ts",
+      "blob": "b78acc4cea981e06f80c9faf8041711c16ede85e",
+      "sha256": "d6e726d03c7c595a54295488320043095a082ea01e069ca030739e5a02a9d9d7",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/presentation/brandoverlay.ts",
+      "blob": "99ec0e0df6d9bc0fd12a8073aae926540dd4dcb7",
+      "sha256": "3c38947b267b3a6789b562d6e3aeb8e37472a4cc39d1a22d28895f6a70177109",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/presentation/outputrendering.ts",
+      "blob": "b0f68e5a0df1e6fef903496f45eb5cc076f391a0",
+      "sha256": "9a8f9440d7eb74ffea5f950205fe75773c7dbfd76efd16b7f9d74dadf1b980c9",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/presentation/qrartwork.ts",
+      "blob": "e76a323bb3ec291a4a21cc59996454458578f194",
+      "sha256": "05e7ae93b74f0c69467f52422a64b0405cd2c6eac97356b244bf0301e40f2054",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [
+        {
+          "line": 376,
+          "text": "* derived from a given source under a request. The score reflects how"
+        }
+      ],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/presentation/visualcustomisation.ts",
+      "blob": "0c9c0540d7cd5d536a08d030aefbe78f79d52d54",
+      "sha256": "8b3582c876d50a8382d5c53628c655317a6650c6ed4da4a6f04f7104d6f7ef22",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/quality/deterministicoutput.ts",
+      "blob": "00a6f583b423a605514088abe04863c508c99808",
+      "sha256": "e17dff1d0698f8d6002c47bdab5996b4e174d91d75f72cc3357302a9ea3fb2b6",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [
+        {
+          "line": 61,
+          "text": "// Type unions derived from constants"
+        }
+      ],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/quality/performancebudget.ts",
+      "blob": "125fa733cc73cff500b72df2c4388fa005ebe6a6",
+      "sha256": "cec7142f944e664d76ebefd854f28a35bf64ff137d7a78dae225edcf7d36b3d7",
+      "path_commit_count": 3,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/quality/roundtripcorrectness.ts",
+      "blob": "867487b347f6db39652eaf01ff4932723b212107",
+      "sha256": "2de4dd12f9c02f07ffb18632d0eae3115191ff80e14d6151859797886865b1e5",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/trust/anonymousgeneration.ts",
+      "blob": "48e58c87a439a8a3aaaea674d74cbbabb7ab8788",
+      "sha256": "95674e65f50d470230e72140ffc5b75082098f7e5e51b74f4507844922b3143c",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/trust/payloadconfidentiality.ts",
+      "blob": "463992ad24bf632d444b7125c7bd6c5396ca9da5",
+      "sha256": "a4bb2076ccc704c9656aa3aa75637986b6fb7ec61268664a6524668bee86ef65",
+      "path_commit_count": 1,
+      "introduction": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the supervisor's realised capabilities\n\nEverything here was selected from ANQR profile revision 2, produced by Hermes\nwork units, and landed through repository-targeted semantic transactions. A\nmodule at its path is not evidence of conformance; satisfaction is derived only\nfrom executed behavioural subtests recorded in the foundation's evidence store.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "50eabfe20dd7a8314071571b7d725b3768c8985e",
+        "date": "2026-09-02T12:35:42+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the supervisor's realised capabilities"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    },
+    {
+      "path": "src/capabilities/trust/remoteassetsafety.ts",
+      "blob": "9055f6d01497bb26445212662ce699569aadf4f3",
+      "sha256": "a306795987934eaf8f9d171dc255e03a93caab64b0635ed721acf7b1c5a86a1a",
+      "path_commit_count": 2,
+      "introduction": {
+        "commit": "b301d4697c837a1f50cc16b819cbb547f9fb8a56",
+        "date": "2026-09-02T13:17:32+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint the acceptance run's realised capabilities"
+      },
+      "introduction_message": "Checkpoint the acceptance run's realised capabilities\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "last_change": {
+        "commit": "e095572e2a9cbe5573f24981bbb2626525d49235",
+        "date": "2026-09-02T18:14:39+10:00",
+        "recorded_author": "Matthew Aldous",
+        "subject": "Checkpoint cycle-landed product work at the halt boundary"
+      },
+      "notice_matches": [],
+      "import_lines": []
+    }
+  ]
+}
