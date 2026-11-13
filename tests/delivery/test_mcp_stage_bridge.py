@@ -145,12 +145,46 @@ class ValidationTests(unittest.IsolatedAsyncioTestCase):
             await self.adapter.tick(self.spec)
         self.assertEqual((await self.adapter.tick(self.spec)).status, "quarantined")
 
-    async def test_lost_host_reply_remains_unknown(self):
-        job, _ = self.completion()
-        job["result"] = {"status": "unknown", "job_succeeded": False, "reconcile_required": True}
-        self.observations.write("mcp_validation_observation", "uif-mcp-validation/1",
-                                job=job, runner_receipt=None)
+    @staticmethod
+    def lose_host_reply(job, receipt):
+        fields = ("namespace", "workspace", "descriptor_sha256", "job_id", "request_sha256")
+        job["result"] = dict({name: receipt[name] for name in fields},
+                             status="unknown", reconcile_required=True, job_succeeded=False)
+
+    async def test_lost_host_reply_recovers_only_with_original_host_receipt_and_release(self):
+        job, receipt = self.completion()
+        self.lose_host_reply(job, receipt)
+        self.observe(job, None)
         self.assertEqual((await self.adapter.tick(self.spec)).status, "unknown")
+        unsettled = dict(receipt, status="running", reconcile_required=True, child_tree_gone=False)
+        self.observe(job, unsettled)
+        self.assertEqual((await self.adapter.tick(self.spec)).status, "unknown")
+        self.observe(job, receipt)
+        self.assertEqual((await self.adapter.tick(self.spec)).status, "unknown")
+        self.observe(job, receipt, release=self.release(receipt))
+        self.assertEqual((await self.adapter.tick(self.spec)).status, "succeeded")
+        accepted = decode((await self.adapter.accepted(self.spec)).receipt)
+        self.assertEqual(accepted, dict(receipt, job_succeeded=True, incident=None))
+        self.assertEqual(job["result"]["status"], "unknown")
+
+    async def test_lost_host_reply_rejects_substituted_identity(self):
+        job, receipt = self.completion()
+        self.lose_host_reply(job, receipt)
+        job["result"]["request_sha256"] = "e" * 64
+        self.observe(job, receipt, release=self.release(receipt))
+        with self.assertRaisesRegex(SourceHold, "runner_receipt"):
+            await self.adapter.tick(self.spec)
+        self.assertEqual((await self.adapter.tick(self.spec)).status, "quarantined")
+
+    async def test_lost_host_reply_still_requires_windmill_success_and_bound_release(self):
+        job, receipt = self.completion()
+        self.lose_host_reply(job, receipt)
+        job["success"] = False
+        self.observe(job, receipt, release=self.release(receipt))
+        self.assertEqual((await self.adapter.tick(self.spec)).status, "unknown")
+        self.observe(job, receipt, release=self.release(receipt, lease_id="substituted-lease"))
+        with self.assertRaisesRegex(SourceHold, "runner_release"):
+            await self.adapter.tick(self.spec)
 
 
 class PublicationTests(PublicationFixture):

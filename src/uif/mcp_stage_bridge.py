@@ -85,8 +85,7 @@ class MCPValidationClient:
         if receipt is None:
             raise FileNotFoundError("original runner receipt")
         args = job.get("args")
-        if (not isinstance(flat, dict) or not isinstance(args, dict) or not isinstance(receipt, dict)
-                or not {"job_succeeded", "incident"} <= flat.keys()
+        if (not all(isinstance(record, dict) for record in (flat, args, receipt))
                 or {"job_succeeded", "incident"} & receipt.keys()):
             raise SourceHold("uif_mcp_validation_runner_receipt")
         identity = {
@@ -97,6 +96,17 @@ class MCPValidationClient:
         if any(key not in receipt or receipt[key] != value for key, value in identity.items()):
             raise SourceHold("uif_mcp_validation_runner_binding")
         terminal = receipt.get("status") in {"succeeded", "failed", "timed_out", "cancelled"}
+        # foo_jobs preserves only the five request identities when the host
+        # reply is lost. This exact immutable result can precede host evidence.
+        unknown = {**identity, "status": "unknown", "reconcile_required": True, "job_succeeded": False}
+        if wire(flat) == wire(unknown):
+            if not terminal:
+                raise FileNotFoundError("original terminal runner receipt")
+            binding = self._terminal_binding(receipt, args, identity)
+            self._check_release(release, receipt, binding)
+            return {**receipt, "job_succeeded": receipt["status"] == "succeeded", "incident": None}
+        if not {"job_succeeded", "incident"} <= flat.keys():
+            raise SourceHold("uif_mcp_validation_runner_receipt")
         result = {**receipt, "job_succeeded": flat["job_succeeded"], "incident": flat["incident"]}
         if terminal:
             binding = self._terminal_binding(receipt, args, identity)
