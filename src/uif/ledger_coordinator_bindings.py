@@ -11,6 +11,7 @@ from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_ope
 from uif.admission import _record
 from uif.ledger import RowKey
 from uif.ledger_coordinator import CoordinatorBindings, OperationPlan
+from uif.mcp_stage_bridge import MCPGitReadback, MCPPublisherCommand, MCPValidationClient
 from uif.owner_runtime import OwnerAuthority, _owned_file
 from uif.publication import GitReadback, PublicationRequest, Publisher, PublisherCommand, PublisherReceiptPaths
 from uif.review import NativeReviewBackend, ReviewAdapter
@@ -18,7 +19,7 @@ from uif.review_launcher import ReviewSettings
 from uif.review_selector import ReviewWorkerRegistration, decode_review_spec, invoke_review
 from uif.source import SourceHold, exact_path, file_digest
 from uif.supervisor import _trusted
-from uif.validation import StageBinding, ValidationSpec, decode, read_evidence, wire
+from uif.validation import StageBinding, ValidationSpec, decode, digest, read_evidence, wire
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -106,7 +107,8 @@ def _operation_inputs(authority, key, runtime, field):
 
 def _settings(authority, reference):
     settings = _fields(_record(reference), "schema owner_registration supervisor windmill review publisher")
-    if settings["schema"] != "uif-ledger-adapter-registration/1" or settings["owner_registration"] != authority.registration:
+    if (settings["schema"] not in ("uif-ledger-adapter-registration/1", "uif-ledger-adapter-owner-mcp/1")
+            or settings["owner_registration"] != authority.registration):
         raise SourceHold("uif_ledger_adapter_owner_registration")
     return settings
 
@@ -151,26 +153,43 @@ def bind_ledger_coordinator(authority):
         raise SourceHold("uif_ledger_adapter_registration_required") from error
     settings = _settings(authority, reference)
     supervisor = _path_pin(settings["supervisor"])
-    windmill = _fields(settings["windmill"], "base_url script_path token_path runner_receipts runner_uid inspect_version")
+    owner_mcp = settings["schema"] == "uif-ledger-adapter-owner-mcp/1"
+    windmill_fields = "script_path runner_receipts runner_uid inspect_version"
+    windmill = _fields(settings["windmill"], f"{windmill_fields} descriptor_sha256" if owner_mcp else
+                       f"base_url token_path {windmill_fields}")
+    if owner_mcp and (windmill["script_path"] != "u/admin/foo_jobs" or windmill["inspect_version"] is not None
+                      or not digest(windmill["descriptor_sha256"])):
+        raise SourceHold("uif_mcp_validation_registration")
     review = _fields(settings["review"], "executable settings")
     review_settings = _review_settings(authority, review["settings"])
     if any(windmill[name] != value for name, value in review_settings["windmill"].items()):
         raise SourceHold("uif_ledger_adapter_review_windmill")
     reviewer = _review_registration(authority, review_settings, _path_pin(review["executable"]),
                                     review["executable"]["sha256"])
-    publish_settings = _fields(settings["publisher"], "executable config canonical_readback_askpass")
-    client = _WindmillClient(windmill["base_url"], windmill["token_path"])
-    publisher_binary = _path_pin(publish_settings["executable"])
-    publisher_config = _path_pin(publish_settings["config"])
+    publish_settings = _fields(settings["publisher"], "config" if owner_mcp else
+                               "executable config canonical_readback_askpass")
     config = _record(publish_settings["config"])
     if (config.get("schema") != "uif-native-publisher-config/2"
             or config.get("snapshot_path") != str(authority.snapshot_path)):
         raise SourceHold("uif_ledger_adapter_publisher_config")
-    publisher = Publisher(authority.publication_fence, PublisherCommand(
-        publisher_binary, publish_settings["executable"]["sha256"], config["closure_sha256"],
-        PublisherReceiptPaths(exact_path(config["accepted_root"]), exact_path(config["claim_root"])),
-        fixed_args=(str(publisher_config),),
-    ), GitReadback(askpass=_path_pin(publish_settings["canonical_readback_askpass"])))
+    paths = PublisherReceiptPaths(exact_path(config["accepted_root"]), exact_path(config["claim_root"]))
+    if owner_mcp:
+        if type(config.get("publisher_uid")) is not int or config["publisher_uid"] != 1000:
+            raise SourceHold("uif_mcp_publication_uid")
+        repository_id = config.get("repository_id")
+        if (type(repository_id) is not int or repository_id != 1447590493
+                or not digest(config.get("closure_sha256"))):
+            raise SourceHold("uif_mcp_publication_registration")
+        command = MCPPublisherCommand(authority, config["closure_sha256"], paths, repository_id)
+        remote = MCPGitReadback(authority, repository_id)
+    else:
+        client = _WindmillClient(windmill["base_url"], windmill["token_path"])
+        publisher_binary = _path_pin(publish_settings["executable"])
+        publisher_config = _path_pin(publish_settings["config"])
+        command = PublisherCommand(publisher_binary, publish_settings["executable"]["sha256"],
+                                   config["closure_sha256"], paths, fixed_args=(str(publisher_config),))
+        remote = GitReadback(askpass=_path_pin(publish_settings["canonical_readback_askpass"]))
+    publisher = Publisher(authority.publication_fence, command, remote)
     review_backend = NativeReviewBackend(
         reviewer.executable, executable_sha256=reviewer.executable_sha256,
         evidence_uid=reviewer.evidence_uid, pool_database=reviewer.pool_database,
@@ -178,7 +197,8 @@ def bind_ledger_coordinator(authority):
 
     def plan_for(key, runtime):
         validation = authority.validation_adapter(
-            runtime, client, workspace="foo", script_path=windmill["script_path"],
+            runtime, MCPValidationClient(authority, key, windmill["descriptor_sha256"]) if owner_mcp else client,
+            workspace="foo", script_path=windmill["script_path"],
             runner_receipts=exact_path(windmill["runner_receipts"]),
             runner_uid=windmill["runner_uid"], inspect_version=windmill["inspect_version"],
         )
@@ -189,7 +209,8 @@ def bind_ledger_coordinator(authority):
                              "schema task candidate base head tree branch windmill_job_id runner_job_id "
                              "args_json runner_sha256 capacity_policy_sha256 first_submission")
             if (values["schema"] != "uif-owner-validation/2" or values["task"] != report.task.to_record()
-                    or not isinstance(values["args_json"], str)):
+                    or not isinstance(values["args_json"], str)
+                    or (owner_mcp and values["first_submission"] is not False)):
                 raise SourceHold("uif_ledger_adapter_validation_task")
             binding = StageBinding(report, exact_path(values["candidate"]), values["base"], values["head"],
                                    values["tree"], values["branch"], outcome.worker_receipt_path,
