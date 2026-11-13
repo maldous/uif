@@ -6,25 +6,37 @@
   "version": 1,
   "size_bytes": 142332,
   "expected_sha256": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
-  "byte_hash_verified": false,
-  "receiving": {
-    "attempts": 1,
-    "helper_exit_code": 1,
-    "recorded_error": "download failed",
-    "http_status": null,
-    "authorization_or_policy_denial_established": false,
-    "destination_exists": false,
-    "definitely_known_never_installed_bytes": false,
-    "observation": "selected destination is currently absent; generic transfer exception does not expose whether any earlier transient install occurred",
-    "retry_or_alternate_route_attempted": false
-  },
+  "byte_hash_verified": true,
   "row_evidence": {
     "offmenu-locale-requirements": "Credits draft PR227 and attributed independent nine-blob/tree verification; broader original row remains partial; no accepted locale runtime or release.",
-    "offmenu-wp05": "Credits PR211 actual merge-verified acceptance; PR136 disposition and full original clause are not inferred from this abbreviated handoff.",
-    "offmenu-wp06": "Credits PR138 77-file retained-custody classification; no runtime activation.",
+    "offmenu-wp05": "Exact received source decision: integrate PR211; supersede PR136 source intent while preserving PR136 branch/head/receipts/PR. PR211 actually merged/controller-verified at284f2ce5b369c5b1a5bd57b9f79386e14993e3dc/treebb62278b03f9caecae72b02813c61f2a3ee0a457. No closure of PR136, broader parent issue or runtime is implied.",
+    "offmenu-wp06": "Exact received bounded current 77-file PR138 source-custody classification complete; retained source unchanged and no active current consumer selected. No runtime activation.",
     "offmenu-developer-contract-qualification": "Preserves previously stated developer-contract limits."
   },
   "accepted_count_change": 0,
   "shared_effects_released": false,
-  "packet_contents_reconstructed": false
+  "packet_contents_reconstructed": false,
+  "receiving_history": [
+    {
+      "attempts": 1,
+      "helper_exit_code": 1,
+      "recorded_error": "download failed",
+      "http_status": null,
+      "authorization_or_policy_denial_established": false,
+      "destination_exists": false,
+      "definitely_known_never_installed_bytes": false,
+      "observation": "selected destination is currently absent; generic transfer exception does not expose whether any earlier transient install occurred",
+      "retry_or_alternate_route_attempted": false
+    }
+  ],
+  "receiving": {
+    "route": "supplied exact Foo artifact, hash-verified and uploaded via existing UID1000 GitHub custody, then fetched via GitHub MCP and byte-verified in cloud",
+    "Foo_source": "/tmp/offmenu-original-row-handoff-20261113/packet.json",
+    "Foo_receipt": "01a1d2a8-6d62-2711-0aff-fe955ed0017e",
+    "git_blob": "8121f367a5e19cc0670bdc5f39729c1e154d4b87",
+    "cloud_size_bytes": 142332,
+    "cloud_sha256": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
+    "raw_path": "docs/ledger/counterpart-collection-20261113/offmenu/portable-original-row-handoff.v1.owner.json",
+    "failed_Library_transfers_not_retried": true
+  }
 }

@@ -116,28 +116,28 @@
       "project": "OffMenu",
       "original_id": "offmenu-locale-requirements",
       "source_sha256": "6b2d13843586cb502ad315ea68a53f59e9aefa7edbc4b1d41692200bfe64162f",
-      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "state": "Published independently associated draftPR227; unmerged; original row remains partial; exact owner packet collected, no canonical shared closure mutation",
       "evidence_group": "OffMenu"
     },
     {
       "project": "OffMenu",
       "original_id": "offmenu-developer-contract-qualification",
       "source_sha256": "e8a2b76e43851ebb29d75f5fa1ac73b69b5d2a089da7b9b588a525e2fbd8465d",
-      "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
+      "state": "Accepted literal source-reference/example outcome credited; original broader ledger row remains partial; exact owner packet collected, no canonical shared closure mutation",
       "evidence_group": "OffMenu"
     },
     {
       "project": "OffMenu",
       "original_id": "offmenu-wp05",
       "source_sha256": "f0c1b69b022ba4e3e7e945ae170aff1eb3b3016be85d758f17ea1f6a6be21b19",
-      "state": "Attributed bounded evidence collected; original clause assessment and full packet byte verification remain separate; no shared closure",
+      "state": "Owner source-disposition decision complete; selected PR211 actually incorporated and merge-verified; shared original-row acceptance remains UIF-owned; exact owner packet collected, no canonical shared closure mutation",
       "evidence_group": "OffMenu"
     },
     {
       "project": "OffMenu",
       "original_id": "offmenu-wp06",
       "source_sha256": "c668ff98281f2972f5dac6af8b2b28052cd76334aca14db8954648084e72650e",
-      "state": "Attributed bounded evidence collected; original clause assessment and full packet byte verification remain separate; no shared closure",
+      "state": "Bounded current source-custody classification complete; retained source unchanged; no active current consumer selected; exact owner packet collected, no canonical shared closure mutation",
       "evidence_group": "OffMenu"
     }
   ],
@@ -158,7 +158,8 @@
       ],
       "source": "b69cf31b79b6aad3a1fab5fea55a78bcb7a3e81e",
       "packet_expected_sha256": "86c4689876665936658abf4c400790673f05555c14aeae4e0db7a441d451ce94",
-      "boundary": "Current in-place classifier selection; no transfer, rights grant or overall product baseline. R202 finite discovery accepted; R205 18-criterion/six-child crosswalk source-model only. Same171 tests credited, not342. R215-2 historical numeric-ID recovery is legacy/permanently unavailable; no archive search. Future selected translation needs authoritative corpus/key/locale/rights, not a blocker to classifier."
+      "boundary": "Current in-place classifier selection; no transfer, rights grant or overall product baseline. R202 finite discovery accepted; R205 18-criterion/six-child crosswalk source-model only. Same171 tests credited, not342. R215-2 historical numeric-ID recovery is legacy/permanently unavailable; no archive search. Future selected translation needs authoritative corpus/key/locale/rights, not a blocker to classifier.",
+      "current_owner_report": "Existing ANQR owner confirms all seven original clauses reconciled at bounded scope; no additional independently selected implementation is waiting. Broader rights/baseline/consumer and product obligations retain their stated boundaries."
     },
     "CIX": {
       "ids": [
@@ -171,7 +172,15 @@
       ],
       "source": "8ebd669b01fb737ba766aaff0e615b9086ae7346",
       "packet_expected_sha256": "b888ab0399b8698d1188bc22c9fbd25509e1e65cb54b6eb5824c83736f69d657",
-      "boundary": "Three bounded historical lineage/applicability dispositions received. Preserve distinct PR82 44410-byte source and later61755-byte file; retain accepted CIX343/502. PR85 unselected historical runtime candidate, /proc receiving FAIL and zero admission preserved. No stale merge/retirement or Symphony activation. CIX507 addendum resolves all14 PR source ancestry mappings; candidate current path/preimage/redacted scan receipt remains with project health, not duplicated here."
+      "boundary": "Three bounded historical lineage/applicability dispositions received. Preserve distinct PR82 44410-byte source and later61755-byte file; retain accepted CIX343/502. PR85 unselected historical runtime candidate, /proc receiving FAIL and zero admission preserved. No stale merge/retirement or Symphony activation. CIX507 addendum resolves all14 PR source ancestry mappings; candidate current path/preimage/redacted scan receipt remains with project health, not duplicated here.",
+      "current_metadata_addendum": {
+        "receipt": "https://windmill.aldous.info/run/01a1d2aa-f2dd-daf7-d96c-583c9cfff1b9?workspace=foo",
+        "scope": "All53 original/sanitized commit and planned-ref mappings have verified candidate-composition metadata equality. No source/payload read, publication or sanitization clearance.",
+        "remaining": "Keep exact closure/payload qualification, sanitized disposition, integration and recovery/retirement dependencies separate; no generic shared hold is substituted.",
+        "matrix_expected_sha256": "654078266a48e5224d52351d5ce0fe3b38888d8ca82b13e911f1ada4cd4b5ed1",
+        "custody_expected_sha256": "043dea030e4be44867ab0300ee160c951b3f6b582b95e57d3a4b18c5b047573c",
+        "bytes_received_here": false
+      }
     },
     "CQ": {
       "ids": [
@@ -185,7 +194,15 @@
       ],
       "source": "74e17dd62ac83d6504d6589e9d7a46b26ee77252",
       "packet_expected_sha256": "fdc6ddd10376eb5c5d0263f77fb47a6295077ce748a6066cdbaa3b90eae459a8",
-      "boundary": "Exact project/source/read-only input/output facts bound; no qualified CQ profile, original assessment or substituted acceptance. Missing original analyzer manifest/warning bytes remain unavailable without a fresh recovery gate. Current addendum: PR20 merged to feature at761ed69346f3394762b7159102f0dffcc0169266/tree9757c9dc088102ccfdc62a961bf022c1e250082a, docs/next-agent-prompt.md only; PR1 open. Preserve current SRC002/R180 outstanding alias/source boundaries; no UI/server restart or alias retirement."
+      "boundary": "Exact project/source/read-only input/output facts bound; no qualified CQ profile, original assessment or substituted acceptance. Missing original analyzer manifest/warning bytes remain unavailable without a fresh recovery gate. Current addendum: PR20 merged to feature at761ed69346f3394762b7159102f0dffcc0169266/tree9757c9dc088102ccfdc62a961bf022c1e250082a, docs/next-agent-prompt.md only; PR1 open. Preserve current SRC002/R180 outstanding alias/source boundaries; no UI/server restart or alias retirement.",
+      "shared_contract_disposition": {
+        "project_source_contract": "Existing immutable74e17dd source/input/output declarations and current192b413 product boundary retained.",
+        "current_execution_binding": "No qualified CQ Foo profile selected; existing foo_jobs is UIF89e0f76 snapshot only. Standalone CQ publication is not shared-harness execution.",
+        "return_contract": "Must bind actual original admission/operation and exact source/command/runner/result evidence to existing CQ durable/native owners through the supported private typed route. Existing owner-MCP adapter is being qualified for UIF first, not declared a CQ pass.",
+        "legacy_applicability": "Original analyzer manifest/warning bytes remain unavailable; no reconstruction or fresh archival search. Current source applicability evidence is credited, without claiming the missing original assessment ran.",
+        "next_actual_owner_action": "UIF maps a specifically selected CQ consumer onto the existing admission/Pool/isolation design when it is selected; CQ independent product/source work can continue. No new operation/profile grant or provider is invented here.",
+        "coordinator_report": "CQ owner reports all26 original rows reconciled; full current packet remains with existing CQ custody, separate from these three collected leaves."
+      }
     },
     "OffMenu": {
       "ids": [
@@ -206,7 +223,7 @@
         "bytes": 142332,
         "name": "portable-original-row-handoff.json"
       },
-      "boundary": "Version1 evidence is attributed to the coordinator handoff, not byte verified. Locale draft PR227 remains partial; WP05 credits actual PR211 acceptance without inferring PR136; WP06 credits retained custody classification only. Developer-contract limits and all shared effects remain held. Receiver failed without an exposed HTTP status; no retry.",
+      "boundary": "Exact version1 four-row packet is now received and byte-verified on Foo and cloud. Locale draftPR227 remains unmerged/partial; developer-contract broader limits remain partial. WP05 source-disposition decision complete: PR211 integrated and PR136 source intent superseded with all history retained. WP06 bounded retained-custody classification complete without selected runtime consumer. Collection does not mutate canonical row completion or runtime/shared readiness.",
       "prior_packet": {
         "packet_expected_sha256": "a7595ea656b3d4d2791a32f8636d010c083af80a14af42729541075e98689927",
         "library": {
@@ -218,10 +235,20 @@
         },
         "boundary": "Receiving file/hash pending; project-health verification attributed, not reproduced. Locale candidate c3b99ea437e0c13a1e08cbe786b5fcafa9d10b24/treea5d8e697ae3da40d95afc7056355cff7e526b542 is PREPARED/unpublished, 31 tests/eight checks, English/Arabic preview only; broader row partial. Developer-contract slice accepted at e16267d with broader interface limits; no runtime or broader locale acceptance."
       },
-      "receiving_receipt": "docs/ledger/counterpart-collection-20261113/offmenu-version1-attributed-receipt.json"
+      "receiving_receipt": "docs/ledger/counterpart-collection-20261113/offmenu-version1-attributed-receipt.json",
+      "raw_packet_path": "docs/ledger/counterpart-collection-20261113/offmenu/portable-original-row-handoff.v1.owner.json",
+      "byte_hash_verified": true,
+      "pending_full54_packet": {
+        "library_file_id": "libfile_fde3_f-a59749e4cc088191b0c94d91bd593625_0c82fc302be08191a8fa197415547715",
+        "version": 1,
+        "size_bytes": 127320,
+        "expected_sha256": "596c7269bad88beaac6dbaf067ccd6f8f27e292b7968d18092597364ccbc066a",
+        "status": "coordinator handoff received; full packet bytes not yet verified in this collection",
+        "attributed_scope": "main-app/scanner help matrices incl289 control nodes, navigation/identity mappings and WP07/WP08 custody dispositions; no independently ready repair claimed"
+      }
     }
   },
-  "byte_verification": "Only two copied ANQR owner texts are locally exact SHA verified. Other expected packet hashes are provenance claims, not hashes of summaries. OffMenu version1 receiver failed; its currently absent destination and generic exception do not establish an authorization denial or a verified packet.",
+  "byte_verification": "Two copied ANQR owner texts and the exact OffMenu version1 four-row packet are now locally SHA-256 verified. Other packets remain attributed conversation evidence with expected hashes. Prior receiving failures remain recorded; no unavailable historical payload was reconstructed.",
   "materialized_owner_files": {
     "ANQR-R202-1.owner.txt": "f572e22c2ab5721fac3f54e7b43fe7457774e3f714fc2bc827034b2e860bd56f",
     "ANQR-R205-1.owner.txt": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b"
