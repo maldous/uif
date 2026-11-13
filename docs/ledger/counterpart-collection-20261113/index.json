@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 15,
+  "record_count": 17,
   "records": [
     {
       "project": "ANQR",
@@ -125,6 +125,20 @@
       "source_sha256": "e8a2b76e43851ebb29d75f5fa1ac73b69b5d2a089da7b9b588a525e2fbd8465d",
       "state": "project-owner evidence collected for sole UIF acceptance; no shared closure",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-wp05",
+      "source_sha256": "f0c1b69b022ba4e3e7e945ae170aff1eb3b3016be85d758f17ea1f6a6be21b19",
+      "state": "Attributed bounded evidence collected; original clause assessment and full packet byte verification remain separate; no shared closure",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-wp06",
+      "source_sha256": "c668ff98281f2972f5dac6af8b2b28052cd76334aca14db8954648084e72650e",
+      "state": "Attributed bounded evidence collected; original clause assessment and full packet byte verification remain separate; no shared closure",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -176,24 +190,38 @@
     "OffMenu": {
       "ids": [
         "offmenu-locale-requirements",
-        "offmenu-developer-contract-qualification"
+        "offmenu-developer-contract-qualification",
+        "offmenu-wp05",
+        "offmenu-wp06"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
       ],
       "source": "e16267d26c75fb96047ea34159889988220c1677",
-      "packet_expected_sha256": "a7595ea656b3d4d2791a32f8636d010c083af80a14af42729541075e98689927",
+      "packet_expected_sha256": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
       "library": {
         "id": "libfile_fde3_f-0152a80f0468819195c42f69e5df72b3_0c82fc302be08191a8fa197415547715",
-        "file_id": "file_00000000c72481fa8d060922ecf8dafa",
-        "version": 0,
-        "bytes": 53048,
+        "file_id": "file_00000000d4f881fa9bfd863d3de3035f",
+        "version": 1,
+        "bytes": 142332,
         "name": "portable-original-row-handoff.json"
       },
-      "boundary": "Receiving file/hash pending; project-health verification attributed, not reproduced. Locale candidate c3b99ea437e0c13a1e08cbe786b5fcafa9d10b24/treea5d8e697ae3da40d95afc7056355cff7e526b542 is PREPARED/unpublished, 31 tests/eight checks, English/Arabic preview only; broader row partial. Developer-contract slice accepted at e16267d with broader interface limits; no runtime or broader locale acceptance."
+      "boundary": "Version1 evidence is attributed to the coordinator handoff, not byte verified. Locale draft PR227 remains partial; WP05 credits actual PR211 acceptance without inferring PR136; WP06 credits retained custody classification only. Developer-contract limits and all shared effects remain held. Receiver failed without an exposed HTTP status; no retry.",
+      "prior_packet": {
+        "packet_expected_sha256": "a7595ea656b3d4d2791a32f8636d010c083af80a14af42729541075e98689927",
+        "library": {
+          "id": "libfile_fde3_f-0152a80f0468819195c42f69e5df72b3_0c82fc302be08191a8fa197415547715",
+          "file_id": "file_00000000c72481fa8d060922ecf8dafa",
+          "version": 0,
+          "bytes": 53048,
+          "name": "portable-original-row-handoff.json"
+        },
+        "boundary": "Receiving file/hash pending; project-health verification attributed, not reproduced. Locale candidate c3b99ea437e0c13a1e08cbe786b5fcafa9d10b24/treea5d8e697ae3da40d95afc7056355cff7e526b542 is PREPARED/unpublished, 31 tests/eight checks, English/Arabic preview only; broader row partial. Developer-contract slice accepted at e16267d with broader interface limits; no runtime or broader locale acceptance."
+      },
+      "receiving_receipt": "docs/ledger/counterpart-collection-20261113/offmenu-version1-attributed-receipt.json"
     }
   },
-  "byte_verification": "Only two copied ANQR owner texts are locally exact SHA verified. Other complete texts remain in cited conversation receipts; their expected packet hashes do not hash these summaries. OffMenu Library receiver verification remains pending.",
+  "byte_verification": "Only two copied ANQR owner texts are locally exact SHA verified. Other expected packet hashes are provenance claims, not hashes of summaries. OffMenu version1 receiver failed; its currently absent destination and generic exception do not establish an authorization denial or a verified packet.",
   "materialized_owner_files": {
     "ANQR-R202-1.owner.txt": "f572e22c2ab5721fac3f54e7b43fe7457774e3f714fc2bc827034b2e860bd56f",
     "ANQR-R205-1.owner.txt": "b41f5e68a061188704f39a8643711a4781dd3ff405238c88dfaeac996aef899b"

@@ -1,0 +1,30 @@
+{
+  "schema": "uif-attributed-offmenu-version1-receipt/1",
+  "attribution": "Morgan handoff in UIF owner chat; existing OffMenu bounded batch completed",
+  "library_file_id": "libfile_fde3_f-0152a80f0468819195c42f69e5df72b3_0c82fc302be08191a8fa197415547715",
+  "file_id": "file_00000000d4f881fa9bfd863d3de3035f",
+  "version": 1,
+  "size_bytes": 142332,
+  "expected_sha256": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
+  "byte_hash_verified": false,
+  "receiving": {
+    "attempts": 1,
+    "helper_exit_code": 1,
+    "recorded_error": "download failed",
+    "http_status": null,
+    "authorization_or_policy_denial_established": false,
+    "destination_exists": false,
+    "definitely_known_never_installed_bytes": false,
+    "observation": "selected destination is currently absent; generic transfer exception does not expose whether any earlier transient install occurred",
+    "retry_or_alternate_route_attempted": false
+  },
+  "row_evidence": {
+    "offmenu-locale-requirements": "Credits draft PR227 and attributed independent nine-blob/tree verification; broader original row remains partial; no accepted locale runtime or release.",
+    "offmenu-wp05": "Credits PR211 actual merge-verified acceptance; PR136 disposition and full original clause are not inferred from this abbreviated handoff.",
+    "offmenu-wp06": "Credits PR138 77-file retained-custody classification; no runtime activation.",
+    "offmenu-developer-contract-qualification": "Preserves previously stated developer-contract limits."
+  },
+  "accepted_count_change": 0,
+  "shared_effects_released": false,
+  "packet_contents_reconstructed": false
+}
