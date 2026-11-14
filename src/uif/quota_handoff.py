@@ -9,6 +9,8 @@ adapters must call these guards before effects. Unadapted executors are not fenc
 from dataclasses import asdict, dataclass
 from contextlib import nullcontext
 from copy import deepcopy
+import asyncio
+import inspect
 import math
 import os
 import re
@@ -287,10 +289,13 @@ class Registry:
         require(set(request) == {"action", "request_id", *fields}, "request_shape")
         token(request["request_id"])
 
-    @staticmethod
-    def _task(state, key, generation):
+    def _task(self, state, key, generation):
         require(type(generation) is int and generation > 0, "claim_generation")
         task = state["tasks"].get(key.identity)
+        if task is None:
+            task = self.store.archived_task(key.identity)
+            if task is not None:
+                state["tasks"][key.identity] = task
         require(task is not None and task["generation"] == generation, "obsolete_claim")
         return task
 
@@ -307,11 +312,20 @@ class Registry:
         """Authenticated adapter boundary. No principal/role is accepted in JSON."""
         require(isinstance(request, dict) and len(wire(request)) <= 32768, "request_size")
         if request == {"action": "status"}:
-            with self.store.transaction() as (reg, state, _):
+            with self.store.transaction(readonly=True) as (reg, state, _):
                 self._authenticate(reg, principal, actor)
                 return dict(schema=state["schema"], revision=state["revision"], mode=state["mode"],
                             stopped=state["stopped"], local_limit=state["local_limit"], coordinator=state["coordinator"],
-                            provider=state["provider"], morgan=state["morgan"], tasks=state["tasks"])
+                            provider=state["provider"], morgan=state["morgan"], tasks=state["tasks"],
+                            archive=state.get("cold_archive"), archive_degraded=state.get("archive_degraded"),
+                            terminal_history="task_status-by-exact-Linear-key")
+        if set(request) == {"action", "key"} and request["action"] == "task_status":
+            key = LinearKey.from_record(request["key"])
+            with self.store.transaction(readonly=True) as (reg, state, _):
+                role = self._authenticate(reg, principal, actor)
+                require(key.workspace_id == reg["workspace_id"] and
+                        (key.project_id in role["projects"] or actor == reg["morgan_actor"]), "project_authority")
+                return deepcopy(state["tasks"].get(key.identity) or self.store.archived_task(key.identity, readonly=True))
         token(request.get("request_id"))
         task_actions = {"claim", "retry_claim", "capture_handoff", "acknowledge_handoff", "resolve_operation", "finish"}
         key = LinearKey.from_record(request.get("key")) if request.get("action") in task_actions else None
@@ -345,7 +359,7 @@ class Registry:
 
     def _command(self, reg, state, principal, actor, request):
         role = self._authenticate(reg, principal, actor)
-        require(state.get("schema") == "uif-quota-authority/1" and state.get("mode") in MODES,
+        require(state.get("schema") in {"uif-quota-authority/1", "uif-quota-authority/2"} and state.get("mode") in MODES,
                 "state_schema")
         command = dict(request)
         if role["role"] == "morgan":
@@ -363,10 +377,11 @@ class Registry:
         else:
             require("coordinator" not in command, "coordinator_identity_forbidden")
         prior = state["requests"].get(actor + ":" + request["request_id"])
+        if prior is None:
+            prior = self.store.request_receipt(actor + ":" + request["request_id"])
         if prior is not None:
             require(prior["sha256"] == digest(request), "request_identity_conflict")
             return role, command, prior["result"]
-        require(len(state["requests"]) < 8192, "registry_receipt_capacity")
         return role, command, None
 
     def _apply(self, reg, state, actor, role, req, proofs):
@@ -456,7 +471,9 @@ class Registry:
             require(req["lane"] in {"local", "cloud"}
                     and role["role"] == ("native" if req["lane"] == "local" else "project"), "lane_authority")
             require(not state["stopped"], "service_stopped")
-            require(key.identity not in state["tasks"], "existing_claim_requires_reconciliation")
+            require(key.identity not in state["tasks"] and self.store.archived_task(key.identity) is None,
+                    "existing_claim_requires_reconciliation")
+            self.store.require_headroom(state, active_delta=1)
             if req["lane"] == "local":
                 self._provider(state)
                 require(state["mode"] in {LOCAL_READY, LOCAL_RECOVERY}, "local_admission_closed")
@@ -489,6 +506,7 @@ class Registry:
             require(req["lane"] in {"local", "cloud"}
                     and role["role"] == ("native" if req["lane"] == "local" else "project"), "lane_authority")
             require(all(o["status"] in TERMINAL_OPERATIONS for o in task["operations"].values()), "uncertain_operations_held")
+            self.store.require_headroom(state, active_delta=1)
             if req["lane"] == "local":
                 self._provider(state)
                 require(state["mode"] in {LOCAL_READY, LOCAL_RECOVERY}, "local_admission_closed")
@@ -609,56 +627,139 @@ class Registry:
         Returned {status, receipt_sha256} must reflect independently observed
         destination state. A generic tool's exit status is not sufficient.
         """
+        self._effect_arguments(key, operation_id, payload_sha256, effect)
+        binding = dict(principal=principal, actor=actor, key=key, generation=generation,
+                       operation_id=operation_id, payload_sha256=payload_sha256, reasoning=reasoning)
+        with self.store.task_fence(key.identity):
+            snapshot, previous = self._effect_snapshot(**binding)
+            if previous is not None:
+                return previous
+            proofs = self._effect_proofs(key, snapshot)
+            operation = self._begin_effect(**binding, proofs=proofs)
+            try:
+                result = effect()
+                self._validate_effect_result(result)
+            except BaseException:
+                self._retain_unknown(binding, operation)
+                raise
+            return self._record_effect(**binding, operation=operation, outcome=result)
+
+    async def perform_effect_async(self, *, principal, actor, key, generation, operation_id,
+                                   payload_sha256, effect, reasoning=False):
+        """Await one real effect with the same journal/identity as synchronous use.
+
+        Only this task's stable effect/transfer fence spans awaits. Metadata
+        transactions remain short. The trusted reconstruction reader is read
+        only and runs off the event-loop thread; cancellation cannot turn its
+        eventual result into a new intent or effect. Callback success records
+        this operation's observed outcome, never final task acceptance.
+        """
+        self._effect_arguments(key, operation_id, payload_sha256, effect)
+        binding = dict(principal=principal, actor=actor, key=key, generation=generation,
+                       operation_id=operation_id, payload_sha256=payload_sha256, reasoning=reasoning)
+        with self.store.task_fence(key.identity):
+            snapshot, previous = self._effect_snapshot(**binding)
+            if previous is not None:
+                return previous
+            # Installed authenticated readers retain their own bounded HTTP
+            # and checkpoint deadlines. Cancellation can leave only that
+            # read-only reader finishing; its late result never admits work.
+            proofs = await asyncio.to_thread(self._effect_proofs, key, snapshot)
+            # A quota/stop observation may have changed while reconstruction
+            # awaited. Recheck immediately before durably admitting the effect.
+            operation = self._begin_effect(**binding, proofs=proofs)
+            try:
+                pending = effect()
+                require(inspect.isawaitable(pending), "async_effect_adapter_required")
+                result = await pending
+                self._validate_effect_result(result)
+            except BaseException:
+                self._retain_unknown(binding, operation)
+                raise
+            return self._record_effect(**binding, operation=operation, outcome=result)
+
+    @staticmethod
+    def _effect_arguments(key, operation_id, payload_sha256, effect):
         require(isinstance(key, LinearKey) and callable(effect), "effect_adapter_required")
         token(operation_id)
         require(isinstance(payload_sha256, str) and SHA.fullmatch(payload_sha256), "effect_payload_binding")
-        with self.store.task_fence(key.identity):
-            with self.store.transaction() as (reg, state, _):
-                self._authenticate(reg, principal, actor)
-                task = self._active(reg, state, actor, key, generation, reasoning=reasoning)
-                previous = task["operations"].get(operation_id)
-                if previous is not None:
-                    require(previous["payload_sha256"] == payload_sha256, "operation_identity_conflict")
-                    require(previous["status"] in TERMINAL_OPERATIONS, "original_operation_requires_reconciliation")
-                    return dict(previous)
-                require(not any(operation_id in attempt["operations"] for attempt in task["attempts"]),
-                        "historical_operation_requires_reconciliation")
-                snapshot = deepcopy(task)
-            proofs = _Proofs()
-            self._recover(key, snapshot, proofs=proofs)
-            proofs.replay = True
-            with self.store.transaction() as (reg, state, save):
-                self._authenticate(reg, principal, actor)
-                task = self._active(reg, state, actor, key, generation, reasoning=reasoning)
-                self._recover(key, task, proofs=proofs)
-                require(operation_id not in task["operations"] and all(
-                    o["status"] in TERMINAL_OPERATIONS for o in task["operations"].values()), "uncertain_operations_held")
-                operation = dict(status="pending", payload_sha256=payload_sha256, generation=generation)
-                task["operations"][operation_id] = operation
-                state["revision"] += 1
-                save()
 
-            def record(outcome):
-                with self.store.transaction() as (reg, state, save):
-                    self._authenticate(reg, principal, actor)
-                    task = self._task(state, key, generation)
-                    original = task["operations"].get(operation_id)
-                    require(task["owner"] == actor and original == operation, "effect_intent_drift")
-                    original.update(outcome)
-                    state["revision"] += 1
-                    save()
-                    return dict(original)
+    def recheck_effect(self, *, principal, actor, key, generation, operation_id, source,
+                       reasoning=False):
+        """Check an already-admitted effect immediately before a child/API call.
 
-            # Keep only this task's effect/transfer fence across the external
-            # call. Status, quota, heartbeat and other tasks use short global
-            # transactions and continue independently.
-            try:
-                result = effect()
-                require(isinstance(result, dict) and set(result) == {"status", "receipt_sha256"}
-                        and result["status"] in TERMINAL_OPERATIONS
-                        and isinstance(result["receipt_sha256"], str) and SHA.fullmatch(result["receipt_sha256"]),
-                        "effect_destination_receipt_required")
-            except BaseException:
-                record(dict(status="unknown"))
-                raise
-            return record(result)
+        The installed caller must still hold perform_effect[_async]'s task
+        fence. This read creates no permit and cannot admit a new operation.
+        It is needed after an awaited Pool reservation, during which quota or
+        the independent stopped flag can change.
+        """
+        with self.store.transaction() as (reg, state, _):
+            self._authenticate(reg, principal, actor)
+            task = self._active(reg, state, actor, key, generation, reasoning=reasoning)
+            operation = task["operations"].get(operation_id)
+            require(task["source"] == source and operation is not None
+                    and operation["generation"] == generation and operation["status"] == "pending",
+                    "effect_intent_drift")
+
+    def _effect_snapshot(self, *, principal, actor, key, generation, operation_id,
+                         payload_sha256, reasoning):
+        with self.store.transaction() as (reg, state, _):
+            self._authenticate(reg, principal, actor)
+            task = self._active(reg, state, actor, key, generation, reasoning=reasoning)
+            previous = task["operations"].get(operation_id)
+            if previous is not None:
+                require(previous["payload_sha256"] == payload_sha256, "operation_identity_conflict")
+                require(previous["status"] in TERMINAL_OPERATIONS, "original_operation_requires_reconciliation")
+                return None, dict(previous)
+            require(not any(operation_id in attempt["operations"] for attempt in task["attempts"]),
+                    "historical_operation_requires_reconciliation")
+            return deepcopy(task), None
+
+    def _effect_proofs(self, key, snapshot):
+        proofs = _Proofs()
+        self._recover(key, snapshot, proofs=proofs)
+        proofs.replay = True
+        return proofs
+
+    def _begin_effect(self, *, principal, actor, key, generation, operation_id,
+                      payload_sha256, reasoning, proofs):
+        with self.store.transaction() as (reg, state, save):
+            self._authenticate(reg, principal, actor)
+            task = self._active(reg, state, actor, key, generation, reasoning=reasoning)
+            self._recover(key, task, proofs=proofs)
+            require(operation_id not in task["operations"] and all(
+                o["status"] in TERMINAL_OPERATIONS for o in task["operations"].values()), "uncertain_operations_held")
+            self.store.require_headroom(state)
+            operation = dict(status="pending", payload_sha256=payload_sha256, generation=generation)
+            task["operations"][operation_id] = operation
+            state["revision"] += 1
+            save()
+            return operation
+
+    def _record_effect(self, *, principal, actor, key, generation, operation_id,
+                       payload_sha256, reasoning, operation, outcome):
+        with self.store.transaction() as (reg, state, save):
+            self._authenticate(reg, principal, actor)
+            task = self._task(state, key, generation)
+            original = task["operations"].get(operation_id)
+            require(task["owner"] == actor and original == operation, "effect_intent_drift")
+            original.update(outcome)
+            state["revision"] += 1
+            save()
+            return dict(original)
+
+    def _retain_unknown(self, binding, operation):
+        try:
+            self._record_effect(**binding, operation=operation, outcome=dict(status="unknown"))
+        except (Hold, OSError):
+            # A temporarily busy/unavailable authority leaves the original
+            # durable pending intent held. Preserve the original exception or
+            # cancellation; never turn a failed observation into safe replay.
+            pass
+
+    @staticmethod
+    def _validate_effect_result(result):
+        require(isinstance(result, dict) and set(result) == {"status", "receipt_sha256"}
+                and result["status"] in TERMINAL_OPERATIONS
+                and isinstance(result["receipt_sha256"], str) and SHA.fullmatch(result["receipt_sha256"]),
+                "effect_destination_receipt_required")

@@ -47,7 +47,7 @@ its unresolved outcomes.
 | White-room reuse | Accepted comparison and bounded reconstruction are retained. Explicit ProjectScope, WhiteRoomVerifier and CheckpointRead add source composition for current issue/source/owner and persistence bindings. |
 | Quota handoff | Source contracts/tests cover mode transitions, owner generations, original-operation reconciliation and effect fences. Real native dispatch/exit/publication hooks and their exact installed source remain separate integration. |
 | Capacity | Policy ceiling is 64 local Codex sessions under shared resource admission. The service readback does not establish that ceiling is installed, available or safe to fill. MCP work consumes the same host budget. |
-| Journal retention | The source authority fails closed at its bounded receipt/state capacity. Long-running admission requires a qualified retention/archive contract that preserves idempotency and uncertain original operations; no automatic deletion or unlimited retention is claimed. |
+| Journal retention | The continuation adds committed-record cold archival with permanent original-ID lookup, terminal history and reserved control headroom. Actual owner adoption, joint hot/cold backup and storage monitoring still require qualification; no live pruning, deletion or unlimited retention is claimed. |
 | Morgan continuity | Active Morgan with a current heartbeat is required for new cloud claims/transfers. No unattended wake-up, new recurring schedule or watchdog is installed. A monitor/telemetry receipt is not dispatch or acknowledgment. |
 
 The current source tests use isolated stores and synthetic readers/observers.
@@ -90,3 +90,14 @@ preserved, and no extended attributes were present.
 This adopts the startup instruction pointer only. It does not prove running
 sessions reloaded instructions, merge project PRs, replace the existing cloud
 user skill, install native quota hooks or activate any runtime behavior.
+
+## Authorized source continuation
+
+The existing runtime owner retains sole live-write custody and permits the
+non-overlapping async adapter and retention realization in the same source
+branch. See [the native realization handoff](native-quota-realization.md) for
+the exact native seams, approved runner-correction composition, retention
+adoption and shortest operating proof. No CIX pause, launcher installation or
+restart is authorized by this source handoff. Latest user directions take
+precedence over historical CIX-pause wording; the startup wording correction
+is prepared in source and has not been applied as a new host action.

@@ -107,11 +107,12 @@ def startup_text(bundle, source_commit, policy_digest, original):
         'retain the five project roles and the unbound general Cloud role. Native Linear is the sole live intake.\n'
         'Preserve original operations, uncertain outcomes, current owners and all project-specific holds.\n'
         'Apply the selected environment and project white-room checks before dependent work.\n'
-        'CIX execution and production remain paused unless the current user explicitly authorizes that exact scope.\n'
+        'Preserve the current observed CIX control state; these instructions authorize no pause, restart or activation.\n'
         'This pointer installs instructions only; it does not start services or prove runtime readiness.\n\n'
         '## Retained earlier routing and holds\n\n'
         'The UIF bundle pointers above supersede historical UIF/OffMenu shared-bootstrap pointers below.\n'
-        'All narrower holds and unrelated USF routing below remain applicable.\n\n'
+        'Historical control-state assertions below are dated evidence, not instructions to pause or resume active CIX work.\n'
+        'Current user directions, narrower applicable holds and unrelated USF routing retain their authority.\n\n'
     )
     return (prefix + previous + ('' if previous.endswith('\n') else '\n')).encode('utf-8')
 
