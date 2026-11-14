@@ -1,0 +1,72 @@
+{
+  "archive_sha256": "c31350a66618c9c83f3637566a9b331935ceed4c4938386589520707df2c21bc",
+  "manifest_sha256": "66c1ebdd2687c1abed3dbe4bf0aef44fb20e95c991d55069e5530712d753c6cf",
+  "verified_payloads": [
+    {
+      "path": "payload/summary.json",
+      "bytes": 3068,
+      "sha256": "c9886b5ad0cf7755e61795c58ff32d683273b1fa2b8cbe65a6c86b302d9fced5"
+    },
+    {
+      "path": "payload/uif-221-canonical-blob-correspondence.json",
+      "bytes": 7909,
+      "sha256": "8c29e1933b1b25e001b64f9aa61e5788750ef66f93f209f56325f723a2fc6873"
+    },
+    {
+      "path": "payload/uif-221-custody.json",
+      "bytes": 6973,
+      "sha256": "00d49731828b55001574b683fc2e46604a74748c718495fdaa7db31d636eca5b"
+    },
+    {
+      "path": "payload/uif-221-source-metadata.json",
+      "bytes": 6725,
+      "sha256": "f6d3d7e8fde923561f12cac7706a3afb75da473269302102ea3a8e0d9703f313"
+    },
+    {
+      "path": "payload/uif-222-canonical-blob-correspondence.json",
+      "bytes": 24194,
+      "sha256": "a66474aac269c4a346dba935af87a2e7ae57123dd75140ee9b79263318bb540b"
+    },
+    {
+      "path": "payload/uif-222-custody.json",
+      "bytes": 19713,
+      "sha256": "e1df189e4f8ba75edd3e4faea136c868eb395e00bdd135000cbcd5a495d18ebc"
+    },
+    {
+      "path": "payload/uif-222-source-metadata.json",
+      "bytes": 17881,
+      "sha256": "19bd2c56493a469617cdd4f06efdc64f8787d94d773e62068a0bc6711e57c731"
+    },
+    {
+      "path": "payload/uif221-222-current-custody-result.json",
+      "bytes": 940,
+      "sha256": "5f96c14d6448a16b1c4b7a8b253a329cfda94f5046f62bb773e255f5d66e6b73"
+    },
+    {
+      "path": "payload/uif221-assessment.json",
+      "bytes": 32360,
+      "sha256": "60904059d4438622563cf3b497df41f1a26f004f12e84af08beb8cabfe566730"
+    },
+    {
+      "path": "payload/uif222-assessment.json",
+      "bytes": 52896,
+      "sha256": "121da4d5306600edefe79414c745d2e75451ff154a3bf8ca7e4caf850041d3ff"
+    }
+  ],
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "bounded_owner_dispositions": [
+    {
+      "original_id": "offmenu-retained-UIF-221",
+      "decision": "Retain exact AI tooling snapshots and candidate versions as inactive unique source. R2 supersedes R1 for review only; metrics-only remains distinct. No selected current OffMenu product caller needs this shared development-task adapter/cache. No wholesale integration, provider invocation or feature implementation selected.",
+      "credit": "All19 exact public source paths read;18 payload hashes/lengths match CUSTODY. Bounded current productAI caller comparison found different interfaces/tasks/schemas; optional tooling not a product readiness gate.",
+      "limits": "No test/model/provider/runtime run, no blanket no-consumers-anywhere assertion, no opaque source inputs or ignored files read."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-222",
+      "decision": "Retain original handler versions R1–R5, publisher candidate and terminal-filter variants. Current handler materially represents R5 except timeout10s→30s;14 supporting entries have exact canonical blob correspondence. Distinct publisher/filter sources remain unselected, not auto-adopted.",
+      "credit": "Current selected source and meaningful candidate differences inspected; current Foo checkout has no nonignored local delta. No source import/replay needed for the demonstrated handler support; source-only publisher/filter review is not runtime or activation.",
+      "limits": "Not an exhaustive security/behavioral qualification of every retained variant; attributed historical test/deployment claims not rerun or converted to acceptance."
+    }
+  ],
+  "scope": "Exact archived source evidence only. Preserve worktrees, native reservations and original unknowns. No whole-row, shared, runtime or product closure."
+}

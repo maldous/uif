@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 47,
+  "record_count": 49,
   "records": [
     {
       "project": "ANQR",
@@ -349,6 +349,20 @@
       "source_sha256": "9d04169660ed4a8288ed38885b04e179e60f56418e4415cf90ff2ec976b6dcc3",
       "state": "The owner matched the captured dirty patch to accepted Git history. Retain dirty originals and later hardening.",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-221",
+      "source_sha256": "5afb5a369956290125fa5bddac56ae345d4dd02e48ba1cc68d28aade44ff261b",
+      "state": "Retain exact AI tooling snapshots and candidate versions as inactive unique source. R2 supersedes R1 for review only; metrics-only remains distinct. No selected current OffMenu product caller needs this shared development-task adapter/cache. No wholesale integration, provider invocation or feature implementation selected.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-222",
+      "source_sha256": "7c1772b17963052e4c02922163989ea3f89cbed8eded3e3f8d9d1763de01060d",
+      "state": "Retain original handler versions R1–R5, publisher candidate and terminal-filter variants. Current handler materially represents R5 except timeout10s→30s;14 supporting entries have exact canonical blob correspondence. Distinct publisher/filter sources remain unselected, not auto-adopted.",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -577,7 +591,9 @@
         "offmenu-retained-UIF-236",
         "offmenu-retained-UIF-237",
         "offmenu-retained-UIF-233",
-        "offmenu-retained-UIF-234"
+        "offmenu-retained-UIF-234",
+        "offmenu-retained-UIF-221",
+        "offmenu-retained-UIF-222"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -661,6 +677,14 @@
         "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/uif233-234-source-disposition-receipt.json",
         "sha256": "3100203548398d7663d8b57769ab921c25f864731c6500b02e2aaf7072ca40dd",
         "boundary": "Captured source correspondence only. Dirty originals stay in custody. No runtime or shared acceptance."
+      },
+      "uif221_222_contribution": {
+        "ids": [
+          "offmenu-retained-UIF-221",
+          "offmenu-retained-UIF-222"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/uif221-222-contribution.json",
+        "sha256": "4172ea0e6a6ad486f474dddbbbe1d172b3fcfb61ea5a6191c36bb965272168d4"
       }
     },
     "Cloud": {
