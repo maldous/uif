@@ -62,5 +62,111 @@
     "state": "published-for-review",
     "runtime_adoption_observed": false,
     "control_state": "Preserve current running work; historical CIX pause text does not create a new pause. Actual project controls remain applicable."
+  },
+  "prior_receipt_file_sha256": "00870283b3a83f2256be8f7b5db566a7745459018f5599982b24ab951b084202",
+  "current_observation": {
+    "observed_date_utc": "2026-11-14",
+    "source_metadata_readback_completed_at_utc": "2026-11-14T20:59:06Z",
+    "state": "all-six-source-pull-requests-merged",
+    "policy_version": "2.0.0",
+    "policy_sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
+    "projects": [
+      {
+        "role": "uif",
+        "repository": "maldous/uif",
+        "pull_request": "https://github.com/maldous/uif/pull/53",
+        "head_commit": "cb2b9773dfbc6cc214ff2a74c4bb211d95acbcce",
+        "merge_commit": "3a189a48d480a288a6df76df7ba432fd41643698",
+        "merged_at_utc": "2026-11-14T13:19:40Z",
+        "base_ref": "develop",
+        "merged": true,
+        "draft": false,
+        "pull_request_metadata_readback_verified": true
+      },
+      {
+        "role": "offmenu",
+        "repository": "maldous/offmenu",
+        "pull_request": "https://github.com/maldous/offmenu/pull/239",
+        "head_commit": "668e27c5c659d6965e7278bdc90d2c475ae1bb78",
+        "merge_commit": "1ea77f7bf9eda6f3487a4954bd4dbab72305c15f",
+        "merged_at_utc": "2026-11-14T14:11:17Z",
+        "base_ref": "develop",
+        "merged": true,
+        "draft": false,
+        "pull_request_metadata_readback_verified": true
+      },
+      {
+        "role": "anqr",
+        "repository": "maldous/anqr-v3",
+        "pull_request": "https://github.com/maldous/anqr-v3/pull/15",
+        "head_commit": "c051140fae76e5324ad6e62e82bf591b1803ae3e",
+        "merge_commit": "ee97c24be9cf4afbb9050216343d1db0b9b5f36a",
+        "merged_at_utc": "2026-11-14T13:21:52Z",
+        "base_ref": "develop",
+        "merged": true,
+        "draft": false,
+        "pull_request_metadata_readback_verified": true
+      },
+      {
+        "role": "circularquay",
+        "repository": "maldous/CircularQuay",
+        "pull_request": "https://github.com/maldous/CircularQuay/pull/45",
+        "head_commit": "f9fc8577aa8266c686c427e857909c281d010406",
+        "merge_commit": "98a9b6f5412deb8bf598fe52a98c7994121e88da",
+        "merged_at_utc": "2026-11-14T13:25:50Z",
+        "base_ref": "feature/initial-implementation",
+        "merged": true,
+        "draft": false,
+        "pull_request_metadata_readback_verified": true
+      },
+      {
+        "role": "cix-product",
+        "repository": "cix-project/cix",
+        "pull_request": "https://github.com/cix-project/cix/pull/16",
+        "head_commit": "4ae35c5acd7024b13f680631027f227a1cdba5c5",
+        "merge_commit": "54733a6fcd1cd8917860147f3e1cea8e8d651c8c",
+        "merged_at_utc": "2026-11-14T13:23:49Z",
+        "base_ref": "develop",
+        "merged": true,
+        "draft": false,
+        "pull_request_metadata_readback_verified": true
+      },
+      {
+        "role": "cix-operations",
+        "repository": "cix-project/cix-operations",
+        "pull_request": "https://github.com/cix-project/cix-operations/pull/88",
+        "head_commit": "5da6d9b9f8dbd383c3d1a48990e7c8ecbab17bc3",
+        "merge_commit": "cb75e05bf43527ebdeff6ff997aec8398bbbc494",
+        "merged_at_utc": "2026-11-14T13:24:29Z",
+        "base_ref": "develop",
+        "merged": true,
+        "draft": false,
+        "pull_request_metadata_readback_verified": true
+      }
+    ],
+    "followup_source_corrections": [
+      {
+        "repository": "cix-project/cix",
+        "pull_request": "https://github.com/cix-project/cix/pull/17",
+        "head_commit": "fecebf7812cbe8cd97a4ac83efeadfe54524c2cd",
+        "merge_commit": "3f28d8b1207d112fb9065eda4d791f78fe37ee85",
+        "merged_at_utc": "2026-11-14T20:59:33Z",
+        "base_ref": "develop",
+        "metadata_readback_completed_at_utc": "2026-11-14T21:00:31Z",
+        "merged": true,
+        "pull_request_metadata_readback_verified": true,
+        "preceding_policy_adoption_merge_commit": "54733a6fcd1cd8917860147f3e1cea8e8d651c8c",
+        "scope": "Descriptive CONTRIBUTING and activation documentation correction; no new AI policy version.",
+        "controls_record_variables_and_runtime_changed": false,
+        "verification_provenance": "PR metadata read directly; exact head workflow 43640291057, canonical parents/tree and two-path scope verified by coordinating root."
+      }
+    ],
+    "historical_record_semantics": "The original projects and clarified_alignment fields retain their earlier draft publication observations and exact hashes. Their draft wording is historical; this appended observation records subsequent source merges.",
+    "control_boundary": "Source merges do not change control state or introduce a project pause; current explicit scope-specific controls continue to govern.",
+    "limits": [
+      "Merged source is not evidence of environment checkout adoption or an already-running session reloading instructions.",
+      "No role acknowledgment or session reload is claimed by this source metadata observation.",
+      "Native hook installation, backend state and end-to-end failover qualification are not established by these merges."
+    ]
   }
 }
