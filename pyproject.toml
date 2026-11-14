@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uif-operating-controls"
+version = "2.0.0"
+requires-python = ">=3.12"
+dependencies = []
+description = "Source-qualified UIF quota handoff and white-room recovery controls"
+
+[project.scripts]
+uif-quota-handoff = "uif.quota_cli:main"
+
+[tool.setuptools]
+packages = ["uif", "uif.white_room"]
+
+[tool.setuptools.package-dir]
+uif = "src/uif"
+"uif.white_room" = "tools/white_room"

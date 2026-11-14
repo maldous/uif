@@ -1,0 +1,30 @@
+{
+  "schema": "uif-instruction-adoption-receipt-v1",
+  "date": "2026-11-14",
+  "surface": "Foo Codex user startup instructions",
+  "policy_version": "2.0.0",
+  "policy_sha256": "f8e19235eb095cfc754519f580c6bb35675baedbf4bf15d42b4a969becec90c4",
+  "source_commit": "ee41b73da247a6d192e88d04ad0b0349643ce1be",
+  "original_job_id": "uif-policy-startup-adopt-20261114-01",
+  "operation_status": "succeeded",
+  "exit_code": 0,
+  "preimage_sha256": "bcd8aeceff337fb4ed7029f5957c274c8b0af21dfb1461130a0acc42aa7ee4ed",
+  "installed_readback_sha256": "fbc9bee2ce04169713b3bd9984f711ce3455942c0b50b4d2631066736679d9c8",
+  "original_bytes_preserved_in_hash_keyed_backup": true,
+  "file_uid_gid_mode_preserved": true,
+  "extended_attributes_present": false,
+  "instruction_only": true,
+  "runtime_hooks_installed": false,
+  "service_control_or_runtime_binding_changed": false,
+  "existing_cloud_user_skill_replaced": false,
+  "limits": [
+    "Private original job receipt remains in its authorized Foo evidence surface.",
+    "Startup-file adoption does not prove any already-running model session reloaded instructions.",
+    "Project documentation PRs remain drafts; actual checkout adoption is separate.",
+    "Native integration, authenticated observer qualification, journal retention and end-to-end failover remain unqualified."
+  ],
+  "independent_verification_job_id": "uif-policy-adoption-verify-20261114-01",
+  "independent_destination_readback_verified": true,
+  "pinned_bundle_checkout_clean_verified": true,
+  "service_binding_and_control_state_unchanged_verified": true
+}

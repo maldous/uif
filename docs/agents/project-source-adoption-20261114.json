@@ -1,0 +1,66 @@
+{
+  "schema": "uif-project-policy-source-adoption-v1",
+  "policy_version": "2.0.0",
+  "date": "2026-11-14",
+  "state": "published-for-review",
+  "projects": [
+    {
+      "role": "offmenu",
+      "repository": "maldous/offmenu",
+      "pull_request": "https://github.com/maldous/offmenu/pull/239",
+      "commit": "6fb758063aefb564264698eeaa82059bbfdda811",
+      "draft": true,
+      "remote_source_readback_verified": true
+    },
+    {
+      "role": "anqr",
+      "repository": "maldous/anqr-v3",
+      "pull_request": "https://github.com/maldous/anqr-v3/pull/15",
+      "commit": "c051140fae76e5324ad6e62e82bf591b1803ae3e",
+      "draft": true,
+      "remote_source_readback_verified": true
+    },
+    {
+      "role": "circularquay",
+      "repository": "maldous/CircularQuay",
+      "pull_request": "https://github.com/maldous/CircularQuay/pull/45",
+      "commit": "f9fc8577aa8266c686c427e857909c281d010406",
+      "draft": true,
+      "remote_source_readback_verified": true
+    },
+    {
+      "role": "cix-product",
+      "repository": "cix-project/cix",
+      "pull_request": "https://github.com/cix-project/cix/pull/16",
+      "commit": "4ae35c5acd7024b13f680631027f227a1cdba5c5",
+      "draft": true,
+      "remote_source_readback_verified": true
+    },
+    {
+      "role": "cix-operations",
+      "repository": "cix-project/cix-operations",
+      "pull_request": "https://github.com/cix-project/cix-operations/pull/88",
+      "commit": "7df1df88ed4a5dfdd558af20b3b96f66bce20558",
+      "draft": true,
+      "remote_source_readback_verified": true
+    }
+  ],
+  "limits": [
+    "Draft source publication is not merge, environment checkout adoption or runtime activation.",
+    "CIX product and production holds remain effective.",
+    "ANQR and CircularQuay product instructions retain standalone operation.",
+    "Project-specific review and acceptance still apply."
+  ],
+  "clarified_alignment": {
+    "policy_sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
+    "observed_date_utc": "2026-11-14",
+    "commits": {
+      "offmenu": "668e27c5c659d6965e7278bdc90d2c475ae1bb78",
+      "cix-operations": "5da6d9b9f8dbd383c3d1a48990e7c8ecbab17bc3"
+    },
+    "remote_source_readback_verified": true,
+    "state": "published-for-review",
+    "runtime_adoption_observed": false,
+    "control_state": "Preserve current running work; historical CIX pause text does not create a new pause. Actual project controls remain applicable."
+  }
+}

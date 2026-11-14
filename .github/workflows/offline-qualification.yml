@@ -12,6 +12,18 @@ name: UIF offline qualification
       - tools/windmill/**
       - tests/white_room/**
       - tests/windmill/**
+      - AGENTS.md
+      - .agents/**
+      - docs/agents/**
+      - docs/operating-procedure.md
+      - docs/project-integration.md
+      - docs/white-room/**
+      - tools/agents/**
+      - tools/delivery/**
+      - src/**
+      - tests/agents/**
+      - tests/delivery/**
+      - pyproject.toml
   push:
     branches: [feature/foo-windmill-config-recreation]
     paths:
@@ -22,6 +34,16 @@ name: UIF offline qualification
       - tools/windmill/**
       - tests/white_room/**
       - tests/windmill/**
+      - AGENTS.md
+      - .agents/**
+      - docs/agents/**
+      - docs/white-room/**
+      - tools/agents/**
+      - tools/delivery/**
+      - src/**
+      - tests/agents/**
+      - tests/delivery/**
+      - pyproject.toml
 
 permissions:
   contents: read
@@ -30,6 +52,8 @@ jobs:
   offline-qualification:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      PYTHONPATH: src
     steps:
       - name: Check out exact tested revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -48,6 +72,19 @@ jobs:
         run: python -m unittest discover -s tests/windmill -v
       - name: Run white-room unit tests
         run: python -m unittest discover -s tests/white_room -v
+      - name: Validate environment policy and conformance tests
+        run: |
+          python tools/agents/check_policy.py --bundle .
+          python -m unittest discover -s tests/agents -v
+      - name: Run source-only handoff and drift tests
+        run: python -m unittest discover -s tests/delivery -v
+      - name: Build and smoke-test the isolated package
+        run: |
+          python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/uif-wheels" .
+          python -m venv "$RUNNER_TEMP/uif-smoke"
+          "$RUNNER_TEMP/uif-smoke/bin/python" -m pip install --no-index "$RUNNER_TEMP/uif-wheels/"*.whl
+          "$RUNNER_TEMP/uif-smoke/bin/python" -I -c "from uif.white_room.transition import WhiteRoomVerifier; from uif.quota_handoff import Registry"
+          "$RUNNER_TEMP/uif-smoke/bin/uif-quota-handoff" --help
       - name: Validate and plan offline configuration
         run: |
           python tools/windmill/white_room.py validate
@@ -57,4 +94,4 @@ jobs:
           output_root="$(mktemp -d)"
           python tools/windmill/white_room.py recreate-mock --output "$output_root/synthetic"
       - name: Compile source and tests
-        run: python -m compileall -q tools/white_room tools/windmill tests/white_room tests/windmill
+        run: python -m compileall -q src tools tests

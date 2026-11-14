@@ -1,10 +1,18 @@
-# White-room validation v1
+# White-room validation and transition reuse
 
 This is executable, read-only **preflight comparison**, not a new scheduler,
 lease manager, auto-installer, or service recovery mechanism. It implements a
 bounded first part of UIF-247 without waiting for portfolio reconciliation.
 It does not claim complete dependency discovery or deployed failover.
-The root AGENTS.md remains authoritative; no existing custody ledger is replaced.
+The root AGENTS.md remains authoritative, with the preserved detailed
+[startup/recovery contract](startup-and-recovery.md). Native Linear is the live
+intake; historical ledgers remain provenance and custody evidence.
+
+The [14 November reuse checkpoint](recovery-reuse-20261114.md) maps accepted
+comparison/reconstruction source, retained persistence/original-effect recovery
+and allowance evidence to the current quota-transition integration. Credit
+accepted work and resume only unaccepted stages; a lane change is not a reason
+to replay completed effects.
 
 ## Language and tooling
 
@@ -94,9 +102,27 @@ An isolated temporary Git fixture verifies inventory preserves file bytes, repor
 never runs configured fsmonitor/clean filters or returns file contents. Running these tests on Foo proves interpreter and
 logic compatibility on Foo, **not** actual reboot recovery or distributed fencing.
 
-Remaining implementation: authenticated evidence adapters for each project;
-complete managed dependency declarations and effective bindings; durable shared
-ownership/CAS fencing; checkpoint migration and supersession consumers; integrated
-harness admission; independent cloud worker/coordinator reconstruction; qualified
-actual Foo/cloud handoffs and crash/termination recovery. No disruptive service
-experiment is authorized or performed by these tools.
+## Transition integration source
+
+`remote_evidence.ProjectScope` extends the retained UIF/cloud default only through
+reviewed repository/ref/project/executor and native Linear UUID bindings. It is
+configuration supplied by the integrating owner, not authority inferred from a
+task or arbitrary connector response. See the [reader contract](remote-evidence.md).
+
+`tools.white_room.transition.WhiteRoomVerifier` composes that reader with this
+unchanged evaluator and a registered `CheckpointRead` at the supported ownership
+boundary. It binds current source/issue/owner/generation and verifies the latest
+registered checkpoint, compatible metadata/wire version and no unresolved pending
+writes. Origin-bound checkpoints retain their original evidence; successor resume
+requires an explicit reconciled origin-to-successor handoff, never rewritten
+historical ownership. The integrating authority independently fences claims and
+effects; neither this comparison nor a JSON report grants admission.
+
+Current source adds quota-handoff ownership/fencing and recovery adapters with
+synthetic tests. Still requiring actual integration/qualification: authenticated
+readers and receipt observers, complete managed dependency declarations/effective
+bindings, installed native dispatch/publisher hooks, provider observations,
+coordinator continuity and actual Foo/cloud handoffs. Source and focused tests do
+not establish deployment or BAU. The [rollout checkpoint](../operations/policy-2.0-rollout-qualification-20261114.md)
+records the inspected existing service separately; no disruptive service experiment
+is performed by these tools.
