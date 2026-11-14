@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "owner": "Morgan - Cloud",
+  "scope": "Source-only bounded contribution to original reconciliation rows; no shared closure or native issue mutation",
+  "authoritative_source": {
+    "repository": "maldous/uif",
+    "checkout": "/home/user/src/uif",
+    "commit": "a3765f7e50592f552a2d1d3a5edccb13cb6a38de",
+    "readme_blob": "213673f51a024e43bd82619990b9e985a982d01d",
+    "readme_sha256": "af187d29e619660d8c31805e44c6955c56439edfd7c249bf2378970f0f25d93a",
+    "checkout_clean": true
+  },
+  "native_issue": {
+    "id": "UIF-220",
+    "updatedAt": "2026-11-08T05:01:22.285Z",
+    "status": "Backlog",
+    "assignee": null,
+    "delegate": null,
+    "read": "supported read-only Linear get_issue; no issue writes",
+    "current_applicability_gap": "Issue still proposes source move and public UIF umbrella; later explicit user instruction requires product repositories without UIF/UAF references. Existing UIF owner must reconcile native issue against that direction; do not execute stale migration."
+  },
+  "custody": {
+    "Cloud": "Retained portfolio repository/source follow-through and this bounded original-row evidence contribution; PR2 docs only.",
+    "UIF": "Original shared ledger incorporation, native issue disposition and cross-project acceptance.",
+    "reservations": "No row reservation registry found in tracked checkout; search exact row IDs found no tracked references outside README. This does not prove no external reservation. Do not overwrite shared ledger or infer exclusive broad issue ownership.",
+    "active_operations": [
+      "Mandy existing recurring workflow remains separate; no render/cast/schedule created by audit",
+      "Portfolio PR2 exact head08fa187406c8ed80a2b9d7e2ecd31c989a4f1ae0 already independently reviewed, draft/unmerged; no duplicate writer"
+    ]
+  },
+  "rows": [
+    {
+      "id": "portal-source-ownership-inventory",
+      "issue": "UIF-220",
+      "original_scope": "Inventory actual portal source/assets/history, deployed-site lineage, project destinations and issue/repository/source ownership before selecting migration.",
+      "disposition": "Bounded current accepted platform lineage delivered; broader historical source/assets/destination ownership reconciliation remains partial.",
+      "independent_execution": "Completed this source-only current-lineage delta using accepted publication receipts and pinned source. No migration/publication/build required.",
+      "evidence": {
+        "public_repository": "https://github.com/maldous/aldous-info-platform",
+        "current_main": "9b891db22df38cc436db4ab3df2859e505e798dc",
+        "current_site_version": 58,
+        "site_source": "bb8d422dddfdbe7e1a83dd7f700cd35081a9ee03",
+        "deployment": "appgdep_6af78690d6948191990af439e482badd",
+        "publication_utc": "2026-11-13T21:52:23Z",
+        "site_project": "appgprj_6ae46ece084c8191b35188d2662f8e4c",
+        "runtime_manifest_blob": "231df248355206d27993205f155f3f293d59646e",
+        "runtime_files": 52,
+        "original_export": "a8f2451e66bb9cdda7be2386873a0a2a92d2611a",
+        "v56_public_runtime": "f0700c824123cbe6c16c6bea6bc3399c76b67b83",
+        "v57_public_runtime": "b318cce962d2124c0c7a8a8b9b42a2b1ed5353ea",
+        "documentation_followthrough": "https://github.com/maldous/aldous-info-platform/pull/2"
+      },
+      "remaining": [
+        "Join retained unique historical source/assets/history to authoritative original captured inventory where not already accepted by existing ledger writer.",
+        "Reconcile native issue's obsolete destination/branding scope with latest product-boundary direction.",
+        "Public destination links are product content; no broad fresh availability or ownership certification."
+      ]
+    },
+    {
+      "id": "portfolio-source-rights-inventory",
+      "issue": "UIF-220",
+      "original_scope": "Reconcile available legacy CV/resume versions, supporting images/descriptions, provenance, duplicates and public-sharing rights before portfolio production.",
+      "disposition": "Selected currently published material and explicit notice boundaries inventoried; exhaustive legacy CV/version/duplicate/source-to-entry rights reconciliation not established.",
+      "independent_execution": "Completed current selected-asset/hash/notice mapping without opening private legacy corpora or repeating product tests.",
+      "evidence": {
+        "notices_blob": "544df21fb35fd4bf9fc2686a1d8b498fca3456c0",
+        "manifest_blob": "231df248355206d27993205f155f3f293d59646e",
+        "selected_resume_path": "dist/Matthew-Aldous-Resume-2026.pdf",
+        "selected_resume_sha256": "07c8bb5372aa3d4ab6a51eaa8a7b516630454643d8083f507c4ca967b07b5499",
+        "fonts": "Roboto OFL1.1 retained; no new blanket license",
+        "research_images": [
+          "portfolio-assets/ip-geolocation-map.jpg",
+          "portfolio-assets/ip-network-embeddings.jpg"
+        ],
+        "notice_boundaries": [
+          "Public resume/personal content attributed to Matthew Aldous; no blanket reuse license.",
+          "Project screenshots/logos/trademarks retained as published; owners retain rights and no endorsement inferred.",
+          "Public repository and prior publication are not a general third-party reuse grant."
+        ]
+      },
+      "remaining": [
+        "Authoritative legacy CV/resume inventory locator and permitted read/rights scope are not established in current Cloud custody.",
+        "Version-to-selected-entry/image joins and duplicate reconciliation are not proved by current export.",
+        "Unknown rights stay unknown; no broader source sharing inferred."
+      ]
+    }
+  ],
+  "not_claimed": [
+    "Full UIF220 issue acceptance",
+    "Exhaustive historical inventory",
+    "External project exclusive ownership",
+    "Successful scheduled avatar playback",
+    "Fresh v58 browser/HTTP availability",
+    "Any source move, publication, credential/security/runtime change"
+  ],
+  "recorded_utc": "2026-11-14T02:58:18.747116+00:00"
+}

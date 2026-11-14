@@ -1,0 +1,20 @@
+{
+  "recorded_utc": "2026-11-14T03:00:11.254453+00:00",
+  "original_packet_sha256": "06164a1c9ca9c48443e97507fd63d1f4ca02f3b483b3f4f34eb7494dec9e8ad1",
+  "ledger_coordinator": "Morgan",
+  "native_Linear_owner": "UIF",
+  "priority": "Finish eligible outstanding original ledger work before Linear delivery, preserving active custody and genuine dependencies in either direction.",
+  "clarification": "Native UIF-220 wording reconciliation is a separate applicability notice, not a prerequisite to accepting or incorporating these bounded Cloud ledger contributions.",
+  "row_dispositions": {
+    "portal-source-ownership-inventory": "Current accepted source/lineage contribution delivered; broader original history remains partial.",
+    "portfolio-source-rights-inventory": "Selected-export inventory and notice boundaries delivered; legacy versions and comprehensive rights remain unknown."
+  },
+  "independent_review": "Existing portfolio_exact_review independently verified original row identities, current source/manifest and notice scope; no full-row closure.",
+  "remaining_input": "Authoritative legacy inventory/custody locator and permitted source-body/rights scope, plus exact reservation mapping if further rows are delegated. No blanket UIF Git, BAU or Linear dependency applies.",
+  "reservation_scope": "Cloud bounded contribution only; no shared-ledger or issue write reservation acquired; no additional row claimed.",
+  "active_work_preserved": [
+    "Existing single Mandy preparation workflow",
+    "Reviewed draft portfolio PR2"
+  ],
+  "new_tests_or_runtime_actions": false
+}

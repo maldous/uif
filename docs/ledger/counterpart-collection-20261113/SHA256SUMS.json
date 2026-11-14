@@ -6,13 +6,15 @@
   "docs/ledger/counterpart-collection-20261113/anqr/R215-current-package-provenance.json": "75b88b033acbc06411f9a1e7af55528623f2ea4f48496bfe0698e5753ebe3d2e",
   "docs/ledger/counterpart-collection-20261113/anqr/transfer-manifest.owner.json": "459efa001c3192c9faf36544ce30be63348d5d61723b4352898b69c580945bc0",
   "docs/ledger/counterpart-collection-20261113/anqr/transfer-row-index.owner.md": "a9258047210f1087f9763b01f0427046a36c5b2e827ed759ac77ceffbcbea543",
+  "docs/ledger/counterpart-collection-20261113/cloud/uif220-v58-review.owner.json": "cc1effd6ed8aa569d7c4a7a88a4522d32212391d02a38c907d17da85fa0853ad",
+  "docs/ledger/counterpart-collection-20261113/cloud/uif220-v58.owner.json": "06164a1c9ca9c48443e97507fd63d1f4ca02f3b483b3f4f34eb7494dec9e8ad1",
   "docs/ledger/counterpart-collection-20261113/cq/cq.profile.qualify_private_return.owner.json": "7ad5d09d9e58ed661badc77806a8c7f141ecfbcc2697e19d3c525c40d7a3c30d",
   "docs/ledger/counterpart-collection-20261113/cq/r180-handoff-four-row.owner.json": "2fce79bbe81d929cf1fefbddecbd7cb1cf50ad0492bad24823a74964b9f1c5f3",
   "docs/ledger/counterpart-collection-20261113/cq/shared-publication-execute-cq.owner.json": "d4f5cad4f71716572300a25d1a67a40927a31889322875f3e5ee18e26b434a22",
-  "docs/ledger/counterpart-collection-20261113/index.json": "7dc717e0c8490ba7dd2ea27d9d5f11d248b408ff3be566b18b062ca6357b2bbc",
+  "docs/ledger/counterpart-collection-20261113/index.json": "08202d10c537a927bf17d7ba606344130b05859b25da39192db2fb63d7dbc828",
   "docs/ledger/counterpart-collection-20261113/offmenu-version1-attributed-receipt.json": "30d715a0b18f70289708c0f37b9e034af79073b3327526cffe34fa672fabcba9",
   "docs/ledger/counterpart-collection-20261113/offmenu/portable-original-row-handoff.v1.owner.json": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
   "docs/ledger/counterpart-collection-20261113/offmenu/wp07-wp08-source-custody.owner.json": "18093986a952d00230a5acd3b6062a2f1b652ba2240c7a3da3514b729e7a10ee",
-  "docs/ledger/counterpart-collection-20261113/uif-discovery-current-matrix.json": "aaeec7f631a1ad31ac81be2a597b218d1282ff97f83f9119c73b7a100b6218e9",
+  "docs/ledger/counterpart-collection-20261113/uif-discovery-current-matrix.json": "c809709f6c9e716a985d8ccc9ec8654908ba308df2e3a793ff3be4c307691265",
   "docs/ledger/counterpart-collection-20261113/uif/restart-foo-configuration-drift-source-credit.json": "d94dec26c27cdde45aa28f1a4114e12ad01b5053eac5761227a434c01e941ef1"
 }

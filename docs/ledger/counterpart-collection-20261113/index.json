@@ -489,7 +489,25 @@
         "published_utc": "2026-11-13T04:07:50Z"
       },
       "verification": "Documentation commit is outside public main and has an identical dist tree. All 52 public main runtime files match the documentary asset manifest. Deployment ID is attributed to the Cloud owner.",
-      "boundary": "Selected public export and current deployment lineage only. Rights, broader ownership, runtime/theme custody and combined effects retain their separate dispositions."
+      "boundary": "Selected public export and current deployment lineage only. Rights, broader ownership, runtime/theme custody and combined effects retain their separate dispositions.",
+      "v58_update": {
+        "ids": [
+          "portal-source-ownership-inventory",
+          "portfolio-source-rights-inventory"
+        ],
+        "current_allocation": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+        "row_sha256": {
+          "portal-source-ownership-inventory": "9f2c0bb9c2cbd70c402deb4ff584dda7bcb51675da6fdd6d1fba589c11cf62fd",
+          "portfolio-source-rights-inventory": "cea6caeceac3c95460d945daefffe8cdb37a3b1b50698099b50df50ff5b1de45"
+        },
+        "source_packets": {
+          "docs/ledger/counterpart-collection-20261113/cloud/uif220-v58.owner.json": "06164a1c9ca9c48443e97507fd63d1f4ca02f3b483b3f4f34eb7494dec9e8ad1",
+          "docs/ledger/counterpart-collection-20261113/cloud/uif220-v58-review.owner.json": "cc1effd6ed8aa569d7c4a7a88a4522d32212391d02a38c907d17da85fa0853ad"
+        },
+        "scope": "Current v58 public export lineage and selected asset/notice mapping. The original rows remain partial. Legacy inventory, custody locator, permitted scope and comprehensive rights remain unresolved.",
+        "verification": "GitHub main and draft PR 2 head verified. All 52 public main runtime hashes matched the asset manifest and the selected notice blob matched. The draft documents share the main runtime tree. Deployment attribution comes from the Cloud owner. Both original allocation clauses match the older packet checkout.",
+        "native_issue": "UIF-220 remains separate. Its legacy migration wording does not gate this documentary contribution."
+      }
     },
     "UIF": {
       "ids": [
