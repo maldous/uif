@@ -20,7 +20,8 @@
   "docs/ledger/counterpart-collection-20261113/offmenu/portable-original-row-handoff.v1.owner.json": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
   "docs/ledger/counterpart-collection-20261113/offmenu/uif233-234-source-disposition-receipt.json": "3100203548398d7663d8b57769ab921c25f864731c6500b02e2aaf7072ca40dd",
   "docs/ledger/counterpart-collection-20261113/offmenu/wp07-wp08-source-custody.owner.json": "18093986a952d00230a5acd3b6062a2f1b652ba2240c7a3da3514b729e7a10ee",
-  "docs/ledger/counterpart-collection-20261113/uif-discovery-current-matrix.json": "c809709f6c9e716a985d8ccc9ec8654908ba308df2e3a793ff3be4c307691265",
+  "docs/ledger/counterpart-collection-20261113/uif-discovery-current-matrix.json": "ed5be5764a74b93b7bc4b3ca97d6e9a4f5606eb71f87ef1826bba1b984dab8ea",
   "docs/ledger/counterpart-collection-20261113/uif/final-acceptance-deduplication.json": "9b2910085e28e88a615f6eaa61d7a1a693257c479e279dcbe36705b3ca3c614c",
+  "docs/ledger/counterpart-collection-20261113/uif/native-publication-continuity-activation.json": "98d093aba0ab10e7d01773adc77c17f6b3061456ccb5fcd796112415284db758",
   "docs/ledger/counterpart-collection-20261113/uif/restart-foo-configuration-drift-source-credit.json": "d94dec26c27cdde45aa28f1a4114e12ad01b5053eac5761227a434c01e941ef1"
 }

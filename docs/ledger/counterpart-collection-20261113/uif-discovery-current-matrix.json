@@ -472,8 +472,8 @@
       "genuine_dependency",
       "integrated_source_accepted_production_unqualified",
       "UIF adoption owner; integrator and reviewer",
-      "Production is uninstalled/unqualified; no BAU, live readiness or protected adoption is established.",
-      "Use accepted composition, retained recovery proof and exact installation preparation to enumerate only actual remaining adoption prerequisites.",
+      "The reviewed native publication continuity composition is installed. Activation receipt 01a1d851-2f56-50a3-549a-5159631ccf55 records HTTP 200 and five unpaused projects at capacity one. Selected full operating flow, consumer suitability and recovery remain unproved.",
+      "Use the installed composition and retained receipts to identify missing evidence for the selected operating flow, actual consumers and restoration. Existing native owner retains the operating work.",
       false
     ],
     [
@@ -1348,5 +1348,9 @@
       "git_blob": "cbbdac2d98099c93fc1978528f2eb520fc000190",
       "sha256": "a5d9dcb5812bd05ac369e9357ae77be258ad154d9384a0ba1d4208e1fb99c37f"
     }
+  },
+  "native_publication_continuity_activation": {
+    "path": "docs/ledger/counterpart-collection-20261113/uif/native-publication-continuity-activation.json",
+    "receipt_id": "01a1d851-2f56-50a3-549a-5159631ccf55"
   }
 }

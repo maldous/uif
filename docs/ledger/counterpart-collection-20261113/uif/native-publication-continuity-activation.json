@@ -1,0 +1,51 @@
+{
+  "receipt_id": "01a1d851-2f56-50a3-549a-5159631ccf55",
+  "operation_id": "uif-native-pub-v2-activate-20261114-a1",
+  "status": "succeeded",
+  "exit_code": 0,
+  "utc": "2026-11-14T04:27:37.706456+00:00",
+  "source_patch_sha256": "3e1b056cd536fa01472aa93f108f08f7b4fadadebeb294097dd92d04cf7dc3e1",
+  "composition_sha256": "9a21cb374e146dc4e9158dc1f8223d36bb56eb7ab0e3657549562cf0d15a2a5b",
+  "old_pid": 1660567,
+  "new_pid": 1734029,
+  "api_http": 200,
+  "capacity": 1,
+  "projects": [
+    {
+      "name": "UIF",
+      "paused": false
+    },
+    {
+      "name": "OffMenu",
+      "paused": false
+    },
+    {
+      "name": "CQ",
+      "paused": false
+    },
+    {
+      "name": "CIX",
+      "paused": false
+    },
+    {
+      "name": "ANQR",
+      "paused": false
+    }
+  ],
+  "counts": {
+    "running": 0,
+    "retrying": 0,
+    "gates": 0,
+    "queued": 0,
+    "projects": 5
+  },
+  "scope": "UIF full-original-scope independently accepted delivery only; existing native publisher remains sole GitHub writer",
+  "local_readback": {
+    "MainPID": "1734029",
+    "User": "user",
+    "ActiveState": "active",
+    "SubState": "running"
+  },
+  "evidence_boundary": "Installation and healthy API at activation. The zero-gate snapshot is immediately after startup. The subsequent six loaded gates are coordinator-reported. Selected full operating flow, consumer suitability and restoration still require separate evidence.",
+  "later_gate_count_coordinator_reported": 6
+}
