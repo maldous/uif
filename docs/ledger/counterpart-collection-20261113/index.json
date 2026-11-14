@@ -736,6 +736,17 @@
         ],
         "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/five-retained-source-contribution.json",
         "sha256": "9f7c07207bdb2f4628184523ecd20a81c2dcec03f7c5d052a877b6a114650525"
+      },
+      "current_custody_addendum": {
+        "ids": [
+          "offmenu-retained-UIF-223",
+          "offmenu-retained-UIF-225",
+          "offmenu-retained-UIF-226",
+          "offmenu-retained-UIF-227",
+          "offmenu-retained-UIF-229"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/current-custody-addendum.json",
+        "sha256": "9dd1decf02eb4f10785ef24de4be6184b5bdd61b37929f007d749743b16e38a3"
       }
     },
     "Cloud": {

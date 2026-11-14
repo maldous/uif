@@ -1,0 +1,107 @@
+{
+  "archive_sha256": "f8343736b941ca9b208a52fb0e3e57f6009e0ef5d97ddd15aa41247ad170553a",
+  "manifest_sha256": "710dcb053227a0b6363e2d879f425d05d95e1ec5f5759dad9fb8e4a2982a0434",
+  "verified_payloads": [
+    {
+      "path": "payload/eleven-current-custody-reconciled-receipt.json",
+      "bytes": 5274,
+      "sha256": "bf362db059692f84fe6a6ae96ebf57939ab79b6cb191e2bd0c05748bcd18a0bb"
+    },
+    {
+      "path": "payload/five-source-current-custody-join.json",
+      "bytes": 4470,
+      "sha256": "c1890e76ad20cd9a222372b0f18df79fdbee2f164b1b1bdb66cfe9440df6ef4b"
+    },
+    {
+      "path": "payload/six-local-source-graph-request.json",
+      "bytes": 4448,
+      "sha256": "0e20410a8b3013ee47c76f39996c7465a97721db21a41386a78523bb79208f9d"
+    },
+    {
+      "path": "payload/summary.json",
+      "bytes": 2947,
+      "sha256": "c77f32acccc868fc37c7c8d38a5848f9165ff227c7c9d63c854c93f335add52c"
+    },
+    {
+      "path": "payload/uif232-stable-text-comparison-request.json",
+      "bytes": 1676,
+      "sha256": "e0006fe89042de44524d4d9ce2f479703ffc61e2fe6772e3f89ddab487600a15"
+    }
+  ],
+  "predecessor_archive_sha256": "0d08353dc67f53ca9088d8b380c91c49d65b8348c7e130103961ad16e4d324d7",
+  "five_custody_joins": [
+    {
+      "original_id": "offmenu-retained-UIF-223",
+      "current_head": "24c71f6c7fc518b61d7f71eadc5e8958512fb35a",
+      "current_branch": "feature/qualified-source-recovery-20261029",
+      "source_assessment_sha256": "6f072962ebec56b21adab7b3a31a24d549598a74ff38c67745e6832ba40d388d",
+      "exact_head_matches_pinned_assessment": true,
+      "current_tracked_and_untracked_state": "empty",
+      "disposition": "Retain exact original source/custody and reuse bounded immutable-source findings; no new physical local delta to compare",
+      "remaining_scope": "UIF223largecollection/coverage and UIF225mixedworker payload limits remain partial; ignored contents and fullsource/runtime/product qualification excluded. No gate removed."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-225",
+      "current_head": "63f3439a331bb5d19ef61d026f82f9c6ddb5b904",
+      "current_branch": "feature/retained-worker-wip-20261029",
+      "source_assessment_sha256": "6d5893e1ac6a4e8e3a2cef9d39fa916e4b72248e3f5770dce8883c3a86777bab",
+      "exact_head_matches_pinned_assessment": true,
+      "current_tracked_and_untracked_state": "empty",
+      "disposition": "Retain exact original source/custody and reuse bounded immutable-source findings; no new physical local delta to compare",
+      "remaining_scope": "UIF223largecollection/coverage and UIF225mixedworker payload limits remain partial; ignored contents and fullsource/runtime/product qualification excluded. No gate removed."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-226",
+      "current_head": "6bfe2165c79e9152b4396d9c75b735665be47707",
+      "current_branch": "feature/reviewed-app-source-custody-20261029",
+      "source_assessment_sha256": "9416c5c93daa53efc5143ffe9d547ab93d7bad7e9efbd0d9278ee9954a22900d",
+      "exact_head_matches_pinned_assessment": true,
+      "current_tracked_and_untracked_state": "empty",
+      "disposition": "Retain exact original source/custody and reuse bounded immutable-source findings; no new physical local delta to compare",
+      "remaining_scope": "Existing bounded source/current-use disposition stands; no source import selected. Fullruntime/product qualification and ignored contents excluded."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-227",
+      "current_head": "6c4ee1495a7daf3baa6b55a01e0e166b183118ea",
+      "current_branch": "feature/source-facts-diagnostic-20261029",
+      "source_assessment_sha256": "78219de3c9186428e80067dc56b44b65b10961701833a0fd74cde999a89114f5",
+      "exact_head_matches_pinned_assessment": true,
+      "current_tracked_and_untracked_state": "empty",
+      "disposition": "Retain exact original source/custody and reuse bounded immutable-source findings; no new physical local delta to compare",
+      "remaining_scope": "Existing bounded source/current-use disposition stands; no source import selected. Fullruntime/product qualification and ignored contents excluded."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-229",
+      "current_head": "4632dd238e2bffefc60246bcb328264a6fb85f9e",
+      "current_branch": "feature/windmill-platform-source-20261029",
+      "source_assessment_sha256": "c040fcfd71f6a1b64de8a271cc236bea901abf6af38dc12e874e23401bd211cb",
+      "exact_head_matches_pinned_assessment": true,
+      "current_tracked_and_untracked_state": "empty",
+      "disposition": "Retain exact original source/custody and reuse bounded immutable-source findings; no new physical local delta to compare",
+      "remaining_scope": "Existing bounded source/current-use disposition stands; no source import selected. Fullruntime/product qualification and ignored contents excluded."
+    }
+  ],
+  "eleven_metadata": {
+    "original_receipt_sha256": "6d91f035286a7a22e8cabe09457e67be82994768b4cef1106af64bd66cdcef03",
+    "clean": 10,
+    "one_dirty": "offmenu-retained-UIF-232",
+    "unstaged_paths": [
+      "tests/delivery/test_stokowski_current_dispatch.py",
+      "tools/delivery/stokowski_adapter.py"
+    ]
+  },
+  "six_graph_metadata": {
+    "sha256": "40997f180c6ab87ee112ca65b8b6f64764bda6d2e373c7f5c0c5e11714bf66e0",
+    "original_ids": [
+      "offmenu-retained-UIF-224",
+      "offmenu-retained-UIF-228",
+      "offmenu-retained-UIF-230",
+      "offmenu-retained-UIF-231",
+      "offmenu-retained-UIF-232",
+      "offmenu-retained-UIF-238"
+    ],
+    "canonical_commit": "59496c6cf006c16b6ac4859580d0e91374682756",
+    "result": "Exact commit lookup failed in each of the six inspected local stores. No fetch or alternate search ran. Owner disposition is separate."
+  },
+  "limits": "UIF-232 comparison requires exact UIF custody confirmation. No body read, source replay or acceptance follows from metadata. Preserve original held scopes and private receipt custody."
+}
