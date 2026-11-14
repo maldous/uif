@@ -75,3 +75,18 @@ operation receipt, then demonstrate useful autonomous pickup, execution,
 independent review, publication and refill. Until that evidence exists, report
 source readiness and installed/runtime gaps separately. The currently observed
 active service remains unchanged by this update.
+
+## Foo instruction adoption
+
+The reviewed pinned source `ee41b73da247a6d192e88d04ad0b0349643ce1be` was
+staged in a separate user-owned versioned bundle. Original operation
+`uif-policy-startup-adopt-20261114-01` returned succeeded/exit 0 after guarded
+startup replacement and destination readback. The [instruction adoption receipt](../agents/foo-startup-adoption-20261114.json)
+records source/policy/preimage/readback hashes. Original instructions are preserved
+in a hash-keyed backup and verbatim under explicit policy precedence; narrower
+holds and unrelated USF routing remain applicable. File ownership and mode were
+preserved, and no extended attributes were present.
+
+This adopts the startup instruction pointer only. It does not prove running
+sessions reloaded instructions, merge project PRs, replace the existing cloud
+user skill, install native quota hooks or activate any runtime behavior.
