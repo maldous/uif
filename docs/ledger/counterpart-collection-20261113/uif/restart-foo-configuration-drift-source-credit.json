@@ -1,0 +1,24 @@
+{
+  "original_id": "restart-foo-configuration-drift",
+  "original_routing_key": "uif-ledger-20261111-060",
+  "source_sha256": "433d1044a48047c16555b8b2616c5459be1d4f71d1976eaab0c6de0c4ab5bc1b",
+  "original_operation_id": "4a6fb80b-2315-4525-8947-b856dcc3a55e",
+  "store_id": "uif-reconciliation-20261112-01",
+  "owner": "uif-platform-owner",
+  "epoch": "1",
+  "publication": {
+    "baseRefName": "develop",
+    "headRefOid": "6ccf64dbb0fe8746af90c34b481d3f8a3e744403",
+    "mergeCommit": {
+      "oid": "b68cfcb5fa6745f1c1642f2cbe4c211191410901"
+    },
+    "mergedAt": "2026-11-13T19:02:24Z",
+    "state": "MERGED",
+    "url": "https://github.com/maldous/uif/pull/52"
+  },
+  "accepted_tree": "a3a7d6f0bf5868f5cbfccb1a3d11cf10967f12d0",
+  "completion_sha256": "a25136396a23dcb7021bd24c987c990e1bbe01c5424414e2424b1fd26f4a8349",
+  "retained_operating_proof_sha256": "dde9e18e312cb24003d81b66a5e01f9da2101ba6ff110e5cde8b6ad7515fa6df",
+  "checker_unknowns": 5,
+  "scope": "Completed delivery of the selected source report and checker. Full cross-project runtime drift, repair and combined effects remain held. This contribution changes no accepted shared accounting."
+}

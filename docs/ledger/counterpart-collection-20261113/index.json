@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 28,
+  "record_count": 29,
   "records": [
     {
       "project": "ANQR",
@@ -216,6 +216,13 @@
       "source_sha256": "a9d4172a22a0b2d3d174b1939a3a7c03c13498444705a7d0abe984b0e5529659",
       "state": "Exact reviewed PR 20 handoff correction merged and remote identity verified. This evidence covers the documentation correction.",
       "evidence_group": "CQ"
+    },
+    {
+      "project": "UIF",
+      "original_id": "restart-foo-configuration-drift",
+      "source_sha256": "433d1044a48047c16555b8b2616c5459be1d4f71d1976eaab0c6de0c4ab5bc1b",
+      "state": "PR 52 and original completion verify the bounded source report and checker. Five checks remained unknown. Broader configuration drift remains current.",
+      "evidence_group": "UIF"
     }
   ],
   "evidence_groups": {
@@ -483,6 +490,14 @@
       },
       "verification": "Documentation commit is outside public main and has an identical dist tree. All 52 public main runtime files match the documentary asset manifest. Deployment ID is attributed to the Cloud owner.",
       "boundary": "Selected public export and current deployment lineage only. Rights, broader ownership, runtime/theme custody and combined effects retain their separate dispositions."
+    },
+    "UIF": {
+      "ids": [
+        "restart-foo-configuration-drift"
+      ],
+      "source_credit": "docs/ledger/counterpart-collection-20261113/uif/restart-foo-configuration-drift-source-credit.json",
+      "source_credit_sha256": "d94dec26c27cdde45aa28f1a4114e12ad01b5053eac5761227a434c01e941ef1",
+      "boundary": "Completed delivery of the selected source report and checker. Full cross-project runtime drift, repair and combined effects remain held. This contribution changes no accepted shared accounting."
     }
   },
   "byte_verification": "Five exact ANQR owner payloads verified against the private archive and its manifest, including two existing copies. The Cloud documentary tree, three Git blobs and 52 public runtime asset hashes were independently verified. Prior verification and receiving records remain in the collection.",
