@@ -10,7 +10,7 @@ the existing issue/handoff rather than creating one.
 | --- | --- |
 | Live issue scope, dependencies, acceptance, material decision/blocker, owner transfer and next action | Existing native Linear issue/project with verified destination readback. |
 | Reviewed source, product contracts, tests, skills and documentation | Owning Git repository at the exact branch/commit under its existing publisher/reviewer controls. |
-| Claim generation/coordinator epoch, execution ownership and fenced transfer | Supported Foo ownership authority. It is not an intake queue or a substitute for Linear. |
+| Claim generation/coordinator epoch, execution ownership and fenced transfer | Qualified off-Foo control authority, independently available during Foo/MCP outages. Its adapter is currently unimplemented; it is not an intake queue or a substitute for Linear. |
 | Job intent, original operation ID, terminal receipt, outputs and stopped-child evidence | Existing authorized executor receipt store; Linear receives suitable references. |
 | LangGraph checkpoint | Selected workflow's existing private persistence with code/schema/source/stage compatibility and claim/operation links. |
 | Reusable non-secret operating fact | Owning role's approved `uif/roles/<role>` namespace, or `uif/shared` only after cross-project applicability is reviewed. |
@@ -37,3 +37,9 @@ At a handoff preserve source/branch/HEAD, claim generation, completed and uncert
 operations, custody references, checks/review and the first unaccepted next stage.
 Remote source readback establishes publication; acknowledgments establish receipt;
 actual subsequent work establishes execution. Keep those claims separate.
+
+Coordinator lifecycle registration, desired running/stopped state, epoch/lease,
+qualified liveness/failure-grace observations and original appointment operation
+belong to that authority and its approved durable scheduling surface, not chat
+memory. A replacement reconstructs the same Morgan/project role and original
+operations. No conversation's continued existence is a recovery dependency.

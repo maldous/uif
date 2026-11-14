@@ -1,9 +1,51 @@
 # Native quota realization and owner handoff
 
-This is the integration handoff for the existing policy-2.0 source branch. The
-current UIF runtime owner retains sole live-write custody. Source acceptance does
-not lift a no-pause, no-installation or no-restart instruction. Preserve active
-workspaces, current claims, product reservations and original operations.
+Current goal: [policy 2.0.0](../agents/uif-worker-policy.md) requires unattended
+continuous BAU across quota loss and sustained Foo/MCP outages, independent of
+this chat. It requires off-Foo election/claim authority and durable scheduled
+Morgan/project reconstruction. The source realization below describes the
+retained Foo-local implementation; its off-Foo adapter/scheduling integration
+remains unimplemented/unqualified and does not satisfy that complete goal.
+Preserve accepted source and original receipts while completing the authorized
+integration; no separate approval checkpoint is introduced for the same outcome.
+
+This is the integration handoff for the policy-2.0 source branch. The current
+UIF runtime custodian retains sole live-write custody and completes the composed
+implementation, qualification and rollout under the user's current instruction.
+That instruction supersedes the former administrative no-install/no-restart
+rollout hold; do not add a fresh human approval or binding checkpoint for the
+same outcome. Actual access/security, project-data rights and custody controls
+remain unchanged. Preserve active jobs/workspaces, current claims, product
+reservations and original operations while rolling forward. The observed native
+runtime remains unpaused; independent existing delivery must not be halted merely
+because the new outage-recovery integration is unfinished.
+
+The custodian supplied the receiving preimage record in original operation
+`01a1da29-c0f2-37da-d855-c5b167ddcf51`, SHA-256
+`d456a6a05fc130db255ac8a4674c160f4e9a3b2082e4c2abaaa3d3093fdfc8ed`.
+Keep its private payload in the existing Foo custody. The approved stdin fix is:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Approved patch | `d7aca0ba89abb50f31907fc36bc03fe186f1f4675369fea5b5cf8499295753d7` |
+| Runner preimage | `8c158a73197ec5c5d2661c3859f9ceb122095ffcde9f853632b6f982ca8a3406` |
+| Runner afterimage | `2492210a8d43cae9b2e0ebae256f8d37298fc75c0f2c65c3fdbd66a925c6b351` |
+
+Receiving those pins does not claim the correction was installed. Native hook
+composition is with the existing custodian, separately from the alignment source
+writer. Actual project/UUID/source resolution is automatic integration work,
+not a per-issue human binding or approval requirement.
+
+Morgan separately verified an existing enabled ten-minute off-Foo heartbeat
+with thread observation/routing capabilities. Reuse it; create no duplicate
+monitor. It supplies coordination wake-up, not atomic claim/control authority,
+effect fencing or automatic election. The remaining off-Foo integration is a
+durable compare-and-set authority enforcing coordinator epochs, task generations
+and original-operation intents/outcomes at actual effect boundaries. Current
+Foo `flock` transactions cannot simply become remote database locks held over
+awaited effects. An uncertain operation remains held through its original
+receipt; independent issues can continue. Cloudflare monitor/D1/BridgeQueue
+inventory does not establish this implementation or its caller grants.
 
 ## Source changes now implemented
 
@@ -55,9 +97,12 @@ native module, runner, launcher or workflow was changed by these changes.
    alone supplies none of those observations. `_schedule_retry` must use fresh
    provider policy without repeatedly entering an exhausted model route.
 
-The native hook candidate must be composed and compared against the owner's
-actual installed preimages. The source seams are not a drop-in monkeypatch for
-the synchronous native `_dispatch`, and they do not install themselves.
+The custodian composes and verifies native hooks against the actual installed
+preimages as implementation work under the current instruction, preserving jobs
+and prior accepted runner review. This technical verification is not a new human
+approval/binding gate. Source seams are not a drop-in monkeypatch for synchronous
+native `_dispatch`; qualified composed rollout and destination readback remain
+necessary before claiming installation.
 
 ## Retention adoption and recovery
 
@@ -99,9 +144,11 @@ or activation follows from startup text or policy distribution.
 
 ## Shortest actual operating proof
 
-After the existing owner reconciles the candidate, adoption and action-time
-holds, use a genuinely eligible issue through the existing native intake. UIF-255
-is the existing consolidated documentary acceptance owner; do not duplicate it,
+The existing custodian completes the composed rollout and its focused
+qualification while preserving independent active work, then uses a genuinely
+eligible issue through native intake as the shortest actual operating proof.
+No fresh human approval/binding gate is introduced. UIF-255 is the existing
+consolidated documentary acceptance owner; do not duplicate it,
 recreate the README list or infer pickup from its Todo state. Its source records
 remain distinct from useful execution and final acceptance.
 
@@ -113,8 +160,13 @@ to obtain this proof. Other independent projects keep their reservations.
 Use already accepted white-room/source/checkpoint evidence at unchanged bindings.
 Exercise changed async/retention boundaries only; an isolated quota-fault test
 does not establish real provider exhaustion, and a process or pending slot is
-not a running model. A real quota handoff additionally needs an active
-authenticated Morgan coordinator, acknowledged exclusive claims, original-effect
-reconciliation and useful successor work. Restored local quota admits independent
-new units while existing cloud claims finish. Until these are observed, report
-the exact pending action and owner rather than declaring unattended BAU complete.
+not a running model. A real handoff needs a current authenticated coordinator
+epoch, acknowledged exclusive claims, original-effect reconciliation and useful
+successor work. The independent durable lifecycle must automatically appoint and
+reconstruct the same logical Morgan role when its execution is absent; it cannot
+require this chat already to be active. Sustained Foo/MCP outage continuation
+requires the qualified off-Foo authority, not the retained local test store.
+Restored local capacity admits independent new units while cloud claims finish.
+Continue to the requested completed autonomous outcome; until observed, report
+the exact pending action/owner and implementation gap without claiming BAU or
+stopping unrelated existing work.

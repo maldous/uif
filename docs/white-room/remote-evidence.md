@@ -130,8 +130,10 @@ The result is a scoped recovery receipt for the integrating authority, which mus
 hold its ownership lock and independently validate effect fences. It is not a new
 network endpoint or a claim that connectors/native/publisher hooks are installed.
 No command exit code or saved JSON can substitute for the authenticated boundary.
-Foo authority and active Morgan requirements remain those of policy 2.0.0; no
-unattended cloud wake-up or new recurring automation is implemented here.
+The current normal contract requires off-Foo authority and a durably scheduled
+logical Morgan lifecycle independent of this chat. This reader implements neither
+that adapter nor its scheduling/session-control integration; it is evidence
+reconstruction, not proof of installed autonomous outage recovery.
 
 ## Verification
 

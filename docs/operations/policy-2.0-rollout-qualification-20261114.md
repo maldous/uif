@@ -1,9 +1,22 @@
 # Policy 2.0.0 rollout qualification — 14 November 2026
 
+## Current operating goal and dated evidence
+
+The agreed end state is unattended autonomous continuous BAU across local quota
+loss, sustained Foo/MCP outages and recovery, independent of this conversation.
+It requires off-Foo election/claim authority, durable Morgan/project lifecycle,
+a configurable default 15-minute outage grace with multiple qualified probes and
+healthy reset, and automatic resumption on existing authorized capacity only.
+The concrete off-Foo platform/adapter and independent scheduling/session-control
+integration remain unimplemented/unqualified; the source snapshots below do not
+prove them. This current requirement supersedes the earlier active-chat/Foo-only
+rollout boundary without changing what its original receipts actually observed.
+
 Policy/source preparation and the observed existing service are separate facts.
-The policy bundle defines Linear-only intake, Foo execution claims, local quota
-handoff and per-issue recovery; it does not activate or replace the live native
-runtime. Keep the [operating procedure](../operating-procedure.md),
+The current policy requires Linear-only intake, independently available execution
+claims, quota/outage handoff and per-issue recovery; the retained source
+implementation still uses Foo-local claims. The bundle does not activate or
+replace the live native runtime. Keep the [operating procedure](../operating-procedure.md),
 [recovery reuse map](../white-room/recovery-reuse-20261114.md) and original issue
 receipts together when assessing the later controlled start.
 
@@ -48,7 +61,7 @@ its unresolved outcomes.
 | Quota handoff | Source contracts/tests cover mode transitions, owner generations, original-operation reconciliation and effect fences. Real native dispatch/exit/publication hooks and their exact installed source remain separate integration. |
 | Capacity | Policy ceiling is 64 local Codex sessions under shared resource admission. The service readback does not establish that ceiling is installed, available or safe to fill. MCP work consumes the same host budget. |
 | Journal retention | The continuation adds committed-record cold archival with permanent original-ID lookup, terminal history and reserved control headroom. Actual owner adoption, joint hot/cold backup and storage monitoring still require qualification; no live pruning, deletion or unlimited retention is claimed. |
-| Morgan continuity | Active Morgan with a current heartbeat is required for new cloud claims/transfers. No unattended wake-up, new recurring schedule or watchdog is installed. A monitor/telemetry receipt is not dispatch or acknowledgment. |
+| Morgan continuity | The earlier snapshot required already-active Morgan and did not install wake-up. The current required durable lifecycle independently appoints/reconstructs the same role; off-Foo authority and scheduling/session controls remain unqualified. A monitor/telemetry receipt is not dispatch or acknowledgment. |
 
 The current source tests use isolated stores and synthetic readers/observers.
 They establish their stated source contracts, not installed provider availability,
@@ -70,11 +83,12 @@ lost acknowledgment, coordinator replacement, Foo-authority outage and gradual
 local recovery with cloud work still active through the supported test boundary.
 Live disruptive operations retain their actual authorization requirements.
 
-A later authorized start must use the verified supported control and original
-operation receipt, then demonstrate useful autonomous pickup, execution,
-independent review, publication and refill. Until that evidence exists, report
-source readiness and installed/runtime gaps separately. The currently observed
-active service remains unchanged by this update.
+Continue the requested integration, controlled start and qualification under the
+current authorization through verified controls and original operation receipts;
+do not add a separate permission checkpoint for this same outcome. Demonstrate
+useful autonomous pickup, execution, independent review, publication, refill and
+recovery without this chat. Until observed, report source and installed/runtime
+gaps separately. This document changes no running binding or historical receipt.
 
 ## Foo instruction adoption
 
@@ -93,11 +107,13 @@ user skill, install native quota hooks or activate any runtime behavior.
 
 ## Authorized source continuation
 
-The existing runtime owner retains sole live-write custody and permits the
-non-overlapping async adapter and retention realization in the same source
-branch. See [the native realization handoff](native-quota-realization.md) for
-the exact native seams, approved runner-correction composition, retention
-adoption and shortest operating proof. No CIX pause, launcher installation or
-restart is authorized by this source handoff. Latest user directions take
-precedence over historical CIX-pause wording; the startup wording correction
-is prepared in source and has not been applied as a new host action.
+The existing runtime owner retains sole live-write custody; the async adapter,
+retention and continuity source work remains disjoint from the custodian's native
+hook composition. See [the native realization handoff](native-quota-realization.md)
+for exact seams, approved runner pins, retention adoption and operating proof.
+The user's later direction supersedes the former administrative rollout hold:
+alignment completion is the prerequisite, without another owner-approval gate.
+Preserve active jobs, actual access controls and original operations through the
+composed rollout. Historical CIX-pause wording does not pause current work. The
+startup wording correction is prepared in source and has not yet been applied
+as a new host action.

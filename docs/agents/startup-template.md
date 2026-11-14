@@ -13,7 +13,8 @@ verified task inputs; this template is not an executable admission record.
 >
 > Canonical work: <native Linear workspace/project/issue UUID and display link>.
 > Source: <repository, baseline, task branch, immutable commit/tree>.
-> Ownership: <lane, owner, claim generation, coordinator epoch and authority readback>.
+> Ownership: <lane, owner, task generation, coordinator epoch/lease and off-Foo
+> authority readback; authenticated lifecycle registration and original appointment>.
 > Scope: <owned paths, outcome, existing holds, permissions and reviewer/publisher>.
 > Executor: <cloud / Foo Codex / Foo MCP user / Foo MCP root>, with actual capabilities,
 > provider availability and shared resource budget; do not infer them from this text.
@@ -32,4 +33,12 @@ credentials, raw datasets or an entire unrelated conversation. The receiver
 verifies its own environment and acknowledges the selected policy/source/claim;
 a sent instruction does not establish adoption. If an instruction or required
 capability cannot be read, identify that narrow dependency and continue unaffected
-work. Do not invent a new transport or unattended wake-up.
+work. The independently durable lifecycle must appoint/reconstruct configured
+Morgan/project executions when needed; this conversation is not a prerequisite.
+Use only the qualified supported scheduling/session-control and off-Foo authority
+interfaces; a template does not invent or install them. Foo/MCP ownership failover
+uses the configurable 15-minute sustained grace, multiple qualified probes and
+healthy reset. Preserve explicit user stop and original uncertain operations.
+If all inference is unavailable, preserve work, continue independent deterministic
+operations and resume automatically on existing authorized capacity; no new
+provider or spending is implied.

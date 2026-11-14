@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import importlib.util
 import io
 import json
@@ -158,9 +159,98 @@ class PolicyTests(unittest.TestCase):
         self.profiles(lambda data: data.update(local_session_ceiling=True))
         self.assertIn('Invalid local session ceiling', self.check())
 
-    def test_ledger_intake_and_offhost_authority_refused(self):
-        self.profiles(lambda data: data['intake'].update(kind='ledger-or-linear', claim_authority='cloud'))
+    def test_ledger_intake_and_foo_only_normal_authority_refused(self):
+        self.profiles(lambda data: data['intake'].update(kind='ledger-or-linear', claim_authority='foo'))
         self.assertIn('Invalid Linear-only intake declaration', self.check())
+        self.assertIn('Invalid shared off-Foo authority declaration', self.check())
+
+    def test_normal_contract_can_be_unimplemented_without_claiming_runtime_readiness(self):
+        self.profiles(lambda data: data['intake'].update(authority_implementation='unimplemented'))
+        self.profiles(lambda data: data['morgan_continuity'].update(implementation='unqualified'))
+        self.assertEqual(self.check(), [])
+
+    def test_current_chat_or_unfenced_morgan_replacement_refused(self):
+        self.profiles(lambda data: data.update(morgan_continuity='active-coordinator-required-no-unattended-wakeup'))
+        self.assertIn('Invalid durable Morgan lifecycle declaration', self.check())
+        self.profiles(lambda data: data.update(morgan_continuity={
+            'lifecycle': 'durable-logical-role', 'conversation_required': True,
+            'replacement': 'unfenced-restart', 'wake': 'independent-scheduled-or-event-trigger',
+            'implementation': 'unqualified'}))
+        self.assertIn('Invalid durable Morgan lifecycle declaration', self.check())
+
+    def test_brief_glitch_or_unqualified_single_probe_does_not_meet_outage_contract(self):
+        self.profiles(lambda data: data['foo_outage'].update(sustained_grace_seconds=1, qualified_probes_required=1))
+        self.assertIn('Invalid sustained Foo outage declaration', self.check())
+
+    def test_canonical_outage_default_and_explicit_configured_override(self):
+        declared = json.loads((ROOT / module.PROFILES_PATH).read_text())
+        self.assertEqual(declared['foo_outage']['sustained_grace_seconds'], 900)
+        self.profiles(lambda data: data['foo_outage'].update(sustained_grace_seconds=1200))
+        self.assertEqual(self.check(), [])
+        self.profiles(lambda data: data['foo_outage'].update(configurable=False))
+        self.assertIn('Invalid sustained Foo outage declaration', self.check())
+
+    def test_outage_grace_requires_a_positive_integer(self):
+        for value in (0, -1, True, 900.0):
+            with self.subTest(value=value):
+                self.profiles(lambda data: data['foo_outage'].update(sustained_grace_seconds=value))
+                self.assertIn('Invalid sustained Foo outage declaration', self.check())
+
+    def test_healthy_probe_resets_sustained_outage_grace(self):
+        self.profiles(lambda data: data['foo_outage'].update(healthy_probe_resets_grace=False))
+        self.assertIn('Invalid sustained Foo outage declaration', self.check())
+
+    def test_all_capacity_unavailable_preserves_work_without_new_provider(self):
+        self.profiles(lambda data: data['inference_continuity'].update(new_provider_fallback=True))
+        self.assertIn('Invalid existing inference capacity declaration', self.check())
+        self.profiles(lambda data: data['inference_continuity'].update(
+            new_provider_fallback=False, when_unavailable='abandon-unfinished-work'))
+        self.assertIn('Invalid existing inference capacity declaration', self.check())
+
+    def test_unverified_service_installation_is_not_a_current_source_contract(self):
+        self.profiles(lambda data: data['intake'].update(authority_implementation='installed-and-ready'))
+        self.assertIn('Invalid shared off-Foo authority declaration', self.check())
+
+    def qualification(self, subject, **changes):
+        # Entirely synthetic evidence for a possible future source declaration.
+        # These fixtures do not assert an installed service or real receipt.
+        report = dict(subject=subject, status='qualified', source_commit='e' * 40,
+                      observed_at='2020-01-01T00:00:00+00:00',
+                      receipt_refs=['fixture:original-receipt-not-a-real-deployment'])
+        report.update(changes)
+        relative = 'docs/agents/' + subject + '-fixture.json'
+        raw = (json.dumps(report) + '\n').encode()
+        (self.root / relative).write_bytes(raw)
+        return dict(path=relative, sha256=hashlib.sha256(raw).hexdigest())
+
+    def test_future_qualified_states_require_bound_subject_and_original_evidence(self):
+        authority = self.qualification('off-foo-authority')
+        lifecycle = self.qualification('morgan-lifecycle')
+        self.profiles(lambda data: data['intake'].update(
+            authority_implementation='qualified', authority_qualification=authority))
+        self.profiles(lambda data: data['morgan_continuity'].update(
+            implementation='qualified', qualification=lifecycle))
+        self.assertEqual(self.check(), [])
+        # Old observations are allowed as historical source evidence; this
+        # checker deliberately provides no runtime freshness/authenticity proof.
+        (self.root / authority['path']).write_text('{}\n')
+        self.assertIn('off-foo-authority qualification hash mismatch', self.check())
+
+    def test_qualified_status_without_evidence_and_wrong_subject_refused(self):
+        self.profiles(lambda data: data['intake'].update(authority_implementation='qualified'))
+        self.assertIn('Missing off-foo-authority qualification evidence', self.check())
+        wrong = self.qualification('morgan-lifecycle')
+        self.profiles(lambda data: data['intake'].update(authority_qualification=wrong))
+        self.assertIn('Invalid off-foo-authority qualification record', self.check())
+
+    def test_qualification_requires_revision_aware_time_and_receipt_shape(self):
+        for change in (dict(source_commit='main'), dict(observed_at='2026-11-14T00:00:00'),
+                       dict(receipt_refs=[])):
+            with self.subTest(change=change):
+                reference = self.qualification('off-foo-authority', **change)
+                self.profiles(lambda data: data['intake'].update(
+                    authority_implementation='qualified', authority_qualification=reference))
+                self.assertIn('Invalid off-foo-authority qualification record', self.check())
 
     def test_numeric_false_does_not_pass_queue_constraint(self):
         self.profiles(lambda data: data['intake'].update(registry_is_queue=0))

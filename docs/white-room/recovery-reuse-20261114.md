@@ -60,11 +60,16 @@ acceptance cover changed source.
    After local recovery, admit independent local issues gradually while cloud-owned
    issues keep their current owner until completion or reconciled failure.
 
-This source contract covers quota exhaustion first. Foo is the ownership authority;
-an outage pauses new claims/transfers and dependent effects. Morgan must already
-be active for new cloud claims/transfers. No unattended wake-up, replacement
-watchdog, new recurring schedule or promise of permanent chat availability is
-provided by this change.
+The current normal operating goal includes quota exhaustion and sustained Foo/MCP
+outages without this chat. It requires off-Foo election/claim authority and durable
+scheduling/event-driven reconstruction of the same Morgan/project roles. Those
+adapters remain unimplemented/unqualified in this source checkpoint; retained
+Foo-local authority tests are not proof of off-host outage continuation. The
+configured default Foo/MCP grace is 15 minutes with multiple qualified probes and
+a healthy-probe reset before ownership changes. Eligible cloud work continues
+through its actual independent dependencies; authority loss itself holds only
+operations needing that authority. All-inference loss preserves work and resumes
+automatically on existing authorized capacity, without new providers or spending.
 
 ## Qualification remains explicit
 

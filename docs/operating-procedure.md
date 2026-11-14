@@ -3,8 +3,11 @@
 Use the pinned [policy 2.0.0](agents/uif-worker-policy.md),
 [manifest](agents/uif-worker-policy.json), [environment profile](agents/environment-profiles.json)
 and selected repository's current instructions. This describes the required
-operating contract. Source acceptance is separate from installation, runtime
-adoption, successful recovery and the later controlled start.
+operating contract: unattended autonomous BAU must continue across quota loss,
+Foo/MCP outages and recovery without this conversation. Source acceptance is
+separate from installation and useful operating proof; continue the authorized
+integration, controlled start and qualification without another approval checkpoint
+for that same outcome.
 
 ## 1. Reconstruct the current unit and destination
 
@@ -49,16 +52,20 @@ only one observed prerequisite, never a white-room readiness pass.
 
 Resolve the [per-unit project contract](project-integration.md), lane, actual
 executor/user, source/worktree, owned paths, resource budget and reviewer/publisher.
-Use the Foo ownership authority's supported atomic claim with the current task
+Use the independent off-Foo control authority's supported atomic claim with the current task
 generation and coordinator epoch. Verify those bindings before dispatch, shared
 integration, Linear transitions and publication. Preserve original operation IDs
 and fence a superseded owner before replacement effects.
 
 The authority tracks execution claims, not intake or backlog. Until its runtime
 integration is installed and qualified, allocations remain explicitly disjoint
-under acknowledged owner coordination. During Foo-authority loss pause new
-claims/transfers and dependent shared effects; cloud owners may preserve assigned
-work on permitted branches without claiming acceptance or late publication.
+under acknowledged owner coordination. The off-Foo adapter remains unimplemented
+in current source/tests; no provider/storage platform is selected by this document.
+Once qualified, Foo/MCP outages leave eligible cloud intake, claims, execution,
+review, integration, publication and refill running through that independent
+authority and actual project dependencies. Hold only Foo-dependent or unresolved
+original effects. Authority loss itself holds dependent claims/effects; preserve
+work and automatically resume when current evidence is restored.
 
 Choose available native/cloud commands or deterministic MCP for suitable reads,
 builds and checks. Use a Foo model session for useful reasoning/parallelism, with
@@ -77,18 +84,34 @@ wrapper from generic connector availability or invent missing arguments.
 
 | Source mode | Required behavior |
 | --- | --- |
-| `local-ready` | Stokowski owns normal admitted local pickup, execution, review, publication, recovery and refill. Morgan supervises; cloud roles retain their independent allocations. |
-| `transfer-pending` | Confirm hard local exhaustion, close dependent local model admission, capture source/dirty-work/claim/checkpoint/operation state deterministically and reconcile surviving effects. Require an active Morgan heartbeat before new cloud claims/transfers. |
-| `cloud-active` | After fenced transfer and receiver acknowledgment, Morgan actively coordinates fallback while project roles execute their own eligible issues. Deterministic MCP remains available within its actual host/authority/resource limits. |
-| `local-recovery` | After fresh supported allowance evidence, applicable white-room checks and one bounded canary, gradually admit independent local issues. Existing cloud issues keep their owner until completion or reconciled failure. Return to local-ready through supported controls. |
+| `local-ready` | Stokowski owns normal admitted local pickup, execution, review, publication, recovery and refill. The independently durable Morgan lifecycle supervises and recovers configured roles; cloud roles retain independent eligible work. |
+| `transfer-pending` | Confirm hard exhaustion or the sustained Foo/MCP failover condition, close unsafe dependent admission, capture available source/dirty-work/claim/checkpoint/operation state and reconcile original effects. The lifecycle ensures a reconstructed, fenced current Morgan epoch. |
+| `cloud-active` | After fenced transfer and receiver acknowledgment, Morgan coordinates while project roles continue eligible issue intake through acceptance/refill using the off-Foo authority. Foo/MCP availability is required only by units that actually use it. |
+| `local-recovery` | After fresh supported allowance/reachability evidence, applicable white-room checks and a bounded canary, gradually admit independent local issues. Cloud issues keep their owner until completion or reconciled failure. Automatically return to local-ready through supported controls. |
 
 Distinguish allowance exhaustion, authentication errors, transient rate limits,
 network failure and tool failure. Reset estimates and unknown quota do not justify
 repeated admission. A service's stopped state remains independent of these modes.
-This procedure assumes active Morgan/cloud coordination; it installs no unattended
-wake-up or recurring automation. Reconstruct a replacement Morgan from durable
-facts with a new fenced coordinator epoch. If both reasoning routes are unavailable,
-preserve state and continue only already-authorized deterministic work.
+The durable lifecycle must operate independently of this conversation and Foo:
+schedule or trigger reconciliation, atomically appoint a configured successor
+Morgan when needed, fence the old epoch, reconstruct current source/Linear/
+LangGraph/original receipts, then acknowledge before effects. Replace executions
+of existing project roles without adding roles or repurposing project bindings.
+Cooperative handoff alone is insufficient when the predecessor has disappeared.
+
+For Foo/MCP failure use the configurable default 15-minute sustained grace and at
+least two qualified probes before an ownership-changing automatic failover. A
+healthy qualified probe resets grace; short separated failures do not accumulate.
+During grace hold only unsafe dependent admission/effects, inspect the original
+operation and continue independent work. Hard quota is a separate confirmed signal
+that closes dependent model admission immediately. Use bounded retry/backoff.
+
+If all reasoning capacity is gone, preserve work, continue independent authorized
+deterministic operations and automatically resume through the existing approved
+routes when fresh evidence permits. Add no provider/account/paid fallback. Actual
+off-Foo authority, schedule/trigger, authenticated session control and recovery
+observers remain integration/qualification requirements; test source is not their
+installation. A user stop/pause is durable and cannot be undone by self-healing.
 
 The local Foo ceiling is 64 Codex sessions, reduced by actual admission and shared
 CPU/RAM/disk/I/O/process headroom. MCP jobs and local sessions consume that same
@@ -127,8 +150,11 @@ waiting for every cloud unit or stealing active claims. Accepted work is not rep
 
 For this restoration programme, complete the selected ledger-to-native-Linear
 reconciliation and demonstrate intake/claims, execution, independent review,
-publication and refill before the later controlled full-token start. Preserve
-project-specific readiness and protected-action holds without making unrelated
-product checks a global foundation gate. Documentation/source tests establish
-neither service activation nor BAU. Use only verified supported controls for an
-actually authorized transition and independently observe the resulting state.
+publication, automatic recovery and refill as part of the requested controlled
+start and continuous BAU outcome. Complete necessary integration and supported
+activation/readback under the current authorization; do not stop for a separate
+permission checkpoint or call source publication completion. Preserve specific
+project/data holds without making unrelated checks a global foundation gate.
+Documentation/source tests establish neither installation nor BAU. Completion
+requires observed useful autonomous operation, including absence of this chat,
+sustained Foo/MCP outage, coordinator replacement and automatic capacity recovery.

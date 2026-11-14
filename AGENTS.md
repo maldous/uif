@@ -19,13 +19,26 @@ Reuse accepted stages, current remote source and compatible checkpoint/operation
 evidence; preserve dirty work and custody. A quota reset or a green comparator
 never grants a claim, replays a session or authorizes publication.
 
-Stokowski coordinates local-ready mode. An active Morgan session coordinates
-cloud fallback only through qualified claims and fences. Foo remains the claim
-authority for this rollout; unavailable authority holds new claims, transfers
-and dependent effects. Morgan absence holds new fallback admission. An explicit
-stop remains effective across quota changes. No unattended cloud wake-up is
-promised. Native runtime integration and installed adoption require separate
-verified evidence; source tests and documentation are not deployment proof.
+The required normal state is unattended continuous BAU without this chat.
+Stokowski coordinates local-ready mode; an independently durably scheduled
+logical Morgan lifecycle appoints/reconstructs failed coordinator/project
+executions through atomic epochs and effect fences. Native Linear is sole
+intake. The shared election/claim authority must remain reachable independently
+of Foo/MCP so eligible cloud work continues through actual project dependencies.
+The off-Foo authority and independent scheduling/session-control adapters are
+currently unimplemented/unqualified; local source tests are not deployment proof.
+Do not select a storage platform/provider or invent an installed endpoint here.
+
+Foo/MCP ownership-changing failover uses a configurable default 15-minute
+sustained failure grace with multiple qualified probes and healthy-probe reset.
+Hold unsafe dependent admission during uncertainty, reconcile the original
+operation and continue independent work. Hard quota closes dependent model
+admission immediately. If all reasoning is unavailable, preserve state, continue
+independent deterministic work and resume automatically on existing authorized
+capacity; no new provider or spending. An explicit user stop/pause remains
+effective across every recovery. The 64-local-session ceiling shares host
+resources with MCP work; restore local admission gradually per issue without
+stealing active cloud ownership.
 
 Before Foo access read [current Windmill routing](docs/agents/windmill-workspace.md).
 Cloud checkouts are isolated from Foo and from other workers. Use actual tools,
@@ -36,5 +49,8 @@ Use the [managed supervision skill](.agents/skills/uif-supervision/SKILL.md) for
 service reports and supported controls. Keep project-specific skill/plugin
 capabilities and [memory routing](docs/agents/memory-routing.md) scoped. Load
 historical adoption/source records only for their applicable evidence, preserving
-current holds and accepted work. Documentation changes do not start, stop,
-reconfigure or repair live services.
+current holds and accepted work. Publishing documentation is not runtime
+installation or successful delivery. Complete the authorized integration,
+qualification and supported controlled start without a separate approval
+checkpoint for that same outcome; report actual installed/readback evidence and
+remaining gaps. Preserve applicable platform requirements and specific holds.

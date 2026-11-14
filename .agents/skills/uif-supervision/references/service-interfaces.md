@@ -23,8 +23,10 @@ Use this dated mapping to discover the current service, then verify it afresh.
 Do not use the historical OffMenu unit or workspace below as the current target
 without independent evidence. The previous command examples remain historical;
 this update does not establish start/stop privilege, graceful drain semantics,
-or authorization to operate the new unit. Apply the skill's explicit-user-command
-and current-interface checks before any control action. Do not invoke the
+or authorization to operate the new unit. Apply current-interface checks and
+the skill's distinction between conversational controls and automatic enforcement
+of already-authorized durable desired state. Routine recovery needs no fresh
+user prompt. Do not invoke the
 launcher or `run_module` to obtain a report.
 
 ## Implementation readback: 14 November 2026
@@ -68,6 +70,13 @@ multi-project delivery, checkpoint recovery or automatic mode transition.
 The 2.0 source adapter's installed integration and end-to-end evidence remain
 separate qualification outcomes. Retain the historical references below without
 using them as current commands or authority.
+
+Morgan subsequently verified an existing enabled ten-minute off-Foo coordination
+heartbeat and cloud-thread read/send capabilities. Reuse that wake; it is not
+an atomic claim/effect-fencing or controller-election interface. Neither the
+heartbeat nor the observed Cloudflare monitor/D1/BridgeQueue inventory proves
+the missing independent ownership authority or grants its use. The existing
+custodian and source writer retain their distinct implementation scope.
 
 ## Historical source and freshness: 2026-11-04
 

@@ -58,10 +58,18 @@ observed installation/state and preserve accepted source/operation evidence to
 avoid replay. Reconcile selected persistence/checkpoint versions, source, stage,
 owner and original effects before the first unaccepted step resumes.
 
-Foo's ownership authority must fence claims/effects for both lanes. If unavailable,
-pause new claims/transfers and dependent effects; preserve assigned cloud work.
-Quota reset is not environment readiness. Foo-only prerequisites apply only to
-selected dependent work; unrelated cloud and pure UIF work retain lighter gates.
+An off-Foo control authority must fence coordinator epochs and task claims/effects
+for both lanes; its concrete platform is not selected and the current adapter is
+unimplemented. Foo/MCP loss must not prevent eligible cloud issue intake, claims,
+execution, review, integration, publication or refill through reachable authority
+and actual project dependencies. Default to a configurable 15-minute sustained
+Foo/MCP failure grace with multiple qualified probes and reset on a healthy probe
+before changing ownership; preserve unresolved original operations. Authority
+loss itself holds only dependent claims/effects. Quota reset is not environment
+readiness. Foo-only prerequisites apply only to selected dependent work; unrelated
+cloud and pure UIF work retain lighter gates. The durable Morgan lifecycle
+reconstructs the same configured roles without this chat; all-inference exhaustion
+preserves work and resumes automatically using existing authorized capacity only.
 Use the [operating procedure](operating-procedure.md) and relevant
 [capability inventory](agents/skills-and-plugins.md), not copied host paths or
 historical worker counts. Wrong target, rights, source or ownership refuses the

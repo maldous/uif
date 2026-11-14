@@ -50,5 +50,17 @@
     "CIX product and production holds remain effective.",
     "ANQR and CircularQuay product instructions retain standalone operation.",
     "Project-specific review and acceptance still apply."
-  ]
+  ],
+  "clarified_alignment": {
+    "policy_sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
+    "observed_date_utc": "2026-11-14",
+    "commits": {
+      "offmenu": "668e27c5c659d6965e7278bdc90d2c475ae1bb78",
+      "cix-operations": "5da6d9b9f8dbd383c3d1a48990e7c8ecbab17bc3"
+    },
+    "remote_source_readback_verified": true,
+    "state": "published-for-review",
+    "runtime_adoption_observed": false,
+    "control_state": "Preserve current running work; historical CIX pause text does not create a new pause. Actual project controls remain applicable."
+  }
 }

@@ -5,6 +5,7 @@ memory enforcement, authorization or publication claims. Product repositories
 do not need copies of this operational bundle.
 """
 import argparse
+from datetime import datetime
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
@@ -68,7 +69,43 @@ def _strings(value):
             and len(value) == len(set(value)))
 
 
-def _profiles(data, manifest, capabilities, selected_role, project_repository):
+def _implementation(root, status, evidence, subject, label):
+    """Bind optional qualification evidence without asserting live readiness.
+
+    Receipt references are opaque. This never fetches them, establishes their
+    authenticity/freshness, or treats a source report as runtime authority.
+    """
+    if status not in ('unimplemented', 'unqualified', 'qualified'):
+        return [f'Invalid {label} declaration']
+    if evidence is None:
+        return [f'Missing {subject} qualification evidence'] if status == 'qualified' else []
+    try:
+        if (not isinstance(evidence, dict) or set(evidence) != {'path', 'sha256'}
+                or not isinstance(evidence['sha256'], str)
+                or not re.fullmatch(r'[0-9a-f]{64}', evidence['sha256'])):
+            return [f'Invalid {subject} qualification binding']
+        raw = _read(root, evidence['path'])
+        if hashlib.sha256(raw).hexdigest() != evidence['sha256']:
+            return [f'{subject} qualification hash mismatch']
+        report = _json(raw)
+        if not isinstance(report, dict):
+            return [f'Invalid {subject} qualification record']
+        observed = report.get('observed_at')
+        observed = datetime.fromisoformat(observed.replace('Z', '+00:00')) if isinstance(observed, str) else None
+        references = report.get('receipt_refs')
+        if (report.get('subject') != subject or report.get('status') != status
+                or not isinstance(report.get('source_commit'), str)
+                or not re.fullmatch(r'[0-9a-f]{40}', report['source_commit'])
+                or observed is None or observed.utcoffset() is None
+                or not _strings(references) or not 1 <= len(references) <= 128
+                or any(len(ref) > 2048 or any(ord(c) < 32 for c in ref) for ref in references)):
+            return [f'Invalid {subject} qualification record']
+    except (OSError, ValueError, TypeError, RecursionError):
+        return [f'Unreadable {subject} qualification evidence']
+    return []
+
+
+def _profiles(data, manifest, capabilities, selected_role, project_repository, root):
     errors = []
     if not isinstance(data, dict):
         return ['Environment profiles must be an object']
@@ -87,11 +124,44 @@ def _profiles(data, manifest, capabilities, selected_role, project_repository):
     intake = data.get('intake')
     if (not isinstance(intake, dict)
             or intake.get('kind') != 'linear-only'
-            or intake.get('claim_authority') != 'foo'
             or intake.get('registry_is_queue') is not False
             or intake.get('identity') != ['workspace_uuid', 'project_uuid', 'issue_uuid']
             or intake.get('ledger_ids') != 'provenance-only'):
         errors.append('Invalid Linear-only intake declaration')
+    if (not isinstance(intake, dict)
+            or intake.get('claim_authority') != 'off-foo-control-plane'):
+        errors.append('Invalid shared off-Foo authority declaration')
+    if isinstance(intake, dict):
+        errors.extend(_implementation(root, intake.get('authority_implementation'),
+                                      intake.get('authority_qualification'), 'off-foo-authority',
+                                      'shared off-Foo authority'))
+    continuity = data.get('morgan_continuity')
+    if (not isinstance(continuity, dict)
+            or continuity.get('lifecycle') != 'durable-logical-role'
+            or continuity.get('conversation_required') is not False
+            or continuity.get('replacement') != 'fenced-reconstruction'
+            or continuity.get('wake') != 'independent-scheduled-or-event-trigger'):
+        errors.append('Invalid durable Morgan lifecycle declaration')
+    if isinstance(continuity, dict):
+        errors.extend(_implementation(root, continuity.get('implementation'), continuity.get('qualification'),
+                                      'morgan-lifecycle', 'durable Morgan lifecycle'))
+    outage = data.get('foo_outage')
+    if (not isinstance(outage, dict)
+            or type(outage.get('sustained_grace_seconds')) is not int
+            or outage['sustained_grace_seconds'] <= 0
+            or type(outage.get('qualified_probes_required')) is not int
+            or outage['qualified_probes_required'] < 2
+            or outage.get('configurable') is not True
+            or outage.get('healthy_probe_resets_grace') is not True
+            or outage.get('brief_glitches') != 'retry-original-operation'
+            or outage.get('authority_must_remain_reachable') is not True):
+        errors.append('Invalid sustained Foo outage declaration')
+    inference = data.get('inference_continuity')
+    if (not isinstance(inference, dict)
+            or inference.get('capacity') != 'existing-authorized-only'
+            or inference.get('new_provider_fallback') is not False
+            or inference.get('when_unavailable') != 'preserve-and-resume'):
+        errors.append('Invalid existing inference capacity declaration')
     if data.get('resource_accounting') != 'shared-across-local-sessions-and-mcp-jobs':
         errors.append('Missing shared host resource accounting')
     roles = data.get('logical_roles')
@@ -218,7 +288,7 @@ def check(root, expected_policy, expected_repository=None, *, role=None, project
                 errors.append(f'Instructions require LF and final newline: {name}')
         profiles = _json(_read(root, PROFILES_PATH))
         errors.extend(_profiles(profiles, manifest, documents[fixed['capabilities']].decode('utf-8'),
-                                role, project_repository))
+                                role, project_repository, root))
     except (OSError, ValueError, TypeError, RecursionError) as exc:
         errors.append(f'Unreadable instruction input: {exc}')
     return errors

@@ -10,7 +10,11 @@ work. Current user directions, platform requirements, access restrictions and
 project-specific contracts remain applicable. Preserve narrower project holds,
 review, tests, data rights and publication controls. Reuse authorization for
 routine continuation of the same scope; escalate actual decisions or missing
-authority rather than inserting approval for each command.
+authority rather than inserting approval for each command. The requested end
+state is unattended, autonomous continuous BAU across local quota exhaustion,
+Foo/MCP outages and recovery, independent of this conversation. Implement,
+qualify and continue that authorized outcome through the agreed controls;
+source preparation is not a separate completion or permission checkpoint.
 
 UIF owns this policy and its [manifest](uif-worker-policy.json),
 [environment profiles](environment-profiles.json), [capability inventory](skills-and-plugins.md)
@@ -83,8 +87,14 @@ original-ledger-only intake extension for new admission. Preserve uncertain
 legacy operations and their identities for reconciliation; migration does not
 replay them or fabricate a Linear Done transition.
 
-The shared claim authority resides on Foo and tracks execution ownership only.
-It must not duplicate issue intake, backlog, prioritization or acceptance.
+The shared control authority must remain available independently of Foo and
+its MCP route. It owns coordinator election/leases and execution claims, never
+issue intake, backlog, product prioritization or acceptance. Foo-local files and
+locks cannot be the sole authority for cloud continuation during a Foo outage.
+No storage provider, platform or endpoint is selected by this policy. The current
+source/test implementation has no qualified off-Foo authority adapter; record
+that implementation gap rather than presenting a local test store as deployed
+outage resilience.
 Bind each claim to the immutable Linear identity, project, lane, owner,
 monotonically increasing claim generation, exact source and original operation.
 Keep a task claim generation distinct from the coordinator's ownership epoch.
@@ -100,18 +110,63 @@ a new owner does not create a new operation ID to escape an uncertain result.
 Keep one writer per shared mutation target and each project's existing
 independent review and integration controls.
 
-Where this shared mechanism is not installed and qualified, state the gap and
-keep cloud/Foo allocations explicitly disjoint under acknowledged owner
-coordination. Never describe prose, advisory schema fields or an offline checker
-as enforcement. If Foo authority is unreachable, pause new claims, transfers and
-effects requiring ownership validation. Cloud owners may preserve their already
-assigned work on permitted recovery branches; they may not use an expired or
-unverifiable claim for late acceptance, shared integration or publication.
+During implementation, retain disjoint acknowledged allocations until the
+shared mechanism is installed and qualified. Never describe prose, advisory
+schema fields or an offline checker as enforcement. In normal BAU, a Foo/MCP
+outage does not stop cloud intake, claims, execution, review, integration,
+publication or refill that use the reachable independent authority and actually
+available project dependencies. Hold only units/effects that require the missing
+Foo capability or have unresolved original outcomes. An authority outage itself
+holds new claims/transfers and effects needing current ownership validation;
+preserve assigned work and automatically resume after authority recovery. Never
+use an expired or unverifiable claim for late effects.
+
+## Durable coordinator and project lifecycle
+
+Morgan is a stable logical coordinator role, not this chat or an immortal model
+process. A durably scheduled or event-triggered lifecycle controller, independent
+of Foo and this conversation, must ensure the configured Morgan execution and
+project roles are available. Extend the established control lifecycle; do not
+create a second intake scheduler, competing project owner or parallel status
+ledger. The source schedule/trigger, authenticated session-control adapter and
+off-Foo authority need qualification before uninterrupted BAU can be claimed.
+
+The configured lifecycle identity atomically appoints a replacement when the
+current coordinator is unavailable under the agreed conditions. Use the shared
+authority's time/lease evidence, expected current epoch, qualified liveness probes
+and original appointment operation; fence the obsolete execution. A missing
+heartbeat alone is not proof all old operations stopped. Reconstruct the same
+role from current Linear/GitHub, latest compatible LangGraph state and original
+receipts, then acknowledge the new coordinator epoch before effects. Keep task
+generations and coordinator epochs separate; coordinator replacement never
+redispatches every issue or renews a stale task claim.
+
+Project owners independently select and deliver eligible native Linear issues
+within their assigned scope, coordinate dependencies and preserve one integration
+writer. The lifecycle replaces failed executions of those same roles through
+supported controls without repurposing a project binding or increasing the six
+durable roles. Reconcile previous attempts, checkpoints and uncertain effects;
+continue the first unaccepted stage. Perform routine recovery and self-healing
+within the existing authorized scope and permissions, with bounded backoff and
+automatic re-observation; do not wait for another user prompt for each step.
+Explicit user stop/pause remains durable and is never overridden by self-healing.
+
+For Foo/MCP reachability failures, default automatic ownership-changing failover
+to a configurable 15-minute sustained-failure grace with at least two qualified
+probes. A successful qualified probe resets the grace; separated short glitches
+cannot accumulate into a takeover. During grace, stop unsafe new admission to
+the uncertain route, reconcile/retry the same original operation when safe and
+continue independent work. An uncertain response or timeout never authorizes a
+new duplicate operation. Confirmed hard quota exhaustion closes dependent local
+model admission immediately; it is classified separately from reachability loss,
+authentication failure, transient rate limits and task failure.
 
 ## Execution modes and token exhaustion
 
-Quota exhaustion is the first supported migration trigger. Distinguish hard
-allowance exhaustion from authentication failure, transient rate limiting,
+Required migration triggers include confirmed local allowance exhaustion and
+qualified sustained Foo/MCP outage under the grace/probe policy above. This is
+the normal operating requirement, not a claim of installed trigger adapters.
+Distinguish hard exhaustion, authentication failure, transient rate limiting,
 network failure and tool failure. Unverified local allowance closes new local
 model admission; it does not prove exhaustion or authorize repeated probes.
 Use supported non-secret allowance evidence with observation time. A predicted
@@ -122,8 +177,10 @@ reset time is not restored availability.
 Stokowski performs admitted Foo-local issue pickup, coding, review, publication,
 recovery and refill through the established harness. Morgan supervises, resolves
 cross-project allocation conflicts and handles authorized session orchestration;
-Morgan does not manually duplicate routine harness delivery. Fixed cloud roles
-remain available for allocated independent work and deterministic MCP jobs.
+Morgan does not manually duplicate routine harness delivery. Its durable
+lifecycle remains available for recovery and cross-project coordination without
+requiring this conversation. Fixed cloud roles continue eligible independently
+owned work and deterministic MCP jobs.
 
 The Foo Codex ceiling is **64 concurrent local sessions**, subject to actual
 provider admission and the shared CPU, RAM, disk, I/O and process budget. It is
@@ -143,12 +200,13 @@ stopped.
 
 Reconcile running and uncertain effects under their original identities, then
 transfer eligible issues exclusively to the corresponding cloud roles with
-claim-generation fencing and receiver acknowledgment. Require a fresh heartbeat
-from the active Morgan coordinator before a new cloud claim or transfer; enter
-cloud-active only after the supported transfer is acknowledged. Resume only the
-first unaccepted stage. Foo-reserved issues retain their restriction; they do not
-silently become cloud-eligible. Keep independent deterministic MCP work running
-when its host, authority and resources remain available.
+claim-generation fencing and receiver acknowledgment. Require the current
+coordinator lease/epoch at the effect boundary; the durable lifecycle appoints
+and reconstructs Morgan when necessary rather than depending on an existing
+chat. Enter cloud-active after supported transfer acknowledgment. Resume only
+the first unaccepted stage. Foo-reserved issues retain their actual restriction;
+they do not silently become cloud-eligible. Keep independent deterministic work
+running where its own executor, authority and resources remain available.
 
 Morgan becomes the **active fallback coordinator** while local admission is
 closed. Project roles continue their own issue delivery and dependency
@@ -157,14 +215,14 @@ receipts. This mode-specific responsibility is distinct from normal read-only
 supervision. Record Morgan's current identity/epoch, heartbeat and successor
 handoff in the existing coordination evidence; fence a replaced coordinator.
 
-This version requires active Morgan for new cloud claims and transfers. Existing
-cloud owners may preserve assigned work within current claims; they cannot
-substitute their heartbeat for Morgan's coordinator role. It adds no unattended
-wake-up, new recurring automation or promise that a chat survives. If Morgan is
-unavailable, preserve state and report the missing active coordinator; do not
-invent a scheduler or restart old watchdogs. If neither
-reasoning route is available, continue only already-authorized deterministic
-work and preserve recoverable state.
+A valid coordinator epoch remains necessary; the lifecycle must restore it
+automatically through the qualified appointment/reconstruction boundary. If all
+reasoning capacity is unavailable, preserve work and continue independent
+authorized deterministic operations. Observe the existing approved routes with
+bounded backoff and resume reasoning automatically when current evidence passes
+admission. Use existing authorized capacity only: no new provider, paid API
+fallback, account or spending is implied. Avoid model calls for deterministic
+liveness, allowance collection or scheduling decisions.
 
 ### Gradual return: local-recovery to local-ready
 
@@ -184,9 +242,11 @@ When local readiness is established, return to local-ready: Stokowski resumes
 normal local orchestration and Morgan returns to supervision; existing cloud claims remain valid until
 normally completed or transferred.
 
-A stopped service is an independent control state; changing a mode does not start
-or resume it. These mode names match the source contract, not proof that the
-adapter or native/publisher hooks are installed.
+A user-stopped service is an independent durable control state; quota or host
+recovery cannot override it. Otherwise the lifecycle automatically restores the
+requested running state through supported controls after applicable checks.
+These mode names describe the required contract, not proof that the off-Foo
+adapter, schedule, session controls or native/publisher hooks are installed.
 
 ## White-room reconstruction at every transition
 
@@ -260,18 +320,23 @@ independent build/runtime surfaces; an optional shared execution lane has its
 own prerequisites only when selected. Preserve data, historical evidence and
 custody while resolving genuine dependency drift.
 
-Before the controlled full-token start, reconcile selected historical ledger
-identities into native Linear and demonstrate the actual intake, claims,
-review/publication and refill path. Record passed, failed, blocked, unknown and
-not-run checks. Source-policy acceptance alone does not start a service, deploy
-claim fencing, resolve ledger coverage or establish BAU. Use current supported
-start/stop controls under the user's actual instruction; preserve existing
-protected-action and project holds.
+Complete the requested restoration and controlled start without introducing a
+separate approval checkpoint for this same authorized outcome. Reconcile selected
+historical ledger identities into native Linear and qualify actual intake,
+independent authority/election, claims, review/publication, recovery and refill.
+Record passed, failed, blocked, unknown and not-run checks. Source-policy acceptance
+alone does not install a service, resolve coverage or establish BAU; continue the
+necessary integration, supported activation and destination readback under the
+current authorization and applicable platform requirements. Preserve specific
+project/data holds and stop only their affected work. Completion requires observed
+continuous useful delivery and recovery, not another plan or policy publication.
 
 Validate sudden exhaustion during coding/submission/publication, duplicate
 transition notices, lost acknowledgment, late stale-owner results, Morgan
-replacement, Foo-authority loss, quota restoration with active cloud work,
-Foo-only issues and shared-resource contention. Acceptance requires no duplicate
+replacement with the original chat absent, sustained Foo/MCP outage and recovery,
+authority loss, all-inference-unavailable preservation/automatic resumption,
+quota restoration with active cloud work, Foo-only issues, grace/probe resets and
+shared-resource contention. Acceptance requires no duplicate
 admission or effects, preserved recoverable work and useful execution, independent
 review, publication and refill evidence. Live disruptive exercises require their
 applicable authorization; focused tests do not prove deployed recovery.

@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "repository": "maldous/uif",
   "policy_path": "docs/agents/uif-worker-policy.md",
-  "sha256": "f8e19235eb095cfc754519f580c6bb35675baedbf4bf15d42b4a969becec90c4",
+  "sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
   "maintenance_repository": "maldous/uif",
   "maintenance_path": "docs/agents/uif-worker-policy.md",
   "distribution": "environment-owned",

@@ -18,13 +18,20 @@
       "project_uuid",
       "issue_uuid"
     ],
-    "claim_authority": "foo",
+    "claim_authority": "off-foo-control-plane",
     "registry_is_queue": false,
-    "ledger_ids": "provenance-only"
+    "ledger_ids": "provenance-only",
+    "authority_implementation": "unimplemented"
   },
   "local_session_ceiling": 64,
   "resource_accounting": "shared-across-local-sessions-and-mcp-jobs",
-  "morgan_continuity": "active-coordinator-required-no-unattended-wakeup",
+  "morgan_continuity": {
+    "lifecycle": "durable-logical-role",
+    "conversation_required": false,
+    "replacement": "fenced-reconstruction",
+    "wake": "independent-scheduled-or-event-trigger",
+    "implementation": "unqualified"
+  },
   "logical_roles": {
     "uif": {
       "display_name": "UIF",
@@ -190,5 +197,18 @@
       "repository_commands_as": "verified-checkout-owner"
     }
   },
-  "adoption": "Record installed bundle, owner acknowledgment and actual execution in existing Linear evidence; this registry declares none"
+  "adoption": "Record installed bundle, owner acknowledgment and actual execution in existing Linear evidence; this registry declares none",
+  "foo_outage": {
+    "sustained_grace_seconds": 900,
+    "qualified_probes_required": 2,
+    "configurable": true,
+    "brief_glitches": "retry-original-operation",
+    "healthy_probe_resets_grace": true,
+    "authority_must_remain_reachable": true
+  },
+  "inference_continuity": {
+    "capacity": "existing-authorized-only",
+    "new_provider_fallback": false,
+    "when_unavailable": "preserve-and-resume"
+  }
 }

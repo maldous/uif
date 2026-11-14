@@ -9,9 +9,10 @@ Load only the relevant skill and contained references for the selected task.
 
 | Capability | Correct use and evidence |
 | --- | --- |
-| UIF supervision | Normal full-token start/stop/report and read-only supervision; apply the policy's distinct active-Morgan fallback role during token exhaustion. A skill update and actual environment adoption must be verified separately. |
+| UIF supervision and durable coordination | Conversation controls remain start/stop/report; the durably scheduled logical Morgan/harness lifecycle independently coordinates and self-heals under the agreed policy. Its absence triggers fenced reconstruction, not waiting for this chat. Verify skill and runtime adoption separately. |
 | GitHub/native Git | Read source and review/merge outcomes; project owners may use native Git in their own environment. Preserve current branch/source, publication controls and one integration writer. |
 | Native Linear | Sole live issue intake, dependencies, scope, acceptance and durable coordination. Read immutable workspace/project/issue identity; comments/status are not atomic claims. |
+| Off-Foo control authority/lifecycle | Required independent coordinator election/leases, task claims and original-operation fences; durable scheduling/event triggers ensure Morgan and configured project executions. Concrete platform/adapter remains unimplemented and unqualified, not an installed capability. |
 | Foo Workspace MCP | Discover workspace, script schema, current revision and terminal run receipts. Use the supported user/root execution route for deterministic commands with explicit host/project/source bindings. |
 | Foo root jobs guidance | Privileged host-transport rules, immutable job identity and reconciliation. The fixed wrapper may have a stale workspace/disabled label; do not invoke it based on the generic connector's availability. |
 | Foo Codex controls | Use only the supported session-control interface actually exposed to its authorized owner. MCP shell execution is not an implied grant to create/resume sessions. |
@@ -22,8 +23,11 @@ A required capability missing from a selected lane blocks that dependent step.
 Use another already-authorized independent lane only after ownership and earlier
 effects are reconciled. Do not bypass a denial, invent an endpoint, install
 credentials or weaken host/security controls to make a capability appear present.
-No new paid provider, plugin installation or recurring automation follows from
-this inventory.
+Use existing authorized capacity and account grants only; no new paid provider,
+plugin installation or spending follows from this inventory. The agreed durable
+lifecycle requires a qualified independent schedule/event trigger, with original
+operation reconciliation and explicit user-stop preservation. Its declaration is
+not proof that one has been installed.
 
 ## Project-specific instruction packages
 
