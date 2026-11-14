@@ -1,0 +1,70 @@
+{
+  "state": "Bounded source correspondence from the owner’s retained capture and accepted Git history.",
+  "archive": "offmenu-retained-uif233-uif234-source-disposition-delta-20261114.zip",
+  "archive_sha256": "251abd8464fb5e81fa63b69c1ae1e2736f9da5162e4d2903a4ad5677fd6ebf33",
+  "manifest_sha256": "eead720aeaa6b259f06c5f334644d1178c54f93bab87b00b5c9536b778bceeb4",
+  "payloads": [
+    {
+      "path": "payload/summary.json",
+      "bytes": 7769,
+      "sha256": "4c8d521871879c27b4d6e9f72ab621380b0b31837687a4f99fdf44aadc62b793"
+    },
+    {
+      "path": "payload/uif-233-exact-captured-delta.patch",
+      "bytes": 9726,
+      "sha256": "5edb663e31d41484f67d9268970547d3e83b7771b7b769204b0eaa5a9e89ac34"
+    },
+    {
+      "path": "payload/uif-234-exact-captured-delta.patch",
+      "bytes": 52435,
+      "sha256": "74904947489a500cf391dab910e1d03d17134bbf060ea36b9058ff081e9ee362"
+    },
+    {
+      "path": "payload/uif233-234-captured-source-disposition.json",
+      "bytes": 7019,
+      "sha256": "00ee2d5a680277eddca23b7d51cbcb1607f2d0e9a0f4b44efcbd5db4bee3984d"
+    },
+    {
+      "path": "payload/uif233-exact-delta-source-assessment.json",
+      "bytes": 1804,
+      "sha256": "c32b3b2abb361b689ebcdee9f6d94d61e248efd725fa099daa568b0ffa3554d8"
+    },
+    {
+      "path": "payload/uif234-exact-delta-source-assessment.json",
+      "bytes": 14502,
+      "sha256": "41b92f1d6c2665c8b27ae432d1d29d37f5fa146a1a2a47380b267b788e1e0b80"
+    }
+  ],
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "rows": [
+    {
+      "original_id": "offmenu-retained-UIF-233",
+      "accepted_history_postimage_commit": "8b5c4065a91da5e0771d1ede6bd8cabbaae93756",
+      "captured_patch_sha256": "5edb663e31d41484f67d9268970547d3e83b7771b7b769204b0eaa5a9e89ac34",
+      "captured_patch_bytes": 9726,
+      "scope": "Source correspondence/retained custody only, not current installed UIF bytes, runtime qualification, security audit, product acceptance or shared-row closure",
+      "disposition": "Already represented in accepted Git history; current source retains selected mechanism with later hardenings. Retain dirty originals unchanged; no import/replay/merge/cleanup or new implementation selected.",
+      "original_row_sha256": "8098d61a51fdd59df632731fb154a6d06c09912b3a9c310010b2c3e9ec681f34"
+    },
+    {
+      "original_id": "offmenu-retained-UIF-234",
+      "accepted_history_postimage_commit": "e65a61c87ef70f42e51c54cdfa4e51ec2ad993d8",
+      "captured_patch_sha256": "74904947489a500cf391dab910e1d03d17134bbf060ea36b9058ff081e9ee362",
+      "captured_patch_bytes": 52435,
+      "scope": "Source correspondence/retained custody only, not current installed UIF bytes, runtime qualification, security audit, product acceptance or shared-row closure",
+      "disposition": "Already represented in accepted Git history; current source retains selected mechanism with later hardenings. Retain dirty originals unchanged; no import/replay/merge/cleanup or new implementation selected.",
+      "original_row_sha256": "9d04169660ed4a8288ed38885b04e179e60f56418e4415cf90ff2ec976b6dcc3"
+    }
+  ],
+  "revised_owner_counts": {
+    "accepted_source_milestones": 2,
+    "reviewed_published_draft_source": 2,
+    "bounded_no_change_dispositions": 3,
+    "already_represented_retain": 5,
+    "native_reserved": 4,
+    "finite_shared_source_comparison_remaining": 0,
+    "missing_current_evidence_or_explicit_hold": 38,
+    "total": 54
+  },
+  "scope": "Owner-matched captured dirty patches. Preserve dirty worktrees and later hardenings. Raw patches stay in private custody."
+}

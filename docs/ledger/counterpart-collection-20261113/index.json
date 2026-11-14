@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 45,
+  "record_count": 47,
   "records": [
     {
       "project": "ANQR",
@@ -335,6 +335,20 @@
       "source_sha256": "197e3e2f848e0e964cf913dcaf370f1c2c08ac015a141c4cc5014d4ff0d1e42a",
       "state": "Selected spec-to-code-compliance runtime or distribution and its actual consumer remain unbound.",
       "evidence_group": "CQ"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-233",
+      "source_sha256": "8098d61a51fdd59df632731fb154a6d06c09912b3a9c310010b2c3e9ec681f34",
+      "state": "The owner matched the captured dirty patch to accepted Git history. Retain dirty originals and later hardening.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-234",
+      "source_sha256": "9d04169660ed4a8288ed38885b04e179e60f56418e4415cf90ff2ec976b6dcc3",
+      "state": "The owner matched the captured dirty patch to accepted Git history. Retain dirty originals and later hardening.",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -561,7 +575,9 @@
         "offmenu-help-inventory-alignment",
         "offmenu-retained-UIF-235",
         "offmenu-retained-UIF-236",
-        "offmenu-retained-UIF-237"
+        "offmenu-retained-UIF-237",
+        "offmenu-retained-UIF-233",
+        "offmenu-retained-UIF-234"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -636,6 +652,15 @@
         "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/offmenu54-bounded-documentary-receipt.json",
         "sha256": "d01dbfbe9afa8c0da91be5b8aab52c494225eea28d2726a5f4f4ebec1b816842",
         "boundary": "Seven original evidence entries. Six existing entries were preserved once. Shared acceptance and current UIF-236 untracked bytes remain unresolved."
+      },
+      "uif233_234_contribution": {
+        "ids": [
+          "offmenu-retained-UIF-233",
+          "offmenu-retained-UIF-234"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/uif233-234-source-disposition-receipt.json",
+        "sha256": "3100203548398d7663d8b57769ab921c25f864731c6500b02e2aaf7072ca40dd",
+        "boundary": "Captured source correspondence only. Dirty originals stay in custody. No runtime or shared acceptance."
       }
     },
     "Cloud": {
