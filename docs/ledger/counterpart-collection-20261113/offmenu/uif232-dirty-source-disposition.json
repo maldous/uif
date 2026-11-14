@@ -1,0 +1,82 @@
+{
+  "archive_sha256": "3f45dd2541b09ecfa8abb36a51ccd037b3dde9ce74341dde157d26d8b9b8caf9",
+  "manifest_sha256": "326758d9ab6ddbaecd396379d9c259dcbe883348fa5240ad1b0edf64597c2691",
+  "verified_payloads": [
+    {
+      "path": "payload/candidate-uiF224-uiF238.json",
+      "bytes": 20616,
+      "sha256": "731f59112b504d4724e58b4e0354eaf23dfe21145e8c122c0d0e7b73e2d339f2"
+    },
+    {
+      "path": "payload/candidate-uif228-uif230-uif231-uif232.json",
+      "bytes": 22323,
+      "sha256": "b62b667b9d348d7d4ed5dcd9fe96c375d63e30660ef2b0139fc6520b9fab1dd5"
+    },
+    {
+      "path": "payload/six-committed-source-capture-request.json",
+      "bytes": 7587,
+      "sha256": "c7f444fa20c7837e8de158adcf970d67bbb83d6129602a49e55dfef1e488f2c7"
+    },
+    {
+      "path": "payload/six-source-graph-normalized.json",
+      "bytes": 4941,
+      "sha256": "eca2c3e02e352b1afb7534ed72a7615625b10c4d79ed5154155221a0e5085d19"
+    },
+    {
+      "path": "payload/summary.json",
+      "bytes": 3663,
+      "sha256": "62fe1477c5393dc42286806cf4543991c138694c24306c8b46de93abf68f4587"
+    },
+    {
+      "path": "payload/uif232-dirty-source-assessment.json",
+      "bytes": 10064,
+      "sha256": "d5951c1d2f24390a3c5f79b8378e06d70a4d9d33c5560f70641977a051e4eee8"
+    },
+    {
+      "path": "payload/uif232-dirty-source-representation.json",
+      "bytes": 1641,
+      "sha256": "21e312baf63d29b0ae85d0e2775f630893b6afb41399563779f3b42a0bdb1e7c"
+    },
+    {
+      "path": "payload/uif232-exact-dirty-delta.patch",
+      "bytes": 34651,
+      "sha256": "b56fbd9fb9661849c2929cff2c0a9cfc6beda5d5a76fd04374be7d8dfffd58f5"
+    },
+    {
+      "path": "payload/uif232-stable-dirty-capture-normalized.json",
+      "bytes": 1186,
+      "sha256": "0885ed84e52e34b1bb49e387775a36f45fc2fd82fa1b02a50a0f1b573cf79e27"
+    }
+  ],
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "original_row_sha256": "1749e5e59fd53756275da2fd95a84b1de48b94687c1fc6b659cd4ef605044a16",
+  "bounded_dirty_disposition": {
+    "kind": "uif232-exact-dirty-source-representation",
+    "original_id": "offmenu-retained-UIF-232",
+    "accepted_head": "59496c6cf006c16b6ac4859580d0e91374682756",
+    "captured_patch_sha256": "b56fbd9fb9661849c2929cff2c0a9cfc6beda5d5a76fd04374be7d8dfffd58f5",
+    "captured_patch_bytes": 34651,
+    "captured_postimages": {
+      "tests/delivery/test_stokowski_current_dispatch.py": {
+        "bytes": 133664,
+        "sha256": "10ec22e21862321e6a14e89599472ea9f0a4a3a54069f4f7adf6071181276c53",
+        "git_blob": "6c15f681c831a3b59c152a32f91a0af6e160ab99"
+      },
+      "tools/delivery/stokowski_adapter.py": {
+        "bytes": 106282,
+        "sha256": "44f8c9d3bacf4286005cd8ee4384e0ad71b886aff952fca6718683802996207b",
+        "git_blob": "82d41dc44cc472f7f4d2960e0bd1582803ca62b4"
+      }
+    },
+    "accepted_postimage_commit": "85d317c0c178b41080b842f9caf716657345b376",
+    "accepted_preimage_commit_for_exact_two_path_patch": "e65a61c87ef70f42e51c54cdfa4e51ec2ad993d8",
+    "independent_verification": "All supplied postimage SHA256/lengths verified against exact local Git blobs. Git diff of accepted pre/post commits with abbrev9 over exact two paths reproduces captured patch bytes/length/SHA256. Postimage commit is ancestor of accepted594.",
+    "disposition": "Retain original dirty source unchanged; selected dirty delta already represented in accepted history, later evolved. No import/replay/cleanup/current-runtime qualification.",
+    "remaining_original_clause": "Committed native-publication module/test under local-onlyf0fe55 remains to hash-compare; this dirty-delta verdict does not close whole originalUIF232row or qualify running native caller."
+  },
+  "limits": "Private archive only. The dirty disposition supplies no accepted evidence for the six committed tips or running source and no whole-row, canonical or combined closure.",
+  "committed_tip_scope": {
+    "request_sha256": "c7f444fa20c7837e8de158adcf970d67bbb83d6129602a49e55dfef1e488f2c7",
+    "status": "A separate ordinary-user capture has completed. Its owner assessment is pending and does not form part of this dirty-delta disposition."
+  }
+}

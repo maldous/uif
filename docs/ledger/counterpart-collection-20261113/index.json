@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 54,
+  "record_count": 55,
   "records": [
     {
       "project": "ANQR",
@@ -398,6 +398,13 @@
       "source_sha256": "eb9c7fddefc00fa638cc52da0bbc3347e42d3ca866319431978fda857c52fd52",
       "state": "bounded immutable shared-tooling custody disposition",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-232",
+      "source_sha256": "1749e5e59fd53756275da2fd95a84b1de48b94687c1fc6b659cd4ef605044a16",
+      "state": "The captured dirty delta and two postimages match accepted Git history. Keep the dirty originals. Committed-tip assessment remains separate.",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -633,7 +640,8 @@
         "offmenu-retained-UIF-225",
         "offmenu-retained-UIF-226",
         "offmenu-retained-UIF-227",
-        "offmenu-retained-UIF-229"
+        "offmenu-retained-UIF-229",
+        "offmenu-retained-UIF-232"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -747,6 +755,14 @@
         ],
         "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/current-custody-addendum.json",
         "sha256": "9dd1decf02eb4f10785ef24de4be6184b5bdd61b37929f007d749743b16e38a3"
+      },
+      "uif232_dirty_delta_contribution": {
+        "ids": [
+          "offmenu-retained-UIF-232"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/uif232-dirty-source-disposition.json",
+        "sha256": "c91356db865c2978256635a7ccd5242dd303c136cd0ed8d2996ddf2529a6706e",
+        "scope": "Captured dirty source correspondence only."
       }
     },
     "Cloud": {
