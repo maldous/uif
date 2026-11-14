@@ -1,0 +1,188 @@
+{
+  "archive_sha256": "66e6d5f0b296f516ec84df87f5f2b78987507c9703a9e548cfced0e361e87b88",
+  "manifest_sha256": "5650ed54253c5c9086d515a00ecbec68283e913bfd5b3d8121c21f28afe6bbdf",
+  "verified_payloads": [
+    {
+      "path": "payload/shared-uif-published-source-boundary.json",
+      "bytes": 1860,
+      "sha256": "4fe0551dc8d2fdc5dbd527caa0ad8d9d2b0f32ace99a8a23e38bd214fc4a49ef"
+    },
+    {
+      "path": "payload/shared-uif-retained-safeguards-handoff.json",
+      "bytes": 2491,
+      "sha256": "01a1717a69d66608dbfc74e3dacbda19e2f9d8ecd5282762b012cabd7e359906"
+    },
+    {
+      "path": "payload/six-committed-capture-normalized.json",
+      "bytes": 2595,
+      "sha256": "de4196e7ad9c79423d1f2026d88a060dc16ca39258db3f29cab154eb02aa8d9e"
+    },
+    {
+      "path": "payload/summary.json",
+      "bytes": 4039,
+      "sha256": "7651543b787e650658134ed06e2e45ba2df51e43f55e3051b69d998dde2b441e"
+    },
+    {
+      "path": "payload/uif224-committed-assessment.json",
+      "bytes": 10049,
+      "sha256": "cff5e9af66ba2d65ac1591c9195765a4dd1c00e9dd0cd4c4cc89da985623521d"
+    },
+    {
+      "path": "payload/uif224-relayed-committed.patch",
+      "bytes": 11279,
+      "sha256": "8fab4f2dbace3cbfd1dc341e6a250b62b4aea85d2eea94bccb0bf3d8e2a1b2ea"
+    },
+    {
+      "path": "payload/uif228-missing-text-relay-request.json",
+      "bytes": 1529,
+      "sha256": "b467a374699e8b58a8cb2ba1ac4960518548ff128fa8e438991dcdc1118f88ea"
+    },
+    {
+      "path": "payload/uif230-committed-assessment.json",
+      "bytes": 9164,
+      "sha256": "4d95f9bb8035eb66837eac48ed04b630905b70bdf185fbe0e37889f535202d91"
+    },
+    {
+      "path": "payload/uif230-relayed-committed.patch",
+      "bytes": 10791,
+      "sha256": "0a19774b0b474913a2b940e1465a555182ede82606e86db61b233fc6d0e57c4a"
+    },
+    {
+      "path": "payload/uif231-committed-assessment.json",
+      "bytes": 5807,
+      "sha256": "519747cc67799b47ec643fbaf2988729990bb84fe7ba11bb423abba1484337ed"
+    },
+    {
+      "path": "payload/uif231-relayed-committed.patch",
+      "bytes": 3550,
+      "sha256": "14b5c4973c74ecd3c51ef1185f067eec6e0d58871711d96f90cba5e8f87d1c88"
+    },
+    {
+      "path": "payload/uif232-238-exact-committed-representation.json",
+      "bytes": 2933,
+      "sha256": "2e766cf26c88e9aa71d7a86c370fc27aea6b7bcc1255a4ba9498949da9345614"
+    },
+    {
+      "path": "payload/uif232-committed-assessment.json",
+      "bytes": 7967,
+      "sha256": "9b298edadb8f8af95e16af93dd9ff450f62366bfef51795fdf4252656ecfa707"
+    },
+    {
+      "path": "payload/uif232-exact-committed.patch",
+      "bytes": 39469,
+      "sha256": "a731cbf380c2a455a4118a94387320ee6ee6a49749e3c1ef99fdb3fe79d3426b"
+    },
+    {
+      "path": "payload/uif238-committed-assessment.json",
+      "bytes": 11166,
+      "sha256": "f9d1f201e89cafc6d5205f2206464968aa5d3f3a29391859546da1c22cca73a9"
+    },
+    {
+      "path": "payload/uif238-exact-committed.patch",
+      "bytes": 15386,
+      "sha256": "23d3cebb5650c0a84f958355572d90488f3ae0799e5edf854934ad2f750e3861"
+    }
+  ],
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "bounded_rows": [
+    {
+      "original_id": "offmenu-retained-UIF-224",
+      "status": "unique retained source; bounded assessment complete",
+      "finding": "Readonly requalification of original complete VERIFIED innerSTEP after failedOBSERVE requires freshcanonical exactreceipt path/hash; cloned completionview, no wirecall or custodyrewrite. Preexisting canonicaltaildependency absent fromaccepted594, so notstandalonepatch. PreserveforactualsharedUIFcallerqualification, notproductgate.",
+      "original_row_sha256": "46cf74ffd2e8028542b04388f84ace5aae20b779bbaf85ef9c9a834d74800454"
+    },
+    {
+      "original_id": "offmenu-retained-UIF-230",
+      "status": "unique retained source; bounded assessment complete",
+      "finding": "Descriptorrelative/no-follow traversal closes onlynewownedqualificationdirs/defaultACL, refusesunsafeexistingnodes/exclusiveattempt. CurrentcodingACL hardening distinct. Preserveinactive; no actualACLchanges or currentdefectinferred.",
+      "original_row_sha256": "484735c0c41c44ddb0e8f4d8711c959c2df9f09ec9efcd20ffa9b722e6116978"
+    },
+    {
+      "original_id": "offmenu-retained-UIF-231",
+      "status": "unique retained source; bounded assessment complete",
+      "finding": "Afterdrainingreviewchildren, refusescleanstopifhandlesremain, preservesoriginalheldidentity/lease anddoesnotcloseLinear. Currentreviewpathdiffers; no currentdefect/impliedmandatoryimport.",
+      "original_row_sha256": "be0d6bc70f5fc3d08636171d4035b460622f6245445faac103c4c2290ceebaa4"
+    },
+    {
+      "original_id": "offmenu-retained-UIF-232",
+      "status": "exact selected committed source alreadyrepresented",
+      "finding": "Full39469Bpatch SHAa731... andbothfullpostimages matchacceptedcandidateae102c8; laternativeSSH/source/custodyhardenings separated. Distinctdirty85d317deltapreviouslyhashverifiedandqueued. No import/replay.",
+      "original_row_sha256": "1749e5e59fd53756275da2fd95a84b1de48b94687c1fc6b659cd4ef605044a16"
+    },
+    {
+      "original_id": "offmenu-retained-UIF-238",
+      "status": "exact selected committed source alreadyrepresented",
+      "finding": "Full15386Bpatch SHA23d3... andall3postimages matchaccepted93812c09; later49bbcatalogueevolution separated. No import/replay.",
+      "original_row_sha256": "b16dffe513e1af910479d9898de4d0d900577b47d2e54424053a804a22d2c2cd"
+    }
+  ],
+  "exact_selected_representation": {
+    "kind": "root-independent-committed-postimage-and-patch-identity-proof",
+    "accepted_source": "59496c6cf006c16b6ac4859580d0e91374682756",
+    "records": [
+      {
+        "original_id": "offmenu-retained-UIF-232",
+        "accepted_candidate": "ae102c8fe1a7d53636621fbfbd2f81ff406190c0",
+        "candidate_is_accepted_ancestor": true,
+        "captured_postimages": [
+          {
+            "path": "tests/delivery/test_stokowski_native_publication.py",
+            "blob": "d6495772d0189086f93daf27bbeaf9078f870ddd",
+            "bytes": 20136,
+            "sha256": "33254031b2502739afb2d35def54fb2040625de91d0dd21741c726193b408d2c",
+            "root_verified": true
+          },
+          {
+            "path": "tools/delivery/stokowski_native_publication.py",
+            "blob": "dd45178377906663ab571ce206cb70704e6da272",
+            "bytes": 17962,
+            "sha256": "0f3e4007aeb48014a48970b5ced18d237ed9258da991f2646d3a30eaab39d7d4",
+            "root_verified": true
+          }
+        ],
+        "patch_bytes": 39469,
+        "patch_sha256": "a731cbf380c2a455a4118a94387320ee6ee6a49749e3c1ef99fdb3fe79d3426b",
+        "exact_patch_reproduced_from_accepted_candidate": true,
+        "disposition": "Selected committed tip source already represented; retain originalcommit/custody, no import or replay. Wholebranch/runtime/issue/sharedrow closure notinferred."
+      },
+      {
+        "original_id": "offmenu-retained-UIF-238",
+        "accepted_candidate": "93812c09e85c57076c6c0e6afb1a788a97c11372",
+        "candidate_is_accepted_ancestor": true,
+        "captured_postimages": [
+          {
+            "path": "docs/development/native-harness-package.md",
+            "blob": "838a76c0297090fd9c80205de84e67f4119eb1f8",
+            "bytes": 13840,
+            "sha256": "14711b3553c82ef591e806df94633954c268924a976e1a1aad19ed530c5c3ac9",
+            "root_verified": true
+          },
+          {
+            "path": "tests/delivery/test_native_harness_package.py",
+            "blob": "8b4bfd89ec70e35b28b9c34bbe035dedbb15ad7f",
+            "bytes": 21735,
+            "sha256": "b9334a6558c897e0c6698455434bd438b5320e1cbcce27ba25c71ce454775534",
+            "root_verified": true
+          },
+          {
+            "path": "tools/delivery/native_harness_package.py",
+            "blob": "e9c79acda5382d6f4d4ae7ac8c4724be6338b826",
+            "bytes": 33581,
+            "sha256": "f9e41d5655e71bda1fa9908d600d1c259dbc5b29ee43a97a5db304a9fec6c7b0",
+            "root_verified": true
+          }
+        ],
+        "patch_bytes": 15386,
+        "patch_sha256": "23d3cebb5650c0a84f958355572d90488f3ae0799e5edf854934ad2f750e3861",
+        "exact_patch_reproduced_from_accepted_candidate": true,
+        "disposition": "Selected committed tip source already represented; retain originalcommit/custody, no import or replay. Wholebranch/runtime/issue/sharedrow closure notinferred."
+      }
+    ],
+    "limits": "Cryptographic source correspondence only; no current live authority, runtime or full originalbranch equivalence."
+  },
+  "scope": "Selected committed tips only. No source import or replay. Preserve 224/230/231 for actual UIF source and caller applicability, later hardening, and 232 dirty-versus-committed distinction. No whole-row, runtime, shared or combined closure.",
+  "existing_evidence_join": [
+    "offmenu-retained-UIF-232"
+  ],
+  "subsequent_scope": "UIF-228 has a separate final owner assessment queued after this checkpoint. The transfer gap in the archived packet is historical."
+}
