@@ -1,0 +1,629 @@
+{
+  "schema": "cq-current-original-ledger-delivery-handoff/1",
+  "UTC": "2026-11-14T03:00:30.532574+00:00",
+  "routing_supersession": "Latest Matt/Morgan direction: Morgan owns all original-ledger delivery and its reservations/dependencies; UIF independently owns Linear. Finish eligible ledger work first while respecting actual dependencies/active claims. References inside the timestamped reviewed audit to sole UIF writer mean retained integration custody, not transfer of ledger ownership away from Morgan. No shared ledger edit was performed.",
+  "current_source": {
+    "sha": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+    "tree": "be1e401a4378e7c2757f0058a71c6b376a472f44",
+    "message": "Merge pull request #30 from maldous/fix/locale-test-module-loading\n\nLoad the locale module directly in behavior tests",
+    "parents": [
+      "14c0a9dd4334b5ea87638f186e4408f275c24645",
+      "14ef44e7134951477592dedcfd5564cc05e099ec"
+    ],
+    "paths": [
+      {
+        "path": "examples/landing-motion/locale.js",
+        "blob": "93e5e48c123741dfa085114d138aee2499d4b5a3"
+      },
+      {
+        "path": "examples/landing-motion/locale.test.mjs",
+        "blob": "9c147e2dc500f920bcdfbde29815ffabc5a92905"
+      }
+    ]
+  },
+  "files": [
+    {
+      "name": "cq-26-row-current-audit.json",
+      "bytes": 27075,
+      "sha256": "df0d45806488098f1526cc77ceae36b51c22cea9ae3a04aab4989f0a4234f8c8",
+      "content": {
+        "schema": "cq-original-allocation-row-audit/1",
+        "UTC": "2026-11-14T02:58:40.699Z",
+        "allocation": {
+          "repository": "maldous/uif",
+          "commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+          "readme_blob": "e9f75a1f617efc49020d5f396a767cfb8106f24e",
+          "sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+          "CQ_rows": 26,
+          "revision_note": "No separate per-row revision token supplied; exact original IDs and pinned README clauses retained."
+        },
+        "dispositions_read": {
+          "UIF_develop": "b68cfcb5fa6745f1c1642f2cbe4c211191410901",
+          "collection_head": "abd9585d1d2fd0244b03edb6a1b25c2fbfac2de9",
+          "collection_is_evidence_not_closure": true
+        },
+        "current_source": {
+          "sha": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+          "tree": "be1e401a4378e7c2757f0058a71c6b376a472f44",
+          "message": "Merge pull request #30 from maldous/fix/locale-test-module-loading\n\nLoad the locale module directly in behavior tests",
+          "parents": [
+            "14c0a9dd4334b5ea87638f186e4408f275c24645",
+            "14ef44e7134951477592dedcfd5564cc05e099ec"
+          ],
+          "paths": [
+            {
+              "path": "examples/landing-motion/locale.js",
+              "blob": "93e5e48c123741dfa085114d138aee2499d4b5a3"
+            },
+            {
+              "path": "examples/landing-motion/locale.test.mjs",
+              "blob": "9c147e2dc500f920bcdfbde29815ffabc5a92905"
+            }
+          ]
+        },
+        "current_automatic_runs": [
+          {
+            "id": 43548721233,
+            "name": "Browser preview validation",
+            "status": "queued",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548721200,
+            "name": "Source checks",
+            "status": "queued",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548721222,
+            "name": "Darwin Intel source-build preparation",
+            "status": "queued",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548721149,
+            "name": "Synthetic WireMock integration",
+            "status": "in_progress",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548721161,
+            "name": "Dependency review",
+            "status": "completed",
+            "conclusion": "success",
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548721234,
+            "name": "Ephemeral SonarQube gate",
+            "status": "in_progress",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548721189,
+            "name": "Security analysis",
+            "status": "in_progress",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548716409,
+            "name": "Source checks",
+            "status": "queued",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548716883,
+            "name": "Synthetic WireMock integration",
+            "status": "in_progress",
+            "conclusion": null,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          },
+          {
+            "id": 43548716411,
+            "name": "Security analysis",
+            "status": "completed",
+            "conclusion": "failure",
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "attempt": 1
+          }
+        ],
+        "rows": [
+          {
+            "original_id": "cq.alias001.codex_release",
+            "clause": "Release the active Codex client family historical-root dependency ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "blocked_input",
+            "current_outcome": "No responsible Codex consumer thread, configured root/revision or owner release is evidenced.",
+            "evidence": "Existing records inquiry01a1d2a7-0044-77b3-940c-21ee84661927: originalREADME149/430 and relocationreceipt; no assignee UIF-213.",
+            "next_action_or_input": "Morgan/operator must identify actual current consumer/configuration custodian; retain alias. No blind dispatch."
+          },
+          {
+            "original_id": "cq.alias001.node_release",
+            "clause": "Release the separate Node client historical-root dependency ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "blocked_input",
+            "current_outcome": "Separate Node consumer owner/binding is unidentified; Codex evidence cannot substitute.",
+            "evidence": "Same exhausted retained-record inquiry; three historical processes not mapped to current owners.",
+            "next_action_or_input": "Morgan/operator supplies current Node owner plus configured binding, then finite owner declaration; no repeat historical inquiry."
+          },
+          {
+            "original_id": "cq.alias001.other_bindings",
+            "clause": "Resolve remaining SRC-001 saved-root and consumer bindings ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "blocked_input",
+            "current_outcome": "No complete current saved-root/consumer release map.",
+            "evidence": "SRC-001 retained in accepted UIF README atb68cfcb5; relocation proves symlink, not consumers.",
+            "next_action_or_input": "Existing current configuration custodians supply non-secret selected roots/retain-or-release declarations."
+          },
+          {
+            "original_id": "cq.alias001.retire",
+            "clause": "Retire SRC-001 compatibility alias after actual consumer release ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable). **Conditional.**",
+            "state": "conditional_blocked",
+            "current_outcome": "Actual Codex, Node and remaining consumer release absent.",
+            "evidence": "Original clause explicitly conditional; accepted SRC-001 retain disposition.",
+            "next_action_or_input": "Only after prior three releases and permitted retirement; no migration/removal now."
+          },
+          {
+            "original_id": "cq.alias002.preview_release",
+            "clause": "Release or safely migrate the Impeccable preview historical-root dependency ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "blocked_scope",
+            "current_outcome": "Impeccable saved roots still use dated alias; UI/design/server and alias migration pause remains.",
+            "evidence": "Frontend owner01a1a65b-27a3-7f62-92d6-316f71bc304b turn01a1d214-5068-7273-894d-0fc2d40db2bc.",
+            "next_action_or_input": "Matt/actual preview owner selects finite permitted migration/release; no UI/server resume or alias change."
+          },
+          {
+            "original_id": "cq.alias002.other_bindings",
+            "clause": "Resolve remaining SRC-002 consumer and configuration bindings ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "blocked_input_scope",
+            "current_outcome": "Saved app/session/design roots remain bound; no complete current release declaration.",
+            "evidence": "Existing frontend packet/live roots declaration; absent PID is not consumer release.",
+            "next_action_or_input": "Existing frontend custodian supplies release/migration under actual pause resolution; no duplicate inspection."
+          },
+          {
+            "original_id": "cq.alias002.retire",
+            "clause": "Retire SRC-002 compatibility alias after actual consumer release ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable). **Conditional.**",
+            "state": "conditional_blocked",
+            "current_outcome": "Preview and other bindings not released.",
+            "evidence": "Original conditional clause; current SRC-002 retain disposition.",
+            "next_action_or_input": "Only after alias002 release evidence and authorized retirement."
+          },
+          {
+            "original_id": "cq.r181.resolve_hold",
+            "clause": "Resolve the specific R181 TypeScript Git inspection hold ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "blocked_permission",
+            "current_outcome": "Specific protected TypeScript Git inspection hold remains; no exact release supplied.",
+            "evidence": "Original R181 hold and current UIF README SRC-003 disposition preserved.",
+            "next_action_or_input": "Exact action-specific release from responsible user/owner; no protected read retry."
+          },
+          {
+            "original_id": "cq.r181.identity_inventory",
+            "clause": "Establish held Git identity and source/custody state once permitted ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "conditional_blocked",
+            "current_outcome": "Identity/common-store read depends on R181 release.",
+            "evidence": "Original clause says once permitted; inventory not obtained.",
+            "next_action_or_input": "After release, one precise existing-owner identity inventory; no current read."
+          },
+          {
+            "original_id": "cq.r181.disposition",
+            "clause": "Record and carry out the permitted R181 preservation/disposition outcome ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable). **Conditional.**",
+            "state": "conditional_blocked",
+            "current_outcome": "No permitted identity-derived disposition selected.",
+            "evidence": "Original conditional clause; R181 identity remains unknown.",
+            "next_action_or_input": "Review exact preservation/disposition after permitted inventory; retain current state."
+          },
+          {
+            "original_id": "cq.r202.original_outcome",
+            "clause": "Recover the original R202 action, target and outcome from existing evidence ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "legacy_unavailable",
+            "current_outcome": "Original action/target/outcome remain unavailable; historical recovery was retired by Matt.",
+            "evidence": "Morgan relayed stop on historical locator/reconstruction; no original success claimed.",
+            "next_action_or_input": "No executable recovery selected; preserve unknown outcome, no replay/search."
+          },
+          {
+            "original_id": "cq.canonical.accepted_main_plan",
+            "clause": "Complete the accepted canonical-main and retained-root transition plan ([UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); deliverable).",
+            "state": "executed_plan_candidate",
+            "current_outcome": "Current canonical-main/retained-root transition plan prepared now; acceptance remains pending, not source promotion.",
+            "evidence": "Fresh GitHub main/develop/PR1/feature refs and current custody; plan in this packet.",
+            "next_action_or_input": "Cloud independent review, then retained Root acknowledgement and sole UIF writer acceptance; no builds or merge."
+          },
+          {
+            "original_id": "cq.r180.freeze_packet",
+            "clause": "Obtain the existing frontend owner frozen current-source packet ([UIF-212](https://linear.app/maldous/issue/UIF-212/reconcile-cq-source-and-proof-artifacts); deliverable).",
+            "state": "complete_bounded",
+            "current_outcome": "Sanitized current packet frozen; credential spans excluded.",
+            "evidence": "Native owner turn01a1d226-aa0b-7a23-9848-3026783e127f; manifestfeee79b3; collectionabd9585.",
+            "next_action_or_input": "No repeat freeze; raw/private source and runtime acceptance not implied."
+          },
+          {
+            "original_id": "cq.r180.assess_packet",
+            "clause": "Assess the frozen frontend delta and record necessary, satisfied or other source disposition ([UIF-212](https://linear.app/maldous/issue/UIF-212/reconcile-cq-source-and-proof-artifacts); deliverable).",
+            "state": "complete_bounded",
+            "current_outcome": "Independent sanitized delta assessment complete; corrective four-file PR21 incorporated.",
+            "evidence": "Review receipt2ebaa3f42457dda0c1f7db9983a060398e13589a86c433e2e73dab493ee5fe05; collectionabd9585.",
+            "next_action_or_input": "Broader private delta remains unaccepted/paused; no assessment replay."
+          },
+          {
+            "original_id": "cq.handoff.reconcile_publication_state",
+            "clause": "Reconcile current handoff publication-state corrections while preserving finite evidence ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable).",
+            "state": "complete_bounded",
+            "current_outcome": "Stale publication guidance reconciled.",
+            "evidence": "Reviewed03668e1 and PR20 accepted761ed693; original packet in collectionabd9585.",
+            "next_action_or_input": "No repeat publication-state correction."
+          },
+          {
+            "original_id": "cq.handoff.publish_reviewed_correction",
+            "clause": "Publish and verify the reviewed handoff/documentation correction through the qualified route ([UIF-175](https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls); deliverable). **Conditional.**",
+            "state": "complete_bounded",
+            "current_outcome": "PR20 one-file correction merged and remote readback verified.",
+            "evidence": "761ed69346f3394762b7159102f0dffcc0169266/tree9757c9dc088102ccfdc62a961bf022c1e250082a.",
+            "next_action_or_input": "No second publication; PR1 whole-product gates distinct."
+          },
+          {
+            "original_id": "cq.profile.bind_exact_contract",
+            "clause": "Bind exact CQ project, immutable source and existing read-only profile/executor contract ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).",
+            "state": "complete_bounded",
+            "current_outcome": "Finite six-file direct-cloud contract bound and owner result accepted.",
+            "evidence": "Execution106af8a1; contractb8f0c480; profiledd587810; collection retains exact row.",
+            "next_action_or_input": "Historical74e/Foo/Pool/shared-harness admission not inferred."
+          },
+          {
+            "original_id": "cq.profile.qualify_acquisition_isolation",
+            "clause": "Qualify read-only source acquisition and disjoint private workspace/resource isolation ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).",
+            "state": "executed_bounded_contribution",
+            "current_outcome": "Actual pinned six-file MCP acquisition/hash verification and retained-evidence private paths credited; enforced OS/resource isolation not demonstrated.",
+            "evidence": "Existing execution106af8a1 and result e56272af; independent static assessment now, no replay.",
+            "next_action_or_input": "If stronger execution selected, actual executor/interface must supply isolation/resource evidence; no automatic Foo/Pool requirement."
+          },
+          {
+            "original_id": "cq.profile.qualify_private_return",
+            "clause": "Qualify bounded typed evidence return and deterministic current-owner review routing ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).",
+            "state": "complete_bounded",
+            "current_outcome": "Typed9670-byte private result returned to current CQ owner within65536-byte cap; owner accepted.",
+            "evidence": "Existing result e56272af; owner review4961f166; collection867651/abd9585.",
+            "next_action_or_input": "No re-export/recount; automated/live/shared returns not inferred."
+          },
+          {
+            "original_id": "cq.profile.qualify_denials",
+            "clause": "Verify wrong-project/source/path/tool/rights/result denials and uncertain-admission reconciliation ([UIF-178](https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness); deliverable).",
+            "state": "executed_bounded_contribution",
+            "current_outcome": "17 reported local-validator refusals and uncertain-local-execution refusal credited; external admission not qualified.",
+            "evidence": "Boundary1b39408c9ede75bd30645fb1bd8c6918a0c0ccf04a6f004a798471ba9f264aa3; independent static assessment now.",
+            "next_action_or_input": "If live interface selected, supply actual admission/reconciliation evidence; no replay or new artificial job."
+          },
+          {
+            "original_id": "cq.analyzer.original_pin_assessment",
+            "clause": "Produce original-pin Sonar Python analyzer-version assessment via one eligible admission ([UIF-179](https://linear.app/maldous/issue/UIF-179/resolve-the-sonar-python-analyzer-version-contract); deliverable).",
+            "state": "legacy_unavailable_current_followthrough",
+            "current_outcome": "Original74e manifest/warning unavailable; current build/API/runtime analysis delivered separately, not original execution.",
+            "evidence": "Original disposition in collectionabd9585; exact upstream2c1b711 build and isolated5.33 runtime proof onb2b7a8b.",
+            "next_action_or_input": "No historical reconstruction. Current hosted analyzer adoption unselected; automatic Sonar follow-through remains current engineering."
+          },
+          {
+            "original_id": "cq.analyzer.owner_review",
+            "clause": "Return the bounded source assessment for current CQ owner review ([UIF-179](https://linear.app/maldous/issue/UIF-179/resolve-the-sonar-python-analyzer-version-contract); deliverable).",
+            "state": "complete_current_review_original_unavailable",
+            "current_outcome": "Current source/result and later native runtime evidence reviewed; missing original result cannot be owner-reviewed as executed.",
+            "evidence": "Owner review4961f166 plus native runtime/coverage receipts and accepted Python corrections.",
+            "next_action_or_input": "Preserve original missing-unit boundary; no additional historical review can be manufactured."
+          },
+          {
+            "original_id": "shared.harness.cq_normal_cycle",
+            "clause": "Prove normal CQ intake, useful execution, independent review and accepted return ([UIF-177](https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover); deliverable).",
+            "state": "blocked_selected_contract",
+            "current_outcome": "No CQ deployed/shared intake/admission/return contract selected; direct-cloud/source publication is not proof.",
+            "evidence": "UIF current applicability response: foo_jobs is UIF-snapshot-only; collection shared_contract_disposition.",
+            "next_action_or_input": "UIF shared owner selects actual CQ consumer/interface and source-bound admission; CQ supplies useful unit then. No arbitrary neutral job."
+          },
+          {
+            "original_id": "shared.harness.cq_successor_refill",
+            "clause": "Prove normal CQ successor/refill continuation ([UIF-177](https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover); deliverable).",
+            "state": "conditional_blocked",
+            "current_outcome": "No selected normal shared CQ cycle or successor/refill operation.",
+            "evidence": "Original clause and same unselected shared contract.",
+            "next_action_or_input": "After actual selected cycle, prove successor/refill under same owner/revision; no synthetic work."
+          },
+          {
+            "original_id": "shared.harness.cq_recovery",
+            "clause": "Prove normal CQ recovery with preserved owner and evidence-return bindings ([UIF-177](https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover); deliverable).",
+            "state": "conditional_blocked",
+            "current_outcome": "No selected CQ shared recovery operation/uncertain receipt needing execution.",
+            "evidence": "Original clause; restart-durability reuse is reference, not new operation.",
+            "next_action_or_input": "Shared owner supplies actual selected recovery contract/event; preserve operation identity."
+          },
+          {
+            "original_id": "shared-publication-execute-cq",
+            "clause": "Publish accepted CQ source through the qualified route and verify remote identity ([UIF-218](https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff), [UIF-213](https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state); conditional execution). **Conditional.**",
+            "state": "complete_bounded",
+            "current_outcome": "Accepted PR22 product separation published and remote identity verified; later PR28/29/30 source follows same custody.",
+            "evidence": "Original contributiond4f5cad4 incorporated10bdb322; latest PR30ab4ca560/treebe1e401a.",
+            "next_action_or_input": "No re-export/recount or historical/shared closure; PR1 and runtime remain distinct."
+          }
+        ],
+        "canonical_main_plan": {
+          "original_id": "cq.canonical.accepted_main_plan",
+          "state": "prepared current source-bound plan; acceptance pending",
+          "source_snapshot": {
+            "sha": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "tree": "be1e401a4378e7c2757f0058a71c6b376a472f44",
+            "message": "Merge pull request #30 from maldous/fix/locale-test-module-loading\n\nLoad the locale module directly in behavior tests",
+            "parents": [
+              "14c0a9dd4334b5ea87638f186e4408f275c24645",
+              "14ef44e7134951477592dedcfd5564cc05e099ec"
+            ],
+            "paths": [
+              {
+                "path": "examples/landing-motion/locale.js",
+                "blob": "93e5e48c123741dfa085114d138aee2499d4b5a3"
+              },
+              {
+                "path": "examples/landing-motion/locale.test.mjs",
+                "blob": "9c147e2dc500f920bcdfbde29815ffabc5a92905"
+              }
+            ]
+          },
+          "refs": {
+            "main": "faf8e0242847d9a0026139762d6558ecd39debac",
+            "develop": "faf8e0242847d9a0026139762d6558ecd39debac",
+            "feature": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64"
+          },
+          "pr1": {
+            "state": "open",
+            "merged": false,
+            "head": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+            "base": "develop",
+            "base_sha": "faf8e0242847d9a0026139762d6558ecd39debac"
+          },
+          "custody": {
+            "durable_delivery_owner": "6af4e68c-e678-8191-ac25-7b98df80c010",
+            "sole_native_integration_writer": "01a1a102-5d55-7593-96ea-0c9ef716faa7",
+            "frontend_private_custodian": "01a1a65b-27a3-7f62-92d6-316f71bc304b",
+            "UIF_shared_ledger_owner": "6af3d1ae-21f8-8191-8aad-38f80536e0fd"
+          },
+          "steps": [
+            {
+              "stage": "Current working baseline",
+              "action": "Continue reviewed product fixes on feature/initial-implementation through retained Root and protected PRs; preserve all current source and exact receipts. Empty main/develop are not substituted for the bootstrap feature.",
+              "execution": "Already current route; latest PR30 incorporated without claiming qualification."
+            },
+            {
+              "stage": "PR1 qualification",
+              "action": "Meet existing source/platform/security/CodeQL/Sonar/SDK gates and required independent approval; review threads must stay resolved. Use exact revision checks, not older composite passes.",
+              "execution": "Not complete; no PR1 merge authorized here. Current automatic runs are observed, not retriggered."
+            },
+            {
+              "stage": "Qualified integration",
+              "action": "Only after established PR1 prerequisites and explicit authorized incorporation, merge PR1 to its actual base develop using normal protection. Verify merge parents/tree/ref and actual outcome.",
+              "execution": "Future conditional; no bypass, main push or merge in this plan."
+            },
+            {
+              "stage": "Stable main",
+              "action": "Use existing CONTRIBUTING/RELEASE Gitflow for a qualified release branch, review, stable main incorporation and immutable release evidence. PR1-to-develop is not itself a production release.",
+              "execution": "No release/tag/provider/deployment selected."
+            },
+            {
+              "stage": "Retained source roots",
+              "action": "Keep SRC-001 alias and common-store bindings until actual Codex, Node and other current consumer owners provide release. Keep SRC-002 saved Impeccable bindings and private delta custody under its pause. No deletion or blind relocation.",
+              "execution": "Blocked on exact current consumer identities and specific release/migration scope, not UIF Git."
+            },
+            {
+              "stage": "Held identities and history",
+              "action": "R181 remains protected until specific permission; R202 and missing historical analyzer evidence remain legacy/unavailable. Preserve original receipts and uncertainty.",
+              "execution": "No protected read, reconstruction, denied fetch or replay."
+            },
+            {
+              "stage": "Saved environment adoption",
+              "action": "After a qualified source transition, verify actual selected checkout and saved-environment mount independently. A first merge does not prove that a fixed-SHA mount editor changes; environment owner must select/update its actual binding if needed.",
+              "execution": "No environment defaults or mount changes selected; no assumed capability."
+            }
+          ],
+          "product_repository_boundary": "Maintenance/ledger/root transitions persist only in this private UIF handoff, not in the hermetic CQ product repository.",
+          "acceptance_request": "Independent cloud review of this exact plan, retained Root acknowledgement of source/publication route at a safe checkpoint, then sole UIF writer decides original-row acceptance. This is plan delivery, not root transition or PR1/main approval.",
+          "existing_gates_unchanged": true
+        },
+        "actual_work_this_turn": [
+          "Read exact original26 clauses and current acceptedUIF dispositions via GitHub MCP.",
+          "Reconciled stale pending S1523 handoff: PR30 already incorporated atab4ca560 and exact reviewed treebe1e401a.",
+          "Prepared current canonical-main/retained-root plan, no product/shared source writes.",
+          "Independent existing reviewer assessed two additional profile rows using original106af8a1 evidence; no replay."
+        ],
+        "custody_limits": "No shared ledger/Linear writes or claims. Sole Root source publisher retained. UI/service/alias/permission holds preserved. No broad build, repeated tests, historical recovery, new job, provider or runtime changes.",
+        "next_requests_to_Morgan": [
+          "Route current canonical-main plan for retained Root read-only route acknowledgement at its next safe checkpoint; no build or merge.",
+          "Existing configuration/operator custodians must identify SRC-001 actual Codex and separate Node consumer owners/bindings; exhausted historical inquiry is not repeated.",
+          "Only if a shared CQ consumer is actually selected, UIF owner supplies its source-bound interface/admission/isolation/return contract; no arbitrary neutral-route CQ execution.",
+          "Specific R181 hold release and SRC-002 migration scope remain actual user/owner decisions; no blanket UIF Git hold."
+        ]
+      }
+    },
+    {
+      "name": "cq-profile-two-row-current-contribution.json",
+      "bytes": 7047,
+      "sha256": "66e5fa613fea25eb834695f3d8d3d30696be340d78e143a813232de7995c266b",
+      "content": {
+        "schema": "cq-original-profile-two-row-contribution/1",
+        "UTC": "2026-11-14T02:59:39.898095+00:00",
+        "allocation": "maldous/uif README.md@f982b939ae917c0b5aa6e2e6db118d851e273aed; exact original CQ26 IDs",
+        "existing_execution_id": "106af8a1-4cb6-4c25-ae87-fc256693aace",
+        "existing_evidence_bindings": {
+          "source_commit": "489ee5b799ba8176616df19ad57f699b275e886e",
+          "source_tree": "013ec47bb0e31aeefff3b21f6d2bb3a098680b90",
+          "contract_sha256": "b8f0c480e66f0135450dcb1968b91dcbb4f9aa6fd39d9d9bd06a90d9ec31f329",
+          "profile_sha256": "dd587810c5c6b3b452dd0a20f8a1997f9a425318f3a6e44f1c03e4cacb356f92",
+          "result_sha256": "e56272aff879e19d6a19b30c7b65bf8236b5c28be50ad68c80789e59857427e0",
+          "boundary_sha256": "1b39408c9ede75bd30645fb1bd8c6918a0c0ccf04a6f004a798471ba9f264aa3",
+          "owner_review_sha256": "4961f166c2aed057a322c41b66f48b7870d07007fb6c69270a49cdf20ed01da3"
+        },
+        "records": [
+          {
+            "original_id": "cq.profile.qualify_acquisition_isolation",
+            "contribution": "Six pinned public files acquired through GitHub MCP, exact commit/tree/blob/byte/hash verification and two official-document reads. Subsequent local execution over retained evidence made zero transport calls. Private return destination and workspace/output roots were explicitly bound.",
+            "retained_original_actions": [
+              {
+                "time": "2026-11-13T07:37:53Z",
+                "action": "Six concurrent pinned GitHub MCP fetch_file calls; all succeeded with matching expected blobIDs."
+              },
+              {
+                "window_UTC": "2026-11-13T07:37:53Z/2026-11-13T07:39:02Z",
+                "action": "Read official Community Build Python and ScannerCLI documentation. Locally verified all source bytecounts, SHA256 and Git blobSHA1. GitHub git/commits read verified source tree."
+              }
+            ],
+            "boundary": "No enforced OS permissions/UID/container/resource-budget or live transport isolation proof. Separate path declarations are not enforcement. No Foo/Pool/shared controller qualification.",
+            "next_requirement": "If stronger execution is actually selected, exact executor/interface and its enforced isolation/resource/admission contract with corresponding evidence. No new consumer/deployment is invented."
+          },
+          {
+            "original_id": "cq.profile.qualify_denials",
+            "contribution": "17 reported local-validator refusals. Wrong project/repository/source/tree/contract/rights/destination/path/tool/document-origin and result substitutions, malformed/oversized results, and existing/uncertain local execution refused. Original result/receipt unchanged, zero external submissions and no denied-request output.",
+            "retained_original_cases": [
+              {
+                "case": "project_uuid",
+                "refused": true,
+                "reason": "wrong_project_uuid",
+                "external_submissions": 0
+              },
+              {
+                "case": "repository",
+                "refused": true,
+                "reason": "wrong_repository",
+                "external_submissions": 0
+              },
+              {
+                "case": "source_commit",
+                "refused": true,
+                "reason": "wrong_source_commit",
+                "external_submissions": 0
+              },
+              {
+                "case": "source_tree",
+                "refused": true,
+                "reason": "wrong_source_tree",
+                "external_submissions": 0
+              },
+              {
+                "case": "contract_sha256",
+                "refused": true,
+                "reason": "wrong_contract_sha256",
+                "external_submissions": 0
+              },
+              {
+                "case": "rights",
+                "refused": true,
+                "reason": "wrong_rights",
+                "external_submissions": 0
+              },
+              {
+                "case": "destination",
+                "refused": true,
+                "reason": "wrong_destination",
+                "external_submissions": 0
+              },
+              {
+                "case": "extra_path",
+                "refused": true,
+                "reason": "wrong_paths",
+                "external_submissions": 0
+              },
+              {
+                "case": "wrong_tool",
+                "refused": true,
+                "reason": "wrong_tools_or_parameters",
+                "external_submissions": 0
+              },
+              {
+                "case": "floating_source_tool_ref",
+                "refused": true,
+                "reason": "wrong_tools_or_parameters",
+                "external_submissions": 0
+              },
+              {
+                "case": "wrong_documentation_origin",
+                "refused": true,
+                "reason": "wrong_tools_or_parameters",
+                "external_submissions": 0
+              },
+              {
+                "case": "oversized_result",
+                "refused": true,
+                "reason": "oversized_result",
+                "external_submissions": 0
+              },
+              {
+                "case": "substituted_result_source",
+                "refused": true,
+                "reason": "substituted_result_source",
+                "external_submissions": 0
+              },
+              {
+                "case": "substituted_result_assessment",
+                "refused": true,
+                "reason": "substituted_result_template",
+                "external_submissions": 0
+              },
+              {
+                "case": "substituted_result_input",
+                "refused": true,
+                "reason": "substituted_result_inputs",
+                "external_submissions": 0
+              },
+              {
+                "case": "missing_required_result_field",
+                "refused": true,
+                "reason": "result_fields",
+                "external_submissions": 0
+              },
+              {
+                "case": "existing_or_uncertain_local_execution",
+                "refused": true,
+                "reason": "existing_or_uncertain_local_execution_requires_owner_reconciliation",
+                "result_and_receipt_unchanged": true,
+                "external_submissions": 0
+              }
+            ],
+            "boundary": "Reported finite local validator behavior only. Runner code not independently audited by CQ; not external admission/provider idempotency/live transport/Foo/Pool/controller proof.",
+            "next_requirement": "If a live/shared interface is selected, obtain its actual source-bound admission and uncertain-outcome reconciliation evidence, without replaying a denied or uncertain operation."
+          }
+        ],
+        "independent_current_assessment": {
+          "reviewer": "/root/python_sonar_correction_review",
+          "result": "Both rows have useful bounded contributions; neither establishes broad isolation/admission qualification. Existing original reports reviewed without execution or external reads."
+        },
+        "collection_snapshot": "abd9585d1d2fd0244b03edb6a1b25c2fbfac2de9; neither of these two IDs has an individual collection entry there. Already-incorporated private-return and bind-exact-contract are context only, not re-exported or recounted.",
+        "effects": "Private evidence curation and row applicability review only. No original execution replay, tests, transport submission, permission, source/ledger/Linear/claim mutation or runtime action.",
+        "requested_shared_writer_action": "Independently accept/incorporate these exact bounded contributions if appropriate. Preserve original row identity, actual scope, unproven enforcement and shared closure holds; no whole-row closure inferred."
+      }
+    }
+  ],
+  "independent_review": {
+    "reviewer": "/root/python_sonar_correction_review",
+    "reviewed_audit_sha256": "df0d45806488098f1526cc77ceae36b51c22cea9ae3a04aab4989f0a4234f8c8",
+    "disposition": "Accepted, no findings. All26 original IDs exactly once; no broad completion, promotion, fake consumers or blanket UIF dependency. Plan acknowledgement is not a new gate on independent CQ delivery.",
+    "profile_contribution_review": "Existing reviewer separately accepted useful bounded evidence for both original profile rows while preserving unproven OS/live/shared enforcement."
+  },
+  "actual_deliverables": [
+    "Current canonical-main/retained-root transition plan prepared and independently reviewed for original cq.canonical.accepted_main_plan; actual source/refs verified. Acceptance remains separate.",
+    "Two source-bound profile evidence contributions prepared from existing106af8a1 execution and17 refusal receipts; no replay.",
+    "Complete26-row matrix with exact original clauses, outcome/hold evidence and precise next actions; no original ID or revision invented.",
+    "Stale pendingS1523 handoff reconciled: PR30 actually merged atab4ca560 with exact reviewed tree; no duplicate publisher or job."
+  ],
+  "requested_route": {
+    "coordinator": "Morgan, thread6af3c668-0308-8191-add0-2e01550600d9",
+    "native_plan_acknowledgment": "At retained Root01a1a102-5d55-7593-96ea-0c9ef716faa7 safe checkpoint, read the exact canonical_main_plan from reviewed audit; acknowledge current source/custody and normal future publication route. No new build, merge, tests, alias/root migration, runtime or permission action.",
+    "documentary_incorporation": "Morgan routes exact plan and two profile contributions through existing retained independent review/integration custody if accepted. Preserve bounds, original IDs, combined/shared holds and original counts; no broad closure.",
+    "consumer_inputs": "Identify actual SRC-001 Codex and separate Node current configuration custodians through current operator knowledge, not another exhausted historical search.",
+    "shared_profile": "Only if a genuine current CQ shared consumer is selected, existing shared owner supplies its actual execution/admission/isolation/private-return contract; no arbitrary neutral runner or synthetic trial."
+  },
+  "scope_boundary": "Plan and evidence delivery only. No product repository changes, source publication, ledger/Linear/claim writes, admission, new worker, release, service, credentials, settings or protected/denied reads."
+}

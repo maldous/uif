@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 29,
+  "record_count": 32,
   "records": [
     {
       "project": "ANQR",
@@ -223,6 +223,27 @@
       "source_sha256": "433d1044a48047c16555b8b2616c5459be1d4f71d1976eaab0c6de0c4ab5bc1b",
       "state": "PR 52 and original completion verify the bounded source report and checker. Five checks remained unknown. Broader configuration drift remains current.",
       "evidence_group": "UIF"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.canonical.accepted_main_plan",
+      "source_sha256": "fe510bf52109af9c253056ce62fedc3ca87bcfe8d3d8bc8f2f29b2643299f98b",
+      "state": "Current canonical-main and retained-root transition plan prepared and independently reviewed. Root acknowledged source and custody. Actual integration and release remain conditional.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.profile.qualify_acquisition_isolation",
+      "source_sha256": "5e042630eb9b0696b3094a246045ef59d5ee1cce4ca7cd9b52fedbad8dba2e30",
+      "state": "Existing direct-cloud acquisition of six pinned public files and finite path bindings documented. OS, resource and shared-controller isolation remain unqualified.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "CQ",
+      "original_id": "cq.profile.qualify_denials",
+      "source_sha256": "8580c07dc89e448951edba8f3e28de9201ae6f6d4bb396d5836acc25f1754dd2",
+      "state": "Seventeen local validator refusals retained as owner-reported evidence for the existing execution. Live transport and shared admission enforcement remain unqualified.",
+      "evidence_group": "CQ"
     }
   ],
   "evidence_groups": {
@@ -308,7 +329,10 @@
         "cq.r180.freeze_packet",
         "cq.r180.assess_packet",
         "cq.handoff.reconcile_publication_state",
-        "cq.handoff.publish_reviewed_correction"
+        "cq.handoff.publish_reviewed_correction",
+        "cq.canonical.accepted_main_plan",
+        "cq.profile.qualify_acquisition_isolation",
+        "cq.profile.qualify_denials"
       ],
       "owner_turns": [
         "01a1d1d7-cc82-75e2-8070-7e104f3200eb",
@@ -390,6 +414,33 @@
           ]
         },
         "boundary": "Four existing documentary outcomes. The prior collection already references PR 20. These entries bind its existing evidence to the two original handoff clauses without a second publication. R180 covers the sanitized freeze and bounded assessment. Credential-span exclusions, private frontend, alias, runtime, compiler, locale, PR 1, PR 12 and Sonar compatibility limits remain in the exact owner packet."
+      },
+      "canonical_plan_profile_contribution": {
+        "ids": [
+          "cq.canonical.accepted_main_plan",
+          "cq.profile.qualify_acquisition_isolation",
+          "cq.profile.qualify_denials"
+        ],
+        "owner_packet": "docs/ledger/counterpart-collection-20261113/cq/cq-26-audit-plan-profile.owner.json",
+        "owner_packet_sha256": "c8174542fceffe753f2e99755fdd36b395e9f81b29cd23d09cb59f87b5834a41",
+        "owner_packet_bytes": 41719,
+        "embedded_originals": [
+          {
+            "name": "cq-26-row-current-audit.json",
+            "sha256": "df0d45806488098f1526cc77ceae36b51c22cea9ae3a04aab4989f0a4234f8c8",
+            "bytes": 27075
+          },
+          {
+            "name": "cq-profile-two-row-current-contribution.json",
+            "sha256": "66e5fa613fea25eb834695f3d8d3d30696be340d78e143a813232de7995c266b",
+            "bytes": 7047
+          }
+        ],
+        "root_acknowledgment": {
+          "thread": "01a1a102-5d55-7593-96ea-0c9ef716faa7",
+          "turn": "01a1d801-3072-7512-bb77-ac91c25d6205"
+        },
+        "boundary": "Three documentary contributions only. Preserve nine overlapping entries and fourteen context-only rows. Profile evidence is bounded to the existing direct-cloud execution. Retain alias, R181, legacy history, PR 1, product and shared orchestration limits."
       }
     },
     "OffMenu": {
