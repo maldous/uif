@@ -88,8 +88,8 @@
       "complete_at_bounded_scope",
       "applicability_assessed_unselected",
       "UIF owner; selected workflow owner if needed",
-      "Settings scope, actual caller and project/home lookup precedence remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
-      "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "Applicability assessment complete. Original qualification remains unresolved. Missing: Settings scope, actual caller and project/home lookup precedence. Source: current-obligation-applicability-20261112.json#/records/0.",
+      "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite. UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures. No immediate external request is required.",
       false
     ],
     [
@@ -112,8 +112,8 @@
       "complete_at_bounded_scope",
       "applicability_assessed_unselected",
       "UIF owner; selected workflow owner if needed",
-      "Project-marker association and actual resolver remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
-      "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "Applicability assessment complete. Original qualification remains unresolved. Missing: Project-marker association and actual resolver. Source: current-obligation-applicability-20261112.json#/records/1.",
+      "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite. UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures. No immediate external request is required.",
       false
     ],
     [
@@ -136,8 +136,8 @@
       "complete_at_bounded_scope",
       "applicability_assessed_unselected",
       "UIF owner; selected workflow owner if needed",
-      "Configuration/cache readers and writers and project/home scope remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
-      "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "Applicability assessment complete. Original qualification remains unresolved. Missing: Configuration/cache readers and writers, and project/home scope. Source: current-obligation-applicability-20261112.json#/records/2.",
+      "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite. UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures. No immediate external request is required.",
       false
     ],
     [
@@ -160,8 +160,8 @@
       "complete_at_bounded_scope",
       "applicability_assessed_unselected",
       "UIF owner; selected workflow owner if needed",
-      "Notes custodian and actual current or retained-only use remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
-      "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "Applicability assessment complete. Original qualification remains unresolved. Missing: Notes custodian and actual current use or retained-only declaration. Source: current-obligation-applicability-20261112.json#/records/3.",
+      "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite. UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures. No immediate external request is required.",
       false
     ],
     [
@@ -184,8 +184,8 @@
       "complete_at_bounded_scope",
       "applicability_assessed_unselected",
       "UIF owner; selected workflow owner if needed",
-      "Inputs workflow/source association and actual caller remains unknown. The original qualification is unfulfilled; this is no present unrelated BAU/build/White Room/publication gate.",
-      "Retain placement and permissions; reuse the completed applicability assessment. Seek exact caller/scope metadata only when an actual dependent use is selected.",
+      "Applicability assessment complete. Original qualification remains unresolved. Missing: Inputs workflow/source association and actual caller. Source: current-obligation-applicability-20261112.json#/records/4.",
+      "For completion of this root's explicit classification obligation, or before selecting an actual lookup/use/change that depends on it; not a blanket platform or ledger-publication prerequisite. UIF accountable owner retains the unresolved classification. An actually selected current tool/workflow owner supplies its caller/scope metadata; do not invent a named custodian from UID/GID or start a search for unavailable captures. No immediate external request is required.",
       false
     ],
     [
@@ -244,8 +244,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving identifiable evidence in existing custody/placement without ownership or permission changes; record custodian/consumers and recoverability as unknown. Do not claim placement recovered evidence or created backup. Original custodian/consumer/history/restore proof remains unknown/unavailable; no new capture or evidence-body search. Source: current-custody-retain-dispositions-20261112.json#/records/0.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -256,8 +256,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving dirty postimages unchanged in existing custody. No overwrite, cleanup, new copy, source-incorporation or ten-new-task claim; record original mapping unavailable. Original ten-postimage byte/map/recovery bridge unavailable; mapping must not be claimed complete. Source: current-custody-retain-dispositions-20261112.json#/records/1.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -268,8 +268,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving independent store in existing custody. Explicitly state no off-host recovery established; no invented backup task, remote creation, transfer, restoration or asset-absence claim. Original-source/evidence recovery proof unavailable; no remote or off-host backup is inferred. Source: current-custody-retain-dispositions-20261112.json#/records/2.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -280,8 +280,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Exact historical a6437a4 acceptance/review/correction join. Current residual: Known old changes-requested history and later correction references remain provenance; current release acceptance belongs to the currently selected immutable source/profile, not resurrected a643. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/0.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -292,8 +292,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original retained release-component history/local-evidence restoration. Current residual: Preserve any surviving current source/evidence in place; current release source and publication checks remain separate. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/1.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -304,8 +304,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original c70fb52 component/source and local-evidence recovery. Current residual: Current Windmill declaration/grant/backend qualification remains real under current owner; this disposition supplies none. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/2.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -340,8 +340,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Exact permitted25f45442 artifact locator/full source identity. Current residual: A concrete current documentary requirement, if actually selected, uses current available canonical source/owner; no deniedR200export or new legacy reconstruction gate. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/3.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -352,8 +352,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Retained historical lifecycle/provenance source delta and old acceptance joins. Current residual: Current task lifecycle, uncertainty, ownership and provenance contracts still require actual source/qualified evidence in existing BAU engineering. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/4.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -364,8 +364,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Ten historical R192 composed-publication source postimages/delta acceptance. Current residual: Any surviving postimages stay preserved under separate custody row; current publication correctness remains an actual engineering requirement. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/5.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -388,8 +388,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Exact original local/origin comparison and unpublished R055 delta. Current residual: Any surviving local-only commit/evidence is preserved; no reset/delete/force operation. Current code requirements use current selected source. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/6.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -400,8 +400,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Historical divergent R058 source equivalence/acceptance packet. Current residual: Preserve surviving history; any present functional defect must be evidenced against the actual current selected contract. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/7.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -412,8 +412,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Historical R068 source selection/publication disposition. Current residual: Current acquisition/role API must work in current source; independent retained custody is not waived. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/8.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -424,8 +424,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original accepted92a44b1 JS-profile history/local evidence. Current residual: Any current selected JS profile still needs actual current source/toolchain/checks; no surviving source/evidence deletion. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/9.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -436,8 +436,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original accepted59dbf51 refill history/local evidence. Current residual: Current normal refill/ownership/fencing remains existing engineering scope with actual receipts. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/10.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -844,8 +844,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving source/local-only commit and ignored evidence under existing owner/custody; no reset/delete/force operation. A later actual selected mutation still invokes current preservation/permission checks. Original-history/independent local evidence bridge unavailable; do not regenerate original IDs/objects or claim equality/recovery. Source: current-custody-retain-dispositions-20261112.json#/records/3.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -856,8 +856,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving R058 copy/evidence in existing custody unchanged. No remerge, replacement, deletion, source-equivalence or backup claim. Exact original-history/local evidence recovery proof unavailable; equivalence or restoration not asserted. Source: current-custody-retain-dispositions-20261112.json#/records/4.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -868,8 +868,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving R068 source/evidence under existing custody; preserve accepted component history without replay or new helper/backup task. Independent original-history/local evidence recovery packet unavailable; do not reopen completed helper work or claim custody recovered from helper tests. Source: current-custody-retain-dispositions-20261112.json#/records/5.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -880,8 +880,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving R070 original/local evidence unchanged; current selected acquisition implementation must use its own qualified source, not a reconstructed historical receipt. Original-copy/history/local evidence bridge unavailable; current component import/dependency correctness must not be conflated with old custody recovery. Source: current-custody-retain-dispositions-20261112.json#/records/6.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -892,8 +892,8 @@
       "complete_at_bounded_scope",
       "retained_existing_custody_legacy_recovery_unavailable",
       null,
-      "retained_existing_custody_legacy_recovery_unavailable",
-      null,
+      "Passive custody decision only. Retain any surviving R071 material unchanged in existing custody; no duplicate helper work, cleanup, original-copy recovery or off-host backup claim. Original-history/independent evidence recovery proof unavailable; source equivalence does not make it recovered. Source: current-custody-retain-dispositions-20261112.json#/records/7.",
+      "Preserve any surviving identifiable material, existing permissions/project custody and all specific data/access holds. No actual current custody owner is fabricated or transferred. No deletion/overwrite/reset/export authorized. Unknown assets or missing old receipts do not create a new backup/reconstruction task. Any actually selected current asset/rights/retention/recoverability contract remains applicable if independently evidenced.",
       false
     ],
     [
@@ -904,8 +904,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Exact R067 original-history recovery bridge. Current residual: Preserve any surviving source/ignored evidence; this is no cleanup authorization or off-host recovery claim. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/11.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -916,8 +916,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Exact R087 original-history recovery bridge. Current residual: Preserve any surviving source/ignored evidence; do not claim original bytes restored. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/12.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -928,8 +928,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original captured7.2m-asset/root/custody/issue identity join and missing maps. Current residual: Current selected assets must still have actual source/owner/rights evidence before use/change; old unknown associations create no new duties. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/13.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -940,8 +940,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Twelve captured issue-token correspondence records affecting1357 old rows. Current residual: Actual current tasks use stable current ledger/owner identity; no token-derived ownership or fabricated issue. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/14.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -952,8 +952,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Post-capture77project overlay plus UIF247 join to original snapshot. Current residual: Specific prior denied analysis remains unexecuted/no retry; current project associations are not changed or inferred from this retirement. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/15.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -964,8 +964,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original captured conflicting repository/project/custody cue view. Current residual: Specific denied operation and no-bypass rule remain; current selected assets need current qualified identity, not old map reconstruction. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/16.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -976,8 +976,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: 713historical census identities to original custody/source acceptance joins. Current residual: Historical schema/count verification credited; no equality to present assets or current functional acceptance asserted. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/17.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -988,8 +988,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original32checkout fullHEAD/branch/common-store/relocation correspondence. Current residual: Preserve any surviving current checkout/source/local work; normal selected-repository checks still apply to actual current operations. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/18.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1000,8 +1000,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Historical13inaccessible subtrees, exclusions and original coverage details. Current residual: Held reads/symlinks/data boundaries remain unwaived; actual current protected access requires its own authority. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/19.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1012,8 +1012,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Frozen38source-membership/delta-to-acceptance crosswalk. Current residual: Current control source/guard/backend correctness is real and remains with existing engineering; R200denied preview is not retried. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/20.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1024,8 +1024,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Frozen101custody membership/copy/history/restore map. Current residual: Existing current retained assets, rights and recoverable local work must be preserved if present; no101newtasks or cleanup. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/21.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1036,8 +1036,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Missing canonical89artifact and12ambiguous+7unmapped historical relations. Current residual: Any actual current OffMenu/UIF outcome requires current source/owner/hold proof separately; no product readiness or completion claimed. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/22.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1048,8 +1048,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original513-to550current-project catalogue/capture membership bridge. Current residual: Current selected obligation/owner/source must be explicit; neither old membership nor status creates new work. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/23.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1060,8 +1060,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original406held ModernAppSurface record/applicability map. Current residual: Actual selected ANQR/USF/UIF source/rights/consumer requirements remain with their current owners;406does not become a mandatory modern backlog. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/24.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1072,8 +1072,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original159remaining historical applicability subjects/accepted packet. Current residual: A current concrete dependency must be independently evidenced; old unknown map does not create one. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/25.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1192,8 +1192,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original frozen321-IDmanifest equality and missing per-subject accepted semantic/source packet. Current residual: Observed321=242Foundation+79Infrastructure retention credit remains bounded; technical acceptance is unknown, no archive effect or original-set equality claimed. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/26.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1204,8 +1204,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original364historical recoverable-archive candidate source/relevance evidence. Current residual: Current existing containers/assets and any actual selected archive/source use still require their own current rights/owner/recoverability checks. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/27.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1216,8 +1216,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Missing original service elapsed/ranking and mandatory-service accounting proof/current legacy contract. Current residual: Historical/phase evidence remains credited and missing timing proof not passed. Any actually selected current timing requirement needs its current owner/evidence; do not invent it. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/28.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1228,8 +1228,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original tenlegacy candidate applicability/supersession source packet. Current residual: Known historical acceptance/supersession retained; any actual current dependency must be shown, not generated from count. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/29.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1240,8 +1240,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original35paused administrative assignment plans/capture mapping. Current residual: Sixknownnotapplied/28unattempted/CIX311denied facts retained; no retry of denied CIX311 or current project mutations. Current CIX operations still need actual owner/rights/working-ready proof. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/30.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1264,8 +1264,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Historical workspace descendant-enumeration completeness beyond55known reviewed documents. Current residual: Do not claim documents deleted or full coverage. Actual current canonical document edits use exact current IDs/authority, not universal historical descendant completeness. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/31.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1276,8 +1276,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Separately referenced historical ANQR workspace inventory/custody bridge. Current residual: Current ANQR project/source/rights remain separate and actual current product operations retain owner/readiness/access controls. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/32.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       true
     ],
     [
@@ -1288,8 +1288,8 @@
       "already_covered",
       "retired_legacy_unavailable_unfulfilled",
       null,
-      "retired_legacy_unavailable_unfulfilled",
-      "Retain the accepted unavailable disposition and applicable holds.",
+      "Accepted unavailable disposition only. Historical requirement remains unfulfilled: Original post-capture administrative inventory/change bridge. Current residual: Current selected administrative effects still require exact target/owner/permissions/current outcome; no wholesale census or fabricated operation receipts. Source: legacy-unavailable-dispositions-20261112.json#/legacy_dispositions/33.",
+      "Retain the accepted unavailable disposition without historical reacquisition. Current owner: Existing UIF accountable owner/canonical writer for source disposition. Actual current source/custody/product/runtime owner retains its own scope; Morgan retains Foo orchestration. No new owner or lease created. Preserve the coupled-operation hold for any actual current dependent outcome.",
       false
     ],
     [
@@ -1328,5 +1328,25 @@
       "Return to final publication when the remaining discovery criteria are accepted.",
       false
     ]
-  ]
+  ],
+  "accepted_row_sources": {
+    "legacy-unavailable-dispositions-20261112.json": {
+      "commit": "b68cfcb5fa6745f1c1642f2cbe4c211191410901",
+      "path": "docs/ledger/legacy-unavailable-dispositions-20261112.json",
+      "git_blob": "44e2ded805361493bc3660ae145c8a1ca41eaec2",
+      "sha256": "d48f5c5498f4126e7c1f9912a779355921b32a4946fe41deee79c73e9370c47f"
+    },
+    "current-custody-retain-dispositions-20261112.json": {
+      "commit": "b68cfcb5fa6745f1c1642f2cbe4c211191410901",
+      "path": "docs/ledger/current-custody-retain-dispositions-20261112.json",
+      "git_blob": "142f1abf45931730aabdb80a8ecd34b1e6bebd3b",
+      "sha256": "92660fc678557e7aa2c047097ca3c21d00b106eeb482b10f2d7a22d5af02e553"
+    },
+    "current-obligation-applicability-20261112.json": {
+      "commit": "b68cfcb5fa6745f1c1642f2cbe4c211191410901",
+      "path": "docs/ledger/current-obligation-applicability-20261112.json",
+      "git_blob": "cbbdac2d98099c93fc1978528f2eb520fc000190",
+      "sha256": "a5d9dcb5812bd05ac369e9357ae77be258ad154d9384a0ba1d4208e1fb99c37f"
+    }
+  }
 }
