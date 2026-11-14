@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 42,
+  "record_count": 45,
   "records": [
     {
       "project": "ANQR",
@@ -314,6 +314,27 @@
       "source_sha256": "38fd41f99a16b3b867caefa1b7125221585c9fbb74897c51c6f63837b12b9610",
       "state": "Cloud documented its direct workspace call and internal renderer-to-job SDK call. Exact caller-to-installation bindings and wider consumer coverage remain unresolved.",
       "evidence_group": "Cloud"
+    },
+    {
+      "project": "UIF",
+      "original_id": "shared.skills.catalog_refresh",
+      "source_sha256": "7c77d7c7d2b52353bdc23f8fd62c7c47cb499bb8619d8aed2235de02f86fa783",
+      "state": "CQ portable skill source and archive declaration verified. Selected loader, client and in-place refresh evidence remain unbound.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "UIF",
+      "original_id": "shared.skills.constant_time_path",
+      "source_sha256": "a34a614f092f1ad89e263b2a8add4eb03f7e20ac6edde1f8aa024539006b8fa6",
+      "state": "The original clause concerns the named analysis skill. Selected shared entrypoint, source and CQ consumer remain unbound.",
+      "evidence_group": "CQ"
+    },
+    {
+      "project": "UIF",
+      "original_id": "shared.skills.spec_compliance_runtime",
+      "source_sha256": "197e3e2f848e0e964cf913dcaf370f1c2c08ac015a141c4cc5014d4ff0d1e42a",
+      "state": "Selected spec-to-code-compliance runtime or distribution and its actual consumer remain unbound.",
+      "evidence_group": "CQ"
     }
   ],
   "evidence_groups": {
@@ -402,7 +423,10 @@
         "cq.handoff.publish_reviewed_correction",
         "cq.canonical.accepted_main_plan",
         "cq.profile.qualify_acquisition_isolation",
-        "cq.profile.qualify_denials"
+        "cq.profile.qualify_denials",
+        "shared.skills.catalog_refresh",
+        "shared.skills.constant_time_path",
+        "shared.skills.spec_compliance_runtime"
       ],
       "owner_turns": [
         "01a1d1d7-cc82-75e2-8070-7e104f3200eb",
@@ -511,6 +535,16 @@
           "turn": "01a1d801-3072-7512-bb77-ac91c25d6205"
         },
         "boundary": "Three documentary contributions only. Preserve nine overlapping entries and fourteen context-only rows. Profile evidence is bounded to the existing direct-cloud execution. Retain alias, R181, legacy history, PR 1, product and shared orchestration limits."
+      },
+      "shared_skill_declaration": {
+        "ids": [
+          "shared.skills.catalog_refresh",
+          "shared.skills.constant_time_path",
+          "shared.skills.spec_compliance_runtime"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/cq/shared-skills-interface-declaration.json",
+        "sha256": "cbda085a98197515a2d2cfa6eb4c5d65905e7782419d32e3bffccfa000d9dfbc",
+        "scope": "Scoped counterpart evidence for existing UIF original rows. Canonical and shared effects remain held."
       }
     },
     "OffMenu": {

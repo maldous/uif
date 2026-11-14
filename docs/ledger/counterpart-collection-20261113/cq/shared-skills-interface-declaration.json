@@ -1,0 +1,72 @@
+{
+  "state": "Bounded documentary contribution prepared for serial review.",
+  "packet": {
+    "sha256": "2e8234ef858085a67d8b50cd46d4e778b8121a528bd32a7ff89074c16f10f915",
+    "bytes": 12347,
+    "source_owner_turn": "01a1d836-48ae"
+  },
+  "allocation": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "row_digests": {
+    "shared.skills.catalog_refresh": "7c77d7c7d2b52353bdc23f8fd62c7c47cb499bb8619d8aed2235de02f86fa783",
+    "shared.skills.constant_time_path": "a34a614f092f1ad89e263b2a8add4eb03f7e20ac6edde1f8aa024539006b8fa6",
+    "shared.skills.spec_compliance_runtime": "197e3e2f848e0e964cf913dcaf370f1c2c08ac015a141c4cc5014d4ff0d1e42a"
+  },
+  "cq_portable_source": {
+    "repository": "maldous/CircularQuay",
+    "branch": "feature/initial-implementation",
+    "commit": "ab4ca5603e443ce9c92b2faf9da8b6b798609e64",
+    "tree": "be1e401a4378e7c2757f0058a71c6b376a472f44",
+    "verification": "GitHub MCP live ref pinned, files/blob IDs read; retained local2bc089a has the identical accepted tree and file blobs. PR1 remains unmerged."
+  },
+  "cq_custody": "Durable CQ delivery owner6af4e68c-e678-8191-ac25-7b98df80c010; retained native Root01a1a102-5d55-7593-96ea-0c9ef716faa7 is sole assigned integration/workflow writer. Distribution/publication follows existing release-owner contract; no installed-client owner inferred.",
+  "historical_source_readback": {
+    "commit": "d70ec22c911ecf279f871cea720c109dc96aeff6",
+    "tree": "0ca79f2d3e26b0aa5c59936a1dfbb48a7e7c4a4c",
+    "subject": "Regenerate explore license-link provenance",
+    "paths": [
+      "examples/landing-motion/explore-content/manifest.json",
+      "examples/landing-motion/explore-content/readme.js"
+    ],
+    "comparison_sha256": "342c48a7dd0163080e9b8baff1717affb49c6af58cd264aae70bc658047fa7f9",
+    "published_base_in_comparison": "3ecffe7cdd068da7ce034543b3a88058a6aeaffa",
+    "scope": "Retained candidate and byte comparison are provenance. The recorded change regenerates Explore license-link files. The reported historic success still lacks an original receipt bound to any of these skill interfaces."
+  },
+  "missing_current_inputs": {
+    "shared.skills.catalog_refresh": "Existing catalogue/loader custodian supplies exact selected host/client and version, source/install root, supported in-place refresh operation, before/after catalogue identity and existing original successful receipt, if that interface is actually selected. No old archive search requested.",
+    "shared.skills.constant_time_path": "Actual shared skill custodian supplies immutable repository/distribution revision and exact skill/entry-point path, selected consumer/client, documented source/working/output path handling and any existing path-semantics receipt. If none is selected, record unselected applicability rather than a CQ build blocker.",
+    "shared.skills.spec_compliance_runtime": "Existing shared custodian supplies exact chosen runtime OR distribution and immutable identity, actual consumer, supported entry point/prerequisites and already-held installation/distribution or execution receipt. A runtime is not automatically required when the actual selected contract is distribution."
+  },
+  "cq_interface_rows": [
+    {
+      "original_id": "shared.skills.catalog_refresh",
+      "exact_clause": "Establish supported in-place skill catalog refresh behavior.",
+      "selected_CQ_source": "integrations/skills/cq/SKILL.md with agents/openai.yaml and three contained references. Five tracked files; no tracked .agents/skills tree at selected source.",
+      "actual_observed_consumer": "This durable CQ owner read the pinned source instructions through GitHub MCP for this mapping. No installed client/plugin/App or runtime catalogue refresh consumer is established. Reading a skill file is not installing or refreshing a client catalogue.",
+      "implementation_and_evidence": "Source/package identity cq; GoReleaser archive glob includes integrations/skills/cq/**. RELEASE section7 requires per-client install/reload/removal evidence; docs/agent-integrations explicitly says portable source and UI metadata do not establish a verified plugin/App or registry descriptor. The current cloud skill catalog does not list cq; no refresh command is selected or executed.",
+      "runtime_vs_distribution": "Archive inclusion is distribution intent only, not built-archive inclusion proof, installed inventory, catalogue re-indexing or successful reload. No native build needed merely for this declaration.",
+      "missing_current_input": "Existing catalogue/loader custodian supplies exact selected host/client and version, source/install root, supported in-place refresh operation, before/after catalogue identity and existing original successful receipt, if that interface is actually selected. No old archive search requested.",
+      "current_next_action": "Morgan routes this declaration to the existing shared skill/catalog custodian for that finite current source/consumer binding; CQ changes only if a specific product-source correction is then shown."
+    },
+    {
+      "original_id": "shared.skills.constant_time_path",
+      "exact_clause": "Establish supported constant-time-analysis path semantics.",
+      "selected_CQ_source": "No constant-time-analysis skill implementation, distribution or invocation is present in the checked tracked CQ skills tree. The portable cq skill is a different interface.",
+      "actual_observed_consumer": "No CQ consumer or invocation of constant-time-analysis is selected in available current evidence.",
+      "implementation_and_evidence": "Current CQ skill tree contains exactly the five cq files. Bounded current maintained-source search found no matching constant-time-analysis/shared catalogue integration; the current exposed cloud skill catalog does not list that named skill. This does not establish absence from every Foo/server installation.",
+      "runtime_vs_distribution": "The clause concerns the named analysis skill path semantics, not constant-time catalogue lookup, general crypto primitives or an assumed timing guarantee. No executable/argument/working-directory behavior is inferred from the name.",
+      "missing_current_input": "Actual shared skill custodian supplies immutable repository/distribution revision and exact skill/entry-point path, selected consumer/client, documented source/working/output path handling and any existing path-semantics receipt. If none is selected, record unselected applicability rather than a CQ build blocker.",
+      "current_next_action": "Resolve only this current selection with the existing shared source/catalog owner; no historical reconstruction, invented command or qualification run."
+    },
+    {
+      "original_id": "shared.skills.spec_compliance_runtime",
+      "exact_clause": "Establish supported spec-to-code-compliance runtime or distribution.",
+      "selected_CQ_source": "No spec-to-code-compliance skill runtime or distribution is selected in current CQ source/contracts. CQ native CLI, language SDKs and portable cq instructions are distinct.",
+      "actual_observed_consumer": "No CQ consumer/client or invocation selected. The four-tool CQ MCP workload catalog is not a spec-compliance analyzer.",
+      "implementation_and_evidence": "docs/agent-integrations and RELEASE distinguish skill instructions/UI metadata, client manifests, optional authenticated MCP runtime and registry/package publication. internal/mcp/service.go registers list_workloads/get_status/run_workload/read_secret under grants; it adds no compliance analyzer. No named spec-to-code skill is listed in the current exposed cloud catalog.",
+      "runtime_vs_distribution": "Source presence, archive globs or planned registry coordinates do not establish runtime installation, executable/dependency availability, client acceptance or distribution publication. No generic product-green prerequisite is introduced.",
+      "missing_current_input": "Existing shared custodian supplies exact chosen runtime OR distribution and immutable identity, actual consumer, supported entry point/prerequisites and already-held installation/distribution or execution receipt. A runtime is not automatically required when the actual selected contract is distribution.",
+      "current_next_action": "Shared owner declares which route is current; CQ provides only a specifically required product interface correction, if any."
+    }
+  ],
+  "shared_custody_status": "No verified shared-runtime custodian, selected entrypoint or bound original receipt. The CQ product source owners and the shared guidance editor do not establish that authority."
+}
