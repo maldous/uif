@@ -1,0 +1,75 @@
+{
+  "archive": "offmenu-uif228-exact-source-review-disposition-20261114.zip",
+  "archive_bytes": 35943,
+  "archive_sha256": "ac896282a58e18880b24f13a5dfa54da948af779ecf286f0cd312209b8cbee9a",
+  "manifest_sha256": "cc9f96993c58cab1a0501e8ac5cd0d72ef734e2f70fa1f2bab9326fb8954665c",
+  "verified_payloads": [
+    {
+      "path": "README.md",
+      "bytes": 1046,
+      "sha256": "d6bcfadf68c48870a361517ee7b24456d5f2205242e5c8569027994b6a84a4ab"
+    },
+    {
+      "path": "offmenu54-current-row-matrix.json",
+      "bytes": 144520,
+      "sha256": "bb81493a198b5c80913bbe4df6ac68ad566eb8ed3d5514383699d33ec3a36337"
+    },
+    {
+      "path": "uif228-accepted-source-comparison.json",
+      "bytes": 4714,
+      "sha256": "be6b78b66c0aff2629990f00da622c379676bd132574354180d8ec2563bc952c"
+    },
+    {
+      "path": "uif228-final-row-disposition.json",
+      "bytes": 3554,
+      "sha256": "11b13a9aff2c857cc274bab60ef20f05ae42abaee609ebe8c9753630706cc4d0"
+    },
+    {
+      "path": "uif228-independent-assessment.json",
+      "bytes": 7996,
+      "sha256": "f976d88a7b3a5ae8292185978644c6247028e9a0ee0b134babc802b3e6c130f9"
+    },
+    {
+      "path": "uif228-relayed-committed.patch",
+      "bytes": 41146,
+      "sha256": "2eb7cf5bb0dbf679d9738655d92a78279d6a949b241a39b7b81deac3ed554350"
+    },
+    {
+      "path": "uif228-text-reassembly-state.json",
+      "bytes": 990,
+      "sha256": "ccf35c397e27b64001c61f043c95c6afab32615d4072f03f52df66fac2e1e06e"
+    }
+  ],
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "original_id": "offmenu-retained-UIF-228",
+  "original_row_sha256": "8c340fc1515e822d1021740f0614b9f3497473cd5612776a57615689bd39588a",
+  "retained_head": "a60e485cf46f6449c6fa08d68143e1a7dcac36c7",
+  "retained_parent": "7efe1bfe8124ade7452c000a41795a0b56b0ae29",
+  "patch_sha256": "2eb7cf5bb0dbf679d9738655d92a78279d6a949b241a39b7b81deac3ed554350",
+  "independent_review_sha256": "f976d88a7b3a5ae8292185978644c6247028e9a0ee0b134babc802b3e6c130f9",
+  "comparison_sha256": "be6b78b66c0aff2629990f00da622c379676bd132574354180d8ec2563bc952c",
+  "owner_credit": "Exact retained four-path committed source/test delta independently assessed. Retain unique reservation/readiness/PID/no-replay/terminal-drain safeguards and original custody without product import.",
+  "remaining": "No missing text, capture, test or postimage required for this bounded review. Only if existing UIF owner selects actual current use: bind its actual current source/profile/caller and reconcile normally. This optional reuse is not an OffMenu product gate.",
+  "source_comparison": "Accepted594 uses child-side admission and different parent/producer contracts; source is not exactly represented or standalone-ready there. Existing deployed UIF native-core is separately owned and not inferred from OffMenu snapshot.",
+  "owner_scope_counts": {
+    "genuinely blocked": 25,
+    "bounded scope complete": 21,
+    "actively covered": 8
+  },
+  "six_selected_tip_assessments": {
+    "complete_bounded_assessments": 6,
+    "already_represented_committed_tips": [
+      "offmenu-retained-UIF-232",
+      "offmenu-retained-UIF-238"
+    ],
+    "unique_retained_committed_tips": [
+      "offmenu-retained-UIF-224",
+      "offmenu-retained-UIF-228",
+      "offmenu-retained-UIF-230",
+      "offmenu-retained-UIF-231"
+    ],
+    "prior_five_packet_unchanged": true,
+    "full_original_54_row_closure": false
+  },
+  "scope_limit": "Exact selected retained source only. Preserve existing custody, safeguards and source dependencies. No runtime, product, shared or combined closure."
+}

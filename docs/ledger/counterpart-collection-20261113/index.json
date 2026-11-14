@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 59,
+  "record_count": 60,
   "records": [
     {
       "project": "ANQR",
@@ -433,6 +433,13 @@
       "source_sha256": "b16dffe513e1af910479d9898de4d0d900577b47d2e54424053a804a22d2c2cd",
       "state": "Selected committed patch and three postimages match accepted source. Later evolution remains separate.",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-228",
+      "source_sha256": "8c340fc1515e822d1021740f0614b9f3497473cd5612776a57615689bd39588a",
+      "state": "Exact retained committed tip independently assessed. Preserve its safeguards and source dependencies in custody. Any reuse depends on the selected current UIF source and caller.",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -673,7 +680,8 @@
         "offmenu-retained-UIF-224",
         "offmenu-retained-UIF-230",
         "offmenu-retained-UIF-231",
-        "offmenu-retained-UIF-238"
+        "offmenu-retained-UIF-238",
+        "offmenu-retained-UIF-228"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -807,6 +815,14 @@
         "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/five-committed-source-contribution.json",
         "sha256": "14b32e35dfc5be2a6af8638b7a0dc8c54cbb949e41127d6d9298db81170f1180",
         "scope": "Four additional collection records and one additional receipt for the existing UIF-232 row. Selected committed source evidence only."
+      },
+      "uif228_committed_source_contribution": {
+        "ids": [
+          "offmenu-retained-UIF-228"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/uif228-committed-source-disposition.json",
+        "sha256": "44776eedbdfdd7b00db30ca5150e570b03ac72032b84eabf8a4ba9f6f87b9552",
+        "scope": "Exact committed-tip source review. The other five tip assessments remain distinct. Owner counts are disposition counts."
       }
     },
     "Cloud": {
