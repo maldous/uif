@@ -9,6 +9,7 @@ import copy
 import hashlib
 import json
 import re
+from uuid import UUID
 from typing import Protocol
 
 MAX_BYTES = 262144
@@ -48,6 +49,41 @@ def utc(value):
         raise ValueError('timezone required')
     return value.astimezone(timezone.utc)
 
+
+def uuid(value):
+    if not isinstance(value, str) or str(UUID(value)) != value:
+        raise ValueError('canonical UUID required')
+    return value
+
+
+@dataclass(frozen=True)
+class ProjectScope:
+    """Reviewed project/executor binding supplied by the integrating owner.
+
+    This is configuration, not an assertion accepted from a tool response or a
+    task payload. The default Target deliberately retains its UIF/cloud scope.
+    """
+    repository: str
+    ref: str
+    project: str
+    profile: str
+    workspace_id: str
+    team_id: str
+    project_id: str
+    issue_prefix: str
+
+    def validate(self):
+        identifier(self.repository, r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+')
+        identifier(self.ref, r'[A-Za-z0-9][A-Za-z0-9_./-]{0,199}')
+        if '..' in self.ref or self.ref.endswith('/') or '//' in self.ref:
+            raise ValueError('invalid integration ref')
+        identifier(self.project, r'[a-z][a-z0-9-]{0,39}')
+        if self.profile not in {'cloud', 'foo'}:
+            raise ValueError('invalid executor profile')
+        for value in (self.workspace_id, self.team_id, self.project_id):
+            uuid(value)
+        identifier(self.issue_prefix, r'[A-Z][A-Z0-9]*')
+
 @dataclass(frozen=True)
 class Target:
     contract_sha256: str
@@ -60,13 +96,26 @@ class Target:
     ref: str = 'develop'
     project: str = 'uif'
     profile: str = 'cloud'
+    scope: ProjectScope | None = None
+    issue_uuid: str | None = None
 
     def validate(self):
-        if (self.repository, self.ref, self.project, self.profile) != ('maldous/uif', 'develop', 'uif', 'cloud'):
-            raise ValueError('unsupported target')
+        if self.scope is None:
+            if (self.repository, self.ref, self.project, self.profile) != ('maldous/uif', 'develop', 'uif', 'cloud'):
+                raise ValueError('unsupported target')
+            prefix = 'UIF'
+        else:
+            self.scope.validate()
+            if (self.repository, self.ref, self.project, self.profile,
+                    self.linear_team_id, self.linear_project_id) != (
+                    self.scope.repository, self.scope.ref, self.scope.project,
+                    self.scope.profile, self.scope.team_id, self.scope.project_id):
+                raise ValueError('target differs from reviewed scope')
+            uuid(self.issue_uuid)
+            prefix = self.scope.issue_prefix
         identifier(self.contract_sha256, r'[a-f0-9]{64}')
         commit(self.selected_commit)
-        identifier(self.issue, r'UIF-[1-9][0-9]*')
+        identifier(self.issue, re.escape(prefix) + r'-[1-9][0-9]*')
         identifier(self.linear_team_id, r'[a-f0-9-]{36}')
         if self.linear_project_id is not None:
             identifier(self.linear_project_id, r'[a-f0-9-]{36}')
@@ -154,7 +203,17 @@ def reconstruct(target, reader, clock=lambda: datetime.now(timezone.utc)):
         return {'number': d['number'], 'merge_commit': d['merge_commit_sha'],
                 'head': commit(d['head']['sha']), 'base': commit(d['base']['sha'])}
     def issue(key):
-        return issue_view(read('linear.issue', id=key), key)
+        data = read('linear.issue', id=key)
+        if target.scope is not None:
+            if uuid(data.get('workspaceId')) != target.scope.workspace_id:
+                raise ValueError('wrong Linear workspace')
+            actual_uuid = uuid(data.get('uuid'))
+            if key == target.issue and actual_uuid != target.issue_uuid:
+                raise ValueError('wrong Linear issue UUID')
+        view = issue_view(data, key)
+        if target.scope is not None:
+            view.update(uuid=actual_uuid, workspace_id=target.scope.workspace_id)
+        return view
     try:
         head = branch()
         source = read('github.commit', repository=target.repository, sha=target.selected_commit)

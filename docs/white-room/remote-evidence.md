@@ -1,10 +1,12 @@
-# UIF cloud remote reconstruction adapter
+# Bounded remote reconstruction adapter
 
 `tools/white_room/remote_evidence.py` adds bounded remote reconstruction to the
-read-only comparison foundation. It does not change the existing evaluator,
-declarations, README reconciliation ledger or AGENTS instructions. The selected
-scope is **one isolated UIF cloud worker**; it is not a generic executor or
-cross-project dispatcher.
+read-only comparison foundation. Accepted source e6ecba5 retains a default
+scope of **one isolated UIF cloud worker**. Current source adds an explicit
+reviewed `ProjectScope` for a selected project/executor; it does not discover a
+generic executor, dispatch work or introduce another intake queue. Native Linear
+is current intake and historical ledger identities remain provenance. See the
+[reuse checkpoint](recovery-reuse-20261114.md) for accepted-versus-candidate scope.
 
 ## Interface and trust boundary
 
@@ -21,10 +23,20 @@ is always false.
 
 The caller supplies `Target`: the exact reviewed declaration digest, selected
 immutable commit, UIF issue, expected Linear team/project identities and the
-specific PR establishing source integration. Repository `maldous/uif`, ref
-`develop`, project `uif` and profile `cloud` are fixed for this version. A null
-Linear project is an explicit expected absence, not an omitted field. Issue
-assignee is recorded as metadata, never promoted to execution owner or lease.
+specific PR establishing source integration. Without `ProjectScope`, repository
+`maldous/uif`, ref `develop`, project `uif` and profile `cloud` remain fixed.
+That legacy target permits an explicitly expected null Linear project; it is
+not an omitted field. Issue assignee is metadata, never an execution owner/lease.
+
+The current source `ProjectScope` must come from reviewed owner configuration.
+It binds repository/ref/project, `foo` or `cloud` profile, canonical Linear
+workspace/team/project UUIDs and issue prefix. Its `Target` additionally binds
+the exact issue UUID. Target and scope must agree before any read; Linear reader
+responses must include matching `workspaceId` and canonical `uuid`, including
+valid workspace/UUID metadata for read dependencies. Product names or mutable
+issue keys alone cannot establish these identities. No scope is inferred from
+untrusted issue text, an arbitrary URL or an environment label. Every concrete
+reader mapping still needs its own permitted live qualification.
 
 The caller's chosen PR/issue association is part of its reviewed input. Observing
 a merged PR proves source integration only; it does not prove product acceptance,
@@ -51,7 +63,7 @@ credentials, implicit writes or automatic retries:
   requested head is inconclusive; no pagination or alternate fetch is attempted.
 - `linear.issue`: exact issue identifier → issue read with fields `id`, `teamId`,
   `projectId`, `assigneeId`, `title`, `description`, `statusType`, `updatedAt`,
-  `relations`. Request explicit nullable fields so absence is not confused with an
+  `relations` (plus `workspaceId` and `uuid` for explicit `ProjectScope`). Request explicit nullable fields so absence is not confused with an
   omitted response. `relations.blockedBy` must be present and complete. The trusted host reader
   must add `relations_complete: true` only when its interface guarantees full
   enumeration or all pages have been collected. Absent that guarantee, omit it
@@ -97,6 +109,30 @@ observations succeed. Do not dispatch from this adapter or the comparator's exit
 code. The existing harness must authenticate original receipts, resolve current
 ownership/checkpoints/effects and perform its supported atomic admission.
 
+## Composition at the ownership boundary
+
+`tools.white_room.transition.WhiteRoomVerifier` takes an owner-supplied
+`RecoveryInputs` provider, authenticated read-only reader, exact declaration and
+private observations, and registered `CheckpointRead`. It requires an explicit
+reviewed ProjectScope, matches the current claim's UUID/source/executor bindings,
+refuses terminal issues/incomplete dependencies, refreshes only access evidence
+actually obtained and runs the existing comparator. Original receipts and
+project-specific prerequisite observations remain necessary.
+
+`CheckpointRead` reads the registered latest tuple, verifies compatible identity,
+wire/code/schema metadata, accepted/pending stages and original operations, and
+refuses pending writes. A successor must use the explicitly reconciled handoff to
+bind an origin checkpoint to current ownership; the origin's evidence is retained.
+A missing checkpoint requires verified absence in the registered thread/namespace.
+This source adapter is not a state-migration or replay command.
+
+The result is a scoped recovery receipt for the integrating authority, which must
+hold its ownership lock and independently validate effect fences. It is not a new
+network endpoint or a claim that connectors/native/publisher hooks are installed.
+No command exit code or saved JSON can substitute for the authenticated boundary.
+Foo authority and active Morgan requirements remain those of policy 2.0.0; no
+unattended cloud wake-up or new recurring automation is implemented here.
+
 ## Verification
 
 ```
@@ -108,6 +144,7 @@ wrong target/response identities, changing branch/PR/scope/owner/dependencies,
 unmerged/diverged/partial source evidence, missing metadata, access refusal,
 timeout, bounds, secret-like extra fields, and no invented recovery authority.
 These are **adapter contract tests**, not live connector end-to-end tests or actual
-restart/failover evidence. No new Foo runtime experiment is needed for this
-cloud-only additive module. A later host integration must qualify its concrete
-connector mapping and custody independently before relying on observed facts.
+restart/failover evidence. The original adapter was cloud-only; the explicit
+scope/composition extension still requires live qualification of concrete
+connectors, custody, dependency declarations and native/publisher hooks before
+operational use. No service binding is changed by these tests.

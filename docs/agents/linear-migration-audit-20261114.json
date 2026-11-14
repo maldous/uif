@@ -1,0 +1,655 @@
+{
+  "schema": "uif-linear-migration-audit-v1",
+  "purpose": "Frozen historical scope-accounting audit; not a work queue, allocator or runtime readiness proof",
+  "source_readme_sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+  "source_action_count": 213,
+  "source_nonadditive_reference_count": 11,
+  "issue_readbacks_checked": 102,
+  "receiving_issue_count": 87,
+  "primary_unique_action_count": 213,
+  "primary_scope_occurrences": 215,
+  "missing_action_ids": [],
+  "multiple_primary_occurrences": [
+    {
+      "source_id": "ledger-usf1144-evidence-reconciliation",
+      "issues": [
+        "USF-1144",
+        "USF-1144"
+      ]
+    },
+    {
+      "source_id": "ledger-usf580-criterion-disposition",
+      "issues": [
+        "USF-580",
+        "USF-580"
+      ]
+    }
+  ],
+  "receiving_readback_evidence": [
+    {
+      "issue": "CIX-141",
+      "url": "https://linear.app/maldous/issue/CIX-141/eli-connect-native-symphony-delivery-to-independent-review",
+      "updated_at": "2026-11-14T10:38:03.051Z",
+      "description_sha256": "f2b162f3778ec745449624ce95a2f593c2d6e91851bfbe18964e31776f6e98c6",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-199",
+      "url": "https://linear.app/maldous/issue/CIX-199/luca-reconcile-owned-renderer-shutdown-and-core-storage-metadata",
+      "updated_at": "2026-11-14T10:56:25.851Z",
+      "description_sha256": "3f44e8e8e96ba2929b5fc45daecd24230d24f653b8766e81658ee17694337c46",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-239",
+      "url": "https://linear.app/maldous/issue/CIX-239/eli-qualify-current-cli-large-file-and-pipe-full-engine-windows",
+      "updated_at": "2026-11-14T10:55:55.212Z",
+      "description_sha256": "4982d5b685c730b11c20be00d757396735c03622fb8635635890cb1a14f20e7b",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-240",
+      "url": "https://linear.app/maldous/issue/CIX-240/quinn-review-current-128mib-filereal-pipe-full-engine-windows",
+      "updated_at": "2026-11-14T10:55:32.830Z",
+      "description_sha256": "d2f70d5468640e6a2653feeb7368196834aa78236cc09cab174efb30c41b1569",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-241",
+      "url": "https://linear.app/maldous/issue/CIX-241/elilocal-repair-current-cli-large-window-sigsegv-and-restore-rc10",
+      "updated_at": "2026-11-14T10:56:54.006Z",
+      "description_sha256": "40f4ff9fb964db0b572a6ba12712b5e83b916501484bcd85fb8c2dcb34f5ae33",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-249",
+      "url": "https://linear.app/maldous/issue/CIX-249/quinn-review-cix-248-current-binding-publication-at-the-frozen-pr-head",
+      "updated_at": "2026-11-14T10:57:10.593Z",
+      "description_sha256": "e6af576e666b218aa0f721527ddb8d4a2b256f739ac2e29157bd50fdcd484cfd",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-375",
+      "url": "https://linear.app/maldous/issue/CIX-375/eli-bind-remaining-cli-clauses-to-accepted-source-and-receipts",
+      "updated_at": "2026-11-14T10:58:08.162Z",
+      "description_sha256": "0ef22f1603a2f3caca17a2c23a9cf7bd9ceca04e908ed13846f14b65edfd0975",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-447",
+      "url": "https://linear.app/maldous/issue/CIX-447/luca-prepare-accepted-mixed-root-materialization-and-admission-source",
+      "updated_at": "2026-11-14T10:57:30.921Z",
+      "description_sha256": "0d076293b62fe76994c96da6e06a955ad03d6c765ead3a1b5d7a284cf821cd93",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-493",
+      "url": "https://linear.app/maldous/issue/CIX-493/camille-reconcile-current-manuscript-version-and-custody-receipt",
+      "updated_at": "2026-11-14T10:58:48.631Z",
+      "description_sha256": "cc40f3c04234027ff369b35f0cf7c3f9f3fe95aedca4477c07410119702f0d17",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "CIX-507",
+      "url": "https://linear.app/maldous/issue/CIX-507/consolidate-colour-repository-losslessly",
+      "updated_at": "2026-11-14T10:38:33.130Z",
+      "description_sha256": "956c610440fdfb1c38f47de6c79714e183b6ce6995be7a39cd72c6d182a7f617",
+      "primary_scope_occurrences": 7
+    },
+    {
+      "issue": "CIX-508",
+      "url": "https://linear.app/maldous/issue/CIX-508/reconcile-relocated-cix-documents-work",
+      "updated_at": "2026-11-14T10:38:57.319Z",
+      "description_sha256": "529cd5c1e05d95702473576bb606c42892b64bf60e9b867f3480a8bfa9465651",
+      "primary_scope_occurrences": 3
+    },
+    {
+      "issue": "CIX-71",
+      "url": "https://linear.app/maldous/issue/CIX-71/ops-16-maintain-the-control-register-risk-decisions-and-settings-drift",
+      "updated_at": "2026-11-14T10:37:39.989Z",
+      "description_sha256": "fea8ef7bc07eada2ebc79b62d53a8b41466bac295a81bb457c9227ccf6d3cc92",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-102",
+      "url": "https://linear.app/maldous/issue/UIF-102/resolve-corpus-supersession-version-identity-and-incomplete-research",
+      "updated_at": "2026-11-14T11:15:22.277Z",
+      "description_sha256": "827d91a63586a2d04c93e09015aacb88e582fe60ba3576229e00d5a9d799379d",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-103",
+      "url": "https://linear.app/maldous/issue/UIF-103/resolve-priority-record-provenance-and-product-role-qualification-gaps",
+      "updated_at": "2026-11-14T10:41:44.839Z",
+      "description_sha256": "0e6f52f921b71c12fef7c651d54e0e38cc94bfd5c173a31098c4bd9fcfe0e403",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-105",
+      "url": "https://linear.app/maldous/issue/UIF-105/qualify-cache-isolation-and-rights-safety-and-privacy-propagation",
+      "updated_at": "2026-11-14T10:42:25.463Z",
+      "description_sha256": "30b04c5cc5f88b766195cc64ea3b93cfda34119494ff80b2cb5949153982763c",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-107",
+      "url": "https://linear.app/maldous/issue/UIF-107/maintain-the-47-retained-data-and-configuration-holds",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "8b5a80ca39caaad5192070e69a5621b04795c3e1ef21f59388f8206fa9ee594d",
+      "primary_scope_occurrences": 9
+    },
+    {
+      "issue": "UIF-108",
+      "url": "https://linear.app/maldous/issue/UIF-108/qualify-retained-worktree-and-custody-branches-for-current-functional",
+      "updated_at": "2026-11-14T10:56:38.519Z",
+      "description_sha256": "a878ffaacef4b5416dd5f353f49142915a0a180a8190cf1af02f59aabd18bcbd",
+      "primary_scope_occurrences": 8
+    },
+    {
+      "issue": "UIF-109",
+      "url": "https://linear.app/maldous/issue/UIF-109/reconcile-canonical-barcode-design-and-retained-product-identity",
+      "updated_at": "2026-11-14T10:42:06.059Z",
+      "description_sha256": "e254973b3f2945b5714d62426957de0d04e601bb746071e2998ed6be77323595",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-110",
+      "url": "https://linear.app/maldous/issue/UIF-110/determine-residual-need-and-evidence-for-historical-provider-failover",
+      "updated_at": "2026-11-14T10:43:56.834Z",
+      "description_sha256": "19b246736edd7de451843a2e1fe9f86bf2df3a6b904cc0fadef480f071af81c4",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-116",
+      "url": "https://linear.app/maldous/issue/UIF-116/consolidate-uif-project-organization-and-preserve-legacy-provenance",
+      "updated_at": "2026-11-14T11:07:41.725Z",
+      "description_sha256": "3732df191b920d14fa427bceb4d73478c85c7b355f67fad761ee60d86fcad4de",
+      "primary_scope_occurrences": 10
+    },
+    {
+      "issue": "UIF-120",
+      "url": "https://linear.app/maldous/issue/UIF-120/deliver-the-native-platform-harness-with-developmain-release-delivery",
+      "updated_at": "2026-11-14T10:33:44.621Z",
+      "description_sha256": "b525f185b49353c8ebf073903ca0e2108cc4565e018f316702ffb4411ee401c0",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-126",
+      "url": "https://linear.app/maldous/issue/UIF-126/align-windmill-execution-and-resource-handling-with-community-edition",
+      "updated_at": "2026-11-14T11:06:08.149Z",
+      "description_sha256": "bbf803a9c2462b718e6a503035912924eb03cd3bf97a58929c474626cf59455f",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-128",
+      "url": "https://linear.app/maldous/issue/UIF-128/implement-frozen-release-candidates-and-parallel-release-qualification",
+      "updated_at": "2026-11-14T11:10:23.062Z",
+      "description_sha256": "c8ece58e322ef32c0910507c0dc4a7879d15e83e456ba0a3f596e3a6430aca06",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-130",
+      "url": "https://linear.app/maldous/issue/UIF-130/verify-coherent-migration-recovery-and-operational-handover",
+      "updated_at": "2026-11-14T11:11:46.543Z",
+      "description_sha256": "ce9ac75ecc765b7261cf92fa9597d38658ce9e95194f451872d694291bdda9a4",
+      "primary_scope_occurrences": 6
+    },
+    {
+      "issue": "UIF-134",
+      "url": "https://linear.app/maldous/issue/UIF-134/automate-provider-refresh-and-protected-source-workspace-preparation",
+      "updated_at": null,
+      "description_sha256": "3d7444d9ba3217144929838b540f39ee4813777f325649a722815b41382175c7",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-139",
+      "url": "https://linear.app/maldous/issue/UIF-139/deliver-remaining-offmenu-outcomes-through-the-native-platform",
+      "updated_at": "2026-11-14T11:02:03.493Z",
+      "description_sha256": "446d542db402f8f7764790565dcbb57102696d0f150021a0d192319412024b89",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-140",
+      "url": "https://linear.app/maldous/issue/UIF-140/bind-task-source-and-custody-by-execution-role",
+      "updated_at": "2026-11-14T10:46:57.360Z",
+      "description_sha256": "b72bd83f3e6e8c0f159053c7f078db22f6dd23d82ded56e9a56cb04440e8263a",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-141",
+      "url": "https://linear.app/maldous/issue/UIF-141/validate-the-complete-delivery-path-before-coding",
+      "updated_at": "2026-11-14T10:33:02.200Z",
+      "description_sha256": "c020d0d3d00f33d6d0dc6c3eae61758c95f304b85604a3ec7f239b5620d15352",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-142",
+      "url": "https://linear.app/maldous/issue/UIF-142/support-a-sealed-javascript-validation-and-delivery-profile",
+      "updated_at": "2026-11-14T10:30:55.966Z",
+      "description_sha256": "9171965d1dbcbcda21427e09a2d6b1f76839b70dfe0362ca715386ed061cb8d4",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-155",
+      "url": "https://linear.app/maldous/issue/UIF-155/deliver-selected-retained-functional-source-slices",
+      "updated_at": "2026-11-14T10:55:29.285Z",
+      "description_sha256": "a72bdf86e95a43bcc31f10e9e21ce7bcfe891fd03c6cc1ac97f766736ea04140",
+      "primary_scope_occurrences": 5
+    },
+    {
+      "issue": "UIF-158",
+      "url": "https://linear.app/maldous/issue/UIF-158/complete-recoverable-repository-consolidation",
+      "updated_at": "2026-11-14T11:11:22.402Z",
+      "description_sha256": "52c7be7f7f7037991f20170a2d3d6515dc9ab0910ec0292ee4c67c73941d6248",
+      "primary_scope_occurrences": 4
+    },
+    {
+      "issue": "UIF-159",
+      "url": "https://linear.app/maldous/issue/UIF-159/prove-repeated-autonomous-delivery-recovery-and-eligible-refill",
+      "updated_at": "2026-11-14T11:15:46.991Z",
+      "description_sha256": "618080f93c80ef58c9c96f19eb0c87a5976d6979141d60380454f6112538335e",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-160",
+      "url": "https://linear.app/maldous/issue/UIF-160/qualify-a-frozen-release-candidate-and-immutable-promotion",
+      "updated_at": "2026-11-14T11:15:11.624Z",
+      "description_sha256": "3ece6aff7fdb6136e193d5bfb5cf39565c6bb591cf609d604c1a615ccadf3f96",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-161",
+      "url": "https://linear.app/maldous/issue/UIF-161/align-consumed-contracts-during-material-delivery-changes",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "d5df45b3d1028205852be4d4ee4e903d654b67df28e73cb0fa236ad4e2641fc6",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-175",
+      "url": "https://linear.app/maldous/issue/UIF-175/complete-public-support-release-documentation-and-repository-controls",
+      "updated_at": "2026-11-14T11:09:57.538Z",
+      "description_sha256": "3d02da9e717f4d404408da703a3e37aa165ba84a79bb74fab1c501899642ff20",
+      "primary_scope_occurrences": 5
+    },
+    {
+      "issue": "UIF-177",
+      "url": "https://linear.app/maldous/issue/UIF-177/adopt-the-general-uif-harness-through-controlled-project-handover",
+      "updated_at": "2026-11-14T11:11:46.388Z",
+      "description_sha256": "6b446726d1a4a0a1de8a373b4d5e2f46a0146cfc4af7d86dbcab20252944c80b",
+      "primary_scope_occurrences": 3
+    },
+    {
+      "issue": "UIF-178",
+      "url": "https://linear.app/maldous/issue/UIF-178/verify-cq-profile-isolation-and-read-only-executor-readiness",
+      "updated_at": "2026-11-14T11:09:32.117Z",
+      "description_sha256": "50c4c2dbe3ac58369996462e05d060ef852bd2854e6a1b3d8d8e4ebb63cc2ce9",
+      "primary_scope_occurrences": 4
+    },
+    {
+      "issue": "UIF-179",
+      "url": "https://linear.app/maldous/issue/UIF-179/resolve-the-sonar-python-analyzer-version-contract",
+      "updated_at": "2026-11-14T11:10:23.591Z",
+      "description_sha256": "bb8c4f69f9f6d34904c3d395594e2cded51f717dbeb7b5c2b351784584af2d68",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-182",
+      "url": "https://linear.app/maldous/issue/UIF-182/inventory-offmenu-controls-features-audiences-and-help-coverage",
+      "updated_at": "2026-11-14T11:08:35.759Z",
+      "description_sha256": "c9279f6f88c50be58360a6b216a6eefc52d4657bdb19f82e0601a3c70fccfda8",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-184",
+      "url": "https://linear.app/maldous/issue/UIF-184/document-supported-offmenu-developer-interfaces-and-executable",
+      "updated_at": "2026-11-14T10:42:54.182Z",
+      "description_sha256": "ae19b2cb3a5c7cd007f9bc97ad44777c3cc6fb3f798720b60a373fed1d254485",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-188",
+      "url": "https://linear.app/maldous/issue/UIF-188/audit-required-locales-and-user-facing-translation-coverage",
+      "updated_at": "2026-11-14T11:16:59.146Z",
+      "description_sha256": "50faa228da4fd95026534af586746192eb9d46214356f69c744c6e1ec4fec9a3",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-192",
+      "url": "https://linear.app/maldous/issue/UIF-192/define-reusable-client-integrations-and-project-capability-gaps",
+      "updated_at": "2026-11-14T11:11:25.899Z",
+      "description_sha256": "65bfc11358b2d77a16a79851129161b72b418f3d75c9763ee53f9797d9822600",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-202",
+      "url": "https://linear.app/maldous/issue/UIF-202/trace-v1-qr-reuse-closure",
+      "updated_at": "2026-11-14T11:16:53.503Z",
+      "description_sha256": "0a9c6e5707a71eb4da93dbf6ea56f8df8956b3c99c22ed3ecc083b82e4b8242f",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-205",
+      "url": "https://linear.app/maldous/issue/UIF-205/deliver-production-anqr-across-product-experience-services-and-managed",
+      "updated_at": "2026-11-14T10:59:24.249Z",
+      "description_sha256": "8cee22233b6452bb5fad2649251cc8ae1e2862681ccbba78b93c4d5aa6393cc8",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-211",
+      "url": "https://linear.app/maldous/issue/UIF-211/retire-obsolete-offmenu-mcp-connector",
+      "updated_at": "2026-11-14T10:59:49.409Z",
+      "description_sha256": "c82da738bf1e7ba0849ec20188ffe3d748476e5cf9952252a3f7154f91ed2b28",
+      "primary_scope_occurrences": 4
+    },
+    {
+      "issue": "UIF-212",
+      "url": "https://linear.app/maldous/issue/UIF-212/reconcile-cq-source-and-proof-artifacts",
+      "updated_at": "2026-11-14T11:10:52.654Z",
+      "description_sha256": "cfbe9f2035a9094215261aff95e6edffa72f33b1d91e44ff91ba0793d237a7fd",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-213",
+      "url": "https://linear.app/maldous/issue/UIF-213/plan-cq-canonical-and-workspace-end-state",
+      "updated_at": "2026-11-14T11:09:13.291Z",
+      "description_sha256": "3b9a2f12ac6e2625247367e77f394cae38a77e2902d1dc6b05f301762ef723d3",
+      "primary_scope_occurrences": 12
+    },
+    {
+      "issue": "UIF-214",
+      "url": "https://linear.app/maldous/issue/UIF-214/resolve-cix-dirty-postimage-custody",
+      "updated_at": "2026-11-14T10:39:23.032Z",
+      "description_sha256": "bed118c0e8c389fd0b254ceeb8789040a84361c26120018c4414f136c5992abd",
+      "primary_scope_occurrences": 6
+    },
+    {
+      "issue": "UIF-215",
+      "url": "https://linear.app/maldous/issue/UIF-215/resolve-anqr-source-baseline-and-rights",
+      "updated_at": "2026-11-14T11:17:55.290Z",
+      "description_sha256": "7796cb3ced859b014136fbb952fc9de7841208c2d11ceabaab40fa6430c2a4f3",
+      "primary_scope_occurrences": 5
+    },
+    {
+      "issue": "UIF-216",
+      "url": "https://linear.app/maldous/issue/UIF-216/reconcile-uif-retained-source-dependencies",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "56d912666c15e7f28464b19ee2be8a1b6e0514e442b547028475117948b6c40f",
+      "primary_scope_occurrences": 9
+    },
+    {
+      "issue": "UIF-217",
+      "url": "https://linear.app/maldous/issue/UIF-217/plan-uif-workspace-and-ref-retirement",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "6ddda2ca58345d929869cc7cb12806b67b9840d0d4e4ada6fe40546a2be48991",
+      "primary_scope_occurrences": 13
+    },
+    {
+      "issue": "UIF-218",
+      "url": "https://linear.app/maldous/issue/UIF-218/resolve-shared-publication-transport-handoff",
+      "updated_at": "2026-11-14T11:11:16.964Z",
+      "description_sha256": "1118ffba687392dc5f7253ad5f071ef326b47750bfdfe06bb8eef3db5c6a88f8",
+      "primary_scope_occurrences": 5
+    },
+    {
+      "issue": "UIF-219",
+      "url": "https://linear.app/maldous/issue/UIF-219/qualify-versioned-cross-project-integration-baselines",
+      "updated_at": "2026-11-14T10:35:13.858Z",
+      "description_sha256": "c9e58195c6a3a910c14d36151a13b8af17c96a53f3acb42fee3d65dd6a96cb3a",
+      "primary_scope_occurrences": 3
+    },
+    {
+      "issue": "UIF-220",
+      "url": "https://linear.app/maldous/issue/UIF-220/move-aldousinfo-into-uif-and-redesign-the-project-portal",
+      "updated_at": "2026-11-14T11:01:44.449Z",
+      "description_sha256": "dc0ea7a6e46ff0ccaa11cd50d8bc5ea499cdfe846beba672cc4f7dc235fe0f7e",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-221",
+      "url": "https://linear.app/maldous/issue/UIF-221/review-retained-ai-tooling-source",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "7ea682b55c5edd5b1383f1cdc2a2aa02f2e57b4fee949482e3ba217568af242b",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-222",
+      "url": "https://linear.app/maldous/issue/UIF-222/review-retained-historical-tooling-source",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "e778efe8081c059147dc04529250c4da0eb4eef2d7a2ccde8638ffbc36b55a5d",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-223",
+      "url": "https://linear.app/maldous/issue/UIF-223/review-retained-qualified-source-recovery",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "c370c4f53a529ff50e2de6d7ed428733d3657e4eff014aa91a79e2935a5c34c6",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-224",
+      "url": "https://linear.app/maldous/issue/UIF-224/review-retained-stop-source-outcome-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "2c0a20d7bd764edff3779ed8f85a9a474c9006d560d43438c91f0a80827289b7",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-225",
+      "url": "https://linear.app/maldous/issue/UIF-225/review-retained-worker-work-in-progress",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "e9ae9992229d21fa4645e25200ab96951f7719b059f4df5320b19bf451cab37f",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-226",
+      "url": "https://linear.app/maldous/issue/UIF-226/review-retained-app-source-custody",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "3e04c632a18ade4fab6beb7259e9ab3a60d8e2fc8a6e09479ec8f44e375bcde1",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-227",
+      "url": "https://linear.app/maldous/issue/UIF-227/review-retained-source-facts-diagnostics",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "c02b192eeeffa8a81a4a48bb5c0e994d4be5122db5734a3601d3f32414e792f3",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-228",
+      "url": "https://linear.app/maldous/issue/UIF-228/review-retained-qualification-admission-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "7d43abe5756354d5b2c475bb1924e17c7f86098b799ccd4b76a36c3844812b34",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-229",
+      "url": "https://linear.app/maldous/issue/UIF-229/review-retained-windmill-platform-source",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "7ff73621ff49d570b635886a19ec40424af329f42eba636206859da04e410e0e",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-230",
+      "url": "https://linear.app/maldous/issue/UIF-230/review-retained-qualification-bootstrap-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "9cf34a61b559bd63c2f46cdd6a693b0e711edad24e593c3e995261897b208a2a",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-231",
+      "url": "https://linear.app/maldous/issue/UIF-231/review-retained-nonblocking-review-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "60596045315812bb53a827ca3c05c20ead08c88fb4a4a8580e45b3807802b3b8",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-232",
+      "url": "https://linear.app/maldous/issue/UIF-232/review-retained-native-successor-consumer-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "6385eb3742f07239f27c1ff36d389f0cbdac1af5098cb0217948bbe4cfed73ca",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-233",
+      "url": "https://linear.app/maldous/issue/UIF-233/review-retained-template-rework-retention-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "35cd4b96bfa9118e472b7a4844bab8026facdd2d02dc5a6e95ff297759d512fb",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-234",
+      "url": "https://linear.app/maldous/issue/UIF-234/review-retained-successor-publication-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "6810a9c5f1a0e15e22f3e591c83095a53b726f6f5ca5e00b4219c46c1bbd6a01",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-235",
+      "url": "https://linear.app/maldous/issue/UIF-235/review-retained-repository-reconciliation-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "3f0e682b950e0e6278d6497385791648c7e1cdcd6589a12f355f0fcbc7b16132",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-236",
+      "url": "https://linear.app/maldous/issue/UIF-236/review-retained-worker-57-source-and-untracked-files",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "8fbf0307c3cb9a9714b9f8740b0daba6058844538deed65f645bfc975a670767",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-237",
+      "url": "https://linear.app/maldous/issue/UIF-237/review-retained-worker00-consumer-snapshot",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "a6d32e6778e677d5eaeea8aedecaf8daea3de21b9d6574e6e5e41c034ace885e",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-238",
+      "url": "https://linear.app/maldous/issue/UIF-238/review-native-package-branch",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "5704039b52b404ab000f3fd1144b7262c2c060ab9c2b5d20047a37c634bc0d4e",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-239",
+      "url": "https://linear.app/maldous/issue/UIF-239/reconcile-collection-and-manual-runner-custody",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "e3c177ee8280de77a902546c24dcc1aefc0cf943b4eaca84de2cb8f251aa76cb",
+      "primary_scope_occurrences": 7
+    },
+    {
+      "issue": "UIF-240",
+      "url": "https://linear.app/maldous/issue/UIF-240/review-retained-worker-instruction-package",
+      "updated_at": "2026-11-14T11:07:25.571Z",
+      "description_sha256": "b3f2b7eb45aca78b9dcc06b8e7192fbf3241fd0c9af10b033fc2bb407e599955",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-241",
+      "url": "https://linear.app/maldous/issue/UIF-241/review-retained-runner-setup-snapshot",
+      "updated_at": "2026-11-14T11:07:41.740Z",
+      "description_sha256": "e708e2bfde144c8dfec94dfabc7e5853f66cf812665af3b23099b39c53ec0706",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-242",
+      "url": "https://linear.app/maldous/issue/UIF-242/review-retained-collection-and-wheatfield-snapshots",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "e1f535740aa98ae403a3b499df8026143682aa15bfe22781ecc0eb55b26b7c0c",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-243",
+      "url": "https://linear.app/maldous/issue/UIF-243/reconcile-src-local-agent-settings",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "53d9062b9d92a88c161c69f9f2546f36a0a66ea23c494cadc778adbe9f0e1ec3",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-244",
+      "url": "https://linear.app/maldous/issue/UIF-244/reconcile-historical-worker-aliases",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "64e898e71f203a47bdee66ab0b63cdae0a21ad77b341fbfd61c10760d3591999",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-245",
+      "url": "https://linear.app/maldous/issue/UIF-245/classify-seven-unresolved-src-roots",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "a43b8503996609c808d4e527a8c6ce972d7a08385740d353f571c117ddcb3038",
+      "primary_scope_occurrences": 8
+    },
+    {
+      "issue": "UIF-246",
+      "url": "https://linear.app/maldous/issue/UIF-246/reconcile-mixed-project-archive-custody",
+      "updated_at": "2026-11-14T10:28:10.814Z",
+      "description_sha256": "7ef9e43aab53c5d0f3630e16eb41f0e7e94c03bbce883a672136c5da703b5c4a",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-247",
+      "url": "https://linear.app/maldous/issue/UIF-247/unify-cross-project-agent-bootstrap-contracts",
+      "updated_at": "2026-11-14T11:01:31.273Z",
+      "description_sha256": "037b06c133c9456afcff2d97ee4a967710a028e71535e4139cdb09aaa4bcf165",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UIF-95",
+      "url": "https://linear.app/maldous/issue/UIF-95/qualify-remaining-country-source-and-metadata-obligations-from",
+      "updated_at": "2026-11-14T10:41:03.623Z",
+      "description_sha256": "5d6b6525b35fe7100a50f80820e410f6c120173632b9ff63011c329a131f4e36",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-97",
+      "url": "https://linear.app/maldous/issue/UIF-97/resolve-retained-ux-chronology-and-country-progress-evidence-gaps",
+      "updated_at": "2026-11-14T11:11:29.672Z",
+      "description_sha256": "2b9bd84e745cfb02def121b95b47ed7c29af82d360ec0acddee0538df2e573ed",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "UIF-98",
+      "url": "https://linear.app/maldous/issue/UIF-98/qualify-shopping-deficit-duration-and-collaborative-list-integration",
+      "updated_at": "2026-11-14T10:40:30.773Z",
+      "description_sha256": "7086a0323bc0236686dcf5e3bd9f75d24dd3c792530bb0903a065eca85d42144",
+      "primary_scope_occurrences": 1
+    },
+    {
+      "issue": "USF-1144",
+      "url": "https://linear.app/maldous/issue/USF-1144/correct-census-readiness-semantic-audit-mapping-planning-and",
+      "updated_at": "2026-11-14T11:02:17.404Z",
+      "description_sha256": "de0eccde90b77a938029a843035250fb08912024a119a11665a419f407d413c2",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "USF-580",
+      "url": "https://linear.app/maldous/issue/USF-580/compose-service-inventory-and-startup-cost",
+      "updated_at": "2026-11-14T11:00:58.409Z",
+      "description_sha256": "d263d55e12131f3337f96977120d24395ff52003b3ea8fe1723330db4a4380a4",
+      "primary_scope_occurrences": 2
+    },
+    {
+      "issue": "UXF-1",
+      "url": "https://linear.app/maldous/issue/UXF-1/establish-reusable-experience-authority-and-independently-assured",
+      "updated_at": "2026-11-14T10:57:48.645Z",
+      "description_sha256": "e57ad67dc3d7456e9cab7b3bb182bdae32934532dd8af9871ee7ce862fdbcfaa",
+      "primary_scope_occurrences": 1
+    }
+  ],
+  "scope_accounting_complete": true,
+  "limits": [
+    "Issue reads are non-atomic; refresh actual issue state before admission.",
+    "Primary imports alone count; the archival whole-README copy is excluded.",
+    "Repeated original and later wording within one issue is not additional work.",
+    "Coverage does not establish semantic acceptance, installation, atomic claims, execution or refill.",
+    "Historical IDs are provenance only; live intake remains native Linear issues."
+  ],
+  "source": {
+    "repository": "maldous/uif",
+    "commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+    "git_blob": "e9f75a1f617efc49020d5f396a767cfb8106f24e",
+    "path": "README.md"
+  },
+  "observed_at": "2026-11-14T11:19:24Z",
+  "source_entrypoint_after_migration": "https://github.com/maldous/uif/blob/5a1a03f2c2177114a2df1ea432b60704da0f1356/README.md"
+}

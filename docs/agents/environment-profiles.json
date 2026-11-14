@@ -1,0 +1,194 @@
+{
+  "schema": "uif-environment-profiles-v1",
+  "purpose": "Declared operating profiles; not installed capabilities, live status, intake or a scheduler",
+  "policy": {
+    "id": "uif-worker-policy",
+    "version": "2.0.0",
+    "path": "docs/agents/uif-worker-policy.md",
+    "manifest": "docs/agents/uif-worker-policy.json"
+  },
+  "inventory": {
+    "capabilities": "docs/agents/skills-and-plugins.md",
+    "memory": "docs/agents/memory-routing.md"
+  },
+  "intake": {
+    "kind": "linear-only",
+    "identity": [
+      "workspace_uuid",
+      "project_uuid",
+      "issue_uuid"
+    ],
+    "claim_authority": "foo",
+    "registry_is_queue": false,
+    "ledger_ids": "provenance-only"
+  },
+  "local_session_ceiling": 64,
+  "resource_accounting": "shared-across-local-sessions-and-mcp-jobs",
+  "morgan_continuity": "active-coordinator-required-no-unattended-wakeup",
+  "logical_roles": {
+    "uif": {
+      "display_name": "UIF",
+      "repository_binding": [
+        "maldous/uif"
+      ],
+      "baseline": "develop",
+      "product_instructions": "AGENTS.md",
+      "operational_policy": "environment-owned",
+      "memory": {
+        "namespace": "uif/roles/uif",
+        "shared": "uif/shared",
+        "private_data": false
+      }
+    },
+    "anqr": {
+      "display_name": "ANQR",
+      "repository_binding": [
+        "maldous/anqr-v3"
+      ],
+      "baseline": "develop",
+      "product_instructions": "AGENTS.md",
+      "operational_policy": "environment-owned",
+      "memory": {
+        "namespace": "uif/roles/anqr",
+        "shared": "uif/shared",
+        "private_data": false
+      }
+    },
+    "offmenu": {
+      "display_name": "OffMenu",
+      "repository_binding": [
+        "maldous/offmenu"
+      ],
+      "baseline": "develop",
+      "product_instructions": "AGENTS.md",
+      "operational_policy": "environment-owned",
+      "memory": {
+        "namespace": "uif/roles/offmenu",
+        "shared": "uif/shared",
+        "private_data": false
+      }
+    },
+    "circularquay": {
+      "display_name": "CircularQuay",
+      "repository_binding": [
+        "maldous/CircularQuay"
+      ],
+      "baseline": "feature/initial-implementation",
+      "baseline_exception": "Use the current PR1 bootstrap source while develop is the empty initialization tree; revalidate before work",
+      "product_instructions": "AGENTS.md",
+      "operational_policy": "environment-owned",
+      "memory": {
+        "namespace": "uif/roles/circularquay",
+        "shared": "uif/shared",
+        "private_data": false
+      }
+    },
+    "cix": {
+      "display_name": "CIX",
+      "repository_binding": [
+        "cix-project/cix",
+        "cix-project/cix-operations"
+      ],
+      "baseline": "develop",
+      "product_instructions": "AGENTS.md",
+      "repository_isolation": "public-product-and-private-operations-remain-separate",
+      "operational_policy": "environment-owned",
+      "memory": {
+        "namespace": "uif/roles/cix",
+        "shared": "uif/shared",
+        "private_data": false
+      }
+    },
+    "cloud": {
+      "display_name": "Cloud",
+      "repository_binding": [],
+      "baseline": null,
+      "product_instructions": null,
+      "operational_policy": "environment-owned",
+      "memory": {
+        "namespace": "uif/roles/cloud",
+        "shared": "uif/shared",
+        "private_data": false
+      }
+    }
+  },
+  "executor_profiles": {
+    "cloud": {
+      "kind": "isolated-cloud-environment",
+      "capabilities": {
+        "required": [
+          "authorized-environment",
+          "available-reasoning",
+          "applicable-project-instructions"
+        ],
+        "optional": [
+          "native-git",
+          "github-connector",
+          "linear-connector",
+          "foo-mcp-user",
+          "foo-mcp-root",
+          "project-skills"
+        ]
+      },
+      "foo_filesystem_shared": false,
+      "quota_independence": "verify-actual-provider-admission-and-execution"
+    },
+    "foo_codex": {
+      "kind": "local-model-session",
+      "capabilities": {
+        "required": [
+          "verified-foo-host",
+          "available-local-allowance",
+          "supported-session-admission",
+          "project-owner",
+          "shared-resource-admission",
+          "current-claim"
+        ],
+        "optional": [
+          "project-skills",
+          "deterministic-mcp"
+        ]
+      },
+      "session_ceiling": 64,
+      "scheduler": "existing-stokowski-harness"
+    },
+    "foo_mcp_user": {
+      "kind": "deterministic-host-command-as-checkout-owner",
+      "capabilities": {
+        "required": [
+          "verified-connector-schema",
+          "verified-foo-host",
+          "authorized-os-user",
+          "exact-worktree-source",
+          "shared-resource-admission",
+          "original-operation-receipt"
+        ],
+        "optional": [
+          "project-build-tools",
+          "project-test-tools"
+        ]
+      },
+      "provides_reasoning": false,
+      "provides_session_control": false
+    },
+    "foo_mcp_root": {
+      "kind": "privileged-host-transport",
+      "capabilities": {
+        "required": [
+          "verified-connector-schema",
+          "verified-foo-host",
+          "specific-host-authorization",
+          "shared-resource-admission",
+          "original-operation-receipt"
+        ],
+        "optional": [
+          "bounded-host-configuration"
+        ]
+      },
+      "provides_reasoning": false,
+      "provides_session_control": false,
+      "repository_commands_as": "verified-checkout-owner"
+    }
+  },
+  "adoption": "Record installed bundle, owner acknowledgment and actual execution in existing Linear evidence; this registry declares none"
+}

@@ -1,41 +1,71 @@
 # Project integration and historical dispositions
 
-The current [shared worker policy](agents/uif-worker-policy.md) defines five
-fixed project roles and a separate general Cloud role. UIF is accountable for
-shared Stokowski, Windmill, LangChain/LangGraph, GitHub and Linear integration.
-OffMenu, CIX, ANQR and Circular Quay retain product source, local contracts and
-delivery ownership. CIX product and operations repositories remain separate
-surfaces of the CIX role.
+The [policy 2.0.0](agents/uif-worker-policy.md) is environment-owned. Its
+[profiles](agents/environment-profiles.json) retain UIF, ANQR, OffMenu,
+CircularQuay and CIX project roles plus a general Cloud role without a Git
+binding. Product AGENTS.md remains self-contained; the overlay does not become
+a product build/runtime dependency. UIF owns shared Stokowski, Windmill,
+LangChain/LangGraph, GitHub and Linear integration corrections; products retain
+their own source, acceptance and publication controls.
 
-UIF must function without requiring these products' assets. Each product must
-be self-contained for its own operation without UIF implementation being
-mandatory. Supported optional parent orchestration remains valid when selected.
-A shared workflow does not erase project isolation or transfer data rights.
+## Current role and product boundaries
 
-## Select the current per-unit profile
+Revalidate the selected branch and accepted source before work. These bindings
+route execution; they do not assert agent provisioning or product readiness.
 
-Before execution or transfer, resolve the canonical unit, accountable owner,
-stage, repository/base/head/tree/acquisition, allowed paths, workspace/resource
-scope, execution route and actual user, toolchain/fixed checks, rights/privacy,
-review/output and publication authority, and original operation/recovery
-contract. A repository clone or project association supplies no missing grant.
+| Role/surface | Repository and baseline | Contracts retained |
+| --- | --- | --- |
+| UIF | maldous/uif; develop | Shared infrastructure, native Linear integration, source/deployment drift and recovery; a running service does not prove autonomous delivery. |
+| ANQR | maldous/anqr-v3; develop | Current product AGENTS, Node/npm pins, lockfile, typecheck/tests/conformance, rights and source-history preservation. Source checks do not establish browser/API/MCP journeys or deployment. |
+| OffMenu | maldous/offmenu; develop | Repository standard/ADRs, typed delivery and validation, independent review, sole integration writer, release-candidate rules and private .delivery custody. Preserve applicable data/UI holds. |
+| CircularQuay | maldous/CircularQuay; feature/initial-implementation during PR1 bootstrap | Current product AGENTS, contribution/security/qualification contracts and actual Go/SDK/browser pins. Empty develop is not its current bootstrap source. Preserve exact provider/data grants and synthetic-versus-real evidence. |
+| CIX product | cix-project/cix; develop | Product activation record and independent review, Rust/native/codec requirements and Gitflow. Governance checks are not a native build/runtime pass. |
+| CIX operations | private cix-project/cix-operations; develop | Current custodian/Ready issue, separate reviewer, owned paths and resource budget. Preserve stopped-benchmark and publication holds; dated historical resource policies are not today's global defaults. |
+| General Cloud | No repository binding | Authorized general coordination/non-repository work. Project Git work stays with its owner. |
 
-Use one common procedure with project-specific facts. Wrong project, repository,
-source, path, tool, rights or conflicting ownership must refuse before effects.
-Do not build unrelated custom bridges or erase product holds to make profiles
-look uniform.
+CIX surfaces share one logical role but retain separate repositories and disclosure
+boundaries. Do not expose private operational source, receipts or data in public
+product packaging. USF is a separately selected foundation surface when actually
+needed; its GOAL.md remains semantic authority and no competing doctrine is added.
 
-The five project Cloud roles use their own checkouts and resources; the sixth
-general Cloud role has no project Git binding. Project owners use direct
-authorized GitHub/MCP capabilities and coordinate dependencies. Morgan handles
-Foo-local Codex session orchestration. See the [operating procedure](operating-procedure.md)
-and [current Foo guidance](agents/windmill-workspace.md).
+ANQR's accepted removal of maintenance-policy copies and CircularQuay's equivalent
+product boundary remain valid. Reconcile CIX's existing removal candidate through
+its owner. OffMenu/CIX operations may keep short environment-policy references
+while preserving old copies as history; such references do not require a UIF
+checkout for product builds. Source publication, environment installation and
+owner acknowledgment are separate evidence.
 
-A current profile comes from its actual owner and accepted source, not the old
-table below. Product requirements block only affected product work or an
-explicitly selected shared lane. Independent UIF foundation source work does not
-require all product builds, publishers or services to be working. A combined
-ledger unit retains the existing relevant-product readiness hold.
+## Select and recover the current per-unit profile
+
+Native Linear supplies current issue scope, immutable workspace/project/issue
+identity, dependencies, acceptance and execution restrictions. Historical source
+IDs remain provenance; no original-ledger selector or second intake is enabled.
+Resolve the owner/claim generation and coordinator epoch, exact repository/
+base/head/tree, allowed paths, worktree and actual OS user, executor/resource
+budget, toolchain/fixed checks, rights/privacy, reviewer/publisher and original
+operation/recovery contract before effects.
+
+Apply the existing [white-room procedure](white-room/README.md) and read-only
+[comparison](../tools/white_room/check.py) to the applicable Foo or cloud
+requirements. The retained [remote reconstruction adapter](../tools/white_room/remote_evidence.py)
+retains its UIF/cloud default; its source ProjectScope extension requires
+reviewed target and native Linear UUID bindings. The source
+[transition verifier](../tools/white_room/transition.py) composes this reader,
+declared comparison and owner-scoped checkpoint checks at an ownership boundary.
+Qualify actual connectors and native/publisher hooks separately; source is not
+proof of deployed reconstruction or ownership. Compare the destination's declared configuration with
+observed installation/state and preserve accepted source/operation evidence to
+avoid replay. Reconcile selected persistence/checkpoint versions, source, stage,
+owner and original effects before the first unaccepted step resumes.
+
+Foo's ownership authority must fence claims/effects for both lanes. If unavailable,
+pause new claims/transfers and dependent effects; preserve assigned cloud work.
+Quota reset is not environment readiness. Foo-only prerequisites apply only to
+selected dependent work; unrelated cloud and pure UIF work retain lighter gates.
+Use the [operating procedure](operating-procedure.md) and relevant
+[capability inventory](agents/skills-and-plugins.md), not copied host paths or
+historical worker counts. Wrong target, rights, source or ownership refuses the
+affected operation; no project hold is erased to make profiles appear uniform.
 
 ## Historical project snapshot: 6 November 2026
 

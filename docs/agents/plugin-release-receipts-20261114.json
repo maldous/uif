@@ -1,0 +1,61 @@
+{
+  "schema": "uif-plugin-source-adoption/1",
+  "observed_at": "2026-11-14T11:41:38Z",
+  "policy_version": "2.0.0",
+  "workflow": "plugin-creator:update-plugin",
+  "workflow_source": "skill://plugin_connector_1p_e1a10c53223481918a42f1510ec46c1e/update-plugin/SKILL.md",
+  "updates": [
+    {
+      "name": "windmill-foo-root",
+      "display_name": "Windmill Foo Root",
+      "plugin_id": "plugins_6aee4b8ff90081918a6b237c75e8aa53",
+      "version": "0.1.2",
+      "previous_release_id": "pluginrel_6af09380eb8c819195f235532f419752",
+      "release_id": "pluginrel_6af848c8b81c81918ef3f0b03d35a790",
+      "url": "https://chatgpt.com/plugins/plugins_6aee4b8ff90081918a6b237c75e8aa53",
+      "scope": "USER",
+      "audience": "PRIVATE",
+      "changed_files": [
+        "plugin.json",
+        ".codex-plugin/plugin.json",
+        "skills/foo-root-jobs/SKILL.md"
+      ],
+      "archive_sha256": "8e87aa5261b264db162989acde23f8b566dedd39f6d05f5be38c5a28c3862716"
+    },
+    {
+      "name": "morgan-mandy-household",
+      "display_name": "Morgan + Mandy Household",
+      "plugin_id": "plugins_6ae5115120f88191b7ec3565b80ce1c5",
+      "version": "2.0.1",
+      "previous_release_id": "pluginrel_6ae511529f0081918d6be6e9483d6cb2",
+      "release_id": "pluginrel_6af848d3d6688191aed6ac958bfa11a8",
+      "url": "https://chatgpt.com/plugins/plugins_6ae5115120f88191b7ec3565b80ce1c5",
+      "scope": "USER",
+      "audience": "PRIVATE",
+      "changed_files": [
+        "plugin.json",
+        ".codex-plugin/plugin.json",
+        "skills/household-dual-role/SKILL.md"
+      ],
+      "archive_sha256": "a0408bc8a3ece4ab85760c2c2f368d2ff9bd56006bc6d53beec9f69a36195f0c"
+    }
+  ],
+  "verification": {
+    "complete_inventory_readback": true,
+    "changed_source_exactly_read_back": true,
+    "unchanged_source_exactly_preserved": true,
+    "app_and_mcp_configuration_preserved": true,
+    "presentation_and_default_prompts_preserved": true,
+    "scope_and_audience_preserved": true,
+    "host_reload_observed": false,
+    "runtime_handoff_proven": false
+  },
+  "managed_supervision": {
+    "source": ".agents/skills/uif-supervision/SKILL.md",
+    "interfaces": ".agents/skills/uif-supervision/references/service-interfaces.md",
+    "aligned_policy_version": "2.0.0",
+    "installed_user_skill_updated": false,
+    "installation": "Not performed; this managed source requires environment adoption separately."
+  },
+  "boundary": "Private plugin source releases were saved and read back. No connection retarget, grant change, service action, task dispatch, memory mutation or deployment follows from these source updates."
+}

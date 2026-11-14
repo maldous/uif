@@ -17,21 +17,21 @@
       }
     },
     "circularquay": {
-      "repository": null,
+      "repository": "maldous/CircularQuay",
       "discovery_complete": {
         "foo": false,
         "cloud": false
       }
     },
     "cix": {
-      "repository": null,
+      "repository": "cix-project/cix",
       "discovery_complete": {
         "foo": false,
         "cloud": false
       }
     },
     "anqr": {
-      "repository": null,
+      "repository": "maldous/anqr-v3",
       "discovery_complete": {
         "foo": false,
         "cloud": false
@@ -315,11 +315,11 @@
         "anqr"
       ],
       "expected": {
-        "unit": "offmenu-stokowski-current.service",
+        "unit": "stokowski-foo.service",
         "active_state": "active",
         "sub_state": "running"
       },
-      "declaration_source": "https://github.com/maldous/uif/blob/e09a66585c2091fbb86b353c5bd630a62450aff8/AGENTS.md",
+      "declaration_source": "UIF operating policy 2.0.0; current unit binding independently read 2026-11-14. Required running state applies only to selected live execution; no start is implied.",
       "max_age_seconds": 300
     },
     {
@@ -336,7 +336,7 @@
     }
   ],
   "unqualified": [
-    "Repository names except UIF/OffMenu require authoritative project mapping validation.",
+    "Canonical repository identities are declared; selected task source, CIX private operations profile and complete project dependencies still require actual owner qualification.",
     "Null expectations cannot pass; select reviewed project-specific contracts before use.",
     "Windmill MCP aliases are environment-specific: changes require explicit review, not fuzzy matching.",
     "Foo-only dependencies must be added to a cloud task contract if that task actually needs them."
