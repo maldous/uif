@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 49,
+  "record_count": 54,
   "records": [
     {
       "project": "ANQR",
@@ -363,6 +363,41 @@
       "source_sha256": "7c1772b17963052e4c02922163989ea3f89cbed8eded3e3f8d9d1763de01060d",
       "state": "Retain original handler versions R1–R5, publisher candidate and terminal-filter variants. Current handler materially represents R5 except timeout10s→30s;14 supporting entries have exact canonical blob correspondence. Distinct publisher/filter sources remain unselected, not auto-adopted.",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-223",
+      "source_sha256": "a5f155364417a6b510b15176d67a8e301c6ce48517dfc8d215dbed3eb6f24b20",
+      "state": "bounded immutable source/custody assessment partial",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-225",
+      "source_sha256": "5c37f0ad5fb83f52ae3c9707a784ecc0fc5cc2b5319bb413a578c7a1d4df0a0a",
+      "state": "bounded immutable source/custody assessment partial",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-226",
+      "source_sha256": "6875899e54b8a23befe7fa1420ec9ea92042b51a7c705d9ac36d0b9f93f8c582",
+      "state": "bounded immutable source representation assessed; current physical custody pending",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-227",
+      "source_sha256": "d5f6889c555b5cee10e1d3e2a744032bb2ef92bf66a98ee94acd3b585fcb7353",
+      "state": "bounded immutable diagnostic candidate disposition",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-229",
+      "source_sha256": "eb9c7fddefc00fa638cc52da0bbc3347e42d3ca866319431978fda857c52fd52",
+      "state": "bounded immutable shared-tooling custody disposition",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -593,7 +628,12 @@
         "offmenu-retained-UIF-233",
         "offmenu-retained-UIF-234",
         "offmenu-retained-UIF-221",
-        "offmenu-retained-UIF-222"
+        "offmenu-retained-UIF-222",
+        "offmenu-retained-UIF-223",
+        "offmenu-retained-UIF-225",
+        "offmenu-retained-UIF-226",
+        "offmenu-retained-UIF-227",
+        "offmenu-retained-UIF-229"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -685,6 +725,17 @@
         ],
         "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/uif221-222-contribution.json",
         "sha256": "4172ea0e6a6ad486f474dddbbbe1d172b3fcfb61ea5a6191c36bb965272168d4"
+      },
+      "five_retained_source_contribution": {
+        "ids": [
+          "offmenu-retained-UIF-223",
+          "offmenu-retained-UIF-225",
+          "offmenu-retained-UIF-226",
+          "offmenu-retained-UIF-227",
+          "offmenu-retained-UIF-229"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/five-retained-source-contribution.json",
+        "sha256": "9f7c07207bdb2f4628184523ecd20a81c2dcec03f7c5d052a877b6a114650525"
       }
     },
     "Cloud": {

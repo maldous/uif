@@ -1,0 +1,105 @@
+{
+  "archive_sha256": "0d08353dc67f53ca9088d8b380c91c49d65b8348c7e130103961ad16e4d324d7",
+  "manifest_sha256": "627ae3d94a169613382bad977157c6e96c3c7ff62ecc526de97ea90beb541948",
+  "verified_payloads": [
+    {
+      "path": "payload/remaining-eleven-current-custody-metadata-request.json",
+      "bytes": 6557,
+      "sha256": "3bbd8ae4b7966a866ecb0fed251bc7aad04ba9cfcefaf549f49a2776d6fe8ace"
+    },
+    {
+      "path": "payload/remaining-six-github-comparison-unavailable.json",
+      "bytes": 3233,
+      "sha256": "c728ad3c80b724628c4d7b4cec91f0ae5f3df8aeecc40269bd03a09cb8721397"
+    },
+    {
+      "path": "payload/summary.json",
+      "bytes": 4931,
+      "sha256": "8711d2542c9c43b8df9703858f5ad5fa012b55feabe092d1ee83f617cf6887de"
+    },
+    {
+      "path": "payload/uif-223-next-source-metadata.json",
+      "bytes": 99477,
+      "sha256": "84a4dc117fd38a96a7ac5a35574ed21d3884f45a8cf48a777a7a64bb56d59809"
+    },
+    {
+      "path": "payload/uif-225-next-source-metadata.json",
+      "bytes": 29560,
+      "sha256": "e429bc19cd674fb27fddf5549b0b1406ebedf05928947cc3fe5ec9a7d1fc7811"
+    },
+    {
+      "path": "payload/uif-226-next-source-metadata.json",
+      "bytes": 8031,
+      "sha256": "50cb7a134f5af3c81029405913238d9faeef8a0b8ed89e28bca6ef6b14c0ad9c"
+    },
+    {
+      "path": "payload/uif-227-next-source-metadata.json",
+      "bytes": 4527,
+      "sha256": "7b763c4ccf6133c2b2bbc6dd5a2bbd5d3c67ede676f6a4b8e4099f913021ec6c"
+    },
+    {
+      "path": "payload/uif-229-next-source-metadata.json",
+      "bytes": 9606,
+      "sha256": "97863dfd9af4c65be6bfa310f9b2040b52fb2b631263d337d4726d0f133cfe26"
+    },
+    {
+      "path": "payload/uif223-assessment.json",
+      "bytes": 6343,
+      "sha256": "6f072962ebec56b21adab7b3a31a24d549598a74ff38c67745e6832ba40d388d"
+    },
+    {
+      "path": "payload/uif225-assessment.json",
+      "bytes": 19424,
+      "sha256": "6d5893e1ac6a4e8e3a2cef9d39fa916e4b72248e3f5770dce8883c3a86777bab"
+    },
+    {
+      "path": "payload/uif226-assessment.json",
+      "bytes": 25743,
+      "sha256": "9416c5c93daa53efc5143ffe9d547ab93d7bad7e9efbd0d9278ee9954a22900d"
+    },
+    {
+      "path": "payload/uif227-assessment.json",
+      "bytes": 22131,
+      "sha256": "78219de3c9186428e80067dc56b44b65b10961701833a0fd74cde999a89114f5"
+    },
+    {
+      "path": "payload/uif229-assessment.json",
+      "bytes": 19370,
+      "sha256": "c040fcfd71f6a1b64de8a271cc236bea901abf6af38dc12e874e23401bd211cb"
+    }
+  ],
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "bounded_owner_dispositions": [
+    {
+      "original_id": "offmenu-retained-UIF-223",
+      "state": "bounded immutable source/custody assessment partial",
+      "finding": "README declares1435 recovered blobs and16298source paths; those counts are attributed, not independently verified. Large SOURCE-CUSTODY body unavailable through used response and comparison metadata capped300. No objects swept or held payloads read. Retain exact branch; no selected current source slice or product import established.",
+      "remaining": "Current Foo binding/state plus a genuinely selected finite consumer/slice if any full source qualification is needed; no reconstruction/fullobject sweep or synthetic implementation."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-225",
+      "state": "bounded immutable source/custody assessment partial",
+      "finding": "Five retained worker families and untracked-source metadata classified. Selected scanner-model exactly represented in current source; shared Foo ownership patch remains separate, minified popup differs/unqualified and selected builds tie excluded art/data. Preserve all originals, no wholesale adoption.",
+      "remaining": "Current Foo binding/state and permitted selected text-source scope for any genuine reuse; held art/data and broader source equivalence unqualified."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-226",
+      "state": "bounded immutable source representation assessed; current physical custody pending",
+      "finding": "Eleven declared source payload hashes verified; three exact canonical modules, five exact after explicit import rebasing, household unknown-ingredient guard preserved despite later pantry extensions. Visual/scanner source now extended. No new source import selected.",
+      "remaining": "Current Foo binding/state; no full current UI/device/product acceptance inferred."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-227",
+      "state": "bounded immutable diagnostic candidate disposition",
+      "finding": "Diagnostic candidate adds request-local allowlisted stage/error metadata with observer isolation. Six support modules exactly represented; accepted facts handler remains diagnostic-free. Existing canonical preservation record names exact13filepins. Retain candidate inactive; no selected current failing consumer requires activation.",
+      "remaining": "Current Foo binding/state; no new diagnostics deployment or fabricated product defect."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-229",
+      "state": "bounded immutable shared-tooling custody disposition",
+      "finding": "Historical Windmill runner/storage/incident tooling is effects-capable shared infrastructure. Preserve its source/history under actual UIF shared ownership; no product runtime dependency or source import selected.",
+      "remaining": "Current Foo binding/state; any actual optional shared-lane qualification stays with existing UIF owner, not a product readiness gate."
+    }
+  ],
+  "scope": "Exact archived source evidence only. Preserve worktrees, native reservations and original unknowns. No whole-row, shared, runtime or product closure."
+}
