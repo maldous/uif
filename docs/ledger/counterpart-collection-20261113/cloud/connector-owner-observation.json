@@ -1,0 +1,20 @@
+{
+  "owner_evidence": {
+    "thread": "6af4e914-2bd8-8191-95a6-e039a2345036",
+    "turn": "01a1d836-5b45-70e8-b79c-93f312d8802d",
+    "status": "completed"
+  },
+  "rows": {
+    "connector-stable-identity-map": "ea64d870e947071247f1af593b8ac1f756afa9e06426d87a4438237cb8b49ed2",
+    "connector-consumer-map": "38fd41f99a16b3b867caefa1b7125221585c9fbb74897c51c6f63837b12b9610"
+  },
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "scope": "Owner-reported current Cloud metadata and bounded caller map only.",
+  "facts": [
+    "The current Foo Workspace connector returned only foo / Foo. Cloud calls it with workspace_id=foo. This is a workspace binding.",
+    "Legacy tool metadata describes a disabled owner-only route fixed to offmenu. The route was not invoked and is absent from the current Cloud declaration.",
+    "The deployed report renderer calls the root job script through the Windmill SDK. That is an internal call. Cloud observed three deployed scripts with isDraft=false and extraPerms={}."
+  ],
+  "remaining": "Supported administrative evidence for obsolete and successor installation IDs, authenticated account and workspace scope, principal, custodian, and actual caller-to-installation bindings. Consumer coverage is bounded to the observed Cloud path.",
+  "state": "Bounded documentary contribution prepared for serial review."
+}

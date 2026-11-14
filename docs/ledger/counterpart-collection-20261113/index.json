@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 40,
+  "record_count": 42,
   "records": [
     {
       "project": "ANQR",
@@ -300,6 +300,20 @@
       "source_sha256": "2a0fe94c7cf973f8305da7800494427a953eda3b25f969ba99490c15ec90ac5b",
       "state": "Observed clean detached source is represented in accepted product ancestry. Detached custody and ignored-content limits remain.",
       "evidence_group": "OffMenu"
+    },
+    {
+      "project": "UIF",
+      "original_id": "connector-stable-identity-map",
+      "source_sha256": "ea64d870e947071247f1af593b8ac1f756afa9e06426d87a4438237cb8b49ed2",
+      "state": "Cloud verified the current Foo workspace call. The obsolete and successor installation identities, principals and custodians remain unknown.",
+      "evidence_group": "Cloud"
+    },
+    {
+      "project": "UIF",
+      "original_id": "connector-consumer-map",
+      "source_sha256": "38fd41f99a16b3b867caefa1b7125221585c9fbb74897c51c6f63837b12b9610",
+      "state": "Cloud documented its direct workspace call and internal renderer-to-job SDK call. Exact caller-to-installation bindings and wider consumer coverage remain unresolved.",
+      "evidence_group": "Cloud"
     }
   ],
   "evidence_groups": {
@@ -593,7 +607,9 @@
     "Cloud": {
       "ids": [
         "portal-source-ownership-inventory",
-        "portfolio-source-rights-inventory"
+        "portfolio-source-rights-inventory",
+        "connector-stable-identity-map",
+        "connector-consumer-map"
       ],
       "issue": "UIF-220",
       "original_routes": {
@@ -635,6 +651,15 @@
         "scope": "Current v58 public export lineage and selected asset/notice mapping. The original rows remain partial. Legacy inventory, custody locator, permitted scope and comprehensive rights remain unresolved.",
         "verification": "GitHub main and draft PR 2 head verified. All 52 public main runtime hashes matched the asset manifest and the selected notice blob matched. The draft documents share the main runtime tree. Deployment attribution comes from the Cloud owner. Both original allocation clauses match the older packet checkout.",
         "native_issue": "UIF-220 remains separate. Its legacy migration wording does not gate this documentary contribution."
+      },
+      "connector_contribution": {
+        "ids": [
+          "connector-stable-identity-map",
+          "connector-consumer-map"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/cloud/connector-owner-observation.json",
+        "sha256": "c1b26e8cc5d5bd6b9ab7a3caa3ab27f4a99071f99775da44188f1ca7f30ad8fa",
+        "scope": "Scoped counterpart evidence for existing UIF original rows. Canonical and shared effects remain held."
       }
     },
     "UIF": {
