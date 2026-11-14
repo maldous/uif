@@ -26,5 +26,65 @@
   "independent_verification_job_id": "uif-policy-adoption-verify-20261114-01",
   "independent_destination_readback_verified": true,
   "pinned_bundle_checkout_clean_verified": true,
-  "service_binding_and_control_state_unchanged_verified": true
+  "service_binding_and_control_state_unchanged_verified": true,
+  "prior_receipt_file_sha256": "becad67417f92f63e85faf930316dd7961b709d5106f81d66fa6c3cba05dd442",
+  "current_observation": {
+    "observed_date_utc": "2026-11-14",
+    "local_date_melbourne": "2026-11-15",
+    "local_timezone": "Australia/Melbourne",
+    "state": "final-startup-instruction-adoption-and-readback-verified",
+    "source_commit": "3a189a48d480a288a6df76df7ba432fd41643698",
+    "policy_version": "2.0.0",
+    "policy_sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
+    "original_job_id": "uif-policy-final-startup-adopt-20261115-01",
+    "operation_status": "succeeded",
+    "exit_code": 0,
+    "preimage_sha256": "fbc9bee2ce04169713b3bd9984f711ce3455942c0b50b4d2631066736679d9c8",
+    "original_bytes_preserved_in_hash_keyed_backup": true,
+    "backup_verification_basis": "Verified by the original final-adoption job; the latest read-only job did not repeat installation.",
+    "independent_verification": {
+      "job_id": "uif-policy-final-adoption-verify-20261115-01",
+      "operation_status": "succeeded",
+      "exit_code": 0
+    },
+    "latest_readback": {
+      "job_id": "uif-agent-sync-adoption-read-20261115-01",
+      "operation_status": "succeeded",
+      "exit_code": 0,
+      "observation_window_utc": {
+        "from": "2026-11-14T20:54:31Z",
+        "through": "2026-11-14T20:56:45Z"
+      },
+      "window_semantics": "Bounded readback observation window, not an installation timestamp.",
+      "startup_sha256": "b5b7f9126c9ff85e9de858237305a30b6848aebf980dc24f89c17e5d2f3ad81c",
+      "source_commit": "3a189a48d480a288a6df76df7ba432fd41643698",
+      "policy_sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
+      "uid": 1000,
+      "gid": 1000,
+      "mode": "0664"
+    },
+    "evidence_provenance": "Original terminal adoption/verification outcomes and a fresh bounded metadata-only Foo read relayed by the coordinating root. No installation or runtime control was repeated for this documentation update.",
+    "instruction_only": true,
+    "limits": [
+      "The original top-level ee41b73/f8e19235 receipt and its hashes remain historical evidence; they have not been rewritten as the final adoption.",
+      "Final startup-file readback does not establish that any already-running role or session reloaded instructions.",
+      "These receipts establish no native hook installation, backend operational state or end-to-end failover qualification."
+    ]
+  },
+  "skill_adoption_observation": {
+    "observed_date_utc": "2026-11-14",
+    "skill": "uif-supervision",
+    "installed_cloud_user_skill_locator": "skill://user/6aeba61f584481918307e2e545bef0c9/uif-supervision/SKILL.md",
+    "installed_cloud_user_skill_state": "older-passive-supervision-guidance-visible-to-this-audit",
+    "installed_cloud_user_skill_readback_verified": true,
+    "installed_cloud_user_skill_replaced": false,
+    "managed_repository_skill_path": ".agents/skills/uif-supervision/SKILL.md",
+    "managed_repository_source_commit": "3a189a48d480a288a6df76df7ba432fd41643698",
+    "managed_repository_copy_updated": true,
+    "role_or_session_reload_observed": false,
+    "limits": [
+      "A managed repository replacement is distinct from the cloud user skill visible through the skills connector.",
+      "No installed cloud role acknowledgment or runtime adoption is inferred."
+    ]
+  }
 }
