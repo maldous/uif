@@ -1,0 +1,185 @@
+{
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "archive_sha256": "e52a73e3a94cafcf9335b4c0f5d110587c3ef9a6ec4492d50cb6375ef775c6dc",
+  "manifest_sha256": "1d43cbdb6279af8b85061b0ebf5e4c6426fedbaa838b884ff2034d8e0d4624cd",
+  "exact_payload_pins": {
+    "payload/help-current-correspondence-20261114.json": "fd3486191daebdfc13a119d786d0412794e276d5249fc130b3e01dbba0ca6e74",
+    "payload/offmenu54-current-row-matrix.json": "3c53a683a08238785c13acaca4d4eb1f93392ef3f7aa83ab799936f08eab0868",
+    "payload/offmenu54-current-row-matrix.md": "dfe266b16e5a6b00873be4fa6c7727e91df588a375ecbbfdb33749874dbcb467",
+    "payload/retained-five-tracked-lineage.json": "75f33ca01eae3fc45aa6b07e3074205dbd6aec19ff1892261c4001081a5ca521",
+    "payload/retained-three-foo-metadata-result.json": "1152667b8d3c99959a52dc45fbb66ed4d60dc4f91edc06dc5900a646b29c64c2",
+    "payload/scanner-guide/approved-draft-pr-readback.json": "2f7f73ed566ef3cc02c8a67a9cd31f699ddaba67ec167f0c7c6cf7d7264caf77",
+    "payload/scanner-guide/independent-review.json": "f2178277b6540c5af869f971ea5676130bd1fe1bdec5127b21fb1a227615171f",
+    "payload/scanner-guide/review-evidence.json": "9fc144efeeeaa1ea80cbca6b68070825b26f1a503c0d3e4b392a55c03a9cf45f",
+    "payload/summary.json": "16e5f44577690d9e90d9594b87e3be3dcb4ee271e127eb73f497f4a02b4c93c9",
+    "payload/uif155-run2-scoped-acceptance.json": "c862e70d3245e19ea4fcf545d997cf8bea681c544f757c59fe123621382b21b0",
+    "payload/uif233-234-finite-source-comparison-request.json": "63fedde8751f6f1255a8a75700956e0e7fc82a69ff81acefb52a1dbaae6f3328",
+    "payload/uif233-234-shared-source-custody-relay.json": "3ae01413fe31f90bcfcbe19463fd5191c03612664806bc45c7daa85420e407c0",
+    "payload/uif235-237-current-clean-source-disposition.json": "35df7968b20ca154abaef1a63da66609c596c1afc41c9019037a06a3fd7e0191",
+    "payload/uif236-recorded-original-source-disposition.json": "705c1872566014e9407fbd1ac7903cde5e124130f52a30f280093bce9b7d230d"
+  },
+  "owner_category_counts": {
+    "accepted_source_delivery": 2,
+    "reviewed_published_draft_source": 2,
+    "bounded_no_change_disposition": 3,
+    "already_represented_retain": 3,
+    "native_reserved": 4,
+    "finite_shared_source_comparison": 2,
+    "missing_current_evidence_or_explicit_hold": 38
+  },
+  "existing_overlaps": [
+    "offmenu-wp05",
+    "offmenu-wp06",
+    "offmenu-wp07",
+    "offmenu-wp08",
+    "offmenu-developer-contract-qualification",
+    "offmenu-locale-requirements"
+  ],
+  "new_bounded_rows": [
+    {
+      "original_id": "offmenu-navigation-disposition",
+      "original_sha256": "fc6946e8bde6f97f70aa5a4564784a50f13362304a62adae3b21a580319d81f8",
+      "owner_credit": "Current source-owner disposition and18-pin navigation/identity correspondence delivered; whole original requirement not declared complete.",
+      "remaining": "No different navigation requirement is selected. Any future deep-link/history/country-progress change needs concrete intended behavior and consumer. Current pane/#home correspondence is documented; no chronology reconstruction.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "1ba30817541aa55306d68fcef11db92cd61ba3e8ffdb86c5c37cd5805e72a423",
+        "2785eecd5da2cca611550bd1b931076e33ccb1f1212327277818f55c59bf0a3a",
+        "8a58308c2e5b23165c373383e1b10787ad67ac8e8b36aa8971f733908741d8e5"
+      ]
+    },
+    {
+      "original_id": "offmenu-identity-default-contract",
+      "original_sha256": "092ebde1bae2d865e86d4d2e777ae028c99a9f7a4028434a427c59fa85ad5969",
+      "owner_credit": "Current source-owner disposition and18-pin navigation/identity correspondence delivered; whole original requirement not declared complete.",
+      "remaining": "No positive canonical identity reader/default consumer is selected. A future one needs target/type/granularity/context, authority and record qualification; D01/D04/D05/D07 design endorsement does not adopt D02/D03/D06/D08.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "1ba30817541aa55306d68fcef11db92cd61ba3e8ffdb86c5c37cd5805e72a423",
+        "2785eecd5da2cca611550bd1b931076e33ccb1f1212327277818f55c59bf0a3a",
+        "8a58308c2e5b23165c373383e1b10787ad67ac8e8b36aa8971f733908741d8e5"
+      ]
+    },
+    {
+      "original_id": "offmenu-provider-failover-disposition",
+      "original_sha256": "9113c1ed215f984bc354c1bee7661b16e62df5e40734d9f471035bfc6e65ae18",
+      "owner_credit": "Source-bound current routing/capability disposition delivered. Historical automatic failover intent explicitly remains unresolved.",
+      "remaining": "UIF shared routing owner selects whether automatic provider failover is currently required; if so specify trigger, permitted destination/provider, cost/credential entitlement, installed identity and exact product caller. Existing alternative lanes and fail-closed admission are source support only.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "a639ef2d1f074275b9e44be341730764ffd90aa3c0bbb8804d1bc48acb25cd58",
+        "2785eecd5da2cca611550bd1b931076e33ccb1f1212327277818f55c59bf0a3a",
+        "8a58308c2e5b23165c373383e1b10787ad67ac8e8b36aa8971f733908741d8e5"
+      ]
+    },
+    {
+      "original_id": "offmenu-help-inventory-alignment",
+      "original_sha256": "f8343196cc7878379566d765ac25b189b9050b99a057b201922d2b0a7b761312",
+      "owner_credit": "18 current correspondences completed; scanner guide a04e1d3 independently accepted, checks passed and published as draftPR235 after direct approval",
+      "remaining": "PR235 remains draft-only; no ready/merge authorized by creation approval. Wider contextual/index/device and other help clauses remain separately scoped.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "855e453c8cf570fa4011135b2ea234357eae4cba62c54765eb988c032eddfc0c",
+        "fb4da0be93803393db4e38225f30c998d20783a1fd48f4b66622600d260316fc",
+        "13689e482aa94f3e7546f38c42e5b8356c804a4fb027ba4977ea9f10b014a864"
+      ]
+    },
+    {
+      "original_id": "offmenu-retained-UIF-235",
+      "original_sha256": "c4868848054ab96f7967f3ba1d360e055f4775b3e2587e637fd038e7ed856286",
+      "owner_credit": "Exact current Foo HEAD ancestor of accepted59496c6; zero unique commits; staged/unstaged/untracked all empty at03:17:04–03:17:05UTC",
+      "remaining": "Retain original custody and UIF237 detached state. Ignored contents/private payloads remain outside review; no selected implementation follow-up or replay needed for this source scope.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "2785eecd5da2cca611550bd1b931076e33ccb1f1212327277818f55c59bf0a3a",
+        "8a58308c2e5b23165c373383e1b10787ad67ac8e8b36aa8971f733908741d8e5",
+        "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+        "75f33ca01eae3fc45aa6b07e3074205dbd6aec19ff1892261c4001081a5ca521",
+        "35df7968b20ca154abaef1a63da66609c596c1afc41c9019037a06a3fd7e0191"
+      ]
+    },
+    {
+      "original_id": "offmenu-retained-UIF-236",
+      "original_sha256": "199b28846f3f10d2584c89c326b711c925382cfacdf57bd33cf258adf3220626",
+      "owner_credit": "Current metadata confirms only two untracked originals; accepted module exact matches recorded original SHA; recorded test differs solely by accepted source-layout path migration",
+      "remaining": "No source import/replay needed for recorded originals. Preserve untracked originals and copies. Optional fresh exact-file hashing belongs existing Foo custodian, not a product readiness gate.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "2785eecd5da2cca611550bd1b931076e33ccb1f1212327277818f55c59bf0a3a",
+        "8a58308c2e5b23165c373383e1b10787ad67ac8e8b36aa8971f733908741d8e5",
+        "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+        "75f33ca01eae3fc45aa6b07e3074205dbd6aec19ff1892261c4001081a5ca521",
+        "705c1872566014e9407fbd1ac7903cde5e124130f52a30f280093bce9b7d230d"
+      ]
+    },
+    {
+      "original_id": "offmenu-retained-UIF-237",
+      "original_sha256": "2a0fe94c7cf973f8305da7800494427a953eda3b25f969ba99490c15ec90ac5b",
+      "owner_credit": "Exact current Foo HEAD ancestor of accepted59496c6; zero unique commits; staged/unstaged/untracked all empty at03:17:04–03:17:05UTC",
+      "remaining": "Retain original custody and UIF237 detached state. Ignored contents/private payloads remain outside review; no selected implementation follow-up or replay needed for this source scope.",
+      "row_revision": null,
+      "attributed_evidence_sha256": [
+        "2785eecd5da2cca611550bd1b931076e33ccb1f1212327277818f55c59bf0a3a",
+        "8a58308c2e5b23165c373383e1b10787ad67ac8e8b36aa8971f733908741d8e5",
+        "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+        "75f33ca01eae3fc45aa6b07e3074205dbd6aec19ff1892261c4001081a5ca521",
+        "35df7968b20ca154abaef1a63da66609c596c1afc41c9019037a06a3fd7e0191"
+      ]
+    }
+  ],
+  "draft_pr235_readback": {
+    "headRefOid": "a04e1d387979252f6aa42f3903337bec907fba7d",
+    "isDraft": true,
+    "state": "OPEN",
+    "url": "https://github.com/maldous/offmenu/pull/235"
+  },
+  "retained_235_237": [
+    {
+      "original_id": "offmenu-retained-UIF-235",
+      "accepted_product_head": "59496c6cf006c16b6ac4859580d0e91374682756",
+      "head": "366c3710eeb9f732197250b217d412cd9e3b5d7e",
+      "detached": false,
+      "tracked_lineage": "Exact current retained HEAD is an ancestor of accepted develop with zero unique commits",
+      "scope_limits": "No ignored contents or private payloads read or classified; no current runtime consumer, runtime acceptance or shared-row closure inferred. Preserve UIF237 detached HEAD."
+    },
+    {
+      "original_id": "offmenu-retained-UIF-237",
+      "accepted_product_head": "59496c6cf006c16b6ac4859580d0e91374682756",
+      "head": "33736b4c70fa3f1da8dc92a68fd764a8a3153937",
+      "detached": true,
+      "tracked_lineage": "Exact current retained HEAD is an ancestor of accepted develop with zero unique commits",
+      "scope_limits": "No ignored contents or private payloads read or classified; no current runtime consumer, runtime acceptance or shared-row closure inferred. Preserve UIF237 detached HEAD."
+    }
+  ],
+  "recorded_236": {
+    "original_id": "offmenu-retained-UIF-236",
+    "accepted_product_head": "59496c6cf006c16b6ac4859580d0e91374682756",
+    "original_retained_head": "f6cb92aef52a5cc8193717d7e794556bd84f8b3b",
+    "recorded_originals": [
+      {
+        "retained_path": "offmenu/jsonstat_selection.py",
+        "recorded_bytes": 10689,
+        "recorded_sha256": "d7ecadc29c1845482b30d549a7a86a599a4f4caa8410eeb8f9393b54c0520d16",
+        "accepted_path": "src/offmenu/jsonstat_selection.py",
+        "accepted_bytes": 10689,
+        "accepted_sha256": "d7ecadc29c1845482b30d549a7a86a599a4f4caa8410eeb8f9393b54c0520d16",
+        "correspondence": "Exact recorded byte identity"
+      },
+      {
+        "retained_path": "tests/test_jsonstat_selection.py",
+        "recorded_bytes": 5445,
+        "recorded_sha256": "0ca29470a9dc633c477e44c2cff17693e960a1a8e8cb6c47326d1193907216ed",
+        "accepted_path": "tests/test_jsonstat_selection.py",
+        "accepted_bytes": 5449,
+        "accepted_sha256": "2b0530f396c9ba98f7bf2b8cced4af841b5e255edc2a2ab4ab5d8c5e7cf7bbeb",
+        "correspondence": "Only one source path literal changed from offmenu/jsonstat_selection.py to src/offmenu/jsonstat_selection.py; replacing that exact old literal produces accepted test bytes"
+      }
+    ],
+    "migration_commit": "6c0f95d0affc30c1ec0eadd94bbaa0e1a0255c48",
+    "scope_limit": "The current Foo metadata receipt does not freshly hash file bodies; no claim these current untracked bytes were freshly compared. This is correspondence to the original verified hash/length record and current accepted source, not runtime/product acceptance or shared-row closure."
+  },
+  "limits": [
+    "The archive remains in private custody. This receipt carries bounded owner evidence and exact source pins. Category totals describe the owner handoff.",
+    "UIF-233/234 comparison, UIF-155 native reservations, and all draft and permission restrictions stay with their existing owners. Combined records remain held."
+  ]
+}

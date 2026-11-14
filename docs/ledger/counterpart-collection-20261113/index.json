@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 33,
+  "record_count": 40,
   "records": [
     {
       "project": "ANQR",
@@ -251,6 +251,55 @@
       "source_sha256": "bbbddb7eeb36ce94d6bea64d2175faecbcccff120b35b86ca423b45697ba2716",
       "state": "Current evidence and nonadditive parent join completed at documentary scope. Canonical acceptance remains pending.",
       "evidence_group": "UIF"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-navigation-disposition",
+      "source_sha256": "fc6946e8bde6f97f70aa5a4564784a50f13362304a62adae3b21a580319d81f8",
+      "state": "Current navigation correspondence documented. No different navigation behavior was selected.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-identity-default-contract",
+      "source_sha256": "092ebde1bae2d865e86d4d2e777ae028c99a9f7a4028434a427c59fa85ad5969",
+      "state": "Current identity correspondence documented. A positive canonical reader and its scope are still unselected.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-provider-failover-disposition",
+      "source_sha256": "9113c1ed215f984bc354c1bee7661b16e62df5e40734d9f471035bfc6e65ae18",
+      "state": "Current routing and capability disposition documented. Historical automatic failover remains unresolved.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-help-inventory-alignment",
+      "source_sha256": "f8343196cc7878379566d765ac25b189b9050b99a057b201922d2b0a7b761312",
+      "state": "Eighteen current correspondences and reviewed scanner-guide draft PR 235 documented. Broader help clauses remain open.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-235",
+      "source_sha256": "c4868848054ab96f7967f3ba1d360e055f4775b3e2587e637fd038e7ed856286",
+      "state": "Observed clean retained source is represented in accepted product ancestry. Ignored contents remain outside this evidence.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-236",
+      "source_sha256": "199b28846f3f10d2584c89c326b711c925382cfacdf57bd33cf258adf3220626",
+      "state": "Recorded-original source correspondence established. Current untracked bytes remain unverified.",
+      "evidence_group": "OffMenu"
+    },
+    {
+      "project": "OffMenu",
+      "original_id": "offmenu-retained-UIF-237",
+      "source_sha256": "2a0fe94c7cf973f8305da7800494427a953eda3b25f969ba99490c15ec90ac5b",
+      "state": "Observed clean detached source is represented in accepted product ancestry. Detached custody and ignored-content limits remain.",
+      "evidence_group": "OffMenu"
     }
   ],
   "evidence_groups": {
@@ -457,7 +506,14 @@
         "offmenu-wp05",
         "offmenu-wp06",
         "offmenu-wp07",
-        "offmenu-wp08"
+        "offmenu-wp08",
+        "offmenu-navigation-disposition",
+        "offmenu-identity-default-contract",
+        "offmenu-provider-failover-disposition",
+        "offmenu-help-inventory-alignment",
+        "offmenu-retained-UIF-235",
+        "offmenu-retained-UIF-236",
+        "offmenu-retained-UIF-237"
       ],
       "owner_turns": [
         "01a1d1fa-e3b9-763b-a597-5ec4ac908629"
@@ -518,6 +574,20 @@
           }
         },
         "boundary": "The WP05 assessment and PR211 terminal receipt and the WP06 custody receipt already match the existing collection. WP07 and WP08 add source custody dispositions only. No separate row revision token was supplied."
+      },
+      "offmenu54_bounded_contribution": {
+        "ids": [
+          "offmenu-navigation-disposition",
+          "offmenu-identity-default-contract",
+          "offmenu-provider-failover-disposition",
+          "offmenu-help-inventory-alignment",
+          "offmenu-retained-UIF-235",
+          "offmenu-retained-UIF-236",
+          "offmenu-retained-UIF-237"
+        ],
+        "receipt": "docs/ledger/counterpart-collection-20261113/offmenu/offmenu54-bounded-documentary-receipt.json",
+        "sha256": "d01dbfbe9afa8c0da91be5b8aab52c494225eea28d2726a5f4f4ebec1b816842",
+        "boundary": "Seven original evidence entries. Six existing entries were preserved once. Shared acceptance and current UIF-236 untracked bytes remain unresolved."
       }
     },
     "Cloud": {
