@@ -19,7 +19,7 @@
     "current": 46,
     "change": 0
   },
-  "record_count": 32,
+  "record_count": 33,
   "records": [
     {
       "project": "ANQR",
@@ -244,6 +244,13 @@
       "source_sha256": "8580c07dc89e448951edba8f3e28de9201ae6f6d4bb396d5836acc25f1754dd2",
       "state": "Seventeen local validator refusals retained as owner-reported evidence for the existing execution. Live transport and shared admission enforcement remain unqualified.",
       "evidence_group": "CQ"
+    },
+    {
+      "project": "discovery",
+      "original_id": "ledger-final-acceptance-deduplication",
+      "source_sha256": "bbbddb7eeb36ce94d6bea64d2175faecbcccff120b35b86ca423b45697ba2716",
+      "state": "Current evidence and nonadditive parent join completed at documentary scope. Canonical acceptance remains pending.",
+      "evidence_group": "UIF"
     }
   ],
   "evidence_groups": {
@@ -562,11 +569,16 @@
     },
     "UIF": {
       "ids": [
-        "restart-foo-configuration-drift"
+        "restart-foo-configuration-drift",
+        "ledger-final-acceptance-deduplication"
       ],
       "source_credit": "docs/ledger/counterpart-collection-20261113/uif/restart-foo-configuration-drift-source-credit.json",
       "source_credit_sha256": "d94dec26c27cdde45aa28f1a4114e12ad01b5053eac5761227a434c01e941ef1",
-      "boundary": "Completed delivery of the selected source report and checker. Full cross-project runtime drift, repair and combined effects remain held. This contribution changes no accepted shared accounting."
+      "boundary": "Completed delivery of the selected source report and checker. Full cross-project runtime drift, repair and combined effects remain held. This contribution changes no accepted shared accounting.",
+      "deduplication_receipt": {
+        "path": "docs/ledger/counterpart-collection-20261113/uif/final-acceptance-deduplication.json",
+        "sha256": "9b2910085e28e88a615f6eaa61d7a1a693257c479e279dcbe36705b3ca3c614c"
+      }
     }
   },
   "byte_verification": "Five exact ANQR owner payloads verified against the private archive and its manifest, including two existing copies. The Cloud documentary tree, three Git blobs and 52 public runtime asset hashes were independently verified. Prior verification and receiving records remain in the collection.",

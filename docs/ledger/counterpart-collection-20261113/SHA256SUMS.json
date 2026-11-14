@@ -12,10 +12,11 @@
   "docs/ledger/counterpart-collection-20261113/cq/cq.profile.qualify_private_return.owner.json": "7ad5d09d9e58ed661badc77806a8c7f141ecfbcc2697e19d3c525c40d7a3c30d",
   "docs/ledger/counterpart-collection-20261113/cq/r180-handoff-four-row.owner.json": "2fce79bbe81d929cf1fefbddecbd7cb1cf50ad0492bad24823a74964b9f1c5f3",
   "docs/ledger/counterpart-collection-20261113/cq/shared-publication-execute-cq.owner.json": "d4f5cad4f71716572300a25d1a67a40927a31889322875f3e5ee18e26b434a22",
-  "docs/ledger/counterpart-collection-20261113/index.json": "d970ec9b843cb8962d0c5b5f9ab33915abd3de94504f286ea239a07749654de8",
+  "docs/ledger/counterpart-collection-20261113/index.json": "7e13a2a56553e8a67c87f837faba620066749e3531109eddd8f25f94c3ab524b",
   "docs/ledger/counterpart-collection-20261113/offmenu-version1-attributed-receipt.json": "30d715a0b18f70289708c0f37b9e034af79073b3327526cffe34fa672fabcba9",
   "docs/ledger/counterpart-collection-20261113/offmenu/portable-original-row-handoff.v1.owner.json": "6de15e717d3a3b444da444fbb0f770b2b107cdd065629d1bd042c5e59c8e838c",
   "docs/ledger/counterpart-collection-20261113/offmenu/wp07-wp08-source-custody.owner.json": "18093986a952d00230a5acd3b6062a2f1b652ba2240c7a3da3514b729e7a10ee",
   "docs/ledger/counterpart-collection-20261113/uif-discovery-current-matrix.json": "c809709f6c9e716a985d8ccc9ec8654908ba308df2e3a793ff3be4c307691265",
+  "docs/ledger/counterpart-collection-20261113/uif/final-acceptance-deduplication.json": "9b2910085e28e88a615f6eaa61d7a1a693257c479e279dcbe36705b3ca3c614c",
   "docs/ledger/counterpart-collection-20261113/uif/restart-foo-configuration-drift-source-credit.json": "d94dec26c27cdde45aa28f1a4114e12ad01b5053eac5761227a434c01e941ef1"
 }

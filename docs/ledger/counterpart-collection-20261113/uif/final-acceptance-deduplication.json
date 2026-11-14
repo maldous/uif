@@ -1,0 +1,444 @@
+{
+  "original_id": "ledger-final-acceptance-deduplication",
+  "routing_key": "ledger-discovery-20261111-033",
+  "original_sha256": "bbbddb7eeb36ce94d6bea64d2175faecbcccff120b35b86ca423b45697ba2716",
+  "allocation_commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "collection_base": "a1fcb3176063e5994936e0da5898467deb9af397",
+  "accepted_partition": {
+    "records": 107,
+    "dispositioned": 61,
+    "current": 46,
+    "change": 0
+  },
+  "allocation_counts": {
+    "UIF": 73,
+    "CQ": 26,
+    "CIX": 19,
+    "OffMenu": 54,
+    "ANQR": 7,
+    "discovery": 34,
+    "total": 213,
+    "nonadditive_references": 11
+  },
+  "nonadditive_parent_joins": {
+    "shared.publication.UIF-218": [
+      "cq-original-publication-receipts",
+      "shared-transport-owner-correlation",
+      "shared-publication-continuation-plan",
+      "shared-publication-execute-cq",
+      "shared-publication-execute-uif"
+    ],
+    "offmenu-uif108-inventory-join": [
+      "canonical-v1-current-input-qualification",
+      "client-surface-entitlement-qualification",
+      "existing-offmenu-UIF-240-package",
+      "existing-offmenu-UIF-241-runner-snapshot",
+      "existing-offmenu-UIF-242-two-snapshots-manual-source",
+      "existing-offmenu-UIF-242-two-snapshots-wheatfield",
+      "existing-offmenu-UIF-244-four-aliases",
+      "existing-src068-070-1",
+      "existing-src068-070-2",
+      "existing-src068-070-4",
+      "existing-src068-070-5",
+      "mixed-custody-source-classification",
+      "offmenu-47-hold-qualification",
+      "offmenu-developer-contract-qualification",
+      "offmenu-mixed-workspace-custody",
+      "offmenu-retained-UIF-221",
+      "offmenu-retained-UIF-222",
+      "offmenu-retained-UIF-223",
+      "offmenu-retained-UIF-224",
+      "offmenu-retained-UIF-225",
+      "offmenu-retained-UIF-226",
+      "offmenu-retained-UIF-227",
+      "offmenu-retained-UIF-228",
+      "offmenu-retained-UIF-229",
+      "offmenu-retained-UIF-230",
+      "offmenu-retained-UIF-231",
+      "offmenu-retained-UIF-232",
+      "offmenu-retained-UIF-233",
+      "offmenu-retained-UIF-234",
+      "offmenu-retained-UIF-235",
+      "offmenu-retained-UIF-236",
+      "offmenu-retained-UIF-237",
+      "offmenu-retained-UIF-238",
+      "offmenu-wp03-dirty-source",
+      "src-059-qualification",
+      "src-060-qualification",
+      "src-062-qualification",
+      "src-064-qualification",
+      "src-066-qualification",
+      "src-067-qualification",
+      "src-072-consumer-qualification",
+      "src-073-consumer-qualification",
+      "src-078-consumer-qualification",
+      "uif217-r055-independent-custody",
+      "uif217-r058-independent-custody",
+      "uif217-r068-independent-custody",
+      "uif217-r070-independent-custody",
+      "uif217-r071-independent-custody"
+    ],
+    "offmenu-uif108-linear-applicability": [
+      "existing-offmenu-UIF-240-package",
+      "existing-offmenu-UIF-241-runner-snapshot",
+      "existing-offmenu-UIF-242-two-snapshots-manual-source",
+      "existing-offmenu-UIF-242-two-snapshots-wheatfield",
+      "existing-offmenu-UIF-244-four-aliases",
+      "existing-src068-070-1",
+      "existing-src068-070-2",
+      "existing-src068-070-3",
+      "existing-src068-070-4",
+      "existing-src068-070-5",
+      "existing-src068-070-6",
+      "offmenu-47-hold-qualification",
+      "offmenu-corpus-version-disposition",
+      "offmenu-country-source-custody",
+      "offmenu-developer-contract-qualification",
+      "offmenu-help-inventory-alignment",
+      "offmenu-identity-default-contract",
+      "offmenu-locale-requirements",
+      "offmenu-mixed-workspace-custody",
+      "offmenu-navigation-disposition",
+      "offmenu-operation-rights",
+      "offmenu-provider-failover-disposition",
+      "offmenu-recipe-pack-disposition",
+      "offmenu-record-provenance",
+      "offmenu-retained-UIF-221",
+      "offmenu-retained-UIF-222",
+      "offmenu-retained-UIF-223",
+      "offmenu-retained-UIF-224",
+      "offmenu-retained-UIF-225",
+      "offmenu-retained-UIF-226",
+      "offmenu-retained-UIF-227",
+      "offmenu-retained-UIF-228",
+      "offmenu-retained-UIF-229",
+      "offmenu-retained-UIF-230",
+      "offmenu-retained-UIF-231",
+      "offmenu-retained-UIF-232",
+      "offmenu-retained-UIF-233",
+      "offmenu-retained-UIF-234",
+      "offmenu-retained-UIF-235",
+      "offmenu-retained-UIF-236",
+      "offmenu-retained-UIF-237",
+      "offmenu-retained-UIF-238",
+      "offmenu-wp03-dirty-source",
+      "offmenu-wp05",
+      "offmenu-wp06",
+      "offmenu-wp07",
+      "offmenu-wp08",
+      "src-072-alias-retirement",
+      "src-072-consumer-qualification",
+      "src-073-alias-retirement",
+      "src-073-consumer-qualification",
+      "src-078-alias-retirement",
+      "src-078-consumer-qualification",
+      "uif239-publish-permitted-record"
+    ],
+    "offmenu-retained-source-account": [
+      "existing-offmenu-UIF-240-package",
+      "existing-offmenu-UIF-241-runner-snapshot",
+      "existing-offmenu-UIF-242-two-snapshots-manual-source",
+      "existing-offmenu-UIF-242-two-snapshots-wheatfield",
+      "offmenu-retained-UIF-221",
+      "offmenu-retained-UIF-222",
+      "offmenu-retained-UIF-223",
+      "offmenu-retained-UIF-224",
+      "offmenu-retained-UIF-225",
+      "offmenu-retained-UIF-226",
+      "offmenu-retained-UIF-227",
+      "offmenu-retained-UIF-228",
+      "offmenu-retained-UIF-229",
+      "offmenu-retained-UIF-230",
+      "offmenu-retained-UIF-231",
+      "offmenu-retained-UIF-232",
+      "offmenu-retained-UIF-233",
+      "offmenu-retained-UIF-234",
+      "offmenu-retained-UIF-235",
+      "offmenu-retained-UIF-236",
+      "offmenu-retained-UIF-237",
+      "offmenu-retained-UIF-238",
+      "offmenu-wp03-dirty-source",
+      "offmenu-wp05",
+      "offmenu-wp06",
+      "offmenu-wp07",
+      "offmenu-wp08",
+      "uif217-r055-independent-custody",
+      "uif217-r058-independent-custody",
+      "uif217-r068-independent-custody",
+      "uif217-r070-independent-custody",
+      "uif217-r071-independent-custody"
+    ],
+    "per-project-toolchain-contracts": [
+      "ANQR-R205-2",
+      "cq.profile.bind_exact_contract",
+      "cq.analyzer.original_pin_assessment",
+      "standalone-harness-boundary-plan",
+      "CIX-507:candidate-review-and-integration",
+      "restart-cloud"
+    ],
+    "retained-r067-r087-history-recovery": [
+      "retained-r067-history-recovery",
+      "retained-r087-history-recovery"
+    ],
+    "uif217-r055-r058-r068-independent-custody": [
+      "uif217-r055-independent-custody",
+      "uif217-r058-independent-custody",
+      "uif217-r068-independent-custody"
+    ],
+    "uif217-r070-r071-independent-custody": [
+      "uif217-r070-independent-custody",
+      "uif217-r071-independent-custody"
+    ],
+    "UIF-139-remaining-deliverables-rollup": [
+      "canonical-v1-selected-composition",
+      "canonical-v1-current-input-qualification",
+      "coherent-adoption-readiness",
+      "project-binding-candidate-reconciliation",
+      "complete-tail-selected-profile-proof",
+      "frozen-release-input-readiness"
+    ],
+    "UIF-216-retained-source-rollup": [
+      "guard-policy-source-disposition",
+      "assets-validator-composition-disposition",
+      "documentary-metadata-disposition",
+      "lifecycle-provenance-disposition",
+      "r192-source-disposition",
+      "r070-r071-dependency-selection",
+      "r055-local-origin-disposition",
+      "r058-source-equivalence",
+      "r068-source-disposition"
+    ],
+    "UIF-217-original-history-custody-rollup": [
+      "src-060-qualification",
+      "src-060-placement-decision",
+      "retained-r067-history-recovery",
+      "retained-r087-history-recovery",
+      "retained-r059-evidence-custody",
+      "r192-dirty-postimage-custody",
+      "r193-independent-store-recovery",
+      "uif126-original-history-recovery",
+      "uif128-original-history-recovery",
+      "javascript-profile-history-recovery",
+      "javascript-refill-history-recovery",
+      "uif217-r055-independent-custody",
+      "uif217-r058-independent-custody",
+      "uif217-r068-independent-custody",
+      "uif217-r070-independent-custody",
+      "uif217-r071-independent-custody"
+    ]
+  },
+  "verified_counterpart_records": [
+    "ANQR-R202-1",
+    "ANQR-R205-1",
+    "ANQR-R205-2",
+    "ANQR-R215-1",
+    "ANQR-R215-2",
+    "ANQR-R215-3",
+    "ANQR-R215-4",
+    "CIX-71:historical-policy-lineage",
+    "CIX-71:historical-policy-disposition",
+    "CIX-141:handoff-applicability",
+    "cq.profile.bind_exact_contract",
+    "cq.analyzer.original_pin_assessment",
+    "cq.analyzer.owner_review",
+    "offmenu-locale-requirements",
+    "offmenu-developer-contract-qualification",
+    "offmenu-wp05",
+    "offmenu-wp06",
+    "ledger-historical-anqr-coverage",
+    "portal-source-ownership-inventory",
+    "portfolio-source-rights-inventory",
+    "shared-publication-execute-cq",
+    "cq.profile.qualify_private_return",
+    "offmenu-wp07",
+    "offmenu-wp08",
+    "cq.r180.freeze_packet",
+    "cq.r180.assess_packet",
+    "cq.handoff.reconcile_publication_state",
+    "cq.handoff.publish_reviewed_correction",
+    "restart-foo-configuration-drift",
+    "cq.canonical.accepted_main_plan",
+    "cq.profile.qualify_acquisition_isolation",
+    "cq.profile.qualify_denials"
+  ],
+  "prior_collection_by_original_domain": {
+    "anqr": 7,
+    "cix": 3,
+    "cq": 12,
+    "offmenu": 6,
+    "discovery": 1,
+    "uif": 3
+  },
+  "documentary_disposition": "Ordered original-ID, counterpart and parent-child deduplication completed for the published evidence set. Existing independent documentary verdicts apply at their stated scope. Canonical owner acceptance of final discovery and any original-row closure remain pending.",
+  "current_native_context": {
+    "configured_projects": [
+      "UIF",
+      "OffMenu",
+      "CQ",
+      "CIX",
+      "ANQR"
+    ],
+    "upstream_source_revision": "339cbf4f3f6d9acdf808f9ba4c639d029cdd8e16",
+    "observed_at": "2026-11-14T14:58:33+11:00",
+    "service": {
+      "NRestarts": "0",
+      "ExecMainStartTimestamp": "Sat 2026-11-14 14:23:38 AEDT",
+      "User": "user",
+      "ActiveState": "active",
+      "SubState": "running",
+      "FragmentPath": "/etc/systemd/system/stokowski-foo.service"
+    },
+    "pins": {
+      "configuration-manifest.json": "7d441117b780ea541435a74e33b18ec12aa5c16967473815daab29d6f795033a",
+      "workflow.yaml": "e6d60700936ac2dfb018e797ff9e571a227d67112e40168cc670ca03ee5bd5b7",
+      "scoped-project-resume-receipt-20261114.json": "85e8029f866b0a696ba715775b0c09b483ae36264f8da7c2d1c0ece1c49c7bde"
+    },
+    "scoped_resume_observed_utc": "2026-11-14T01:10:58.816500+00:00",
+    "latest_owner_readback": {
+      "chat": "6af3d1ae-21f8-8191-8aad-38f80536e0fd",
+      "native_run": "UIF-249 run 11",
+      "session": "01a1d816-1698-7773-93a7-476cd6183704",
+      "publication_continuity": "Owner retains source work on accepted-candidate binding, canonical GitHub readback and workspace preservation on Linear completion failure."
+    }
+  },
+  "current_uif_groups": {
+    "skills": {
+      "count": 3,
+      "original_ids": [
+        "shared.skills.catalog_refresh",
+        "shared.skills.constant_time_path",
+        "shared.skills.spec_compliance_runtime"
+      ]
+    },
+    "root_qualification_and_custody": {
+      "count": 8,
+      "original_ids": [
+        "src-059-qualification",
+        "src-062-qualification",
+        "src-064-qualification",
+        "src-066-qualification",
+        "src-067-qualification",
+        "mixed-custody-source-classification",
+        "src-060-qualification",
+        "src-060-placement-decision"
+      ]
+    },
+    "selected_input_and_client": {
+      "count": 4,
+      "original_ids": [
+        "canonical-v1-current-input-qualification",
+        "coherent-adoption-readiness",
+        "client-baseline-document-integration",
+        "client-surface-entitlement-qualification"
+      ]
+    },
+    "exact_target_archives": {
+      "count": 4,
+      "original_ids": [
+        "recoverable-project-archive-502c2f50-3d73-42e9-bdac-25ffe9f3f7ad",
+        "recoverable-project-archive-2298e2d2-558d-4e43-89e3-8d3d77d47ecd",
+        "recoverable-project-archive-852dfec6-50d6-4dd8-b349-8c884fa21a12",
+        "recoverable-project-archive-7d101ad0-1107-4cc8-ba9a-6521dd544e7c"
+      ]
+    },
+    "connector_transition": {
+      "count": 4,
+      "original_ids": [
+        "connector-stable-identity-map",
+        "connector-consumer-map",
+        "connector-successor-continuity",
+        "connector-retirement-rollback-plan"
+      ]
+    },
+    "publication_and_release": {
+      "count": 6,
+      "original_ids": [
+        "project-binding-candidate-reconciliation",
+        "complete-tail-selected-profile-proof",
+        "frozen-release-input-readiness",
+        "cq-original-publication-receipts",
+        "shared-transport-owner-correlation",
+        "shared-publication-continuation-plan"
+      ]
+    },
+    "shared_boundaries_and_portfolio": {
+      "count": 6,
+      "original_ids": [
+        "standalone-harness-boundary-plan",
+        "cross-project-baseline-input-map",
+        "cross-project-isolation-plan",
+        "cross-project-build-compliance-matrix",
+        "portal-source-ownership-inventory",
+        "portfolio-source-rights-inventory"
+      ]
+    },
+    "recovery": {
+      "count": 7,
+      "original_ids": [
+        "restart-foo-dependency-discovery",
+        "restart-foo-configuration-drift",
+        "restart-foo",
+        "restart-cloud",
+        "restart-durability",
+        "restart-foo-validation",
+        "restart-cloud-validation"
+      ]
+    }
+  },
+  "independent_next_actions": [
+    {
+      "rows": [
+        "restart-foo-dependency-discovery",
+        "coherent-adoption-readiness"
+      ],
+      "status": "Read-only join completed in this receipt",
+      "evidence": "Current manifest configures five projects, scoped resume records HTTP 200, and the service is active. The owner reports native UIF-249 pickup. Historical uninstalled wording does not describe the current Core installation.",
+      "remaining": "Bind exact effective configuration, executable and consumer contracts for the selected comparison; current publication/recovery acceptance remains with native owner."
+    },
+    {
+      "rows": [
+        "standalone-harness-boundary-plan",
+        "cross-project-baseline-input-map"
+      ],
+      "status": "Separate documentary preparation can proceed",
+      "evidence": "Start with accepted UIF composition, CQ retained-root plan and current five-project declarations.",
+      "remaining": "Per selected product: exact source revision, consumed interface and owner approval of the boundary. Reuse verified prior build evidence only for matching consumers."
+    },
+    {
+      "rows": [
+        "connector-stable-identity-map",
+        "connector-consumer-map"
+      ],
+      "status": "Metadata join can proceed in parallel",
+      "remaining": "Connector owner supplies exact obsolete/successor installation IDs and grants; product owners supply actual caller/interface bindings. Continuity, rollback and revocation remain conditional."
+    },
+    {
+      "rows": [
+        "src-059-qualification",
+        "src-062-qualification",
+        "src-064-qualification",
+        "src-066-qualification",
+        "src-067-qualification"
+      ],
+      "status": "Owner-scoped metadata input can proceed independently",
+      "remaining": "Matrix preserves each exact missing caller, scope, resolver or custody fact and both evidence triggers. Retain permissions and placements."
+    }
+  ],
+  "remaining_discovery": {
+    "ledger-uxf-project-compatibility": "UXF-1/5/6 are in UXF V3. Exact intended cross-project association and permitted team/project contract are still required.",
+    "ledger-recoverable-archive-interface": "Existing capability assessment stands. Authorized administrator and connector owner must identify the supported exact-target archive and restore route and recoverability readback.",
+    "ledger-final-acceptance-deduplication": "Current documentary evidence prepared for independent review. Canonical owner must adjudicate remaining discovery evidence.",
+    "ledger-final-integrated-publication": "Depends on accepted discovery outcomes and canonical owner publication. Collection checkpoints remain documentary evidence."
+  },
+  "offmenu_235_237": {
+    "original_ids": [
+      "offmenu-retained-UIF-235",
+      "offmenu-retained-UIF-237"
+    ],
+    "source_disposition_sha256": "35df7968b20ca154abaef1a63da66609c596c1afc41c9019037a06a3fd7e0191",
+    "owner_chat": "6af4e70d-a0c0-8191-aef7-45cd43cb8038",
+    "source_review": "Owner completed the clean retained-source ancestry disposition against accepted 59496c6.",
+    "collection_admission": "Neither original ID is collected and no exact receipt admission was verified. Owner packet is still in its private workspace; exact bytes and existing serial receiving receipt are needed before incorporation.",
+    "scope": "Retain checkouts and detached state; ignored contents and runtime acceptance remain outside the source review."
+  }
+}
