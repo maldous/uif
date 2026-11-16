@@ -1,6 +1,6 @@
 # Native quota realization and owner handoff
 
-Current goal: [policy 2.0.0](../agents/uif-worker-policy.md) requires unattended
+Current goal: [policy 2.0.1](../agents/uif-worker-policy.md) requires unattended
 continuous BAU across quota loss and sustained Foo/MCP outages, independent of
 this chat. It requires off-Foo election/claim authority and durable scheduled
 Morgan/project reconstruction. The source realization below describes the
@@ -16,9 +16,11 @@ That instruction supersedes the former administrative no-install/no-restart
 rollout hold; do not add a fresh human approval or binding checkpoint for the
 same outcome. Actual access/security, project-data rights and custody controls
 remain unchanged. Preserve active jobs/workspaces, current claims, product
-reservations and original operations while rolling forward. The observed native
-runtime remains unpaused; independent existing delivery must not be halted merely
-because the new outage-recovery integration is unfinished.
+reservations and original operations while rolling forward. The earlier rollout
+observation of an unpaused native runtime is historical, not current control-state
+evidence. Preserve the currently observed project pauses and original custody;
+independent eligible source work must not be halted merely because the new
+outage-recovery integration is unfinished.
 
 The custodian supplied the receiving preimage record in original operation
 `01a1da29-c0f2-37da-d855-c5b167ddcf51`, SHA-256
