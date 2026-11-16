@@ -29,6 +29,27 @@ lifecycle requires a qualified independent schedule/event trigger, with original
 operation reconciliation and explicit user-stop preservation. Its declaration is
 not proof that one has been installed.
 
+## Caller-local documentation tools
+
+Tool visibility belongs to the actual executing session, not merely its host or
+parent. A successful root-session connector query does not prove that the six
+project collaborators inherit that connector. Record source installation,
+caller-catalog visibility and a successful applicable invocation separately in
+the existing operation-scoped environment alignment evidence.
+
+For Context7, first inspect the caller's current supported catalog. If its tools
+are exposed and relevant, resolve the library and make a bounded documentation
+query for the selected topic/version. A successful query with no version-specific
+match is not the same as a matching documentation result. If no tools are exposed,
+record a session visibility/mount gap, not an inferred installation or account
+failure. Do not claim a lookup ran or that propagation is automatic.
+
+Use authoritative upstream documentation for an applicable external API when
+that permitted route meets the task's evidence needs. Optional Context7 absence
+is not a blanket delivery gate, permission to reinstall/connect a service, or a
+reason to repeat product checks. Recheck visibility when it matters after an
+actual session/mount change; keep unrelated work moving.
+
 ## Project-specific instruction packages
 
 | Role | Source-owned capability and boundary |
