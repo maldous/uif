@@ -1,7 +1,7 @@
 {
   "schema": "uif-state-machine-source-coverage/1",
   "purpose": "Versioned documentation coverage accounting only; not work intake, a controller, runtime ledger, policy gate or implementation queue.",
-  "edition": "partial-current-Git-source-passes-1-2",
+  "edition": "partial-current-Git-source-passes-1-3",
   "complete": false,
   "primary": {
     "repository": "maldous/uif",
@@ -742,19 +742,21 @@
         "git_blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
         "sha256": "840dec50c59258e341bef7919f2d1fab22e0c733b1da66c0fd29a83d2a556d7e",
         "bytes": 43694,
-        "review_status": "partial-store-consumer-context-read-not-executed",
+        "review_status": "full-static-read-not-executed",
         "machine_ids": [
           "UIF-STORE-HOT-TRANSACTION",
           "UIF-STORE-COLD-RETENTION",
-          "UIF-STORE-TASK-FENCE"
+          "UIF-STORE-TASK-FENCE",
+          "UIF-REG-REQUEST",
+          "UIF-REG-COORDINATOR",
+          "UIF-REG-MODE",
+          "UIF-REG-TASK",
+          "UIF-REG-EFFECT"
         ],
         "reviewed_spans": [
-          "176-230",
-          "284-397",
-          "455-489",
-          "623-765"
+          "1-765"
         ],
-        "review_limit": "Selected store/provisioning/authentication/idempotency/effect context only. Full registry state-machine coverage remains open."
+        "review_limit": "Complete registry module read statically. CLI, adapter callers and full test-source oracles remain separate coverage; no runtime or tests executed."
       },
       {
         "path": "tests/agents/test_install_policy_bundle.py",
