@@ -1,5 +1,9 @@
 # Architecture and actual interfaces
 
+[State-machine identification, current-source pass 1](architecture/state-machines/README.md)
+records partial coverage and continuity-model transitions, not exhaustive or
+runtime acceptance.
+
 Current source clarification: 12 November 2026, against UIF
 8fa48aa56ab1383f7b4df267fbd1da47f7996071. Read the current
 [entrypoint](../AGENTS.md), [local policy](agents/uif-worker-policy.md) and
