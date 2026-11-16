@@ -120,6 +120,11 @@ issues. Increase useful concurrency gradually; a ceiling is not a utilization go
 
 ## 4. Review, publish and preserve evidence
 
+For supported deterministic checks of a published project branch, follow the
+[exact-branch Foo checks](operations/project-checks-source-branch.md) procedure.
+The deployed catalog, immutable expected commit and original operation receipt
+remain authoritative; the helper never grants publication or runtime authority.
+
 Independently review the exact candidate and required checks under the project's
 existing acceptance rules. Identify affected producers/consumers as unaffected,
 requiring a current update or unknown with an owner and next check. Keep the sole
