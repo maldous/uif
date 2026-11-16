@@ -206,12 +206,14 @@ def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_p
     if selected_input_sha256:
         require(type(selected_input_classification) is dict
                 and set(selected_input_classification) == set(selected_input_sha256)
-                and all(value == 'selected-documentary-input'
+                and all(type(value) is str and value == 'selected-documentary-input'
                         for value in selected_input_classification.values()),
                 'legacy_selected_input_classification_required')
     else:
         require(selected_input_classification is None or selected_input_classification == {},
                 'legacy_unselected_input_classification')
+    classification_snapshot = {token: selected_input_classification[token]
+                               for token in selected_input_sha256}
     before_refs, after_refs = _references(original['report']), _references(review['report'])
     record_identity_verified = False
     if verified_record_identity is not None:
@@ -249,7 +251,7 @@ def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_p
             and original_pin.record_id in after_refs),
         published_tuple_authentication_required=True, current_scope_and_custody_check_required=True,
         artifact_payloads_verified=False, selected_input_payloads_verified=False,
-        selected_input_classification=selected_input_classification or {},
+        selected_input_classification=classification_snapshot,
         additional_policy_hash_classification_required=True,
         receiving_authorized=False, gate_clearance=False, full_issue_acceptance=False,
         git_publication_authorized=False, runtime_installed=False)

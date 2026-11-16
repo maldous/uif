@@ -260,6 +260,16 @@ class LegacyReceiptContracts(unittest.TestCase):
         with patch.object(module, 'MAX_RECEIPT_BYTES', 64), self.assertRaisesRegex(Hold, 'legacy_receipt_size'):
             build_legacy_receipt(**arguments(*fixture()))
 
+    def test_classification_is_frozen_before_returning_hashed_receipt(self):
+        args = arguments(*fixture(), selected_input_sha256=(SELECTED,))
+        result = build_legacy_receipt(**args)
+        frozen = copy.deepcopy(result)
+        args['selected_input_classification'][SELECTED] = 'shared-policy'
+        args['selected_input_classification'].clear()
+        self.assertEqual(result, frozen)
+        pin = result.pop('receipt_sha256')
+        self.assertEqual(pin, sha256(wire(result)).hexdigest())
+
 
 if __name__ == '__main__':
     unittest.main()
