@@ -1,0 +1,483 @@
+{
+  "completion_claims": {
+    "full_issue_accepted": false,
+    "product_compliance": false,
+    "runtime_installed": false
+  },
+  "documentation_source_universe_sha256": "31cea78dbe18ac214a660ae033201150e84f6d2e92fc5b15300b99c765201a94",
+  "documents": [
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "cdfe55a3a7064e31863f3122469be3a122e96354",
+      "category": "operation-scoped-skill",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": ".agents/skills/uif-environment-alignment/SKILL.md",
+      "sha256": "84f4911826a261ba44fb79f447fcd06e96638034a735da808eb55882418bd36f"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "e04851f4f17ea5d400ba35d5d1d47428044ded90",
+      "category": "operation-scoped-skill",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": ".agents/skills/uif-environment-alignment/references/evidence.md",
+      "sha256": "299d46d6ee37a9e5b5a529c22357ab57503d70f11927867e1b07bda2c38f4fb8"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "b646b67547e12d2cc09aa08e10a4ef4440ba1ad6",
+      "category": "operation-scoped-skill",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": ".agents/skills/uif-supervision/SKILL.md",
+      "sha256": "48d6de6c7c2aaca0c2f907a80e9d0c30c8df2b9b6cd1b083ecce762a534c21c4"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "ef31188ad71b87c626f5372bd6f785b971cd4de8",
+      "category": "operation-scoped-skill",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": ".agents/skills/uif-supervision/references/service-interfaces.md",
+      "sha256": "a803ad00271502048812b5f4b72cb919a90e80110c314b805123c84f6ad41d50"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "e16ce48b97ac783e807e9299f03f5456891730cf",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "AGENTS.md",
+      "sha256": "dd90e96d9ee7c79bb15bf1bf31d56638a33a17d29c3607109c980cb98344f82e"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "c8ec5576f2a32256ed602cfa274b96818d91e17d",
+      "category": "project-and-architecture-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "README.md",
+      "sha256": "900a489ce98da5e878424fdd567c5745fb6b98899a6ecf48c5bd93428db180ec"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "01d1fba1df31f66b68b48e8dcb3ba9a484be7605",
+      "category": "project-and-architecture-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/adr/0001-foundation-repository.md",
+      "sha256": "e7cca1a1e9d60edc61ea27942d08c32b6681c6e728801a111c409c373bd4b3ad"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "a7aa3e9467a9ade4cd75e90af6e10a7d4181393f",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/agents/adoption-2026-11-11.md",
+      "sha256": "6a5c07eb8172a0039331af566e2f7b079524e6e1fd6a2bdf1db355c64bab8e01"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "d8f0399810c6b17c979c85ab91ded5d7fa8f8e9c",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/agents/cloud-owner-process-exercise-2026-11-16.md",
+      "sha256": "f54ad5e96e4701f1874738035eaa5cc64b004d86cadc60c20e554b7277f84811"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "16bd2c45ae7d2361e3f957c67a8de17018f4ed5f",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/agents/memory-routing.md",
+      "sha256": "3d0274fca84a94bc9750de60c328d5e66e951bd6548383b102476c655ac1762e"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "306db553e95c9dcee91d30e225d1eacb8f020472",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/agents/owner-alignment-2026-11-11.md",
+      "sha256": "e5aec98ebdb2e0330f1c6934518f38d459f29a4b77c5bc6f577d5688099bb2d0"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "7f9f5a9a1f2c6665b121696826c448d755defd19",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/agents/skills-and-plugins.md",
+      "sha256": "05ab5b4aa3e94fb1fe7bc47f75ad6f20d124719c9cf18852a2219a7d22580ea7"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "a1c6b776cab4386cb5e0b495211d5b259e4bc879",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/agents/startup-template.md",
+      "sha256": "9e0fc5aa44404f81da6d5bd98de3dad4ae14287cf04e1f65d9c83d07c3ed601a"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "71ad15d3fd2307818c6cc17adfdc2d0463e54e1f",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/agents/uif-worker-policy.md",
+      "sha256": "7b54579a72c16c504bf4a82d875a0ca770d851787ba62035e446ec673e6db54f"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "f19043749988e30490651f84441c0243f564c641",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/agents/windmill-instruction-feasibility.md",
+      "sha256": "df4535bc0d581055159726362817452c84be6daf98cf6771b893f84d3909bc22"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "f350368ad3efcc3438fafd78ab425482961eec29",
+      "category": "current-instructions-and-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/agents/windmill-workspace.md",
+      "sha256": "c1ce2af7ffcfe80485fb6f2318e33940370e859b80b11357e59c3f26728b3213"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "f92c2b618ab48d79df7efdd4a4687a09388dc4c7",
+      "category": "project-and-architecture-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/architecture.md",
+      "sha256": "b812e60079e05843e6f8e7a9ddf77606e220d67c58a04e4221d4b8161f78cb03"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "3944541c03943718046438188b5f252b6f91f4de",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/current-source-role-map-20261112.md",
+      "sha256": "26d42727182cf24e6cd0502f632ff07d5dc6e044d3cdef2efb776f99e3e8c161"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "6053740f26e192da15e284172c5e34e564300824",
+      "category": "project-and-architecture-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/evidence.md",
+      "sha256": "ebe1c5e31b4c317b63443b2c41fb7e63f5ab7aca1f34003ec704e8175fc24656"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "ad6885a9e59c92d0311c2157108d337eb2e31c9f",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/ledger/current-independent-progress-20261112.md",
+      "sha256": "ec3b178322b305253c00b5843a94abe7e64d65f5aaa51206e89f8cdebaf44a7f"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "a7dcca0df65475513b0c15d389be4ced21204b67",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/ledger/current-source-owner-decisions-176c237-20261112.md",
+      "sha256": "d9cecb00f7ebf43bcad474830a4fe770b6781a73e9fb5de15ec1ffb06f6cde13"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "a069476700fce9c7b79779e2f2ddac01286d24cc",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/ledger/current-source-owner-decisions-bc979c8-20261112.md",
+      "sha256": "137a832ff36ead0daf412460e9bac35729a9413dbcbb2eaa45c6e830a3526a8f"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "21cf8272d259aac5bf7f942a89973c41a6ac0ecd",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/ledger/current-source-selection-dispositions-20261112.md",
+      "sha256": "0f5395fb9069a0a01e3fd85744efdc3231ae2720429deb8101ddb6dddfa5cb80"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "663d53f342ff191629da8a393b1575089d006534",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/ledger/reconciliation-owner-join-20261112.md",
+      "sha256": "c998611c17cda28e85883b805aac78b044b05c48ed100c424e29238c6fc01ac9"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "0d2f0cb0027fca15ccd64bd1bd7757a89e9c04b8",
+      "category": "project-and-architecture-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/operating-procedure.md",
+      "sha256": "26adb46ed984224c9d9b79c90fbb3e03b15641d7263ac8a538b9e300a06a12fc"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "809e6e14a5c001aab7006a896e37cac186c30d63",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/operations/continuity-decisions.md",
+      "sha256": "687911137b2fa7d54d03af6239c694ee358054efc52cfa573137c8327b78b6a9"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "9bf6b321e072d777c1ecc9bfe9ae11f85e15e0fd",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/operations/foo-stokowski-drift.md",
+      "sha256": "6a3ebab09d84ffa42d4808c8e865b223ceb6facf89c69915643b656ff19f59e8"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "fdea970e605594a40634eb8ccd05c95f73e65e51",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/operations/legacy-source-free-receipts.md",
+      "sha256": "458ef98a54ee022a0d38aedaad39cdfca3d1bb762836f67786c74161863ae8ff"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "fb82f346e8948355d1367bd59eb3fd18620ec073",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/operations/native-quota-realization.md",
+      "sha256": "e7678a4c7dff61c249542dd7ea6dede765b7b6ce000ed2d46067ab5351074614"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "bb112deb71afa6fef960d05ea373e0f48e263055",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/operations/policy-2.0-rollout-qualification-20261114.md",
+      "sha256": "2369d326efd9891f7c778a27a80ee878674a39aa41364ae2fd66d3593cbbda7b"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "3227b0071d792e8e8b794daebac8c85729651ba4",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/operations/project-checks-source-branch.md",
+      "sha256": "690158b8cbea8f6c0fa46e2f68293918cdc99a5571ae2654ad6d9337d2421ce2"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "3255f95967f7e0132f79a120bdfaa36b05cee040",
+      "category": "project-and-architecture-reference",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/project-integration.md",
+      "sha256": "a4a29871246dd11c14b87338e14996bbf2410d98e7336d5f7484894906ea95dc"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "a9e2cf3818c3ff042c66f036eaa471e9697bcef2",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/white-room/README.md",
+      "sha256": "6cad465d6e730498f65fa4743c1137e3bca589ba5e551dc79abc2d23bc15cd42"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "ce021f4c35a70e100427ed56a892f1c8bed9fb29",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/white-room/cix-source-selection.md",
+      "sha256": "1b88112d8b98710fc7e7736ea0057136f4353fafdd814935c55e5b1698e86cf0"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "04880e1cf2cf80c9773de4373dc2814b6f49ebef",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/white-room/discovery.md",
+      "sha256": "f917aae4a9916ea980125d4fd1f4ce1e55d1e3be6c0d3c34a48d23dc62865b1b"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "32f22aba82e77b2986ff427965f7d290d25785de",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/white-room/future-clone-profiles.md",
+      "sha256": "d0690f31c66ba61a9e3549a2873d0eb349d3eb72fa53d4f2746309057c45dfe6"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "82d33c3a87549f2c265bb6cc94d8b83dc2fc41ed",
+      "category": "dated-provenance",
+      "disposition": "preserve as dated evidence; not current intake or authority",
+      "owner": "UIF",
+      "path": "docs/white-room/recovery-reuse-20261114.md",
+      "sha256": "adb3b4b1667868c27306a729ab735a49d28fdba0b1ec27a4f2f6252689bb4a4b"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "17e7bbbd3bab78e0958441ab1bb50ba7ee36aba8",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/white-room/remote-evidence.md",
+      "sha256": "69b94a5604de179c6343113e720c64db28d1cbb77fc781e26ffa9ae7ae38c3a5"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "66a18704de8e7a7399eb6d413c25d761dc328d2b",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/white-room/startup-and-recovery.md",
+      "sha256": "95d3b8a1507c3ea7ecd8c86006f40a0efdbf2c1f3e43a3ceac23332d5703935d"
+    },
+    {
+      "audience": "project owners and selected operation executors",
+      "blob": "05f372b17ad12c67b8fa76116d1b53cea5879818",
+      "category": "scoped-procedure-and-qualification-limits",
+      "disposition": "canonical source/reference at the pinned revision; not deployment proof",
+      "owner": "UIF",
+      "path": "docs/windmill/qualification.md",
+      "sha256": "b476476bee75d7ece13efe5a07697e140da8e48c8859447e2fc8c873c7990abe"
+    }
+  ],
+  "input_commit": "98e810989148db793d9fe5e352b4be5405e0f0a6",
+  "input_tree": "b6ebb7a5c404a323a0f493c2966e7adc94da7529",
+  "inventory_scope": "All40tracked markdown/text documentation files at the input commit; generated map and README navigation delta are the separate delivery scope",
+  "non_text_contracts": [
+    "docs/agents/uif-worker-policy.json",
+    "docs/agents/environment-profiles.json",
+    "config/white-room.json",
+    "config/windmill",
+    "pyproject.toml",
+    ".github/workflows/offline-qualification.yml"
+  ],
+  "purpose": "Frozen source documentation reference, not issue intake, a claim store, acceptance ledger or runtime configuration",
+  "repository": "maldous/uif",
+  "schema": "uif-documentation-inventory/1",
+  "skipped": [],
+  "source_interfaces": [
+    {
+      "blob": "65f79a8844700ca757e4553c0657c964c6f423de",
+      "path": "src/uif/__init__.py",
+      "public_symbols": [],
+      "summary": "UIF shared infrastructure source; importing this package starts no services."
+    },
+    {
+      "blob": "a3907deebab65812d057711b096a05328eb432d3",
+      "path": "src/uif/continuity.py",
+      "public_symbols": [
+        "ContinuityPolicy",
+        "EvidenceReceipt",
+        "HealthProbe",
+        "CapacityEvidence",
+        "ContinuityState",
+        "ContinuityDecision",
+        "ContinuityDecider"
+      ],
+      "summary": "Pure continuity decisions for the existing supervised delivery lifecycle.\n\nThe eventual shared authority serializes/persists these transitions. This\nmodule creates no role, queue, allocator, lease, API credential or dispatch.\nTyped, code-injected evidence verification is mandatory; caller JSON booleans\ncannot qualify a probe, capacity or operation outcome."
+    },
+    {
+      "blob": "7a850cb4b25a205960208c62f3ed719b1a22fbb9",
+      "path": "src/uif/handoff_store.py",
+      "public_symbols": [
+        "Hold",
+        "require",
+        "wire",
+        "digest",
+        "decode",
+        "sync_directory",
+        "PrivateStore"
+      ],
+      "summary": "Private, single-host claim persistence, never a work selector or queue.\n\nThe stable lock, expected-byte digest, file fsync, atomic replacement and\ndirectory fsync follow the independently reviewed OwnerAuthority primitives at\nUIF PR42 e40103c55f749a3a2835f8d14ad7f10ab87a5a3d, owner_runtime.py:158-205.\nThis implementation deliberately imports neither that ledger nor its coordinator.\nAll clients must reach the same Foo-hosted authority. No distributed-lock or\nhost-outage recovery guarantee is implied."
+    },
+    {
+      "blob": "03f21ff0ea2ada029a208cd0872d3cd25d59de69",
+      "path": "src/uif/legacy_receipts.py",
+      "public_symbols": [
+        "ArchivePin",
+        "native_retained_record_id",
+        "build_legacy_receipt"
+      ],
+      "summary": "Normalize retained legacy source-free evidence without granting acceptance.\n\nThis pure receipt builder performs no reads, writes, claims, dispatch or Git\npublication. The caller must authenticate the original published tuple and use\nthe existing native receiver/fence for any effect. It never manufactures the\nmodern reviewed_disposition field or treats a mutable latest settlement as input."
+    },
+    {
+      "blob": "5bb30283117c89ac825d1eb23abccdcbfac562fe",
+      "path": "src/uif/linear_scope.py",
+      "public_symbols": [
+        "ScopeNormalizationError",
+        "native_scope_sha256",
+        "normalize_issue_scope"
+      ],
+      "summary": "Match an issue presentation to a caller-authenticated native scope digest.\n\nThis pure projection neither authenticates the expected digest nor grants scope,\nclaim, admission, checkpoint, review or publication authority."
+    },
+    {
+      "blob": "f563a644d6c9025a2745bf0257bc328d7ea0911e",
+      "path": "src/uif/native_quota.py",
+      "public_symbols": [
+        "NativeProfile",
+        "PoolPermit",
+        "PoolRefusal",
+        "NativeQuotaBoundary",
+        "AsyncNativeQuotaBoundary",
+        "LinearWriteBinding",
+        "LinearWriteObservation",
+        "AsyncLinearClient"
+      ],
+      "summary": "Thin, explicitly installed seams for native Stokowski's existing lifecycle.\n\nThe observed native launcher remains unchanged. An integration owner must wire\ndispatch BEFORE native _dispatch/_run_worker metadata, wrap every metadata and\npublication effect, and route _schedule_retry through this boundary. Merely\nimporting this module, running tests or constructing it does not fence upstream.\nNo polling loop, selector, queue, ledger coordinator or provider client is added."
+    },
+    {
+      "blob": "cc79cee62d22c8b9eb5da0bab541151921d29a3c",
+      "path": "src/uif/quota_cli.py",
+      "public_symbols": [
+        "main"
+      ],
+      "summary": "Bounded JSON adapter for an existing authenticated Foo command transport.\n\nNo network, shell execution, installation or service control occurs here. The\ntransport still uses its existing command/cwd/job_id/timeout_seconds fields.\nThis CLI's authenticated principal is the actual OS uid. Installed transport\nadapters may use Registry with their independently authenticated principal.\nClaim/effect admission additionally needs an owner-installed RecoveryVerifier;\nthis conservative standalone adapter cannot manufacture one from input JSON."
+    },
+    {
+      "blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
+      "path": "src/uif/quota_handoff.py",
+      "public_symbols": [
+        "token",
+        "timestamp",
+        "source_binding",
+        "LinearKey",
+        "RecoveryContext",
+        "RecoveryReceipt",
+        "RecoveryVerifier",
+        "OperationContext",
+        "HandoffContext",
+        "CompletionContext",
+        "CoordinatorTransferContext",
+        "Registry"
+      ],
+      "summary": "Source-only quota handoff controls for the existing Stokowski lifecycle.\n\nLinear remains the work system. This private registry records claims, operation\nintents and mode only; it never selects work, invokes a model, changes Linear,\nstarts a service or wakes a cloud session. Installed native/publisher/MCP\nadapters must call these guards before effects. Unadapted executors are not fenced."
+    }
+  ]
+}
