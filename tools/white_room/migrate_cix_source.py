@@ -22,6 +22,8 @@ PROJECT = 'CIX'
 REPOSITORY = 'cix-project/cix'
 ORIGIN = 'https://github.com/cix-project/cix.git'
 EXPECTED_HOOK_SHA256 = '9c6ba100a43720ba16d6e586ed2ddf3d82bd14b3f8fb0d436227e0e89fe5597c'
+PAUSE_DISPATCH_SOURCE = Path('/opt/uif-stokowski/native-core-20261113-a1/python/stokowski/orchestrator.py')
+PAUSE_DISPATCH_SHA256 = '7bea80afc96650b93fdaab2ae43df4cb86d0172c4a759371e84405660dd57dea'
 OLD_CLONE = 'clone --single-branch -- ' + ORIGIN + ' .'
 NEW_CLONE = 'clone --branch develop --single-branch -- ' + ORIGIN + ' .'
 
@@ -35,6 +37,7 @@ class SourceProfile:
     source_branch: str
     expected_base: str
     corrected_base: str | None = None
+    allow_paused_retries: bool = False
 
 
 PROFILES = {
@@ -45,7 +48,7 @@ PROFILES = {
     'anqr-develop': SourceProfile('ANQR', 'maldous/anqr-v3',
         'https://github.com/maldous/anqr-v3.git',
         'f6b2bafee58ca78328730779815ddc065750fd37160307e25ec7c59d9c60abc1',
-        'develop', 'develop'),
+        'develop', 'develop', allow_paused_retries=True),
     'offmenu-develop': SourceProfile('OffMenu', 'maldous/offmenu',
         'https://github.com/maldous/offmenu.git',
         '4558f6998a3ea27c1690d507a59a21c205cff3a944a73ee364416508670c4be9',
@@ -206,7 +209,7 @@ def read_state():
     return json.loads(raw)
 
 
-def check_state(state, now=None, project_name=PROJECT):
+def check_state(state, now=None, project_name=PROJECT, *, allow_paused_retries=False):
     now = now or datetime.now(timezone.utc)
     try:
         generated = datetime.fromisoformat(state['generated_at'].replace('Z', '+00:00'))
@@ -218,11 +221,45 @@ def check_state(state, now=None, project_name=PROJECT):
         raise MigrationError('Current native observation is stale or ambiguous')
     project = projects[0]
     counts = project.get('counts')
-    if (type(counts) is not dict or project.get('paused') is not True
+    if (type(allow_paused_retries) is not bool or type(counts) is not dict
+            or project.get('paused') is not True
             or any(type(counts.get(key)) is not int or counts[key] != 0
-                   for key in ('running', 'settling', 'tracked_tasks', 'retrying'))):
+                   for key in ('running', 'settling', 'tracked_tasks'))
+            or type(counts.get('retrying')) is not int or counts['retrying'] < 0
+            or (not allow_paused_retries and counts['retrying'] != 0)):
         raise MigrationError('Selected project is not paused and quiescent')
     return state['generated_at']
+
+
+def verify_pause_dispatch_source():
+    """Check the exact installed generic source, not claims or private bodies.
+
+    At this pin only tick/retry call _dispatch; both consult the shared-pool
+    pause synchronously before task registration and subsequent after_create.
+    This is not a proof that pause freezes metadata or pre-existing workers.
+    """
+    path = absolute(PAUSE_DISPATCH_SOURCE)
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, 'rb') as stream:
+        metadata = os.fstat(stream.fileno())
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_BYTES:
+            raise MigrationError('Bounded installed pause/dispatch source required')
+        raw = stream.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES or digest(raw) != PAUSE_DISPATCH_SHA256:
+        raise MigrationError('Qualified installed pause/dispatch source differs')
+    return PAUSE_DISPATCH_SHA256
+
+
+def check_profile_state(state, selected_source):
+    observed = check_state(state, project_name=selected_source.project,
+                           allow_paused_retries=selected_source.allow_paused_retries)
+    # The only relaxed profile is a future-hook-only edit. Preserve retry state;
+    # never consume/reconcile it or enter the worker/after_create path here.
+    if selected_source.allow_paused_retries:
+        if selected_source.project != 'ANQR' or selected_source.corrected_base is not None:
+            raise MigrationError('Retry-preserving scope is not the reviewed ANQR hook-only profile')
+        verify_pause_dispatch_source()
+    return observed
 
 
 def absolute(path):
@@ -265,9 +302,12 @@ def migrate(path, expected_preimage, *, apply=False, state_reader=read_state, pr
         if digest(raw) != expected_preimage:
             raise MigrationError('Configuration preimage differs; reconcile original operation')
         output, result = render(raw, profile)
-        result['native_observed_at'] = check_state(state_reader(), project_name=selected_source.project)
+        result['native_observed_at'] = check_profile_state(state_reader(), selected_source)
         result.update(status='dry-run', instruction_only=False,
                       scope='future-' + selected_source.project + '-source-selection-only')
+        if selected_source.allow_paused_retries:
+            result.update(paused_retries_preserved=True,
+                          pause_dispatch_source_sha256=PAUSE_DISPATCH_SHA256)
         if not apply:
             return result
         if metadata.st_uid != os.geteuid() or stat.S_IMODE(metadata.st_mode) & 0o022:
@@ -309,7 +349,7 @@ def migrate(path, expected_preimage, *, apply=False, state_reader=read_state, pr
         if ((current.st_dev, current.st_ino) != (metadata.st_dev, metadata.st_ino)
                 or path.read_bytes() != raw):
             raise MigrationError('Configuration changed during preparation')
-        check_state(state_reader(), project_name=selected_source.project)
+        check_profile_state(state_reader(), selected_source)
         current = path.stat(follow_symlinks=False)
         if ((current.st_dev, current.st_ino) != (metadata.st_dev, metadata.st_ino)
                 or path.read_bytes() != raw):

@@ -34,12 +34,28 @@ python3 tools/white_room/migrate_cix_source.py --profile anqr-develop \
 ```
 
 This remains a dry-run until the same qualified scope adds `--apply`. The
-existing selected-project guard requires fresh paused running, settling,
-tracked-task and retry counts of zero, both before preparation and immediately
-before effect. A paused retry is not silently discarded or treated as a released
-claim; if present, application refuses while independent source work continues.
-Any narrower future-only retry-preserving condition needs actual installed
-control-flow evidence and a separately reviewed change, not a counter reset.
+selected-project guard requires fresh paused running, settling and tracked-task
+counts of zero, both before preparation and immediately before effect. CIX, CQ
+and OffMenu also retain the strict zero-retry requirement. Only ANQR's hook-only
+profile preserves a nonnegative integer retry count while additionally pinning
+the installed generic orchestrator source at both checks. A retry is never
+consumed, reset, cleared or treated as a released claim by this migrator.
+
+The qualified source is `orchestrator.py` SHA256
+`7bea80afc96650b93fdaab2ae43df4cb86d0172c4a759371e84405660dd57dea`.
+Its only two normal `_dispatch` callsites are tick1599 and retry4447; both
+synchronously check shared-pool pause before registering a task. Snapshot
+paused=true comes from that pool, and running/settling/non-done tasks are
+reported separately. Workspace/after_create occurs later inside that worker.
+Thus with this source pin, pool pause and zero pre-existing active/tracked
+workers, a retained retry cannot enter the normal clone route during this
+future-hook-only edit. Missing/changed/symlinked source refuses application.
+
+This is not a claim that pause freezes everything: retry metadata reconciliation
+and claim bookkeeping precede the pause check; an already-dispatched worker has
+no post-await pause recheck. Other modules/manual entrypoints and distributed
+fencing are not proved here. The operator must retain actual sole-writer scope;
+this guard neither grants it nor changes old operation/source identities.
 
 The existing owner/path, durable private backup, strict preimage, cooperative
 lock, final-state recheck and post-effect uncertainty protections remain in
@@ -54,3 +70,9 @@ contracts cover its unchanged behavior and shared migration machinery. Record
 actual branch-aware Foo checks, exact native dry-runs, application, future clone
 qualification and any blocked prerequisite separately. No file receipt alone
 proves runtime installation, source acceptance, publication or gate clearance.
+Six additional synthetic contracts cover the narrow retry-preserving behavior,
+strict defaults/other profiles, active/pause/type refusal, source absence/drift,
+nonblocking no-follow reads and the final pre-effect source recheck. Their
+credential-free fixture source is explicitly substituted in tests, not accepted
+as a production proof. Installed-source review and real native application
+remain separately recorded evidence.

@@ -87,8 +87,11 @@ class ExplicitFutureProfiles(unittest.TestCase):
                 path = Path(directory) / 'workflow.json'
                 path.write_bytes(raw)
                 path.chmod(0o600)
-                receipt = M.migrate(path, M.digest(raw), apply=True,
-                                    state_reader=lambda: state(profile.project), profile=name)
+                # This contract checks profile byte preservation; the separate
+                # pause-source tests exercise real fixture-file pin validation.
+                with patch.object(M, 'verify_pause_dispatch_source', return_value=M.PAUSE_DISPATCH_SHA256):
+                    receipt = M.migrate(path, M.digest(raw), apply=True,
+                                        state_reader=lambda: state(profile.project), profile=name)
                 self.assertEqual(path.read_bytes(), M.render(raw, name)[0])
                 self.assertEqual(receipt['status'], 'applied')
                 self.assertIs(receipt['publication_base_changed'], False)
