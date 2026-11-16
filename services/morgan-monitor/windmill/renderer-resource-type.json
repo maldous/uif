@@ -1,0 +1,15 @@
+{
+  "name": "c_morgan_public_renderer",
+  "description": "Credential-free, exact-origin public Morgan SVG renderer. No arbitrary URLs or headers.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "renderUrl": {
+        "type": "string",
+        "enum": ["https://morgan.aldous.info/render.svg"]
+      }
+    },
+    "required": ["renderUrl"],
+    "additionalProperties": false
+  }
+}

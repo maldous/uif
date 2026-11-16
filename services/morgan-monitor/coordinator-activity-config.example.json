@@ -1,0 +1,19 @@
+{
+  "sources": [
+    {
+      "id": "native_activity",
+      "domain": "cloud",
+      "aliases": [],
+      "capabilities": ["coordinator_lifecycle"],
+      "rosterGeneration": 1,
+      "activityBindings": [
+        {"project": "CIX", "kind": "native_worker"},
+        {"project": "UIF", "kind": "native_worker"},
+        {"project": "CQ", "kind": "native_worker"}
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "NATIVE_ACTIVITY_INGEST_DISABLED"
+    }
+  ]
+}

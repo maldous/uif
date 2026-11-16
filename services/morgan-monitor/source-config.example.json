@@ -1,0 +1,90 @@
+{
+  "sources": [
+    {
+      "id": "codex_registry",
+      "domain": "foo",
+      "aliases": [],
+      "capabilities": [
+        "registry"
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "CODEX_REGISTRY_INGEST_TOKEN"
+    },
+    {
+      "id": "codex_turns",
+      "domain": "foo",
+      "aliases": [],
+      "capabilities": [
+        "turn_history"
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "CODEX_TURNS_INGEST_TOKEN"
+    },
+    {
+      "id": "symphony_registry",
+      "domain": "foo",
+      "aliases": [],
+      "capabilities": [
+        "registry"
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "SYMPHONY_REGISTRY_INGEST_TOKEN"
+    },
+    {
+      "id": "controller_service",
+      "domain": "foo",
+      "aliases": [],
+      "capabilities": [
+        "service_process"
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "CONTROLLER_SERVICE_INGEST_TOKEN"
+    },
+    {
+      "id": "process_identity",
+      "domain": "foo",
+      "aliases": [],
+      "capabilities": [
+        "service_process"
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "PROCESS_IDENTITY_INGEST_TOKEN"
+    },
+    {
+      "id": "cloud_feed",
+      "domain": "cloud",
+      "aliases": [],
+      "capabilities": [],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "CLOUD_FEED_INGEST_TOKEN"
+    },
+    {
+      "id": "reviewed_topics",
+      "domain": "cloud",
+      "aliases": [],
+      "capabilities": [
+        "curation"
+      ],
+      "staleAfterSeconds": 3600,
+      "outageAfterSeconds": 86400,
+      "tokenEnv": "REVIEWED_TOPICS_INGEST_TOKEN"
+    },
+    {
+      "id": "foo_allowance",
+      "domain": "foo",
+      "aliases": [],
+      "capabilities": [
+        "foo_allowance"
+      ],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "FOO_ALLOWANCE_INGEST_TOKEN"
+    }
+  ]
+}
