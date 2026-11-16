@@ -5,7 +5,7 @@ UIF source 8fa48aa56ab1383f7b4df267fbd1da47f7996071.
 
 This clarification uses the retained 6 November foundation source identified in
 [the evidence record](../evidence.md). It does not replace the current root
-[AGENTS.md](../../AGENTS.md), [README ledger](../../README.md) or
+[AGENTS.md](../../AGENTS.md), [README](../../README.md) or
 [shared worker policy](../agents/uif-worker-policy.md).
 
 ## Context
