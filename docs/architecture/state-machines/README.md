@@ -1,4 +1,4 @@
-# UIF state-machine identification: current-source passes 1–2
+# UIF state-machine identification: current-source passes 1–3
 
 These are **partial documentation passes** for
 [UIF-249](https://linear.app/maldous/issue/UIF-249), not the exhaustive result.
@@ -13,9 +13,9 @@ The primary edition is UIF commit
 `5a9d08866066c149e06bb7cde713c77d33b7998b`, tree
 `d66db94fbf9276f23a0d35d8daaa9d50c835aa22`. The
 [source coverage account](source-coverage-20261116.json) lists all 134 tracked
-paths with immutable blob and byte identities. Four source/test files have a
-complete bounded semantic read across these passes. Selected registry callsite spans have only partial context review; other
-rows explicitly remain unreviewed or documentary context. Enumeration and hashes
+paths with immutable blob and byte identities. Five source/test files have a
+complete bounded semantic read across these passes, including the full registry
+module. Other rows explicitly remain unreviewed or documentary context. Enumeration and hashes
 are not semantic review.
 
 UIF-owned delivery code has not all moved into this repository. A second edition
@@ -42,17 +42,22 @@ own explicit dispositions. A missing original is not repaired by a current file.
 | `UIF-STORE-HOT-TRANSACTION` | Single-host custody, stable metadata lock and explicit atomic whole-state save | [Private handoff store](handoff-store.md) |
 | `UIF-STORE-COLD-RETENTION` | Committed history archival, pruning, headroom and degraded control path | [Private handoff store](handoff-store.md) |
 | `UIF-STORE-TASK-FENCE` | Per-task advisory exclusion around cooperating effect/transfer callers | [Private handoff store](handoff-store.md) |
+| `UIF-REG-REQUEST` | Authenticated request identity and two-phase proof/commit | [Registry model](registry-model.md) |
+| `UIF-REG-COORDINATOR` | Explicit successor reconciliation, acknowledgment and heartbeat | [Registry model](registry-model.md) |
+| `UIF-REG-MODE` | Independent stop, provider classification and local recovery ramp | [Registry model](registry-model.md) |
+| `UIF-REG-TASK` | Claim generations, handoff, completion and qualified retry | [Registry model](registry-model.md) |
+| `UIF-REG-EFFECT` | Durable original intent, effect uncertainty and reconciliation | [Registry model](registry-model.md) |
 
-These are interacting decision and persistence protocols, not six deployed
+These are interacting decision and persistence protocols, not eleven deployed
 services. The mapping distinguishes code-observed behavior, existing test-source
 oracles and unqualified runtime integration. No source tests were executed by
 this documentation pass.
 
 ## Bounded remaining passes
 
-1. Complete the registry/task/coordinator and other primary core modules, their
-   CLI consumers and cross-component failure boundaries. The handoff-store pass
-   covers its file locks/atomic writes/retention, not every caller or live authority.
+1. Trace the remaining primary core modules, CLI/adapter consumers, test-source
+   oracles and cross-component failure boundaries. The full registry/store reads
+   do not establish every caller or installed/live authority.
 2. Trace policy/bootstrap, White Room, source migration, command/backend wrappers,
    schemas, configuration, generated origins and hosted workflow entry points.
 3. Resolve actual ownership and cross-repository calls for the hosted delivery
@@ -84,5 +89,5 @@ documentation paths in this pass are outputs, not silently added source inputs.
 
 Full UIF-249 acceptance still requires all in-scope areas and interactions to be
 accounted for, the remaining impact map, explicit exclusions and independent
-coverage verification. Neither these six machines nor the file counts establish
+coverage verification. Neither these eleven machines nor the file counts establish
 exhaustive identification, live state, current claims or product readiness.
