@@ -20,6 +20,11 @@ requires it. Zero Foo quota is not a prerequisite; Foo-local Codex is not
 required. Native pauses, execution claims and publisher authority remain intact;
 an orchestration receiving acknowledgment is not a claim transfer or fence.
 
+Use the [environment alignment skill](.agents/skills/uif-environment-alignment/SKILL.md)
+at startup, on demand and at quota/Morgan MCP transitions to collect real
+operation-scoped readiness evidence. It does not create a blanket project gate
+or prove product compliance.
+
 Use [the operating procedure](docs/operating-procedure.md) for execution or mode
 changes. Before startup, transfer, quota recovery, replacement or interruption
 recovery, read the complete [white-room recovery contract](docs/white-room/startup-and-recovery.md)

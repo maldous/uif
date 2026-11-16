@@ -1,0 +1,4 @@
+interface:
+  display_name: "UIF environment alignment"
+  short_description: "Verify scoped source, guidance, tools and original receipts"
+  default_prompt: "Use $uif-environment-alignment to verify the selected project and executor for the next authorized operation, preserving original evidence and reporting scoped gaps."
