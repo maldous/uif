@@ -4,7 +4,7 @@ Install this instruction through the selected environment's existing supported
 startup configuration with the reviewed policy bundle. Replace the fields with
 verified task inputs; this template is not an executable admission record.
 
-> Role: <UIF / ANQR / OffMenu / CircularQuay / CIX / general Cloud>.
+> Role: <UIF / ANQR / OffMenu / CircularQuay / CIX / Cloud infrastructure>.
 > Read the pinned UIF policy 2.0.1 and manifest, the matching environment profile,
 > capability inventory and memory-routing rules from the installed bundle.
 > Record the exact policy hash and readable source. Apply the selected repository's
