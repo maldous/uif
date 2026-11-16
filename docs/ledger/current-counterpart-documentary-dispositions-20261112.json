@@ -1,0 +1,344 @@
+{
+  "schema": "uif-counterpart-documentary-dispositions/1",
+  "date": "2026-11-12",
+  "accountable_owner": "uif-platform-owner",
+  "base": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+  "scope": "Four existing bounded documentation/source/plan dispositions and one exact remaining transport gap; no product implementation, historical recovery or runtime change.",
+  "snapshot": {
+    "sha256": "1f1b8d57c464d808816325e1149d042c81f0863e11ffc750b960b40f21efdf1c",
+    "original_action_ids": 213,
+    "nonadditive_references": 11,
+    "unchanged": true
+  },
+  "offmenu": {
+    "accepted_develop": "e16267d26c75fb96047ea34159889988220c1677",
+    "current_docs": [
+      {
+        "path": "docs/third-party-client.md",
+        "git_blob": "6cd453e86e1aec50ec03120473a035c78f81df04",
+        "line_count": 20
+      },
+      {
+        "path": "docs/third-party-service-inventory.json",
+        "git_blob": "9e045a1ae89a7105f5068f2c34fa885cab2932a6",
+        "line_count": 2651
+      },
+      {
+        "path": "config/third-party.example.json",
+        "git_blob": "e1885eb29cb2430babf466f7626257cc10297756",
+        "line_count": 19
+      },
+      {
+        "path": "apps/web/src/app.js",
+        "git_blob": "8f2dd95e41d491f3ee13d306edfa261bb40c83cd",
+        "line_count": 351
+      },
+      {
+        "path": "apps/web/src/services-ui.js",
+        "git_blob": "bd9446c7ee3d274bd60e57f30c953aa71e373909",
+        "line_count": 50
+      }
+    ],
+    "counterpart_turn": "01a1cf5d-fef0-71f3-b87d-e389b7562edd",
+    "owner_packet_sha256": "9f6bf24ebfaffaa0078a4b4e6a0a4d10d301758b93c94852db3a84053645271c",
+    "verification": "Current docs/source and canonical PR222 merge/tree/parents independently read by UIF through GitHub MCP. Tests and Controller receipts credited from existing owner custody, not rerun."
+  },
+  "cq": {
+    "accepted_source": "192b413662afcf9f323d4afbcaddc6452d174bd4",
+    "current_docs": [
+      {
+        "path": "docs/agent-integrations.md",
+        "git_blob": "ee001566ae18e53450adcb89dc980a42c255fb44"
+      },
+      {
+        "path": "docs/sdks.md",
+        "git_blob": "179ea56723c068c775ea2176d7126cfd9c83aa93"
+      },
+      {
+        "path": "RELEASE.md",
+        "git_blob": "5c4caea9f16d9e07d516451aa84750d1445a5d61"
+      },
+      {
+        "path": "integrations/skills/cq/SKILL.md",
+        "git_blob": "dfdb5580470d3b8db344c0735a0169cf7584cfb5"
+      }
+    ],
+    "verification": "Current docs and exact commit/tree/direct parent independently read by UIF through GitHub MCP; continuation plan credited to the named existing CQ/native receipt."
+  },
+  "canonical_document": {
+    "path": "docs/project-integration.md",
+    "preimage_blob": "2c3aedcb8865502c11b611a3d2d3924d34402839",
+    "postimage_sha256": "c2e69ad21145eb3499dcfb1a98d732aba32a6e3e4fe7622aa0ca23570e913ce7",
+    "change": "Append current owned client-capability inventory only; existing document preserved."
+  },
+  "records": [
+    {
+      "original_id": "client-baseline-document-integration",
+      "original_routing_key": "uif-ledger-20261111-037",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Integrate the independently accepted shared capability inventory into existing canonical documentation with product-owned differences preserved. (UIF-192; deliverable).",
+      "disposition": "fulfilled_scoped_current_documentary_integration_if_accepted",
+      "decision": "Integrate the accepted OffMenu and CQ client-capability slices into the existing UIF canonical project-integration document. Preserve each product-owned contract and disabled/unselected options; no provider or service activation is required.",
+      "evidence": [
+        "#/offmenu/current_docs",
+        "#/cq/current_docs",
+        "#/canonical_document"
+      ],
+      "product_differences": [
+        "OffMenu owns its sanitised public service configuration, separate local consent record, opt-in categories and signed-in/confirmed support flow; optional diagnostics/analytics/advertising remain disabled or unset in its example.",
+        "CQ distinguishes application-owned SDK sessions, portable agent skills, client-plugin/MCP distribution, protected server policy and provider custody. Release examples or manifests are not publication or deployed authority."
+      ],
+      "remaining_runtime": "All provider access, entitlements, credentials, activation and shared admission remain separate. This fulfills documentation integration only."
+    },
+    {
+      "original_id": "project-binding-candidate-reconciliation",
+      "original_routing_key": "uif-ledger-20261111-047",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Reconcile the original A-assignment candidate and independent verdict before commissioning duplicate project-agnostic routing work. (UIF-140; deliverable).",
+      "disposition": "bounded_current_relation_disposition_legacy_original_unavailable",
+      "decision": "Record that the original A-assignment candidate and independent verdict remain unestablished in retained evidence. Credit the accepted later role source/review and select the currently pinned role/identity declarations; do not commission a duplicate project-agnostic router merely to recreate missing history.",
+      "historical_result": "Original A candidate/verdict unavailable; no equality, recovery, acceptance or successful old effect asserted. This is a current owner disposition of the relation, not fulfillment of the missing historical implementation.",
+      "current_source_refs": [
+        {
+          "path": "tools/delivery/native_harness_contract.py",
+          "git_blob": "42b438e897adc3c4b9a8b5d8fd41c948c85ffcc4"
+        },
+        {
+          "path": "tools/delivery/symphony_tasks.py",
+          "git_blob": "dd6cda75c52aeae347c06fe16cd132d387dff77d"
+        }
+      ],
+      "retained_credit": {
+        "role_source_as_reported": "3726c5d",
+        "independent_review_as_reported": "246dcc9",
+        "custody": "Existing OffMenu owner finite handoff; these short retained identities are not expanded or relabelled."
+      },
+      "removed_stale_gate": "Original v4 policy adoption, shared-root invocation and sole publisher were resolved by the completed normal OffMenu v4 publication receipts. Native v2 fingerprint and separate protection-snapshot fields are not this documentary prerequisite.",
+      "effect_hold": "No OffMenu role admission, historical replay or combined runtime adoption is released."
+    },
+    {
+      "original_id": "complete-tail-selected-profile-proof",
+      "original_routing_key": "uif-ledger-20261111-048",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Establish exact source/scope/validation/review/publication support for the selected current profile before coding; reconcile the accepted later consumer pair and source/current-input qualification. (UIF-141; deliverable).",
+      "disposition": "fulfilled_selected_finite_profile_source_support_if_accepted",
+      "selected_profile": "Existing authorised and executed OffMenu v4 merge-only/no-issue source-health profile for PR222; no new service or full UIF native tail is selected.",
+      "source_scope": {
+        "candidate": "8623115b4af69d50f6e2674a0ed2d775d65a31e4",
+        "tree": "fe4eb6e8a8e668e50689ae3b2beb614153eaccf9",
+        "canonical_merge": "3f5f85e5764a60f84b86d8814f482b40ceecf1e5",
+        "parents": [
+          "2bdd9045df6a7025ef62c20c8b56b94d295ede6b",
+          "8623115b4af69d50f6e2674a0ed2d775d65a31e4"
+        ],
+        "scope": "Nine source/build-health postimages, current-base independent qualification/review and normal existing Controller publication/readback."
+      },
+      "validation_sha256": "867b1933cde873c2e7b45ca41ea031f93efd3573fbcbbdb9a71503d89f0c4dab",
+      "qualification_sha256": "affdbddcc279b6d083a67978eb93362554e16fbea59442dbe6daac031c39ae5f",
+      "publication": "Existing normal v4 Controller, shared-root repository-owner.lock, original adoption and sole publisher. Exact PR222 merge/tree/parents were independently read through GitHub MCP; source/validation/review and controller receipts remain in existing owner custody.",
+      "lineage": "PR225 is the separate bootstrap amendment; PR222 is normal health publication, then PR223/224 are distinct serial records. Do not conflate them or infer 7ad9452 adoption.",
+      "residual": "No full native UIF coding-to-publication runtime, product deployment, current-role admission or general BAU is proven."
+    },
+    {
+      "original_id": "shared-publication-continuation-plan",
+      "original_routing_key": "uif-ledger-20261111-052",
+      "formal_source_domain": "UIF_records",
+      "original_clause": "Prepare one evidence-supported continuation for the accepted CQ/UIF source, with exact remote commit/tree/ancestry readback and unchanged guards. (UIF-218, UIF-193; deliverable).",
+      "disposition": "fulfilled_scoped_continuation_plan_if_accepted",
+      "decision": "Select the existing CQ owner evidence-supported continuation for the accepted CQ/UIF source. Retain the named owners, original-store reconciliation, review/publication route and all current guards; do not replay old writes.",
+      "accepted_source": {
+        "commit": "192b413662afcf9f323d4afbcaddc6452d174bd4",
+        "tree": "c408d64d26bfb708757ef9e65445499793c2dc01",
+        "direct_parent": "5129c9be960d8850574d8992599d9343d9c2c4c1",
+        "reviewed_tree_source_as_reported": "68bb5c6",
+        "remote_commit_tree_parent_readback": "GitHub MCP verified by UIF owner"
+      },
+      "plan_custody": {
+        "native_thread": "01a1a102-5d55-7593-96ea-0c9ef716faa7",
+        "native_turn": "01a1cf4f-3189-7f61-aff3-56070b5f323f",
+        "counterpart_completion_turn": "01a1cf5d-8efa-75e8-b346-2be4389ccb52",
+        "binding": "Existing CQ owner attests the plan binds selected original row/revision, owner epoch and original operation. This assessment does not invent or copy an unprovided live operation ID."
+      },
+      "unchanged_guards": [
+        "Existing CQ/native owners and original-store custody",
+        "Independent review/publication and original operation reconciliation",
+        "PR1, main, access and uncertain-effect guards",
+        "No historical transport replay"
+      ],
+      "historical_credit": "d70ec22 retained; missing failed receipts remain legacy/unavailable. No held original is marked successful.",
+      "effect_hold": "Plan preparation only. Actual publication continuation or transport effect still requires its exact current authorised binding."
+    }
+  ],
+  "remaining_gap": {
+    "original_id": "shared-transport-owner-correlation",
+    "original_routing_key": "uif-ledger-20261111-051",
+    "formal_source_domain": "UIF_records",
+    "original_clause": "Bind an actual authorized transport executor and supported non-secret server receive/ref-transaction correlation source; join original CQ/UIF records. (UIF-218; deliverable).",
+    "state": "supported_pr_correlation_identified_current_pickup_unselected_original_receipts_unavailable",
+    "credited": "The actual UIF owner has executed the authorised GitHub MCP PR49 merge. GitHub server PR identity/result and canonical merge readback provide a supported non-secret correlation contract for an actual normal PR operation. Existing client ref checks and OffMenu finite Controller publication retain their bounded credit.",
+    "actual_missing": "No current single CQ/UIF write and corresponding owner-held intent/executor binding is selected. Original CQ failed raw-push operation IDs, terminal receipts and server correlation remain unavailable in retained evidence. Do not create a write to manufacture that evidence.",
+    "current_source_observation": {
+      "path": "tools/delivery/integration-gateway.mjs",
+      "git_blob": "ca4419fb059b9a1af1af5acdfc9087bdec2dedcc",
+      "source_excerpt": "advanceIntegration lines208-288 consumes persisted Controller intent, expected head/base metadata, a single normal GitHub merge reply and canonical observation. It is a bounded existing OffMenu gateway, not a CQ invocation or grant. GitHub PR records themselves are a supported server correlation source for an authorised normal PR operation."
+    },
+    "boundary": "Join the existing server PR ID/URL, response and canonical merge evidence to the existing owner-held intent. This is not client-ref proof alone. Current PR49 proves that capability and its UIF executor, not the old raw pushes or a CQ effect. CQ PR1 remains open/unmerged; its synthetic merge_commit_sha is not a terminal transaction.",
+    "next_existing_owner": "At a genuinely selected CQ publication pickup, the existing CQ owner and shared publication coordinator bind the actual authorised actor/operation and the existing PR server handle to the owner-held intent. No new operation, adapter or product-source correction is commissioned here.",
+    "implementation_boundary": "No adapter or new operation is commissioned. The existing PR pin/read_merge contract already provides the supported server record. If a future actual consumer needs explicit serialization, a facts-only extension of the existing publication_rpc.py receipt path can expose already-read PR identity/result/canonical fields alongside the existing intent. It cannot manufacture raw receive-pack backend correlation or recover old receipts.",
+    "preserved": [
+      "R181",
+      "R202",
+      "Old unavailable/uncertain outcomes",
+      "All actual combined transport/admission effects"
+    ],
+    "supported_existing_contract": {
+      "provider": "Existing GitHub normal PR API through the authorised MCP/publisher route; no new server or provider.",
+      "correlation_handle": "Existing repository identity plus server PR ID/number/URL.",
+      "owner_held_binding": "Join the original operation, owner/epoch and source/policy/intent references wherever the selected existing authority requires them. Those facts remain in the existing owner-held intent; GitHub need not echo them.",
+      "supported_response_fields": [
+        "sha",
+        "merged",
+        "message"
+      ],
+      "supported_server_record_fields": [
+        "id",
+        "node_id",
+        "url/html_url",
+        "number",
+        "head.sha",
+        "merged",
+        "merged_at",
+        "merged_by",
+        "merge_commit_sha"
+      ],
+      "canonical_readback": [
+        "Actual merge parents equal original expected base and head",
+        "Actual merge tree equals accepted source tree",
+        "Canonical target contains the actual merge"
+      ],
+      "precondition_limit": "Expected head conditions the normal merge request. The retained source prechecks base and verifies exact parents/tree afterward; atomic base comparison is not claimed.",
+      "not_unconditionally_required": [
+        "A second server-generated transaction/delivery ID",
+        "Server echo of owner, epoch or original operation",
+        "A new provider, queue, allocator or server"
+      ],
+      "recovery": "Inspect the same original intent and supported server PR record/canonical ref before retry. Never substitute current success for unavailable historical receive-pack evidence."
+    },
+    "current_provider_records": {
+      "uif_PR49": {
+        "id": 5276071333,
+        "node_id": "PR_kwDOVkh6Xc8AAAABOnp1pQ",
+        "url": "https://api.github.com/repos/maldous/uif/pulls/49",
+        "html_url": "https://github.com/maldous/uif/pull/49",
+        "number": 49,
+        "merged": true,
+        "merged_at": "2026-11-12T11:11:54Z",
+        "merged_by": "maldous",
+        "merge_commit_sha": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+        "head": "2203d369b8ade319faf054c3cc300b8f26b7523f",
+        "base_observed": "8ddda41c8627843fa4096f65d3d0fee89f37aac1"
+      },
+      "uif_canonical_merge": {
+        "commit": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+        "parents": [
+          "8ddda41c8627843fa4096f65d3d0fee89f37aac1",
+          "2203d369b8ade319faf054c3cc300b8f26b7523f"
+        ],
+        "tree": "36fc758c2a5951e40cd39822340374ffe799a84d"
+      },
+      "cq_PR1": {
+        "id": 5135794619,
+        "node_id": "PR_kwDOVhN5Ec8AAAABMh4Buw",
+        "url": "https://api.github.com/repos/maldous/CircularQuay/pulls/1",
+        "html_url": "https://github.com/maldous/CircularQuay/pull/1",
+        "number": 1,
+        "state": "open",
+        "draft": false,
+        "merged": false,
+        "merged_at": null,
+        "merge_commit_sha": "adfa05474db701202f8c775d5ab9b0654c1effb8",
+        "head": {
+          "sha": "192b413662afcf9f323d4afbcaddc6452d174bd4",
+          "ref": "feature/initial-implementation"
+        },
+        "base": {
+          "sha": "faf8e0242847d9a0026139762d6558ecd39debac",
+          "ref": "develop"
+        }
+      },
+      "cq_develop": "faf8e0242847d9a0026139762d6558ecd39debac",
+      "meaning": "CQ192b413 is accepted source on feature/initial-implementation/PR1, not merged develop. No current CQ write is invented, and no PR1/main/access guard is changed."
+    },
+    "original_operation_join": {
+      "scope": "One shared handoff for the accepted UIF/CQ source pair, consume completed UIF-200 diagnosis and original receipts, bind actor/destination/outcome/correlation, prepare later supported publication. No unchanged diagnostic push, reconstructed commit, credential/protection bypass, force push, release or runtime authority.",
+      "original_source_pair": {
+        "uif": "c8efa916a4bd98c4b59d24c774ff6510f2bd1a32",
+        "cq": "d70ec22c911ecf279f871cea720c109dc96aeff6"
+      },
+      "retained_uif_operation_ids": [
+        "uif193-publish-foundation-20261105-2328",
+        "uif193-push-worker-20261105-2330"
+      ],
+      "uif_outcome": "Two definitive failed publication receipts retained; commit_refs backend cause remains unknown.",
+      "cq_outcome": "Two historical CQ failed-publication operations are reported, but original operation IDs and terminal/server-correlation receipts are unavailable in retained evidence. No invented IDs or backend-cause resolution. Separate original-receipt row retains that boundary.",
+      "separation": "Current unselected pickup is not missing history. Current PR server records cannot explain an unavailable old raw-push transaction."
+    },
+    "assessment_provenance": {
+      "source_safe_readonly_assessment_sha256": "7f0205231995186e17825e3b5fd01a51f30f9f0baa407459f31240dddbca7a27",
+      "methods": "UIF owner used GitHub MCP read-only server PR/ref records, retained accepted UIF-218 evidence and the exact accepted publication_rpc.py component source pin. No repository write, privileged read, replay, provider or worker was used for that assessment.",
+      "publication_rpc_component_sha256": "09eb0f1c396b492f3e9db342dc2f2f46441ebfbeeeed50b5e0e43f452f0651c1",
+      "component_custody": "Matches the accepted176c237 source map; not a second latest bc979c8 archive or installed publisher claim."
+    }
+  },
+  "counting": {
+    "accepted_before": {
+      "dispositioned": 61,
+      "current": 46,
+      "partial_current": 12,
+      "engineering": 8,
+      "shared": 26
+    },
+    "proposed_new_dispositions": 4,
+    "proposed_ids": [
+      "client-baseline-document-integration",
+      "project-binding-candidate-reconciliation",
+      "complete-tail-selected-profile-proof",
+      "shared-publication-continuation-plan"
+    ],
+    "current_count_change_before_acceptance_and_merge": 0,
+    "proposed_if_this_scope_is_accepted": {
+      "dispositioned": 65,
+      "current": 42,
+      "partial_current": 12,
+      "engineering": 8,
+      "shared": 22
+    },
+    "already_credited_PR49_ids": [
+      "guard-policy-source-disposition",
+      "r070-r071-dependency-selection",
+      "assets-validator-composition-disposition",
+      "canonical-v1-selected-composition"
+    ],
+    "meaning": "047 is a bounded unavailable-original relation disposition, not a recovered historical success. Other three are exact current documentary/source/plan fulfillment. Existing 34 legacy unavailable/unfulfilled dispositions retain their original meaning."
+  },
+  "holds": [
+    "All real combined admission/publication/runtime effects remain held for their relevant current counterpart contract.",
+    "The neutral installation remains partial/access closed; no change to the frozen packet, shared key directory or accounts/Pool.",
+    "Old CQ failed/unknown outcomes, R181/R202 and missing A candidate/verdict remain unchanged.",
+    "No new Linear issues, deployments, product tests, historical searches or Foo writers."
+  ],
+  "preparation_lineage": {
+    "version": 2,
+    "parent_candidate": "uif-counterpart-documentary-assessment-f982b93-20261112",
+    "preserved_original_candidate": "uif-counterpart-documentary-assessment-20261112",
+    "current_accepted_base": "f982b939ae917c0b5aa6e2e6db118d851e273aed",
+    "delta": "Accuracy refinement of still-open row051 using supported existing server PR correlation; current61/46 and proposed65/42 accounting; one corresponding canonical-document sentence. Four disposition records and all effect holds unchanged.",
+    "publication": "Preparation only. Known-denied publication remains stopped pending specific approval; no retry or SSH correction."
+  },
+  "original_preparation_checkpoint": {
+    "base": "8ddda41c8627843fa4096f65d3d0fee89f37aac1",
+    "dispositioned": 57,
+    "current": 50,
+    "meaning": "Historical original preparation only; superseded by accepted PR49. Not present state."
+  }
+}
