@@ -270,6 +270,42 @@ class LegacyReceiptContracts(unittest.TestCase):
         pin = result.pop('receipt_sha256')
         self.assertEqual(pin, sha256(wire(result)).hexdigest())
 
+    def test_exact_enriched_published_routing_is_preserved_not_current_authority(self):
+        original, review = fixture()
+        envelope = dict(BINDING, attempt=0, current_task_registered=True,
+                        native_stage_custody_contract={'proves_no_competing_owner': False},
+                        full_original_issue_complete=False)
+        review['report']['routing'] = copy.deepcopy(envelope)
+        result = build_legacy_receipt(**arguments(original, review,
+            published_review_routing=envelope, selected_input_sha256=(SELECTED,)))
+        self.assertEqual(result['binding'], BINDING)
+        self.assertEqual(result['original_published_routing'], envelope)
+        self.assertFalse(result['routing_metadata_grants_current_authority'])
+        frozen = copy.deepcopy(result)
+        envelope['native_stage_custody_contract']['proves_no_competing_owner'] = True
+        self.assertEqual(result, frozen)
+
+    def test_envelope_projection_cannot_change_any_authentic_native_core_value(self):
+        original, review = fixture()
+        envelope = dict(BINDING, scope_sha256='9' * 64, current_task_registered=True)
+        review['report']['routing'] = copy.deepcopy(envelope)
+        with self.assertRaisesRegex(Hold, 'legacy_published_routing_core_mismatch'):
+            build_legacy_receipt(**arguments(original, review, published_review_routing=envelope))
+
+    def test_full_routing_metadata_must_exactly_match_the_immutable_archive(self):
+        original, review = fixture()
+        envelope = dict(BINDING, current_task_registered=True)
+        review['report']['routing'] = dict(BINDING, current_task_registered=False)
+        with self.assertRaisesRegex(Hold, 'legacy_published_review_binding_mismatch'):
+            build_legacy_receipt(**arguments(original, review, published_review_routing=envelope))
+
+    def test_routing_metadata_is_bounded_before_serialization(self):
+        original, review = fixture()
+        envelope = dict(BINDING, metadata='x' * 65)
+        review['report']['routing'] = copy.deepcopy(envelope)
+        with patch.object(module, 'MAX_ROUTING_METADATA_BYTES', 64), self.assertRaisesRegex(Hold, 'legacy_routing_metadata_size'):
+            build_legacy_receipt(**arguments(original, review, published_review_routing=envelope))
+
 
 if __name__ == '__main__':
     unittest.main()

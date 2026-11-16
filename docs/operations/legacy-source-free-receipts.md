@@ -24,7 +24,18 @@ mutable blocked settlement does not erase an older immutable approved review.
 `uif.legacy_receipts.build_legacy_receipt` accepts exact original/review archive
 bytes, their pinned file hashes/record identities and the original published
 source-free review binding. The caller must authenticate that published tuple
-through its actual native tracker/archive reader. An arbitrary JSON object, this
+through its actual native tracker/archive reader. Some historical published
+routing objects contain the nine native binding fields plus registration,
+stage-custody and acceptance-boundary metadata. They are not interchangeable
+with the archive's exact nine-field `binding`. Derive that core tuple only from
+the pinned actual archive, prove every value equals its corresponding published
+value, and supply the full authenticated envelope as `published_review_routing`.
+The full envelope must exactly equal the immutable report's routing object; it
+is snapshotted/preserved with its own digest, not silently discarded or reduced
+to current permission. Bounded metadata/registration booleans never prove a
+current native claim, competing-owner exclusion or grant.
+
+An arbitrary JSON object, this
 receipt builder, a policy hash or a local file is not that authentication.
 
 The builder checks exact file bytes, strict JSON and types, issue/scope/run and

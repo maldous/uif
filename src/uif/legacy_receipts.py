@@ -20,6 +20,8 @@ MAX_UNIQUE_HASHES = 256
 MAX_REFERENCE_BYTES = 64 * 1024
 MAX_RECEIPT_BYTES = 128 * 1024
 MAX_SELECTED_INPUTS = 64
+MAX_ROUTING_METADATA_BYTES = 64 * 1024
+MAX_ROUTING_METADATA_NODES = 512
 HEX = re.compile(r'[0-9a-f]{64}')
 HASH_TOKEN = re.compile(r'(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])')
 DOCUMENTARY_FIELDS = ('data_sources', 'claims', 'verification')
@@ -73,6 +75,37 @@ def _utf8(value):
         return value.encode('utf-8')
     except UnicodeError:
         require(False, 'legacy_unicode_encoding')
+
+
+def _routing_snapshot(value):
+    """Freeze bounded original published routing metadata, never current grants."""
+    used, nodes = 0, 0
+    def visit(item, depth=0):
+        nonlocal used, nodes
+        nodes += 1
+        require(nodes <= MAX_ROUTING_METADATA_NODES and depth <= 32,
+                'legacy_routing_metadata_nodes')
+        kind = type(item)
+        if kind is str:
+            require(len(item) <= MAX_ROUTING_METADATA_BYTES, 'legacy_routing_metadata_size')
+            used += len(_utf8(item))
+        elif kind is dict:
+            require(len(item) <= MAX_ROUTING_METADATA_NODES, 'legacy_routing_metadata_nodes')
+            for key, child in item.items():
+                require(type(key) is str, 'legacy_routing_metadata_type')
+                visit(key, depth + 1)
+                visit(child, depth + 1)
+        elif kind is list:
+            require(len(item) <= MAX_ROUTING_METADATA_NODES, 'legacy_routing_metadata_nodes')
+            for child in item:
+                visit(child, depth + 1)
+        else:
+            require(kind in (int, float, bool, type(None)), 'legacy_routing_metadata_type')
+            used += 32
+        require(used <= MAX_ROUTING_METADATA_BYTES, 'legacy_routing_metadata_size')
+    require(type(value) is dict, 'legacy_routing_metadata_type')
+    visit(value)
+    return decode(wire(value), MAX_ARCHIVE_BYTES)
 
 
 def _archive(raw, pin):
@@ -153,7 +186,7 @@ def _references(report):
 def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_pin,
                          published_review_binding, selected_input_sha256=(),
                          verified_record_identity=None, excluded_sha256=(),
-                         selected_input_classification=None):
+                         selected_input_classification=None, published_review_routing=None):
     """Build an exact, bounded receipt from independently authenticated inputs.
 
     A directory name alone proves no digest. verified_record_identity is an
@@ -165,10 +198,14 @@ def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_p
     original = _archive(original_bytes, original_pin)
     review = _archive(review_bytes, review_pin)
     # Freeze the supplied external tuple instead of retaining mutable caller data.
+    _binding(published_review_binding)
     binding = decode(wire(published_review_binding))
-    _binding(binding)
+    routing = _routing_snapshot(binding if published_review_routing is None else published_review_routing)
+    require(BINDING_KEYS.issubset(routing)
+            and wire({key: routing[key] for key in BINDING_KEYS}) == wire(binding),
+            'legacy_published_routing_core_mismatch')
     require(wire(review.get('binding')) == wire(binding)
-            and wire(review['report'].get('routing')) == wire(binding),
+            and wire(review['report'].get('routing')) == wire(routing),
             'legacy_published_review_binding_mismatch')
     require('reviewed_disposition' not in review['report'], 'use_modern_disposition_route')
     require(review.get('state') == 'independent-review'
@@ -240,6 +277,9 @@ def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_p
         status='bounded-input-join' if proof else 'input-join-unresolved',
         issue=binding['issue'], issue_id=binding['issue_id'], run=binding['run'],
         scope_sha256=binding['scope_sha256'], binding=binding,
+        original_published_routing=routing,
+        original_published_routing_sha256=sha256(wire(routing)).hexdigest(),
+        routing_metadata_grants_current_authority=False,
         original_archive=original_pin.__dict__.copy(), review_archive=review_pin.__dict__.copy(),
         original_stage=original['state'], original_verdict=original['report']['verdict'],
         review_stage=review['state'], review_verdict=review['report']['verdict'],
