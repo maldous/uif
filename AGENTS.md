@@ -14,6 +14,12 @@ instructions retain product, toolchain, privacy, review and publication authorit
 Read the [dated cloud-owner process checkpoint](docs/agents/cloud-owner-process-exercise-2026-11-16.md)
 for bounded verified examples; it does not replace the policy or prove BAU.
 
+In Morgan MCP mode, existing project agents reason in their own Cloud sessions,
+use their Cloud workspaces first and call supported deterministic MCP where work
+requires it. Zero Foo quota is not a prerequisite; Foo-local Codex is not
+required. Native pauses, execution claims and publisher authority remain intact;
+an orchestration receiving acknowledgment is not a claim transfer or fence.
+
 Use [the operating procedure](docs/operating-procedure.md) for execution or mode
 changes. Before startup, transfer, quota recovery, replacement or interruption
 recovery, read the complete [white-room recovery contract](docs/white-room/startup-and-recovery.md)

@@ -77,6 +77,32 @@ acknowledgment is separate from this source checkpoint and is not gated on it.
 Automatic off-Foo election remains unqualified, without blocking those controlled
 existing-owner units.
 
+### Morgan MCP mode
+
+Morgan MCP mode keeps reasoning in the existing project agents' own Cloud
+sessions. Use their Cloud workspaces first and supported deterministic MCP only
+where the work requires it, with actual tools, grants and resource admission.
+Cloud reasoning continues on actual available capacity; mode selection does not
+depend on remaining Foo allowance or require a Foo-local Codex session. Verify
+actual reasoning availability rather than
+inferring quota immunity. Policy 2.0, project ownership, independent review and
+sole publisher controls remain unchanged.
+
+Keep all five native admission pauses protected. An orchestration receiving
+acknowledgment confirms receipt of the bounded scope; it does not transfer an
+execution claim, fence a previous owner or grant publisher authority. Preserve
+each paused queue item's existing responsible owner and original operation/claim
+mapping. Where that mapping is unknown, record the precise item and uncertainty
+and exclude it from redispatch until reconciled; do not clear the queue or infer
+an ownership transfer from a pause or acknowledgment.
+
+Continue genuinely eligible owned Linear units in parallel within disjoint
+source/resource scopes and existing controls. Preserve intentional deferrals,
+uncertain effects and actual local constraints; exclude only the affected work.
+Use the existing roles, intake and coordination record without adding a
+scheduler or policy copies. This source clarification does not install runtime
+controls, restart native admission or establish automatic ownership failover.
+
 ## Continuation and transfer limits
 
 Native Linear remains sole live intake. Continue eligible authorized cloud work
