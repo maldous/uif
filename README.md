@@ -12,6 +12,9 @@ Original scope mappings and migration provenance are retained in [UIF-116](https
 
 Read [AGENTS.md](AGENTS.md) for repository working instructions.
 
+Use the [documentation and source-interface map](docs/documentation-map.md) for
+canonical guides, the frozen inventory and explicit source/runtime limits.
+
 ## Operating policy
 
 The [versioned policy](docs/agents/uif-worker-policy.md),
