@@ -1,0 +1,311 @@
+"""Synthetic immutable-archive compatibility; no acceptance or runtime effects."""
+import copy
+from hashlib import sha256
+import json
+import unittest
+from unittest.mock import patch
+import uif.legacy_receipts as module
+
+from uif.handoff_store import Hold, wire
+from uif.legacy_receipts import (ArchivePin, build_legacy_receipt, LEGACY_POLICY_SHA256,
+                                 native_retained_record_id, NATIVE_RETAINED_RECIPE)
+
+SELECTED = '6' * 64
+BINDING = dict(candidate='issue-uuid', human_context_sha256='4' * 64,
+               invocation='review-invocation', issue='UIF-SYNTHETIC', issue_id='issue-uuid',
+               kind='source-free', run=5, scope_sha256='5' * 64, state='independent-review')
+
+
+def identity(archive):
+    # Synthetic records use the exact source-verified native JSON recipe.
+    return native_retained_record_id(archive)
+
+
+def fixture(stage='assess', artifacts=None):
+    original = dict(state=stage, run=5, binding=None,
+                    context=dict(issue='UIF-SYNTHETIC', issue_id='issue-uuid',
+                                 issue_scope_sha256='5' * 64, session_id='original-session'),
+                    artifacts=[] if artifacts is None else artifacts,
+                    report=dict(verdict='approve' if stage == 'assess' else 'complete',
+                                claims=[dict(evidence='selected documentary SHA ' + SELECTED)]))
+    review = dict(state='independent-review', run=5, binding=copy.deepcopy(BINDING),
+                  context=dict(issue='UIF-SYNTHETIC', issue_id='issue-uuid',
+                               issue_scope_sha256='5' * 64, session_id='review-session'), artifacts=[],
+                  report=dict(verdict='approve', routing=copy.deepcopy(BINDING),
+                              verification=[dict(detail='original retained record ' + identity(original))],
+                              claims=[dict(evidence='selected documentary SHA ' + SELECTED)]))
+    return original, review
+
+
+def arguments(original, review, **extra):
+    before = (json.dumps(original, indent=2) + '\n').encode()
+    after = (json.dumps(review, indent=2) + '\n').encode()
+    if extra.get('selected_input_sha256'):
+        extra.setdefault('selected_input_classification',
+                         {pin: 'selected-documentary-input' for pin in extra['selected_input_sha256']})
+    return dict(original_bytes=before, review_bytes=after,
+                original_pin=ArchivePin(identity(original), sha256(before).hexdigest()),
+                review_pin=ArchivePin(identity(review), sha256(after).hexdigest()),
+                published_review_binding=copy.deepcopy(BINDING), **extra)
+
+
+class LegacyReceiptContracts(unittest.TestCase):
+    def test_directory_name_without_native_digest_proof_stays_unresolved(self):
+        result = build_legacy_receipt(**arguments(*fixture()))
+        self.assertEqual(result['status'], 'input-join-unresolved')
+        self.assertTrue(result['directory_reference_without_digest_proof'])
+        self.assertFalse(result['record_identity_verified'])
+
+    def test_verified_native_record_identity_qualifies_exact_legacy_join(self):
+        result = build_legacy_receipt(**arguments(*fixture(), verified_record_identity=native_retained_record_id))
+        self.assertEqual(result['status'], 'bounded-input-join')
+        self.assertEqual(result['proof'][0]['kind'], 'verified-native-record-id')
+        self.assertEqual(result['proof'][0]['review_pointers'], ['/report/verification/0/detail'])
+        self.assertEqual(result['record_identity_recipe'], NATIVE_RETAINED_RECIPE)
+
+    def test_exact_file_sha_join_needs_no_directory_identity_claim(self):
+        original, review = fixture()
+        pin = arguments(original, review)['original_pin']
+        review['report']['verification'][0]['detail'] = pin.file_sha256
+        result = build_legacy_receipt(**arguments(original, review))
+        self.assertEqual(result['status'], 'bounded-input-join')
+        self.assertEqual(result['proof'][0]['kind'], 'original-evidence-file-sha256')
+        self.assertFalse(result['record_identity_verified'])
+
+    def test_assess_approve_and_explicit_empty_artifacts_preserved(self):
+        result = build_legacy_receipt(**arguments(*fixture(), selected_input_sha256=(SELECTED,)))
+        self.assertEqual((result['original_stage'], result['original_verdict']), ('assess', 'approve'))
+        self.assertEqual(result['selected_artifacts'], [])
+        self.assertEqual(result['selected_artifacts_sha256'], sha256(wire([])).hexdigest())
+
+    def test_investigate_complete_and_nonempty_artifacts_preserved(self):
+        artifacts = [dict(path='bounded-result.json', sha256='7' * 64, size_bytes=43)]
+        result = build_legacy_receipt(**arguments(*fixture('investigate', artifacts), selected_input_sha256=(SELECTED,)))
+        self.assertEqual((result['original_stage'], result['original_verdict']), ('investigate', 'complete'))
+        self.assertEqual(result['selected_artifacts'], artifacts)
+
+    def test_no_modern_field_fabrication_or_receiving_authority(self):
+        original, review = fixture()
+        result = build_legacy_receipt(**arguments(original, review, selected_input_sha256=(SELECTED,)))
+        self.assertNotIn('reviewed_disposition', review['report'])
+        self.assertNotIn('reviewed_disposition', result)
+        for field in ('receiving_authorized', 'gate_clearance', 'full_issue_acceptance',
+                      'git_publication_authorized', 'runtime_installed',
+                      'artifact_payloads_verified', 'selected_input_payloads_verified'):
+            self.assertIs(result[field], False)
+        self.assertTrue(result['published_tuple_authentication_required'])
+        self.assertTrue(result['current_scope_and_custody_check_required'])
+
+    def test_shared_policy_hash_cannot_be_selected_input_proof(self):
+        original, review = fixture()
+        for archive in (original, review):
+            archive['report']['claims'][0]['evidence'] = LEGACY_POLICY_SHA256
+        with self.assertRaisesRegex(Hold, 'policy_hash_is_not_selected_input'):
+            build_legacy_receipt(**arguments(original, review, selected_input_sha256=(LEGACY_POLICY_SHA256,)))
+        result = build_legacy_receipt(**arguments(original, review))
+        self.assertEqual(result['status'], 'input-join-unresolved')
+
+    def test_all_known_policy_versions_excluded_including_current_201(self):
+        for token in module.KNOWN_SHARED_POLICY_HASHES:
+            original, review = fixture()
+            for archive in (original, review):
+                archive['report']['claims'][0]['evidence'] = token
+            with self.subTest(token=token), self.assertRaisesRegex(Hold, 'policy_hash_is_not_selected_input'):
+                build_legacy_receipt(**arguments(original, review, selected_input_sha256=(token,)))
+
+    def test_caller_must_explicitly_classify_additional_hash_roles(self):
+        for classification in (None, {}, {SELECTED: 'shared-policy'}):
+            args = arguments(*fixture(), selected_input_sha256=(SELECTED,))
+            args['selected_input_classification'] = classification
+            with self.subTest(classification=classification), self.assertRaisesRegex(Hold, 'legacy_selected_input_classification_required'):
+                build_legacy_receipt(**args)
+        with self.assertRaisesRegex(Hold, 'policy_hash_is_not_selected_input'):
+            build_legacy_receipt(**arguments(*fixture(), selected_input_sha256=(SELECTED,), excluded_sha256=(SELECTED,)))
+
+    def test_selected_documentary_subset_is_not_original_archive_join(self):
+        result = build_legacy_receipt(**arguments(*fixture(), selected_input_sha256=(SELECTED,)))
+        self.assertEqual([p['kind'] for p in result['proof']], ['selected-documentary-input-sha256'])
+        self.assertFalse(result['record_identity_verified'])
+        self.assertEqual(result['proof'][0]['original_pointers'], ['/report/claims/0/evidence'])
+
+    def test_absent_or_duplicated_selected_input_pin_refused(self):
+        for pins in (('8' * 64,), (SELECTED, SELECTED)):
+            with self.subTest(pins=pins), self.assertRaises(Hold):
+                build_legacy_receipt(**arguments(*fixture(), selected_input_sha256=pins))
+
+    def test_corrupted_archive_file_pin_refused(self):
+        args = arguments(*fixture())
+        args['original_bytes'] += b' '
+        with self.assertRaisesRegex(Hold, 'legacy_archive_file_hash'):
+            build_legacy_receipt(**args)
+
+    def test_published_binding_exact_types_and_routing_required(self):
+        for field, value in [('run', True), ('run', 5.0), ('scope_sha256', '9' * 64), ('kind', 'git')]:
+            original, review = fixture()
+            review['binding'][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(Hold):
+                build_legacy_receipt(**arguments(original, review))
+        original, review = fixture()
+        del review['report']['routing']
+        with self.assertRaisesRegex(Hold, 'legacy_published_review_binding_mismatch'):
+            build_legacy_receipt(**arguments(original, review))
+
+    def test_current_git_and_modern_dispositions_keep_separate_validators(self):
+        original, review = fixture()
+        original['binding'] = dict(kind='git')
+        with self.assertRaisesRegex(Hold, 'legacy_original_route'):
+            build_legacy_receipt(**arguments(original, review))
+
+    def test_source_free_candidate_is_bound_to_exact_issue(self):
+        original, review = fixture()
+        binding = copy.deepcopy(BINDING)
+        binding['candidate'] = 'another-candidate'
+        review['binding'] = copy.deepcopy(binding)
+        review['report']['routing'] = copy.deepcopy(binding)
+        args = arguments(original, review)
+        args['published_review_binding'] = binding
+        with self.assertRaisesRegex(Hold, 'legacy_source_free_candidate_identity'):
+            build_legacy_receipt(**args)
+        original, review = fixture()
+        review['report']['reviewed_disposition'] = {}
+        with self.assertRaisesRegex(Hold, 'use_modern_disposition_route'):
+            build_legacy_receipt(**arguments(original, review))
+
+    def test_scope_issue_run_stage_and_session_joins_are_strict(self):
+        changes = [lambda o, r: o.update(run=True), lambda o, r: o.update(state='publish'),
+                   lambda o, r: r['report'].update(verdict='reject'),
+                   lambda o, r: o['context'].update(issue_id='another-issue'),
+                   lambda o, r: r['context'].update(issue_scope_sha256='9' * 64),
+                   lambda o, r: r['context'].update(session_id='original-session')]
+        for mutate in changes:
+            original, review = fixture()
+            mutate(original, review)
+            with self.subTest(mutate=mutate), self.assertRaises(Hold):
+                build_legacy_receipt(**arguments(original, review))
+
+    def test_missing_artifact_list_not_conflated_with_explicit_empty(self):
+        for value in (None, {}, 'empty'):
+            original, review = fixture()
+            original['artifacts'] = value
+            with self.subTest(value=value), self.assertRaisesRegex(Hold, 'legacy_artifact_list'):
+                build_legacy_receipt(**arguments(original, review))
+
+    def test_unsafe_artifact_metadata_is_not_reinterpreted(self):
+        for path in ('../result.json', '/result.json', 'a//b', 'a\\b', 'line\nbreak'):
+            original, review = fixture(artifacts=[dict(path=path, sha256='7' * 64, size_bytes=0)])
+            with self.subTest(path=path), self.assertRaises(Hold):
+                build_legacy_receipt(**arguments(original, review))
+
+    def test_record_verifier_requires_exact_recipe_and_validates_both_inputs(self):
+        for verifier in (True, 'verified', lambda _: '0' * 64):
+            with self.subTest(verifier=verifier), self.assertRaises(Hold):
+                build_legacy_receipt(**arguments(*fixture(), verified_record_identity=verifier))
+        args = arguments(*fixture(), verified_record_identity=native_retained_record_id)
+        args['review_pin'] = ArchivePin('0' * 64, args['review_pin'].file_sha256)
+        with self.assertRaisesRegex(Hold, 'legacy_record_identity_mismatch'):
+            build_legacy_receipt(**args)
+
+    def test_record_validator_cannot_mutate_checked_input(self):
+        def mutate(archive):
+            before = identity(archive)
+            archive['report']['verdict'] = 'changed'
+            return before
+        with self.assertRaisesRegex(Hold, 'unsupported_legacy_record_recipe'):
+            build_legacy_receipt(**arguments(*fixture(), verified_record_identity=mutate))
+
+    def test_native_recipe_preserves_default_separators_and_unicode(self):
+        archive = {'text': 'π', 'values': [1, 2]}
+        expected = sha256(json.dumps(archive, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        self.assertEqual(native_retained_record_id(archive), expected)
+        self.assertNotEqual(expected, sha256(wire(archive)).hexdigest())
+
+    def test_native_recipe_rejects_nonfinite_json_instead_of_asserting_identity(self):
+        with self.assertRaisesRegex(Hold, 'legacy_native_record_encoding'):
+            native_retained_record_id({'invalid': float('nan')})
+
+    def test_duplicate_json_keys_are_rejected_even_with_matching_file_pin(self):
+        args = arguments(*fixture())
+        args['original_bytes'] = args['original_bytes'].replace(b'"run": 5,', b'"run": 5, "run": 5,')
+        args['original_pin'] = ArchivePin(args['original_pin'].record_id, sha256(args['original_bytes']).hexdigest())
+        with self.assertRaisesRegex(Hold, 'duplicate_json_key'):
+            build_legacy_receipt(**args)
+
+    def test_receipt_is_deterministic_and_does_not_mutate_external_tuple(self):
+        args = arguments(*fixture(), selected_input_sha256=(SELECTED,))
+        external = copy.deepcopy(args['published_review_binding'])
+        first, second = build_legacy_receipt(**args), build_legacy_receipt(**args)
+        self.assertEqual(first, second)
+        self.assertEqual(args['published_review_binding'], external)
+        pin = first.pop('receipt_sha256')
+        self.assertEqual(pin, sha256(wire(first)).hexdigest())
+
+    def test_long_keys_and_expanded_pointers_fail_before_reference_copy(self):
+        original, review = fixture()
+        review['report']['claims'] = [{'x' * (module.MAX_KEY_BYTES + 1): SELECTED}]
+        with self.assertRaisesRegex(Hold, 'legacy_documentary_key_size'):
+            build_legacy_receipt(**arguments(original, review))
+        with patch.object(module, 'MAX_POINTER_BYTES', 10), self.assertRaisesRegex(Hold, 'legacy_documentary_pointer_size'):
+            build_legacy_receipt(**arguments(*fixture()))
+
+    def test_small_synthetic_hit_hash_and_aggregate_caps(self):
+        original, review = fixture()
+        review['report']['claims'] = [{'evidence': ' '.join([SELECTED, '8' * 64, '9' * 64])}]
+        for name, limit, reason in [('MAX_REFERENCE_HITS', 2, 'legacy_documentary_hit_limit'),
+                                    ('MAX_UNIQUE_HASHES', 1, 'legacy_documentary_hash_limit'),
+                                    ('MAX_REFERENCE_BYTES', 1, 'legacy_documentary_aggregate_limit')]:
+            with self.subTest(name=name), patch.object(module, name, limit), self.assertRaisesRegex(Hold, reason):
+                build_legacy_receipt(**arguments(original, review))
+
+    def test_final_receipt_bytes_have_an_independent_bound(self):
+        with patch.object(module, 'MAX_RECEIPT_BYTES', 64), self.assertRaisesRegex(Hold, 'legacy_receipt_size'):
+            build_legacy_receipt(**arguments(*fixture()))
+
+    def test_classification_is_frozen_before_returning_hashed_receipt(self):
+        args = arguments(*fixture(), selected_input_sha256=(SELECTED,))
+        result = build_legacy_receipt(**args)
+        frozen = copy.deepcopy(result)
+        args['selected_input_classification'][SELECTED] = 'shared-policy'
+        args['selected_input_classification'].clear()
+        self.assertEqual(result, frozen)
+        pin = result.pop('receipt_sha256')
+        self.assertEqual(pin, sha256(wire(result)).hexdigest())
+
+    def test_exact_enriched_published_routing_is_preserved_not_current_authority(self):
+        original, review = fixture()
+        envelope = dict(BINDING, attempt=0, current_task_registered=True,
+                        native_stage_custody_contract={'proves_no_competing_owner': False},
+                        full_original_issue_complete=False)
+        review['report']['routing'] = copy.deepcopy(envelope)
+        result = build_legacy_receipt(**arguments(original, review,
+            published_review_routing=envelope, selected_input_sha256=(SELECTED,)))
+        self.assertEqual(result['binding'], BINDING)
+        self.assertEqual(result['original_published_routing'], envelope)
+        self.assertFalse(result['routing_metadata_grants_current_authority'])
+        frozen = copy.deepcopy(result)
+        envelope['native_stage_custody_contract']['proves_no_competing_owner'] = True
+        self.assertEqual(result, frozen)
+
+    def test_envelope_projection_cannot_change_any_authentic_native_core_value(self):
+        original, review = fixture()
+        envelope = dict(BINDING, scope_sha256='9' * 64, current_task_registered=True)
+        review['report']['routing'] = copy.deepcopy(envelope)
+        with self.assertRaisesRegex(Hold, 'legacy_published_routing_core_mismatch'):
+            build_legacy_receipt(**arguments(original, review, published_review_routing=envelope))
+
+    def test_full_routing_metadata_must_exactly_match_the_immutable_archive(self):
+        original, review = fixture()
+        envelope = dict(BINDING, current_task_registered=True)
+        review['report']['routing'] = dict(BINDING, current_task_registered=False)
+        with self.assertRaisesRegex(Hold, 'legacy_published_review_binding_mismatch'):
+            build_legacy_receipt(**arguments(original, review, published_review_routing=envelope))
+
+    def test_routing_metadata_is_bounded_before_serialization(self):
+        original, review = fixture()
+        envelope = dict(BINDING, metadata='x' * 65)
+        review['report']['routing'] = copy.deepcopy(envelope)
+        with patch.object(module, 'MAX_ROUTING_METADATA_BYTES', 64), self.assertRaisesRegex(Hold, 'legacy_routing_metadata_size'):
+            build_legacy_receipt(**arguments(original, review, published_review_routing=envelope))
+
+
+if __name__ == '__main__':
+    unittest.main()
