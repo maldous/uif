@@ -24,6 +24,10 @@ policy/manifest/profile and original operation/checkpoint records. Bind each to
 its actual source and timestamp. Later user directions control; record a stale
 instruction/profile conflict and correct it through its owner, without silently
 changing permissions or treating old prose as a permanent stop on independent work.
+Apply the repository-owned [repository/mount/capability setup checklist](../../../docs/white-room/repositories-and-setup.md)
+to the actual caller: saved configuration, checkout and shared mount identity,
+plugin/skill source versus visibility/invocation, and completed setup are separate
+observations. A submitted or failed environment restart proves none of them.
 
 ## Collect only useful missing evidence
 

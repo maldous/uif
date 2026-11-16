@@ -4,6 +4,9 @@ Apply the [environment alignment skill](../../.agents/skills/uif-environment-ali
 to the actual destination at startup, on demand and each quota/Morgan MCP
 transition. Collect operation-scoped facts and preserve original claims/effects;
 this reusable workflow does not add a blanket gate or install runtime fences.
+Apply the [repository, shared-mount, plugin, skill and setup checklist](repositories-and-setup.md)
+to the actual caller. Verify saved configuration, real checkout/baseline and
+completed setup separately; a failed environment admission is not readiness.
 
 ## Scope and operating boundary
 

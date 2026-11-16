@@ -7,6 +7,11 @@ It does not claim complete dependency discovery or deployed failover.
 The root AGENTS.md remains authoritative, with the preserved detailed
 [startup/recovery contract](startup-and-recovery.md). Native Linear is the live
 intake; historical ledgers remain provenance and custody evidence.
+Use the [repository and setup verification checklist](repositories-and-setup.md)
+for actual project mounts/baselines, shared storage boundaries, caller-local
+plugins/skills and completed task setup. Saved configurations and submitted
+restarts do not establish those facts; the existing inventory/comparator does
+not automatically discover or enforce them.
 
 The [14 November reuse checkpoint](recovery-reuse-20261114.md) maps accepted
 comparison/reconstruction source, retained persistence/original-effect recovery
