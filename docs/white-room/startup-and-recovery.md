@@ -1,5 +1,10 @@
 # UIF startup and recovery contract
 
+Apply the [environment alignment skill](../../.agents/skills/uif-environment-alignment/SKILL.md)
+to the actual destination at startup, on demand and each quota/Morgan MCP
+transition. Collect operation-scoped facts and preserve original claims/effects;
+this reusable workflow does not add a blanket gate or install runtime fences.
+
 ## Scope and operating boundary
 
 UIF covers shared physical and virtual infrastructure, cross-project Linear integration, and the full harness / full durable delivery methodology. Keep UIF-platform, OffMenu, CircularQuay, and other projects' repositories, issue ownership, runtime state, and data boundaries distinct.

@@ -71,6 +71,17 @@ A resumed checkpoint additionally binds issue/commit/owner/epoch, compatibility
 and its original receipt. A missing checkpoint needs verified absence, not silence.
 These are necessary comparisons, not proof that supplied assertions are true.
 
+## Reusable operation-scoped alignment
+
+Use the repository-owned [environment alignment skill](../../.agents/skills/uif-environment-alignment/SKILL.md)
+at startup, on demand and at quota/Morgan MCP transitions. It reuses the current
+comparison/recovery contracts while collecting actual source, instruction,
+capability/authentication, toolchain/dependency, check and project-constraint
+evidence for the next operation. Its uniform categories do not require identical
+tools or every product to pass before independent work continues. Readable skill
+source, installed/discoverable distribution and actual invocation remain separate
+from runtime enforcement or full product compliance.
+
 ## Non-destructive sequence
 
 1. Discover current remote GitHub and Linear, existing ownership and original
