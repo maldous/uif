@@ -9,3 +9,6 @@ Only existing Cloud dashboard Cloudflare-assets and original aldous.info Sites r
 Native OAuth capability stays in the existing connector. Foo project_checks remains check/build only; no credential copying, new persistent grant, provider migration, replacement Site, controller, queue, schedule, runtime activation or test publication is included. The existing pure MCP catalog/plan/bind_receipt exposure does not execute or independently verify publication. A real publish action requires invoking the existing native operation and reading its exact terminal receipt plus live postconditions.
 
 The generated-snapshot option permits privately generated dashboard snapshots, not abbreviated Git pins or a bypass for a Git-bound product release. Pure normalization and receipt binding are independently testable; positive synthetic fixtures are not real release acceptance. All effects and trusted claim/source validation remain at their existing boundary.
+
+See the [UIF channel map](uif-publication-destinations.md) for the separate source,
+artifact, instruction and native-installation boundaries; dated private inventory stays in UIF-268.
