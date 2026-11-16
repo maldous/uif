@@ -1,0 +1,1688 @@
+{
+  "schema": "uif-state-machine-source-coverage/1",
+  "purpose": "Versioned documentation coverage accounting only; not work intake, a controller, runtime ledger, policy gate or implementation queue.",
+  "edition": "partial-current-Git-source-pass-1",
+  "complete": false,
+  "primary": {
+    "repository": "maldous/uif",
+    "commit": "5a9d08866066c149e06bb7cde713c77d33b7998b",
+    "tree": "d66db94fbf9276f23a0d35d8daaa9d50c835aa22",
+    "tracked_file_count": 134,
+    "files": [
+      {
+        "path": ".agents/skills/uif-environment-alignment/SKILL.md",
+        "git_blob": "cdfe55a3a7064e31863f3122469be3a122e96354",
+        "sha256": "84f4911826a261ba44fb79f447fcd06e96638034a735da808eb55882418bd36f",
+        "bytes": 6856,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": ".agents/skills/uif-environment-alignment/agents/openai.yaml",
+        "git_blob": "421fcfb64d0307cc849c0d6e41c2f16bb9e449a4",
+        "sha256": "9455f7ab615e62d8f4aafb17ed661118a2862b500952a2a3f24e4c088b471481",
+        "bytes": 324,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": ".agents/skills/uif-environment-alignment/references/evidence.md",
+        "git_blob": "e04851f4f17ea5d400ba35d5d1d47428044ded90",
+        "sha256": "299d46d6ee37a9e5b5a529c22357ab57503d70f11927867e1b07bda2c38f4fb8",
+        "bytes": 5268,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": ".agents/skills/uif-supervision/SKILL.md",
+        "git_blob": "b646b67547e12d2cc09aa08e10a4ef4440ba1ad6",
+        "sha256": "48d6de6c7c2aaca0c2f907a80e9d0c30c8df2b9b6cd1b083ecce762a534c21c4",
+        "bytes": 12431,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": ".agents/skills/uif-supervision/references/service-interfaces.md",
+        "git_blob": "ef31188ad71b87c626f5372bd6f785b971cd4de8",
+        "sha256": "a803ad00271502048812b5f4b72cb919a90e80110c314b805123c84f6ad41d50",
+        "bytes": 9487,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": ".github/workflows/offline-qualification.yml",
+        "git_blob": "9184b15719558884be83a78e674df7b565cbf194",
+        "sha256": "a24fc108320116d8ae469f74cb81c1c35e37592cc0a45bcabc7fe2583690f0d4",
+        "bytes": 3349,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": ".gitignore",
+        "git_blob": "0d2f8d204204e7d059517ae398b42f2db52dc066",
+        "sha256": "ca7e859b3d5962b998d09da2a462e37e1f9bd4b33575746758a5d74875eb649f",
+        "bytes": 55,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "AGENTS.md",
+        "git_blob": "e16ce48b97ac783e807e9299f03f5456891730cf",
+        "sha256": "dd90e96d9ee7c79bb15bf1bf31d56638a33a17d29c3607109c980cb98344f82e",
+        "bytes": 4586,
+        "review_status": "guidance-context-read",
+        "machine_ids": []
+      },
+      {
+        "path": "README.md",
+        "git_blob": "c6578a0982b43721beb81bff2659f78c3dbe79f0",
+        "sha256": "6330dd60caa255961552a75045e73af3b0d0b703e7748a1e907c4a75030093a4",
+        "bytes": 1034,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "config/white-room.json",
+        "git_blob": "bf1e6a5c98ba80493a0296f82e31f5cdee22fa31",
+        "sha256": "39a88d313adb1a93d86b1a728a53ecf6cb00fc9d0b614d26f16ffec72e2a6751",
+        "bytes": 8504,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/api-contract.json",
+        "git_blob": "4ed87a8c770ca3730aa3ee74a3cefc31559450c7",
+        "sha256": "29caeec2a303b533a07a63bb8db091c8a7898d3e8b479e3962698c0b604e0d2a",
+        "bytes": 14089,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/deployment-bundle.json",
+        "git_blob": "b15bd3a6f88acb3408d3a70781d1ec1d52b16958",
+        "sha256": "f5e9b5414b21e5c84ceeadc01bd0d7a426ac9ff6d3fcb5129eaf1a452b87ee8d",
+        "bytes": 691,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/desired.json",
+        "git_blob": "5345d07d57c730a03a55f363504771f2bfef3f3e",
+        "sha256": "5af8570a0d5a3a5c8e3a5701efa42d0895a0ba2a1a656f5ccbec90931618f092",
+        "bytes": 1854,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/dispositions.json",
+        "git_blob": "3ebcfc1a50ea99c9c63cc385b6a36b13ba984d34",
+        "sha256": "206a562429fdd47fddaed762d320447122d23e68525e40fe88aad1a81513088c",
+        "bytes": 69166,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/observed-2026-11-09.json",
+        "git_blob": "0e6a2abe36dc2474e1053a1f1bdf0f40ab2ab602",
+        "sha256": "01f511a3061cfa690394ed8fde7c374650e65f7e1a51ef6571961344c7523c76",
+        "bytes": 59185,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/request.schema.json",
+        "git_blob": "52fe452c124f7592dc5d59de22d07a6c5c981392",
+        "sha256": "fbd4362307faa64f84eb02d7d288219fd1489a22b82943995f2c3f2e6afe8e72",
+        "bytes": 819,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/source-provenance.json",
+        "git_blob": "541e87b561b66d12a43bd53986d628284ac91759",
+        "sha256": "bbe5329adb17de5491d320b93a4e01282a85d9179148df003ce122afde11824d",
+        "bytes": 921,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/source/foo_root_jobs.py",
+        "git_blob": "b0666c0671002283814a986ba8a60fc21d9ea396",
+        "sha256": "ac933811fe4b250e025afb30d5be8d8a9f2afb587d18027e90fdeaa18f5e26ba",
+        "bytes": 3722,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "config/windmill/source/foo_root_jobs.schema.json",
+        "git_blob": "b3037482dfe06d2ba22437a57b9d5432a3368932",
+        "sha256": "42e52f00e5427384abd9fd253f0c832fc88a2ac24e0a0b2fe60dde5d993843b0",
+        "bytes": 728,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/adr/0001-foundation-repository.md",
+        "git_blob": "01d1fba1df31f66b68b48e8dcb3ba9a484be7605",
+        "sha256": "e7cca1a1e9d60edc61ea27942d08c32b6681c6e728801a111c409c373bd4b3ad",
+        "bytes": 3488,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/adoption-2026-11-11.md",
+        "git_blob": "a7aa3e9467a9ade4cd75e90af6e10a7d4181393f",
+        "sha256": "6a5c07eb8172a0039331af566e2f7b079524e6e1fd6a2bdf1db355c64bab8e01",
+        "bytes": 4437,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/cloud-owner-process-exercise-2026-11-16.md",
+        "git_blob": "d8f0399810c6b17c979c85ab91ded5d7fa8f8e9c",
+        "sha256": "f54ad5e96e4701f1874738035eaa5cc64b004d86cadc60c20e554b7277f84811",
+        "bytes": 8981,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/environment-profiles.json",
+        "git_blob": "6db2c2aab380a62fd6496217a8fe7e6376be13ce",
+        "sha256": "c0343fc899a24cd10beab60bc24e61c17d928ba5ce4677126895191ca0bc2568",
+        "bytes": 6707,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/foo-startup-adoption-20261114.json",
+        "git_blob": "e5bbbd4691ebefcb2809a57f1482039a05716a8b",
+        "sha256": "3b9d75c9212d34a6e4f364f1c1187f3ffffa5aee5fb9fe9022e49137b6792c04",
+        "bytes": 4943,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/linear-migration-audit-20261114.json",
+        "git_blob": "a2dff7d0e7dd2dd2965ddd58f1463bd2f3bc2b51",
+        "sha256": "ea30e4395e7c25785a28540801bf8588ddbbf7ed3c28751adbe5818329c5f9d6",
+        "bytes": 30420,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/memory-routing.md",
+        "git_blob": "16bd2c45ae7d2361e3f957c67a8de17018f4ed5f",
+        "sha256": "3d0274fca84a94bc9750de60c328d5e66e951bd6548383b102476c655ac1762e",
+        "bytes": 3518,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/owner-alignment-2026-11-11.md",
+        "git_blob": "306db553e95c9dcee91d30e225d1eacb8f020472",
+        "sha256": "e5aec98ebdb2e0330f1c6934518f38d459f29a4b77c5bc6f577d5688099bb2d0",
+        "bytes": 5036,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/plugin-release-receipts-20261114.json",
+        "git_blob": "c75077de7ef5a0a6be5b4cd84bc9ab43a78ee497",
+        "sha256": "8fec52ba49aa21f66af1293b1c88eac97f8f1a712ccce2817867db172eac934d",
+        "bytes": 5477,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/project-source-adoption-20261114.json",
+        "git_blob": "202ad5f3b370162bf7e2714396e2ef17764d90c9",
+        "sha256": "a73befcc88a1dc499bd89dccccd52329a58394b2ee437ab44682df5d2bd8e8f3",
+        "bytes": 7571,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/rollout-2026-11-10.json",
+        "git_blob": "4b417deb5210be30b90ea544fbeb9239ade909a1",
+        "sha256": "90221a81b03f76f1bca1b48b602483198e944c7e4e7087af9295480b85644a2d",
+        "bytes": 2764,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/skills-and-plugins.md",
+        "git_blob": "7f9f5a9a1f2c6665b121696826c448d755defd19",
+        "sha256": "05ab5b4aa3e94fb1fe7bc47f75ad6f20d124719c9cf18852a2219a7d22580ea7",
+        "bytes": 7209,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/startup-template.md",
+        "git_blob": "a1c6b776cab4386cb5e0b495211d5b259e4bc879",
+        "sha256": "9e0fc5aa44404f81da6d5bd98de3dad4ae14287cf04e1f65d9c83d07c3ed601a",
+        "bytes": 3137,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/uif-worker-policy.json",
+        "git_blob": "7c7977a8c892274e14cf0bad564ae4af062884ca",
+        "sha256": "650ce988e212e44983c9bf6b7c7627718f36120a9a09e4ce50dc39c3f1c24990",
+        "bytes": 813,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/uif-worker-policy.md",
+        "git_blob": "71ad15d3fd2307818c6cc17adfdc2d0463e54e1f",
+        "sha256": "7b54579a72c16c504bf4a82d875a0ca770d851787ba62035e446ec673e6db54f",
+        "bytes": 22792,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/windmill-instruction-feasibility.md",
+        "git_blob": "f19043749988e30490651f84441c0243f564c641",
+        "sha256": "df4535bc0d581055159726362817452c84be6daf98cf6771b893f84d3909bc22",
+        "bytes": 5079,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/agents/windmill-workspace.md",
+        "git_blob": "f350368ad3efcc3438fafd78ab425482961eec29",
+        "sha256": "c1ce2af7ffcfe80485fb6f2318e33940370e859b80b11357e59c3f26728b3213",
+        "bytes": 5506,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/architecture.md",
+        "git_blob": "f92c2b618ab48d79df7efdd4a4687a09388dc4c7",
+        "sha256": "b812e60079e05843e6f8e7a9ddf77606e220d67c58a04e4221d4b8161f78cb03",
+        "bytes": 7862,
+        "review_status": "architecture-context-read",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/current-source-role-map-20261112.json",
+        "git_blob": "0702e0d3bb29b081a4be29db915600083e4d6aba",
+        "sha256": "2dd98e2618fc30e4878f380f6e5183e2df36a6dc76873646d5b1ff4ab2dd00d2",
+        "bytes": 14715,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/current-source-role-map-20261112.md",
+        "git_blob": "3944541c03943718046438188b5f252b6f91f4de",
+        "sha256": "26d42727182cf24e6cd0502f632ff07d5dc6e044d3cdef2efb776f99e3e8c161",
+        "bytes": 5432,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/documentation-inventory.json",
+        "git_blob": "1fe80ce699d7569c41859257176bfaebcffc064f",
+        "sha256": "190c274a0a3425884f1a575fe3085c7b8022a30e47b5190c5051cc1b666c3d16",
+        "bytes": 24300,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/documentation-map.md",
+        "git_blob": "ad4b29497f5be74a7667223fed062af2ca7e952b",
+        "sha256": "b9615dfa6d49532f16c6b76079bbf707e744541214f52a712f74df372adf337a",
+        "bytes": 10835,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/evidence.md",
+        "git_blob": "6053740f26e192da15e284172c5e34e564300824",
+        "sha256": "ebe1c5e31b4c317b63443b2c41fb7e63f5ab7aca1f34003ec704e8175fc24656",
+        "bytes": 4611,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-custody-retain-dispositions-20261112.json",
+        "git_blob": "142f1abf45931730aabdb80a8ecd34b1e6bebd3b",
+        "sha256": "92660fc678557e7aa2c047097ca3c21d00b106eeb482b10f2d7a22d5af02e553",
+        "bytes": 31344,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-independent-progress-20261112.json",
+        "git_blob": "ac9a58bdc1369e59590eb3579c63daa7dc1e7370",
+        "sha256": "579f6eb9daa2250cac07aef1bb6c18437417cc60972843e84346d688291a0ba8",
+        "bytes": 15301,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-independent-progress-20261112.md",
+        "git_blob": "ad6885a9e59c92d0311c2157108d337eb2e31c9f",
+        "sha256": "ec3b178322b305253c00b5843a94abe7e64d65f5aaa51206e89f8cdebaf44a7f",
+        "bytes": 6355,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-obligation-applicability-20261112.json",
+        "git_blob": "cbbdac2d98099c93fc1978528f2eb520fc000190",
+        "sha256": "a5d9dcb5812bd05ac369e9357ae77be258ad154d9384a0ba1d4208e1fb99c37f",
+        "bytes": 19941,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-source-owner-decisions-176c237-20261112.json",
+        "git_blob": "0955a0df1cbd3dc5de673751401d10854731f854",
+        "sha256": "8cf155068c321126ba5e68dd54fbbacad051d67b23a388936b935041b3b5b4eb",
+        "bytes": 35624,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-source-owner-decisions-176c237-20261112.md",
+        "git_blob": "a7dcca0df65475513b0c15d389be4ced21204b67",
+        "sha256": "d9cecb00f7ebf43bcad474830a4fe770b6781a73e9fb5de15ec1ffb06f6cde13",
+        "bytes": 6288,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-source-owner-decisions-bc979c8-20261112.json",
+        "git_blob": "3f76319165d42c01dc34d3310afdfdb7ad256902",
+        "sha256": "4805b006e1b57951537a4e6001388cdabaa8a8f66e8233208e6b13fa4519b47b",
+        "bytes": 11497,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-source-owner-decisions-bc979c8-20261112.md",
+        "git_blob": "a069476700fce9c7b79779e2f2ddac01286d24cc",
+        "sha256": "137a832ff36ead0daf412460e9bac35729a9413dbcbb2eaa45c6e830a3526a8f",
+        "bytes": 3306,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-source-selection-dispositions-20261112.json",
+        "git_blob": "27cc72dcb45b4783a03ed58df0e379f916b02aee",
+        "sha256": "60c410dd1e3c13d080650a1f1cac9ff8df74be8fc28728b9f100dfe038d01535",
+        "bytes": 12098,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/current-source-selection-dispositions-20261112.md",
+        "git_blob": "21cf8272d259aac5bf7f942a89973c41a6ac0ecd",
+        "sha256": "0f5395fb9069a0a01e3fd85744efdc3231ae2720429deb8101ddb6dddfa5cb80",
+        "bytes": 5765,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/legacy-unavailable-dispositions-20261112.json",
+        "git_blob": "44e2ded805361493bc3660ae145c8a1ca41eaec2",
+        "sha256": "d48f5c5498f4126e7c1f9912a779355921b32a4946fe41deee79c73e9370c47f",
+        "bytes": 64587,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/prepared-uif-evidence-20261112.json",
+        "git_blob": "8ea6a6d048a64d675e857ec65d99e524ac0301f7",
+        "sha256": "b06fe3bb56a325f660f9f2dab8d44c2a82ee79dabb482819a62fc2b5b86d7cdf",
+        "bytes": 9096,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/reconciled-historical-criteria-20261112.json",
+        "git_blob": "3619598bd497c70d1890952a4bdfc1f425dbc2f9",
+        "sha256": "1524ea771bfc9bf81081c647d1c380469ce6c6feb4040688b8e39b2898d4cb63",
+        "bytes": 9210,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/reconciliation-current-snapshot-bc979c8-20261112.json",
+        "git_blob": "15d8e0a0fe44c4fc88de7f0e203efd82d239b5b3",
+        "sha256": "ff9648fcf0e2355ad98b965ac39bcb61b91660e64b5172c01194028fc318e715",
+        "bytes": 5883,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/reconciliation-owner-join-20261112.json",
+        "git_blob": "15fde8ac79dcb9fb23a3aab85470e3666b44a7be",
+        "sha256": "8448f354c64ced01d8761559e67c4817e9e6e2a2fc98348ed579bd3551887da9",
+        "bytes": 119822,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/ledger/reconciliation-owner-join-20261112.md",
+        "git_blob": "663d53f342ff191629da8a393b1575089d006534",
+        "sha256": "c998611c17cda28e85883b805aac78b044b05c48ed100c424e29238c6fc01ac9",
+        "bytes": 30163,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operating-procedure.md",
+        "git_blob": "0d2f0cb0027fca15ccd64bd1bd7757a89e9c04b8",
+        "sha256": "26adb46ed984224c9d9b79c90fbb3e03b15641d7263ac8a538b9e300a06a12fc",
+        "bytes": 11223,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/continuity-decisions.md",
+        "git_blob": "809e6e14a5c001aab7006a896e37cac186c30d63",
+        "sha256": "687911137b2fa7d54d03af6239c694ee358054efc52cfa573137c8327b78b6a9",
+        "bytes": 2906,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/foo-stokowski-drift.json",
+        "git_blob": "6ac05da38833adfe1806e7a9bf086b11e3ccfad4",
+        "sha256": "58fb0a9a1607b8445cfdadd25d43a39be58d674401f8d8942f804a0c476ca651",
+        "bytes": 6934,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/foo-stokowski-drift.md",
+        "git_blob": "9bf6b321e072d777c1ecc9bfe9ae11f85e15e0fd",
+        "sha256": "6a3ebab09d84ffa42d4808c8e865b223ceb6facf89c69915643b656ff19f59e8",
+        "bytes": 7034,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/informational-owner-labels.md",
+        "git_blob": "e04972d2939c91b7a5fcefdbd9e2aee8ba7f7b61",
+        "sha256": "96211fd55a804b7ac87540d61f98f9ef914927e937a1d508fb2d6c7333ee9c74",
+        "bytes": 2883,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/legacy-source-free-receipts.md",
+        "git_blob": "fdea970e605594a40634eb8ccd05c95f73e65e51",
+        "sha256": "458ef98a54ee022a0d38aedaad39cdfca3d1bb762836f67786c74161863ae8ff",
+        "bytes": 7330,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/native-custody-observation.md",
+        "git_blob": "d284c78d87c5d6cbfa41a9f789be219324dc8f3e",
+        "sha256": "6c098413f9c4fd3c0f03a55509e1c8f7bfb6c7304fafc35dbfd520009303b2c9",
+        "bytes": 4852,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/native-publication-handoff.md",
+        "git_blob": "6efee379ef2d6e9fd0c38e5122060be9cbb9d09f",
+        "sha256": "5d5726798c66abe05d0fcf2b8325d32254770d21e343a8d3249a4cb6c559826c",
+        "bytes": 2818,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/native-quota-realization.md",
+        "git_blob": "1d0ec48331939c8f814ec56e153bf89626bbfc10",
+        "sha256": "e3314b3c82bf0d561312b409746c1bd60fe57e60386761bbc77b0e150922590e",
+        "bytes": 11056,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/native-recovery-composition.md",
+        "git_blob": "72b200d61bca50ebf593998f39458d0276ad8efb",
+        "sha256": "5e49c40580a49792516c76ed56e85db63e0898751cfcb3851c2234d8a22345e9",
+        "bytes": 4504,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/offmenu-integration-observation.md",
+        "git_blob": "2ebcb5abb5fccd705140ac09064e88a9b22f9cad",
+        "sha256": "8a61ef9a763d4985ed5f73ab0963fdd162105c0e59dd3cdacf20f9f6bf043ae6",
+        "bytes": 5255,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/policy-2.0-rollout-qualification-20261114.md",
+        "git_blob": "bb112deb71afa6fef960d05ea373e0f48e263055",
+        "sha256": "2369d326efd9891f7c778a27a80ee878674a39aa41364ae2fd66d3593cbbda7b",
+        "bytes": 8319,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/project-checks-source-branch.md",
+        "git_blob": "3227b0071d792e8e8b794daebac8c85729651ba4",
+        "sha256": "690158b8cbea8f6c0fa46e2f68293918cdc99a5571ae2654ad6d9337d2421ce2",
+        "bytes": 4721,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/operations/uif-publication-destinations.md",
+        "git_blob": "c16f6909a23d56acd5f0f256886b49dfb359b791",
+        "sha256": "cb7944495f2fe8b47468303587dbbdc9278a03ede46d843e287e35950cfb212c",
+        "bytes": 5583,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/project-integration.md",
+        "git_blob": "3255f95967f7e0132f79a120bdfaa36b05cee040",
+        "sha256": "a4a29871246dd11c14b87338e14996bbf2410d98e7336d5f7484894906ea95dc",
+        "bytes": 21981,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/README.md",
+        "git_blob": "a9e2cf3818c3ff042c66f036eaa471e9697bcef2",
+        "sha256": "6cad465d6e730498f65fa4743c1137e3bca589ba5e551dc79abc2d23bc15cd42",
+        "bytes": 8838,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/cix-source-selection.md",
+        "git_blob": "ce021f4c35a70e100427ed56a892f1c8bed9fb29",
+        "sha256": "1b88112d8b98710fc7e7736ea0057136f4353fafdd814935c55e5b1698e86cf0",
+        "bytes": 4441,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/discovery.md",
+        "git_blob": "04880e1cf2cf80c9773de4373dc2814b6f49ebef",
+        "sha256": "f917aae4a9916ea980125d4fd1f4ce1e55d1e3be6c0d3c34a48d23dc62865b1b",
+        "bytes": 6297,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/future-clone-profiles.md",
+        "git_blob": "32f22aba82e77b2986ff427965f7d290d25785de",
+        "sha256": "d0690f31c66ba61a9e3549a2873d0eb349d3eb72fa53d4f2746309057c45dfe6",
+        "bytes": 4860,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/recovery-reuse-20261114.md",
+        "git_blob": "82d33c3a87549f2c265bb6cc94d8b83dc2fc41ed",
+        "sha256": "adb3b4b1667868c27306a729ab735a49d28fdba0b1ec27a4f2f6252689bb4a4b",
+        "bytes": 6985,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/remote-evidence.md",
+        "git_blob": "17e7bbbd3bab78e0958441ab1bb50ba7ee36aba8",
+        "sha256": "69b94a5604de179c6343113e720c64db28d1cbb77fc781e26ffa9ae7ae38c3a5",
+        "bytes": 9841,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/white-room/startup-and-recovery.md",
+        "git_blob": "66a18704de8e7a7399eb6d413c25d761dc328d2b",
+        "sha256": "95d3b8a1507c3ea7ecd8c86006f40a0efdbf2c1f3e43a3ceac23332d5703935d",
+        "bytes": 17111,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "docs/windmill/qualification.md",
+        "git_blob": "05f372b17ad12c67b8fa76116d1b53cea5879818",
+        "sha256": "b476476bee75d7ece13efe5a07697e140da8e48c8859447e2fc8c873c7990abe",
+        "bytes": 10311,
+        "review_status": "unreviewed-documentary-input",
+        "machine_ids": []
+      },
+      {
+        "path": "pyproject.toml",
+        "git_blob": "962e3b35330341fb57314a1c73428bb50bc56cb8",
+        "sha256": "94ff20f474e941bac5fbc3169175520c62f825bf33188d4f2a7757439f5d7681",
+        "bytes": 476,
+        "review_status": "unreviewed-configuration-or-schema",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/__init__.py",
+        "git_blob": "65f79a8844700ca757e4553c0657c964c6f423de",
+        "sha256": "354c734a2eeb581dc28a5de5fa9185c71f72cc2b3effb41dd9e0d6441de050d0",
+        "bytes": 83,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/continuity.py",
+        "git_blob": "a3907deebab65812d057711b096a05328eb432d3",
+        "sha256": "d4472d6f8354679c64dc8d06feeae62aeca12c30c5c70e653cd2536f2651d189",
+        "bytes": 15325,
+        "review_status": "full-static-read-not-executed",
+        "machine_ids": [
+          "UIF-CONT-PROBE",
+          "UIF-CONT-CAPACITY",
+          "UIF-CONT-ROUTES"
+        ]
+      },
+      {
+        "path": "src/uif/handoff_store.py",
+        "git_blob": "7a850cb4b25a205960208c62f3ed719b1a22fbb9",
+        "sha256": "7a0eb04ab305520b41565aefb3e46c71c87a61d97985c331f8a0f20d145ab51d",
+        "bytes": 19839,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/legacy_receipts.py",
+        "git_blob": "03f21ff0ea2ada029a208cd0872d3cd25d59de69",
+        "sha256": "60b341c548ead7b6320ac828963dfb35aa2c813c45650c0c28d45b9159471d75",
+        "bytes": 15660,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/linear_scope.py",
+        "git_blob": "5bb30283117c89ac825d1eb23abccdcbfac562fe",
+        "sha256": "2e2b84aac1a51adee2586599fab12deb68287c14550e8348dbfc73f91317d83e",
+        "bytes": 2901,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/native_quota.py",
+        "git_blob": "f563a644d6c9025a2745bf0257bc328d7ea0911e",
+        "sha256": "cde8c656a4ac277cb4a73f1c92149e1deeddac40d571ad966acee03d08d4a1fc",
+        "bytes": 22002,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/publication_handoff.py",
+        "git_blob": "ecf771147273f4f5bced825c26ca82a2ce2994a1",
+        "sha256": "418f8f8d93f7832669cb822d54b83645ae18ac9774ca77ec2a38489addc85625",
+        "bytes": 5036,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/quota_cli.py",
+        "git_blob": "cc79cee62d22c8b9eb5da0bab541151921d29a3c",
+        "sha256": "48d156b3f15623b3dd44966490ea8cec19a0123701017e3bd87a8be43578b083",
+        "bytes": 1512,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "src/uif/quota_handoff.py",
+        "git_blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
+        "sha256": "840dec50c59258e341bef7919f2d1fab22e0c733b1da66c0fd29a83d2a556d7e",
+        "bytes": 43694,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/agents/test_install_policy_bundle.py",
+        "git_blob": "4987036b2f636982601235e6c1770b369ffbd6f8",
+        "sha256": "82b36cc6fbd72814ff15fe85a4b86b91248c17fef3ce1270a432c7f90bd72c54",
+        "bytes": 9355,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/agents/test_linear_migration_audit.py",
+        "git_blob": "c75c09400cc0ac59acc9ce1f9efd292d8eec77f1",
+        "sha256": "059e79ce8e3d9545d18fc424115358842c36b9dfaa3bc2e5642a9b4b0e464b1c",
+        "bytes": 3527,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/agents/test_linear_scope.py",
+        "git_blob": "f558319402e45c03f99da6d86b1cb0ebf66076ea",
+        "sha256": "02fda46e78e103dd28c55fab0bfd5c773e7ffc9e965207cbfa1f7b012b304f71",
+        "bytes": 5276,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/agents/test_policy.py",
+        "git_blob": "370aebb33c8e7dcd5a5aae8fec343804972c0d47",
+        "sha256": "e13cf7393deb2cb509e87b733d736204667632a7a50b7e3b014fcb0aa755c331",
+        "bytes": 19614,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_async_native_quota.py",
+        "git_blob": "eb261b120c85b3e17c330c11cfa7e59b5facb9db",
+        "sha256": "83c59ff02b47c8d31ee21f815b529d6a274ee99e734cc1a2634d0d42acf0c1d7",
+        "bytes": 16234,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_continuity.py",
+        "git_blob": "e1ed38ff99d93c96f1c08186e61875208d83dc9f",
+        "sha256": "9578b3f3520073761245e03573bce3ae151651c59808c95135a1b58ffa50438d",
+        "bytes": 12442,
+        "review_status": "full-static-read-not-executed",
+        "machine_ids": [
+          "UIF-CONT-PROBE",
+          "UIF-CONT-CAPACITY",
+          "UIF-CONT-ROUTES"
+        ]
+      },
+      {
+        "path": "tests/delivery/test_foo_stokowski_drift.py",
+        "git_blob": "4da9940c16b71e339e1d4c70febb7e599ef7cad2",
+        "sha256": "1fd45a69d4cec755f0bb9bfd1265598c19999aa2fb9b8023307e5779c8b07342",
+        "bytes": 8264,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_legacy_receipts.py",
+        "git_blob": "c1b33a7b5617dd999205dd0d5d9471e7719f4ef5",
+        "sha256": "b7f8763fffbaf1468a2dd0bac919aa7f25e7f9c11825c02c1d702e4f28fc665b",
+        "bytes": 18483,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_native_custody_observation.py",
+        "git_blob": "1efe5b8657ffca8b344d325f19b4e45c35358876",
+        "sha256": "302d0a64cf52d8f111f32ac03197f2c87348aafe8aa71a3ba31b98d55019d617",
+        "bytes": 12710,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_native_quota.py",
+        "git_blob": "ae50078c0612e4d6e3b6bd2c76781f2d0d2d5127",
+        "sha256": "3770ec1f81297331e09997ca579555b096525e5b35058c88974e92e9bde49c95",
+        "bytes": 4450,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_native_recovery_composition.py",
+        "git_blob": "6360a9ea289ff284b175e232badfcd2d5c0d39ba",
+        "sha256": "ccb825bd15dcf3c6b60ec2ac7e7f202392c83bed4cefa592fdafd2e034138d0a",
+        "bytes": 8902,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_observe_offmenu_integration.py",
+        "git_blob": "e28db77673ee24822d2d34410dfd8d0e33fdbbe1",
+        "sha256": "72e03c644800def17010a2a67232d720e9ae02d5e1563e002fe4140541c1b614",
+        "bytes": 11766,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_owner_label_context.py",
+        "git_blob": "010f3909ee50c0cc762acf059f3e1aaecf8f2f6f",
+        "sha256": "192e6376897ea4b5588608c770de538f21e87b88151b084383fa00352b82873d",
+        "bytes": 4259,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_publication_handoff.py",
+        "git_blob": "ed833c14bdd3fceb432bc8649ec250e3a008eb3d",
+        "sha256": "76d9ff1554cecc7605527341174ef8c1770a98055c916a13e4fa166d475adbab",
+        "bytes": 2295,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_quota_handoff.py",
+        "git_blob": "87bcf41d9d7c9d0cbb02ea55984de5f13ee6fece",
+        "sha256": "9f7803071c506472686d2d39409ca4e4da1f24d72214ae1cfa4a251170c3ad80",
+        "bytes": 21673,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/delivery/test_quota_retention.py",
+        "git_blob": "507cd10c399b9348b930d848e2a9f172a6aec992",
+        "sha256": "63220b5e416795be0aee683abee63cbdf9a6c392ed75d499925fb3af34f8e836",
+        "bytes": 12031,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_check.py",
+        "git_blob": "9a9e0b734fa44276178f953f4b3c34e2a6c3eee0",
+        "sha256": "1720cbad8c1b03f204943b7298b5164756892dee3ef87bc4f7175a410bee9010",
+        "bytes": 9282,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_future_source_profiles.py",
+        "git_blob": "80bc750b7152abaeadfacfad652ccae71109ada6",
+        "sha256": "c8023a83688a2d9483c7baf4f43b25340ba9326d628adff6fe9b60e70406a9f6",
+        "bytes": 5808,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_migrate_cix_source.py",
+        "git_blob": "f0fb12910814a36c9647a45cd65c61d5feae5941",
+        "sha256": "4764f9278b3f8d1ec453c68c9e3aa99dc94f3a8a882184a9b7eee72f807650b0",
+        "bytes": 13386,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_paused_retry_source.py",
+        "git_blob": "7057861fd3abf5a55fa3394a0495910d2fe6a5e5",
+        "sha256": "bd2cb30669ad9a195c5f18d1fd588798d173fa0a0a79af6b5983dad7c01b2637",
+        "bytes": 6075,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_registry_transition.py",
+        "git_blob": "9ffe811de768d5c205bb544d08d53885f6b15387",
+        "sha256": "306bb369e653e59c9ae981a3d7a89960825f8e316ed37b8fb502c22c9f612f34",
+        "bytes": 8646,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_remote_evidence.py",
+        "git_blob": "3d55a5fdacc15c14b09512cdeaa37bc97ca50c79",
+        "sha256": "6082e9fa686e7b9b30dbef4fce5c558fe57b219de9107a6ca5a10d240872040d",
+        "bytes": 8392,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/white_room/test_transition.py",
+        "git_blob": "185ece44f971d5590ddc973673396ea06f6b6f86",
+        "sha256": "a4c443e525e2b265be68aac8e00043370f2bea96f41e1bc303ef1c954e1727b3",
+        "bytes": 10100,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/windmill/test_exported_runner.py",
+        "git_blob": "e841a0e647ab9324d07aa914b2795ab8688dd544",
+        "sha256": "88ddb8e3dfb1b6c2f8c8b0fe6e9d639b50a4a5d0ae95c982a7823a8c87f0d706",
+        "bytes": 3880,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/windmill/test_recreate.py",
+        "git_blob": "03869e62eec93b403b4588715d4cfee20c7556d4",
+        "sha256": "cb5ed7abd507486a61202960ce940c5eb837a8404833e76fbb9a8f690c0d568b",
+        "bytes": 9003,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tests/windmill/test_white_room.py",
+        "git_blob": "1a429196f68273993c1da101efbf8b083231374a",
+        "sha256": "f4416b1025af3f46fb0ee3fb91f875e74dfa764080abcb9be73195e34752cd20",
+        "bytes": 7613,
+        "review_status": "unreviewed-test-or-fixture",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/agents/audit_linear_migration.py",
+        "git_blob": "07cee344efdca270da82dbb5380c915e86117f47",
+        "sha256": "2b8391ff08bf811c17f770ef14c782198fb9f87bb8138d4c82128c3b8a8e5f09",
+        "bytes": 5116,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/agents/check_policy.py",
+        "git_blob": "6f1550442195b0cd7b4cc5ae705789a6099a5dd1",
+        "sha256": "907e04f8500ca007641bc1c5c48470c28297faa56efabfac23fadad7789c7087",
+        "bytes": 21238,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/agents/install_policy_bundle.py",
+        "git_blob": "401e80a01e3054aae95e74535adeae01d45d75e2",
+        "sha256": "f433c65a3b9be0d96b5e8d4eda5bf687b46c0b3c3a31883b431e057ebb197170",
+        "bytes": 10169,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/delivery/check_foo_stokowski_drift.py",
+        "git_blob": "86b857977eb3dab9be08ee339539f5a9f85441a0",
+        "sha256": "ff7080e0215769b62410c4bf7f069d79290457011d2c73bb71feb2df4bc10236",
+        "bytes": 6887,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/delivery/native_custody_observation.py",
+        "git_blob": "da5e99197948eb4734506f3fc41c692c247deb26",
+        "sha256": "7f568fcb15360d16e4f4e32e911fdd13e516167c347bfa2f742c5d0d897e6e41",
+        "bytes": 9765,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/delivery/native_recovery_composition.py",
+        "git_blob": "7b00ade8229866e16a9bc4e216a7f2ee8ab27de4",
+        "sha256": "f5105103266c642409421d0f8a2a431238cbc27b676dc138ce2134c703efabcd",
+        "bytes": 6220,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/delivery/observe_offmenu_integration.py",
+        "git_blob": "a97819fc55c9b4d98d8f820164ee61512236f28a",
+        "sha256": "891386c4b54f3c1349acb5cfb3ea733bdf0f3d9a2dc0542ac97325575b3e3c19",
+        "bytes": 11241,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/delivery/owner_label_context.py",
+        "git_blob": "819a67bfc04172922411c8644a19fafdd3d9789a",
+        "sha256": "aeff614207cfa62ca8937a94b1c8e0083291449f368183d5301a0f5e9baac04e",
+        "bytes": 4372,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/delivery/quota_handoff.py",
+        "git_blob": "9f139c56beed943354b8402ac57f29ba15c568e9",
+        "sha256": "184d954e08f14e3b2602aba21a7af73b62e1010e0d6065b394e845a9447a07a6",
+        "bytes": 283,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/white_room/__init__.py",
+        "git_blob": "9fdaaa10f57c3fa6ad2bd5e5863822b1f6102abf",
+        "sha256": "6402c5f9dcb7da5d3e4ba1c87cc03b0b566f8c6f6ebf71de21e7adc8d0701b94",
+        "bytes": 81,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/white_room/check.py",
+        "git_blob": "14df9763d6090ca8f03a743099129b32cd0e82ad",
+        "sha256": "24c2dd56e9ef20375c7d7d2834d291938a8cb132cdfaef0b27d0c791c0514eef",
+        "bytes": 9470,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/white_room/inventory.py",
+        "git_blob": "66e15413b8322b13307152846fc6956d0525dca4",
+        "sha256": "dbb0dc34c52a8d7f24affafdcaed7be4ba495f0a5e78472442f77f64e61498fb",
+        "bytes": 4198,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/white_room/migrate_cix_source.py",
+        "git_blob": "50969c2bb38b9fba3e0cfcd755d7ee3cf9f48415",
+        "sha256": "4ac23be32659bc4bb661ac3d10a9796cb7f32b94afccf5c8b493bfe54e26d9c5",
+        "bytes": 18681,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/white_room/remote_evidence.py",
+        "git_blob": "16d55dc279a09274de6f748f6f76f106f757c2b9",
+        "sha256": "1e9972549dc7324a688f2b0de80595173c5e006938804a602c0ee36365d254d2",
+        "bytes": 13412,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/white_room/transition.py",
+        "git_blob": "99cb6ffd28a5f15b34a0d99bd881384a1c55747d",
+        "sha256": "bf701738b79ebf1a92f592f0dcceb07b89956e530b3eaa023bd03ebdc3f53dd8",
+        "bytes": 10477,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/windmill/recreate.py",
+        "git_blob": "482308ef80ae325a9051186702f20cfa9be45529",
+        "sha256": "10a0680207bc7d8d27d9e2393fdfb1f322563a157b63da369a8068976facd505",
+        "bytes": 6275,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      },
+      {
+        "path": "tools/windmill/white_room.py",
+        "git_blob": "fac16a33a37b7b37de5f2a1a01ecb00ee38a76ca",
+        "sha256": "0dce7d86bdffb435ffca58e3f2147d5f5523fc73303acf64442aa1df5086aad7",
+        "bytes": 10966,
+        "review_status": "unreviewed-current-source",
+        "machine_ids": []
+      }
+    ]
+  },
+  "hosted_boundary_candidates": {
+    "repository": "maldous/offmenu",
+    "commit": "51ad2b27a226f097dcaa9a27db5fade33d9ef4dd",
+    "tree": "6212683d485706ed894674348c64599e8c990289",
+    "whole_repository_files": 2305,
+    "selected_candidate_count": 64,
+    "selection": "tools/delivery and src/offmenu/delivery enumeration seeds; not a proven exhaustive ownership partition",
+    "files": [
+      {
+        "path": "src/offmenu/delivery/__init__.py",
+        "git_blob": "7a3b8e6da627302290ed8166a924c7cff60a7467",
+        "sha256": "63d986e594645ccbad6a400a6fb57c704e4f964d8aa7dc9e0f5af54274113ec7",
+        "bytes": 64,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/__main__.py",
+        "git_blob": "07ee27cc492b176ed58145b65097045b946c70e0",
+        "sha256": "534d152a6778e7f082a9a5a5e096bd661b2acae0c14131a046a53c936dcffcec",
+        "bytes": 7450,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/effect_observations.py",
+        "git_blob": "eb0e6375370afa9829d4302b29c6600eed9746f1",
+        "sha256": "660906d7ab12b035213891e724212e0c9ee99a6a14223db0af529ded439140e9",
+        "bytes": 10741,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/engine.py",
+        "git_blob": "eaeaebb3f5948026b217e8c746fd2a67cc752d6a",
+        "sha256": "dde3c4e2f33cdc95e18421c49198dd20f3c77b11c5f02fb2ea93205c1dfd5604",
+        "bytes": 26312,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/identity_source_projection.py",
+        "git_blob": "c40ff1958b4dc25bd3349630816bc77da45de4c8",
+        "sha256": "506a7b3f911bab82ccbc80bcb673623258e043dd547923f55d03a753b37b251f",
+        "bytes": 5344,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/integration.py",
+        "git_blob": "4b8755ba98c54a58cf07c914b7b4f760f6c59b47",
+        "sha256": "7f30e531e6a992d30c6a1a4bf35213c7ecedf5d620e579e1f99875d0cf428178",
+        "bytes": 72746,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/standards.py",
+        "git_blob": "62f0dc6e8b40bafa1d51d86cd670a5715a53c8cc",
+        "sha256": "65dfb2fcb6b32dea4c2a5b6dce755a110f5a83dbcf2b645e4fbc2a7e70f1120d",
+        "bytes": 2763,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "src/offmenu/delivery/status.py",
+        "git_blob": "419279ab2395a3824c65608f3a02651d6e4f2a45",
+        "sha256": "2c22d17626f20866b142b4f5e6727ae777cebc084fa182b307db6a97faab5454",
+        "bytes": 9031,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/README.md",
+        "git_blob": "9cf04541e2bc565962c04eb47a2aef859f2deae0",
+        "sha256": "f79e8ffc14424e39906a2928644628208a1493ffa13f6d3109aa7b835900a285",
+        "bytes": 30958,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/capacity-policy.json",
+        "git_blob": "8975178078f3823ff3fba667e553368f7eee2811",
+        "sha256": "9f9f08b1c3e1ddf36fcdff3da72f40d5d0bde49012c847404deb228cc7e85635",
+        "bytes": 1060,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/coding_child_guard.c",
+        "git_blob": "b26e8fa30251c945c254ca581f55a3afca9c60fc",
+        "sha256": "3a8f2d1403313f0148ce80f23f8aaa7e65a7c57a7049ad90a9ad28989cfd5fc5",
+        "bytes": 9628,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/coding_child_launch.py",
+        "git_blob": "9897769651b28d9ba1962f7278aed1b737534652",
+        "sha256": "a20023b6181e2d4dd7eecb0f64edea93f2fae2ea17569d9c6f2fda6aa4a588dc",
+        "bytes": 4583,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/github-app-adapter.mjs",
+        "git_blob": "279025e900d8799b61afb968b2a34bbcf465fdfb",
+        "sha256": "539c9a549858ee3602cb0dbc9d1ff48a0d5ddd084f0546712ae274dd33adacd4",
+        "bytes": 22852,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/github-app-publisher.mjs",
+        "git_blob": "c8207fc4335bf7aa3e7031e59673b62696cbac07",
+        "sha256": "9ce73ba54baacb1196c5088660c029ff8052d4d7775d87226d91b7e7ed91912a",
+        "bytes": 46616,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/github_app_capture.py",
+        "git_blob": "db074d799de77326bcc00990ed7f30c61ac8d662",
+        "sha256": "5a648682f357ead3c9ca4e74f969625dc5e4e6826859a364024766c6cb4d822b",
+        "bytes": 18501,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/integration-gateway.mjs",
+        "git_blob": "ca4419fb059b9a1af1af5acdfc9087bdec2dedcc",
+        "sha256": "646420e1691eea9ed8e410c650fa5db6706b99022cfac474c709593b6e9c247e",
+        "bytes": 25474,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/integration-policy-v2-candidate.json",
+        "git_blob": "2ada47f54e5b8d8dc51215c30c7cdbb2987db810",
+        "sha256": "74b2e7f732ae6c429300e9218cb6f84fd8059b68e09d9349d5d430e41d47e05e",
+        "bytes": 918,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/integration-policy.json",
+        "git_blob": "2ada47f54e5b8d8dc51215c30c7cdbb2987db810",
+        "sha256": "74b2e7f732ae6c429300e9218cb6f84fd8059b68e09d9349d5d430e41d47e05e",
+        "bytes": 918,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/linear_delivery.py",
+        "git_blob": "d1c62da8f3ee01b72c387408dfc5498b2bb5a457",
+        "sha256": "c9010a97fea9578bb73251fe81bdcc01959423de7bf7041114b14c1288af27ee",
+        "bytes": 12885,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/linear_probe.py",
+        "git_blob": "b7468a8c5f824989b3fe876f3b1c57f698084fdb",
+        "sha256": "6ce5f879ad3f5da3a208d63348fdb3d752af71a239eca92cd5a02d73b8a46a2d",
+        "bytes": 1921,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_harness_adoption.py",
+        "git_blob": "e07c9907afe328a3a6d1ea68509cfe564963eaf4",
+        "sha256": "85481f8a77c75d26e67e0cef94b0ea08b66674928cea5ebd932941d36004d41b",
+        "bytes": 13850,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_harness_contract.py",
+        "git_blob": "42b438e897adc3c4b9a8b5d8fd41c948c85ffcc4",
+        "sha256": "14d8131219d45ece0ade5a5a471661577812042d840013fae922d3e0402cdeea",
+        "bytes": 10939,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_harness_linear.py",
+        "git_blob": "85eba7ba41aecf5659c0f4d64a36bb50821bc6ee",
+        "sha256": "2f20d2a987ab62bde41029e5a05940e0a7566acee2c101d4532b7616e8742a14",
+        "bytes": 13093,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_harness_package.py",
+        "git_blob": "1de10d81be3118e531ee1fb3379baf779bd1d86c",
+        "sha256": "bb7987fad89296782d2c09dd7401e114dff32c113892498acb85d2ccbc0242a0",
+        "bytes": 35516,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_harness_runtime.py",
+        "git_blob": "6297561a6a407ec883553d83490d4b5370d19522",
+        "sha256": "10eac4049478f22d246941b703c356b387557ee476bb75632e6ccf1df06f5641",
+        "bytes": 61590,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_harness_upgrade.py",
+        "git_blob": "3834568117fd4df2a53be2d15c6df798052ac1ef",
+        "sha256": "37c826f9a6496c04d6e4566bf67b0abbda127a5d3c8b00b57eb9cd4b43438154",
+        "bytes": 47642,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_observations.py",
+        "git_blob": "251c9a381749fe2dc51a86177f987dffc1848a41",
+        "sha256": "808eb4d3f71ab512dfaddfba0cb0fb235618782a97167bfe89a2cd4ca3711262",
+        "bytes": 1413,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/native_publisher_invocation.py",
+        "git_blob": "5a8dcd00ec724f6d9c45941b1444921ffe92cc23",
+        "sha256": "756efba3c3ba002415e5af10986265edc2c02142f2f84fe89332ec0f527ec591",
+        "bytes": 39701,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/protected_owner_install.py",
+        "git_blob": "dab6bb1addc610587d2a0172e1b2c668c87194be",
+        "sha256": "822ad27d6bae7714bbd96692d2995f3d134a3054095c86fa94317ac51a4df399",
+        "bytes": 36361,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/protected_publisher_install.py",
+        "git_blob": "33c5496bd4394d2be31449fdc24d2611d4d107e7",
+        "sha256": "f62a59c12f3306a774f83e9c19996229f335c7c4535b20bd3274b69f0d49e950",
+        "bytes": 34277,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/release_qualification.py",
+        "git_blob": "4061fbeffeeb636af50ae7aac69137174646bb7d",
+        "sha256": "022144a766ebf671f7c244f0654b00ab62a766f8bb7c2d7d09aadf86229a9b4b",
+        "bytes": 15744,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/requirements.lock",
+        "git_blob": "f7cddb8ef980b28bcf62fc9a72f1829747559ecd",
+        "sha256": "ce8f2abeb788b272e33144996aa06a180bdbf36f5ea76de74089a37b06e79aef",
+        "bytes": 917,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/review-verification.json",
+        "git_blob": "75f1e37b882f5be8b085a7a3bebc9a34796f8715",
+        "sha256": "ed4552feedfb6f41ddc240b3be0d1d59a16d4bf220a5b5401c86b2ff48e74639",
+        "bytes": 6372,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski-requirements.lock",
+        "git_blob": "54a8a8d3a6a64e4cf84a65f8c034a91615ad8e1c",
+        "sha256": "10b18e3ded0062cae449a4dba40cd07d7f8bbe4c617784ee139d71072546cdb0",
+        "bytes": 525,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski-source.json",
+        "git_blob": "884ec9d489a4b8c246cd0bf95de837007024945a",
+        "sha256": "d35af95ae0beb148c0feefb331c05753f93b8d95c2640ca52b58f30cdc8df0d9",
+        "bytes": 6047,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_adapter.py",
+        "git_blob": "e538839b9447fbf4968647c7a8a7fdc4385b68a5",
+        "sha256": "45a3fed13febeca56af9096cc557f046d91f39b52dcfb05b683ea5048372ac39",
+        "bytes": 213117,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_completed.py",
+        "git_blob": "eff076e3339b2e3eaaefbe2ebb6328c109f556fc",
+        "sha256": "2289c3ef501708e931490c965d07bfb18125a87e941ab555d792397e78dd8a53",
+        "bytes": 21626,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_credential_stage.py",
+        "git_blob": "f4523c1a8b698ffb65a4663853492e62e74ee1dd",
+        "sha256": "3c4ce905180de5206252db805c32b166e05104deff59c7000fa883e4a8645fbc",
+        "bytes": 15857,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_mcp.py",
+        "git_blob": "b51e17e7dff816e0bdea871d124fab747fc81ca6",
+        "sha256": "fac365a07ffbf933996d6731c4981fed63869d33e1320649f78c057331572336",
+        "bytes": 7328,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_native_publication.py",
+        "git_blob": "aff6564ef12ce9303f8704ce919306feb788f7b2",
+        "sha256": "59079974bc1baf5c02a80bc3c97dc1f641fe9273a9870153547cc40f97545ab0",
+        "bytes": 20077,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_operations.py",
+        "git_blob": "d48f61daa3726456dbdb116a1fe2f841fb7f9ff9",
+        "sha256": "445a0b2aaa0294e785abc974f140fa2c93da9d18be8180d5940892087dfad64c",
+        "bytes": 56832,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_performance.py",
+        "git_blob": "59ebd78f5655b211084d9c9735d6ca003b54aee9",
+        "sha256": "6a60cf3fb9b025e7ff5a50b3f32e91a000fccd969b3b4e0aa79db4e0ef60455b",
+        "bytes": 7481,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_prepare.py",
+        "git_blob": "5c9173031e689af490ba6c65d45a45ddd41b662b",
+        "sha256": "10c648ef968fe7ab7d91855f8ec519244e03cb1eea2c52df330253f064644751",
+        "bytes": 31044,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_publication.py",
+        "git_blob": "ea275bed2c0c0a07c9435109d4344f3b8ed65881",
+        "sha256": "d654ff3189747555577a6b2842837c09f109cd7d5c202f333d30641ce36931ac",
+        "bytes": 8290,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_refill.py",
+        "git_blob": "cb9d91461b4e0f4e212096e4139f93d909df9b3d",
+        "sha256": "2392115d45f327e01268344e6c5e75d73207f8c15541710708ac6d66f675cdb8",
+        "bytes": 4805,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_replacement.py",
+        "git_blob": "4a7247851dc4066c5fb17699263909554ec1dc0d",
+        "sha256": "c5276c7e848d0a01c74674f8cd75167fed4e9ee7fa0e20b550a156cbf606d668",
+        "bytes": 7599,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_stage.py",
+        "git_blob": "54347a24c1626096def92672d8d7271bf2bf6f17",
+        "sha256": "a69a1ddf37aca82b3990ab9bcda76d4c03f0430fb4337d6ac7ccc8f1c55acaab",
+        "bytes": 25016,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_unit_review.py",
+        "git_blob": "6a018542835e3ec6a6a5e6ef48cffbdb7c0a15eb",
+        "sha256": "8724936fe38bd2b866553d993b1beb519a638499351557004967629e35282da8",
+        "bytes": 28825,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/stokowski_worker.py",
+        "git_blob": "b18748997d453513ee77bda7a56103df221950de",
+        "sha256": "b6ce5bb98ef32af59fa92443ea45db95eeba944fa73bddfece7fe0f8083229bc",
+        "bytes": 35451,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony-linear-binding.json",
+        "git_blob": "68585f12f82402265994f7ad5d437a6cb98b3e2c",
+        "sha256": "3a1df6fd8e0aba409aa88ede917093ddf93700aec3e420e1ee09fe593bc8b611",
+        "bytes": 3183,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony-workflow.md",
+        "git_blob": "63da7935f26a553bfd2a0d41672c409f67f871c6",
+        "sha256": "bef8733c5219dffcc2966036047a47e5134303bc4cec6d5bbfe2b76066594c4c",
+        "bytes": 4002,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_capacity.py",
+        "git_blob": "e2059c53fabc430e91a99d80dda238a4dec8c55a",
+        "sha256": "08a93069608780ea263e16d725797a2d5a5a594b3d261cbe1b7c25cf8ff4b1b5",
+        "bytes": 9211,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_codex.py",
+        "git_blob": "4f354bdca6b4e3ad513190c9b94930e55695350f",
+        "sha256": "e868a0d575df547a7e3369169552f19244ae85abb877f81c3b8f001074b3bc24",
+        "bytes": 1132,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_executor.py",
+        "git_blob": "7fe0aa857abdbe75c4c1216055a650604dd17983",
+        "sha256": "381c55a7f2c11e917b97510b37b2291a7db79f6f5ddf21ef13139ff95cbde28e",
+        "bytes": 1388,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_launch.py",
+        "git_blob": "22fe4bb384f0e01f4794070c4cc64dffc5d897eb",
+        "sha256": "fff2609d787acdcf33e8929e81842aa2da6bac0fe681b93daf39e5a55775a8e7",
+        "bytes": 19757,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_protocol.py",
+        "git_blob": "0dcd7b31695d1c53cec72e0a1a9cb7453fe7038b",
+        "sha256": "c14504f137dfc3d9c9de59ea745b03df6e6d3677a1e6dd81db2f364ff0b378a1",
+        "bytes": 5178,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_tasks.py",
+        "git_blob": "dd6cda75c52aeae347c06fe16cd132d387dff77d",
+        "sha256": "211612235c85020d204aa0af1f2fbc90bfbedd42bfdfec6b7c7307644c656e63",
+        "bytes": 5967,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_validate.py",
+        "git_blob": "de157bea2c43ce47603ead86f5fbff7b569f564c",
+        "sha256": "8ce1a28cad8f755b452c961780c97ed48bb8d4bda64c3247d72e81ffff726747",
+        "bytes": 3088,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/symphony_workspace.py",
+        "git_blob": "03f7c8b1f25f64657eb9b787e3682c8f2a55426b",
+        "sha256": "8793d71670c08782ef43639859920fa4fb9bef9a1f66deb59cec9ec63c0bd850",
+        "bytes": 5861,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/validation.md",
+        "git_blob": "ff60ab4b6b0c30ceae548daac88616c70ca08f82",
+        "sha256": "cd24d739f752024a2b85766c95c57ac16d3e9e1aff781e14d160cbf2e9e452a0",
+        "bytes": 12847,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/windmill_bridge.py",
+        "git_blob": "acbd23a3df1b48b9658ac500297c9ab8661eaf90",
+        "sha256": "18b513cb7ef288b4c1961bcf9bf71f5cb3107788776842afd6b5c916b7d4a5c1",
+        "bytes": 23682,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/windmill_dispatcher.py",
+        "git_blob": "48feeef96267ed4981c021b08f12131f2e4e00b9",
+        "sha256": "860d57605ea97285115bb1c2622a95691e8f1a03e9d6a8b60468f3dbdd7003b7",
+        "bytes": 27361,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/windmill_entrypoint.py",
+        "git_blob": "c22b659b8bf2cb689866a757ef25df093d99b37f",
+        "sha256": "dc8c1e8263cdf5659abf73f35d634867c5b716434701036c988345774b1fa7eb",
+        "bytes": 1684,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      },
+      {
+        "path": "tools/delivery/windmill_runner.py",
+        "git_blob": "862dcd4401f3844f927c7da3ca1285cbcb808964",
+        "sha256": "b7cf2455c48eff40c3eaf7eaddffbe018011f8ae0e8172e33ac5e75b10df202d",
+        "bytes": 23409,
+        "review_status": "boundary-candidate-not-fully-reviewed",
+        "machine_ids": [],
+        "ownership": "mixed UIF infrastructure/product boundary; per-module ownership still requires explicit trace, directory membership alone not proof"
+      }
+    ]
+  },
+  "not_yet_accounted_as_complete": [
+    "All unreviewed UIF source/configuration/tests and documentary origins remain explicitly open.",
+    "OffMenu cross-directory callsites, supporting tests/configuration and the rest of its repository require ownership/source tracing, not a claim of exclusion.",
+    "Retained/unmerged/historical/vendor/generated editions and inaccessible originals need separate provenance/disposition; nothing is relabelled recovered.",
+    "Installed native Core, helper, service and provider execution surfaces are outside these Git snapshots; current private observations remain in existing issues120/127/247/266/267. No runtime source is copied or alleged absent.",
+    "Current Linear impact mapping is partial and must be refreshed before any complete inventory claim."
+  ],
+  "evidence_strength": "Source bytes and bounded semantic reads only; no old tests/imports/runtime or legacy-effect replay."
+}
