@@ -58,6 +58,30 @@ observed installation/state and preserve accepted source/operation evidence to
 avoid replay. Reconcile selected persistence/checkpoint versions, source, stage,
 owner and original effects before the first unaccepted step resumes.
 
+### Compare native and MCP issue presentation
+
+For a comparison with a caller-authenticated native scope digest, use
+[`normalize_issue_scope(issue, expected_native_sha256)`](../src/uif/linear_scope.py).
+Supply native-shaped `id` (immutable UUID), `identifier`, `title` and full
+`description`; do not substitute an MCP display key for the UUID. Native scope is
+SHA-256 of `json.dumps([id, identifier, title, description], ensure_ascii=False)`
+encoded as UTF-8, with default JSON separators.
+
+The pure helper returns an already-matching input unchanged, including literal
+example tags. Otherwise it converts only the proven MCP renderer form
+`<issue id="UUID" label="KEY-1" href="https://linear.app/workspace/issue/KEY-1/slug" />`
+to `[KEY-1](FULLhref)`, preserving the full href and every other byte/field. It
+returns a description-only copy only if the resulting digest exactly matches;
+unknown markup or a real requirements change is not forced into an old scope.
+A mismatch raises `ScopeNormalizationError`. No HTML unescaping, title guessing,
+history deletion or unrelated HTML canonicalization occurs.
+
+Authenticate the expected digest for the particular comparison. This helper is
+not a new intake/admission gate and does not require a new receiving scope to
+equal an older producer scope. It grants no authority, claim, full-scope
+acceptance, checkpoint, review or publication outcome; existing controls remain.
+It has no host/API/model operation or automatic native-runtime installation.
+
 An off-Foo control authority must fence coordinator epochs and task claims/effects
 for both lanes; its concrete platform is not selected and the current adapter is
 unimplemented. Foo/MCP loss must not prevent eligible cloud issue intake, claims,
