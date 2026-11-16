@@ -3,7 +3,7 @@
   "purpose": "Declared operating profiles; not installed capabilities, live status, intake or a scheduler",
   "policy": {
     "id": "uif-worker-policy",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "path": "docs/agents/uif-worker-policy.md",
     "manifest": "docs/agents/uif-worker-policy.json"
   },
@@ -107,16 +107,22 @@
       }
     },
     "cloud": {
-      "display_name": "Cloud",
-      "repository_binding": [],
-      "baseline": null,
-      "product_instructions": null,
+      "display_name": "Cloud infrastructure",
+      "repository_binding": [
+        "maldous/aldous-info-platform"
+      ],
+      "baseline": "main",
+      "product_instructions": "AGENTS.md",
       "operational_policy": "environment-owned",
       "memory": {
         "namespace": "uif/roles/cloud",
         "shared": "uif/shared",
         "private_data": false
-      }
+      },
+      "role_kind": "infrastructure-provider-adapter",
+      "project_delivery_matrix_member": false,
+      "infrastructure_details": "public-safe-config-not-secrets-or-private-provider-details",
+      "repository_visibility_changes": false
     }
   },
   "executor_profiles": {
@@ -210,5 +216,12 @@
     "capacity": "existing-authorized-only",
     "new_provider_fallback": false,
     "when_unavailable": "preserve-and-resume"
-  }
+  },
+  "project_delivery_matrix": [
+    "uif",
+    "offmenu",
+    "anqr",
+    "circularquay",
+    "cix"
+  ]
 }

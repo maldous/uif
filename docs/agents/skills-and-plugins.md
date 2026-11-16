@@ -1,6 +1,6 @@
 # Skills, plugins and execution capabilities
 
-This is the policy 2.0.0 capability map, not an installation manifest. Discover
+This is the policy 2.0.1 capability map, not an installation manifest. Discover
 actual tools and granted scopes in each environment; names in a registry or a
 skill do not prove availability, authorization, deployment or successful work.
 Load only the relevant skill and contained references for the selected task.
@@ -38,7 +38,7 @@ not proof that one has been installed.
 | CircularQuay | `integrations/skills/cq/SKILL.md` and `agents/openai.yaml` describe portable product operations/UI metadata. Select the authenticated executable and real MCP catalog. No client-plugin manifest, verified App binding or registry publication is established by these files. |
 | ANQR | Follow current product AGENTS.md, toolchain pins and conformance contracts. No separate repository-owned AI skill/plugin package was found in the 14 November source inspection; discover later additions rather than inventing them. |
 | CIX | Follow each selected product/private-operations AGENTS.md and actual activation/resource holds. Product files called plugin are not evidence of an AI-agent plugin. Keep private operations material out of public product packaging. |
-| General Cloud | Use available non-repository coordination capabilities. Delegate project Git work to its role; retain no repository binding. |
+| Cloud infrastructure | Own the explicitly assigned maldous/aldous-info-platform source and existing infrastructure/provider adapters. Follow current repository instructions and original publisher/site custody; an export is not live equivalence. Public-safe infrastructure configuration/assets may live in the public repository without mandatory homepage presentation; exclude secrets/private provider details and do not change visibility. Remain outside the five-product delivery matrix. |
 
 USF is a separately selected foundation surface when a task actually uses it.
 Its AGENTS.md names GOAL.md as semantic authority; this policy must not add a

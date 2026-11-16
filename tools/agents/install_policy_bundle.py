@@ -104,7 +104,7 @@ def startup_text(bundle, source_commit, policy_digest, original):
         f'Read {bundle}/AGENTS.md and {bundle}/{MANIFEST_PATH} before UIF project work.\n'
         f'Use policy {VERSION}, SHA-256 {policy_digest}, reviewed source {source_commit}.\n'
         f'Load {bundle}/docs/agents/environment-profiles.json and the applicable project overlay;\n'
-        'retain the five project roles and the unbound general Cloud role. Native Linear is the sole live intake.\n'
+        'retain the five project roles and the assigned Cloud infrastructure role. Native Linear is the sole live intake.\n'
         'Preserve original operations, uncertain outcomes, current owners and all project-specific holds.\n'
         'Apply the selected environment and project white-room checks before dependent work.\n'
         'Preserve the current observed CIX control state; these instructions authorize no pause, restart or activation.\n'

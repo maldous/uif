@@ -1,6 +1,6 @@
 # UIF shared worker policy
 
-Policy ID: uif-worker-policy. Version: 2.0.0.
+Policy ID: uif-worker-policy. Version: 2.0.1.
 Maintenance source: maldous/uif, docs/agents/uif-worker-policy.md.
 
 ## Authority and distribution
@@ -42,10 +42,22 @@ execution separately in the existing Linear coordination record.
 Retain five dedicated project roles: UIF, ANQR, OffMenu, CircularQuay and CIX.
 Each has one coordinating owner and its own authorized cloud Git checkout,
 CPU and storage, independent of Foo. CIX product and private operations are
-separate repository surfaces of one role. The sixth general Cloud role has no
-Git configuration or repository binding. Do not repurpose a role or create
-additional durable cloud roles to obtain parallelism. Bounded assistant
-subagents inside an existing role are distinct from durable cloud sessions.
+separate repository surfaces of one role. The sixth Cloud infrastructure role
+owns the explicitly assigned maldous/aldous-info-platform repository, using its
+main baseline and current repository instructions. It owns infrastructure/provider
+adapters and existing hosting surfaces, not a sixth product delivery gate. The
+five-project build/test/publication matrix remains UIF, OffMenu, ANQR,
+CircularQuay and CIX. Repository source does not establish live-site equivalence,
+publisher custody, provider grants or deployment authority. The assigned Cloud
+repository is public: public-safe Cloudflare/Netlify configuration, domain
+information, public certificates and deployable assets may be kept there. Their
+repository presence does not require presenting them on the homepage. Exclude
+secrets, private provider details and private operational payloads from public
+source or presentation; retain those in their existing authorized private
+custody. No repository visibility change is implied. Do not repurpose a role,
+add repository bindings or create additional durable cloud roles to obtain
+parallelism. Bounded assistant subagents inside an existing role are distinct
+from durable cloud sessions.
 
 Use the actual repository and current accepted source from the profile. Normally
 use current develop, with the project's documented bootstrap exception when

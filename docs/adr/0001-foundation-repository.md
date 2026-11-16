@@ -27,8 +27,10 @@ Use maldous/uif for common architecture, methodology, shared implementation
 contracts, applicability and references to durable UIF requirements. Use the
 actual authorized checkout for its executor; a historical Foo path is not a
 prerequisite for a Cloud checkout. The five project Cloud roles and sixth general
-Cloud role follow the current local policy. The general role has no project Git
-binding.
+Cloud infrastructure role follow the current local policy. The Cloud role owns
+only the explicitly assigned maldous/aldous-info-platform repository and remains
+outside the five-product delivery matrix. This 16 November amendment supersedes
+the earlier unbound-role restriction, without granting provider or publisher access.
 
 UIF owns corrections to the shared parent implementation. Reconcile the current
 source writer, rights and consumers before a reviewed adoption or extraction.

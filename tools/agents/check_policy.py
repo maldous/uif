@@ -14,7 +14,7 @@ import re
 POLICY_PATH = 'docs/agents/uif-worker-policy.md'
 MANIFEST_PATH = 'docs/agents/uif-worker-policy.json'
 PROFILES_PATH = 'docs/agents/environment-profiles.json'
-VERSION = '2.0.0'
+VERSION = '2.0.1'
 ROLES = {'uif', 'anqr', 'offmenu', 'circularquay', 'cix', 'cloud'}
 EXECUTORS = {'cloud', 'foo_codex', 'foo_mcp_user', 'foo_mcp_root'}
 MAX_INPUT_BYTES = 1024 * 1024
@@ -119,6 +119,9 @@ def _profiles(data, manifest, capabilities, selected_role, project_repository, r
     for key, value in fixed.items():
         if data.get(key) != value:
             errors.append(f'Invalid environment profiles {key}')
+    matrix = data.get('project_delivery_matrix')
+    if (not _strings(matrix) or set(matrix) != ROLES - {'cloud'}):
+        errors.append('Project delivery matrix must contain exactly the five project roles')
     if type(data.get('local_session_ceiling')) is not int or data['local_session_ceiling'] != 64:
         errors.append('Invalid local session ceiling')
     intake = data.get('intake')
@@ -183,8 +186,14 @@ def _profiles(data, manifest, capabilities, selected_role, project_repository, r
                 errors.append(f'Repository assigned to multiple roles: {repository}')
             repositories.add(repository)
         if key == 'cloud':
-            if bindings or role.get('baseline') is not None or role.get('product_instructions') is not None:
-                errors.append('General Cloud role must have no repository binding')
+            if (bindings != ['maldous/aldous-info-platform']
+                    or role.get('baseline') != 'main'
+                    or role.get('product_instructions') != 'AGENTS.md'
+                    or role.get('role_kind') != 'infrastructure-provider-adapter'
+                    or role.get('project_delivery_matrix_member') is not False
+                    or role.get('infrastructure_details') != 'public-safe-config-not-secrets-or-private-provider-details'
+                    or role.get('repository_visibility_changes') is not False):
+                errors.append('Cloud infrastructure role must retain its exact assigned repository and non-product boundary')
         else:
             baseline = role.get('baseline')
             if (not bindings or not isinstance(baseline, str)
@@ -320,7 +329,7 @@ def check_reference(bundle_root, reference, *, role=None):
         profiles = _json(_read(Path(bundle_root).resolve(), PROFILES_PATH))
         selected_role = value.get('environment_profile')
         selected = profiles.get('logical_roles', {}).get(selected_role)
-        if not isinstance(selected, dict) or selected_role == 'cloud':
+        if not isinstance(selected, dict):
             errors.append('Invalid policy reference project role')
         elif value.get('repository') not in selected.get('repository_binding', []):
             errors.append('Policy reference repository does not belong to its role')

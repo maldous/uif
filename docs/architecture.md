@@ -10,8 +10,10 @@ the historical interface record below is not a live binding.
 
 Five fixed project roles cover UIF, OffMenu, CIX, ANQR and Circular Quay. Each has
 its own authorized Cloud Git checkout, CPU and storage, independent of Foo.
-A sixth general Cloud role handles authorized coordination and non-repository
-work without a project Git binding. Fixed roles are logical assignments, not
+The sixth Cloud infrastructure role owns the explicitly assigned
+maldous/aldous-info-platform source and infrastructure/provider adapters, outside
+the five-product delivery matrix. Existing live-site/publisher custody remains
+separate. Fixed roles are logical assignments, not
 immutable processes, dedicated physical hardware or guaranteed capacity.
 
 Authorized project owners use their available GitHub interfaces and Foo MCP

@@ -1,6 +1,6 @@
 # Operating procedure
 
-Use the pinned [policy 2.0.0](agents/uif-worker-policy.md),
+Use the pinned [policy 2.0.1](agents/uif-worker-policy.md),
 [manifest](agents/uif-worker-policy.json), [environment profile](agents/environment-profiles.json)
 and selected repository's current instructions. This describes the required
 operating contract: unattended autonomous BAU must continue across quota loss,
