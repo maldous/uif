@@ -200,7 +200,8 @@ def migrate(path, expected_preimage, *, apply=False, state_reader=read_state):
     if type(expected_preimage) is not str or not re.fullmatch('[0-9a-f]{64}', expected_preimage):
         raise MigrationError('Exact preimage SHA-256 required')
     path = absolute(path)
-    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    # Nonblocking admission prevents a replaced FIFO from hanging before fstat.
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     temporary = None
     replaced = False
     try:
@@ -242,6 +243,9 @@ def migrate(path, expected_preimage, *, apply=False, state_reader=read_state):
                 stream.flush()
                 os.fsync(stream.fileno())
             fsync_directory(backup_dir)
+        # Persist the backup directory's parent entry before replacing config.
+        # A private backup file alone does not durably link a new directory.
+        fsync_directory(path.parent)
         temp_fd, temporary = tempfile.mkstemp(prefix='.' + path.name + '.source-', dir=path.parent)
         with os.fdopen(temp_fd, 'wb') as stream:
             os.fchmod(stream.fileno(), stat.S_IMODE(metadata.st_mode))

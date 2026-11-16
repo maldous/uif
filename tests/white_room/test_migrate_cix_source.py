@@ -153,6 +153,13 @@ class SourceCorrection(unittest.TestCase):
             with self.assertRaises(M.MigrationError):
                 M.migrate(path, M.digest(raw()), state_reader=state)
 
+    def test_fifo_is_refused_without_a_writer_or_blocking_open(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'workflow.json'
+            os.mkfifo(path)
+            with self.assertRaises(M.MigrationError):
+                M.migrate(path, M.digest(raw()), state_reader=state)
+
     def test_broad_write_permission_or_incompatible_backup_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             path = self.fixture(directory)
@@ -216,13 +223,46 @@ class SourceCorrection(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self.fixture(directory)
             original_fsync = M.fsync_directory
+            parent_syncs = 0
             def fail_after_replace(selected):
+                nonlocal parent_syncs
                 if selected == path.parent:
-                    raise OSError('synthetic post-effect failure')
+                    parent_syncs += 1
+                    if parent_syncs == 2:
+                        raise OSError('synthetic post-effect failure')
                 original_fsync(selected)
             with patch.object(M, 'fsync_directory', fail_after_replace), self.assertRaises(M.UncertainMigrationError):
                 M.migrate(path, M.digest(raw()), apply=True, state_reader=state)
             self.assertEqual(path.read_bytes(), M.render(raw())[0])
+            self.assertEqual((path.parent / '.uif-source-migrations' / (M.digest(raw()) + '.json')).read_bytes(), raw())
+
+    def test_backup_directory_parent_is_durable_before_config_replacement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.fixture(directory)
+            original_fsync, original_replace = M.fsync_directory, M.os.replace
+            events = []
+            def sync(selected):
+                events.append(('sync', selected))
+                original_fsync(selected)
+            def replace(source, destination):
+                events.append(('replace', Path(destination)))
+                self.assertIn(('sync', path.parent), events[:-1])
+                original_replace(source, destination)
+            with patch.object(M, 'fsync_directory', sync), patch.object(M.os, 'replace', replace):
+                M.migrate(path, M.digest(raw()), apply=True, state_reader=state)
+            self.assertLess(events.index(('sync', path.parent)), events.index(('replace', path)))
+
+    def test_parent_sync_failure_before_effect_keeps_original(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.fixture(directory)
+            original_fsync = M.fsync_directory
+            def fail_before_replace(selected):
+                if selected == path.parent:
+                    raise OSError('synthetic backup-link durability failure')
+                original_fsync(selected)
+            with patch.object(M, 'fsync_directory', fail_before_replace), self.assertRaises(OSError):
+                M.migrate(path, M.digest(raw()), apply=True, state_reader=state)
+            self.assertEqual(path.read_bytes(), raw())
             self.assertEqual((path.parent / '.uif-source-migrations' / (M.digest(raw()) + '.json')).read_bytes(), raw())
 
 
