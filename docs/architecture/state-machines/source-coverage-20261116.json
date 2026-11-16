@@ -1,7 +1,7 @@
 {
   "schema": "uif-state-machine-source-coverage/1",
   "purpose": "Versioned documentation coverage accounting only; not work intake, a controller, runtime ledger, policy gate or implementation queue.",
-  "edition": "partial-current-Git-source-pass-1",
+  "edition": "partial-current-Git-source-passes-1-2",
   "complete": false,
   "primary": {
     "repository": "maldous/uif",
@@ -690,8 +690,12 @@
         "git_blob": "7a850cb4b25a205960208c62f3ed719b1a22fbb9",
         "sha256": "7a0eb04ab305520b41565aefb3e46c71c87a61d97985c331f8a0f20d145ab51d",
         "bytes": 19839,
-        "review_status": "unreviewed-current-source",
-        "machine_ids": []
+        "review_status": "full-static-read-not-executed",
+        "machine_ids": [
+          "UIF-STORE-HOT-TRANSACTION",
+          "UIF-STORE-COLD-RETENTION",
+          "UIF-STORE-TASK-FENCE"
+        ]
       },
       {
         "path": "src/uif/legacy_receipts.py",
@@ -738,8 +742,19 @@
         "git_blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
         "sha256": "840dec50c59258e341bef7919f2d1fab22e0c733b1da66c0fd29a83d2a556d7e",
         "bytes": 43694,
-        "review_status": "unreviewed-current-source",
-        "machine_ids": []
+        "review_status": "partial-store-consumer-context-read-not-executed",
+        "machine_ids": [
+          "UIF-STORE-HOT-TRANSACTION",
+          "UIF-STORE-COLD-RETENTION",
+          "UIF-STORE-TASK-FENCE"
+        ],
+        "reviewed_spans": [
+          "176-230",
+          "284-397",
+          "455-489",
+          "623-765"
+        ],
+        "review_limit": "Selected store/provisioning/authentication/idempotency/effect context only. Full registry state-machine coverage remains open."
       },
       {
         "path": "tests/agents/test_install_policy_bundle.py",
@@ -870,8 +885,13 @@
         "git_blob": "507cd10c399b9348b930d848e2a9f172a6aec992",
         "sha256": "63220b5e416795be0aee683abee63cbdf9a6c392ed75d499925fb3af34f8e836",
         "bytes": 12031,
-        "review_status": "unreviewed-test-or-fixture",
-        "machine_ids": []
+        "review_status": "full-static-read-not-executed",
+        "machine_ids": [
+          "UIF-STORE-HOT-TRANSACTION",
+          "UIF-STORE-COLD-RETENTION",
+          "UIF-STORE-TASK-FENCE"
+        ],
+        "existing_test_source_cases": 9
       },
       {
         "path": "tests/white_room/test_check.py",
@@ -1684,5 +1704,5 @@
     "Installed native Core, helper, service and provider execution surfaces are outside these Git snapshots; current private observations remain in existing issues120/127/247/266/267. No runtime source is copied or alleged absent.",
     "Current Linear impact mapping is partial and must be refreshed before any complete inventory claim."
   ],
-  "evidence_strength": "Source bytes and bounded semantic reads only; no old tests/imports/runtime or legacy-effect replay."
+  "evidence_strength": "Source bytes and bounded semantic reads only; full reads and partial consumer spans are distinguished. No old tests/imports/runtime or legacy-effect replay."
 }

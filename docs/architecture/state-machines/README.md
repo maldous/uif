@@ -1,6 +1,6 @@
-# UIF state-machine identification: current-source pass 1
+# UIF state-machine identification: current-source passes 1–2
 
-This is the first **partial documentation pass** for
+These are **partial documentation passes** for
 [UIF-249](https://linear.app/maldous/issue/UIF-249), not the exhaustive result.
 It changes no runtime, machine, policy, scheduler or admission rule. It does not
 replace original inventories, unavailable legacy evidence or existing issue
@@ -13,9 +13,10 @@ The primary edition is UIF commit
 `5a9d08866066c149e06bb7cde713c77d33b7998b`, tree
 `d66db94fbf9276f23a0d35d8daaa9d50c835aa22`. The
 [source coverage account](source-coverage-20261116.json) lists all 134 tracked
-paths with immutable blob and byte identities. Two source/test files have a
-complete semantic read in this pass; other rows explicitly remain unreviewed or
-documentary context. Enumeration and hashes are not semantic review.
+paths with immutable blob and byte identities. Four source/test files have a
+complete bounded semantic read across these passes. Selected registry callsite spans have only partial context review; other
+rows explicitly remain unreviewed or documentary context. Enumeration and hashes
+are not semantic review.
 
 UIF-owned delivery code has not all moved into this repository. A second edition
 pins OffMenu `51ad2b27a226f097dcaa9a27db5fade33d9ef4dd`, tree
@@ -31,24 +32,27 @@ or installed configuration is copied into this source account. Retained,
 unmerged, historical, generated, vendor and unavailable editions require their
 own explicit dispositions. A missing original is not repaired by a current file.
 
-## First reconstructed machines
+## Reconstructed machines
 
 | Stable ID | Responsibility | Current evidence |
 | --- | --- | --- |
 | `UIF-CONT-PROBE` | Qualified health evidence, monotonic failure chain and reconstruction latch | [Continuity model](continuity-model.md) |
 | `UIF-CONT-CAPACITY` | Qualified capacity evidence identity and replay/equivocation checks | [Continuity model](continuity-model.md) |
 | `UIF-CONT-ROUTES` | Stop-preserving local/cloud/deterministic decision product | [Continuity model](continuity-model.md) |
+| `UIF-STORE-HOT-TRANSACTION` | Single-host custody, stable metadata lock and explicit atomic whole-state save | [Private handoff store](handoff-store.md) |
+| `UIF-STORE-COLD-RETENTION` | Committed history archival, pruning, headroom and degraded control path | [Private handoff store](handoff-store.md) |
+| `UIF-STORE-TASK-FENCE` | Per-task advisory exclusion around cooperating effect/transfer callers | [Private handoff store](handoff-store.md) |
 
-These are interacting machines in a pure decision component, not three deployed
+These are interacting decision and persistence protocols, not six deployed
 services. The mapping distinguishes code-observed behavior, existing test-source
 oracles and unqualified runtime integration. No source tests were executed by
 this documentation pass.
 
 ## Bounded remaining passes
 
-1. Trace the other primary core modules, their CLI consumers, persistence and
-   failure boundaries. Include file locks/atomic writes and combined flags rather
-   than relying only on named enum or status values.
+1. Complete the registry/task/coordinator and other primary core modules, their
+   CLI consumers and cross-component failure boundaries. The handoff-store pass
+   covers its file locks/atomic writes/retention, not every caller or live authority.
 2. Trace policy/bootstrap, White Room, source migration, command/backend wrappers,
    schemas, configuration, generated origins and hosted workflow entry points.
 3. Resolve actual ownership and cross-repository calls for the hosted delivery
@@ -80,5 +84,5 @@ documentation paths in this pass are outputs, not silently added source inputs.
 
 Full UIF-249 acceptance still requires all in-scope areas and interactions to be
 accounted for, the remaining impact map, explicit exclusions and independent
-coverage verification. Neither these three machines nor the file counts establish
+coverage verification. Neither these six machines nor the file counts establish
 exhaustive identification, live state, current claims or product readiness.
