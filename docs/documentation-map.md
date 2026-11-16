@@ -38,6 +38,7 @@ installed service, current provider grants or useful unattended operation.
 | Deterministic Foo checks | [Workspace](agents/windmill-workspace.md), [exact-branch checks](operations/project-checks-source-branch.md), [Windmill qualification](windmill/qualification.md) | Actual deployed schema/catalog and immutable expected commit; original operation status, not repeat submission. |
 | Capability selection | [Skills/plugins](agents/skills-and-plugins.md), [startup template](agents/startup-template.md), [memory routing](agents/memory-routing.md) | File access, discovery, engine invocation and permission are separate observations. |
 | Shared architecture | [Architecture](architecture.md), [foundation ADR](adr/0001-foundation-repository.md), [evidence](evidence.md) | Current boundary statements coexist with explicitly dated historical sections. |
+| Original foundation versus current edition | [Requirements correspondence](architecture/foundation-correspondence-20261116.md) | Accepted donor, evolved develop source, old operation outcome and main/release acceptance remain separate. |
 | Runtime seams and limitations | [Native quota realization](operations/native-quota-realization.md), [continuity decisions](operations/continuity-decisions.md), [drift](operations/foo-stokowski-drift.md) | Code-injected verifiers and actual installed callsites are required. Prototype source is not an off-Foo authority. |
 | Retained source-free compatibility | [Legacy receipts](operations/legacy-source-free-receipts.md) | File, native canonical-record and documentary joins differ; no receiving/clearance/Git/runtime authorization. |
 | Future-clone corrections | [CIX migration](white-room/cix-source-selection.md), [explicit profiles](white-room/future-clone-profiles.md) | Selected source only; preserve old workspaces, publication intents and claim/admission controls. |
@@ -72,7 +73,7 @@ and existing contract tests before using a symbol.
 
 | Finding or remaining outcome | Existing owner/issue and next concrete unit | This unit's disposition |
 | --- | --- | --- |
-| No single current documentation/API navigation index | UIF-260: this exact source inventory, map and thin README pointer | Corrected by this candidate; independent source/usability review is still required. |
+| No single current documentation/API navigation index | UIF-260: this exact source inventory, map and thin README pointer | Accepted bounded source/navigation unit integrated through [PR66](https://github.com/maldous/uif/pull/66); broader completeness/usability remains open. |
 | Environment-owned skills rebuilt after reboot | Cloud owns shared distribution under UIF-266; UIF-247 owns shared policy/adoption and this project consumes its verified source | Do not copy skills into runtime dependencies or rewrite dated original installation receipts as reconstructed bytes. |
 | Unimplemented independent off-Foo authority/scheduling | Existing UIF-247/UIF-120 lifecycle units: select and qualify the actual adapter without fabricating an endpoint/provider | Current policy and source boundaries already say unimplemented/unqualified; no new blanket gate. |
 | Original source-free receiving and publisher effects | UIF-120 and original project owners: preserve exact accepted archives/tuples, current custody and supported original status | Receipt compatibility is source evidence, not original effect clearance. Do not repeat content review to repair an adapter. |
@@ -91,5 +92,6 @@ catalog discovery and a successful invocation are different facts.
 
 No new security/privacy setting, provider, permission, service, queue or release
 gate is introduced. Validate only this delta's source coverage, links and
-examples; reuse unchanged accepted qualification. The full UIF-260 outcome still
-needs its independent review and any genuinely missing content follow-through.
+examples; reuse unchanged accepted qualification. PR66's bounded inventory review remains credited; the full UIF-260 outcome still
+needs broader completeness/usability/interface review and genuinely missing
+content follow-through.

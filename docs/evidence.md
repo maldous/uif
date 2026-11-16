@@ -6,7 +6,7 @@ scoped source acceptance, publication and runtime effects remain separate facts.
 
 ## Foundation source provenance
 
-The donor is the existing local commit
+The donor is the accepted historical commit
 c8efa916a4bd98c4b59d24c774ff6510f2bd1a32, tree
 17ebe814b1d6061aa6412384a455bbb3d1827c69, titled
 “UIF-193: address independent foundation review findings”. Its five foundation
@@ -14,8 +14,14 @@ documents supply the invariant procedure and historical references used here.
 
 This current source unit selects those documents with bounded updates. It does
 not merge the donor branch or replace current AGENTS.md, README.md, the shared
-policy or the reconciliation ledger. Local availability is not a claim that the
-old commit was published. The current [entrypoint](../AGENTS.md),
+policy or the reconciliation ledger. The 12 November qualification did not
+establish remote publication. A later bounded read on 16 November now confirms
+`refs/heads/worker/uif161-foundation` points to the exact accepted donor. This is
+a present source postcondition, not a successful original `commit_refs` receipt,
+known publishing actor or ancestry integration. The
+[current-edition correspondence](architecture/foundation-correspondence-20261116.md)
+maps the evolved develop paths and remaining release/consumer limits without
+repeating accepted work. The current [entrypoint](../AGENTS.md),
 [policy](agents/uif-worker-policy.md), [manifest](agents/uif-worker-policy.json)
 and [Foo route guidance](agents/windmill-workspace.md) remain authoritative for
 their current scope.
