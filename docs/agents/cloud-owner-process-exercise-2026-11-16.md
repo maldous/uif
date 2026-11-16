@@ -103,10 +103,17 @@ another approval requirement for already-authorized routine continuation.
 Parent-verified GitHub readback shows [OffMenu PR 241](https://github.com/maldous/offmenu/pull/241)
 merged at 2026-11-16 02:48:18 UTC, merge
 `c3d0b6ff9e8eddbbb38c88c7bc2446c9440eb7e0`, exact head
-`ee1c013ea0d0632929e941f5353ab2558bb41189`. The owner is still settling original
-gateway, parent and tree evidence; do not merge again or call the original
-transaction fully settled. This readback does not approve an earlier private
-custody read, retry a denied operation or transfer publisher authority. Existing
+`ee1c013ea0d0632929e941f5353ab2558bb41189`. The UIF owner independently verified
+[UIF-183](https://linear.app/maldous/issue/UIF-183/write-complete-offmenu-user-journeys-and-support-guidance),
+comment `3bf67581-a205-440b-953a-160729156c11`: the existing controller is terminal
+`merge-verified`, with `action: null` and `merge_effect: verified` at 02:49:31 UTC,
+using the same gateway response. Exact parents are
+`1ea77f7bf9eda6f3487a4954bd4dbab72305c15f` and
+`ee1c013ea0d0632929e941f5353ab2558bb41189`, tree
+`7c63459b4f16e0c6b71b5c8ff97afb7032b49b66`, with develop readback. This is bounded
+terminal PR 241 merge proof, not whole UIF-183 acceptance; do not merge again or
+replay accepted reviews/checks. It does not approve an earlier private custody
+read, retry a denied operation or transfer publisher authority. Existing
 specific project/data holds remain; independent eligible work continues through
 the applicable controls. This evidence checkpoint itself grants no new effect
 permission.
