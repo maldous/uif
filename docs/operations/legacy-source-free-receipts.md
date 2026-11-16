@@ -45,17 +45,34 @@ The proof list preserves materially different strengths:
 1. A review's exact reference to the original **evidence file SHA256** joins
    the original file bytes already checked against their pin.
 2. A review's reference to a native **record directory identity** qualifies only
-   if an injected, source-qualified native digest validator computes the exact
-   identity for both archive objects. A directory name alone never proves a
-   content digest. Caller booleans/strings cannot supply that validator.
+   if the explicit source-qualified `native_retained_record_id` recipe computes
+   the exact identity for both archive objects. A directory name alone never
+   proves a content digest. Caller booleans/strings/arbitrary callbacks cannot
+   supply that validator. The installed publication.py `fc60cbd9` reader at
+   lines505–520 and writer628–633 use SHA256 of the complete evidence object
+   serialized by `json.dumps(sort_keys=True, ensure_ascii=False)` with default
+   separators. This differs from both raw file bytes and compact receipt JSON.
 3. Explicit selected **documentary input hashes** must occur in both original
    and review documentary fields. They prove only that selected input link,
-   not an exact whole-original-report review. Shared policy hashes are excluded.
+   not an exact whole-original-report review. Known shared policy hashes,
+   including accepted2.0.1 and retained2.0.0/1.2.4 sources, are excluded. The
+   authenticated caller must explicitly classify every additional selected hash
+   as a documentary input and supply additional policy hashes in the exclusion
+   set. This parser cannot automatically distinguish every arbitrary hash's role;
+   a common unknown hash alone is not sufficient selection authority.
    The builder returns exact JSON pointers to hash references, not report bodies.
 
+Archive input bytes, nesting, dictionary-key/pointer lengths, hit/distinct-hash
+counts, aggregate pointer bytes, selected-hash counts and final receipt bytes
+are all bounded. Refuse amplification before accumulating copied pointers; do
+not let a compact input expand into an unbounded metadata result. These bounds
+apply only to this compatibility parser, not another product delivery gate.
+
 At recovery, six reviews directly pin original evidence file hashes. Other
-directory references must retain the constructor-verification distinction until
-the actual native digest recipe is qualified. The three assess originals have
+directory references retain the constructor-verification distinction; the exact
+recipe was recovered read-only in receipt01a1e42a-c837-4762-adc7-de4a73354d97.
+Actual retained-object digest qualification remains separate from that source
+read and the synthetic recipe tests. The three assess originals have
 no direct original-archive reference: UIF-221 and UIF-229 share selected packet
 hashes; UIF-227 has no recovered selected-input hash beyond shared policy.
 Do not silently promote those different cases to equivalent proof.

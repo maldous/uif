@@ -7,23 +7,53 @@ modern reviewed_disposition field or treats a mutable latest settlement as input
 """
 from dataclasses import dataclass
 from hashlib import sha256
+import json
 import re
 
 from .handoff_store import decode, require, wire
 
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024
+MAX_KEY_BYTES = 256
+MAX_POINTER_BYTES = 1024
+MAX_REFERENCE_HITS = 512
+MAX_UNIQUE_HASHES = 256
+MAX_REFERENCE_BYTES = 64 * 1024
+MAX_RECEIPT_BYTES = 128 * 1024
+MAX_SELECTED_INPUTS = 64
 HEX = re.compile(r'[0-9a-f]{64}')
 HASH_TOKEN = re.compile(r'(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])')
 DOCUMENTARY_FIELDS = ('data_sources', 'claims', 'verification')
 LEGACY_POLICY_SHA256 = 'a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1'
+KNOWN_SHARED_POLICY_HASHES = frozenset({
+    LEGACY_POLICY_SHA256,
+    '7b54579a72c16c504bf4a82d875a0ca770d851787ba62035e446ec673e6db54f',
+    '4b88a8be6d6f4d8bbd721a1f22bd3d47250d5391be220b5ed77011249e226fa9',
+    'f8e19235eb095cfc754519f580c6bb35675baedbf4bf15d42b4a969becec90c4',
+})
 BINDING_KEYS = {'candidate', 'human_context_sha256', 'invocation', 'issue',
                 'issue_id', 'kind', 'run', 'scope_sha256', 'state'}
+NATIVE_RETAINED_RECIPE = 'stokowski-retained-json-sort-keys-ensure-ascii-false/1'
 
 
 @dataclass(frozen=True)
 class ArchivePin:
     record_id: str
     file_sha256: str
+
+
+def native_retained_record_id(archive):
+    """Exact valid-JSON recipe from installed publication.py fc60cbd9:505-520.
+
+    Its writer at628-633 includes state/run/binding/report/result_text/artifacts
+    and optional context in this complete object. Default separators matter;
+    this is NOT the raw file-byte hash or the compact receipt-wire digest.
+    """
+    require(type(archive) is dict, 'legacy_native_record_object')
+    try:
+        encoded = json.dumps(archive, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()
+    except (ValueError, TypeError, RecursionError, UnicodeError):
+        require(False, 'legacy_native_record_encoding')
+    return sha256(encoded).hexdigest()
 
 
 def _hex(value):
@@ -36,6 +66,13 @@ def _text(value):
 
 def _positive(value):
     return type(value) is int and value > 0
+
+
+def _utf8(value):
+    try:
+        return value.encode('utf-8')
+    except UnicodeError:
+        require(False, 'legacy_unicode_encoding')
 
 
 def _archive(raw, pin):
@@ -79,20 +116,32 @@ def _artifacts(value):
 
 def _references(report):
     """Return documentary hash tokens and exact RFC6901 pointers, no bodies."""
-    found = {}
+    found, total_bytes, hits = {}, 0, 0
 
     def visit(value, path):
+        nonlocal total_bytes, hits
         require(len(path) <= 32, 'legacy_documentary_depth')
         if type(value) is str:
+            pointer = '/' + '/'.join(str(part).replace('~', '~0').replace('/', '~1') for part in path)
+            pointer_bytes = len(_utf8(pointer))
+            require(pointer_bytes <= MAX_POINTER_BYTES, 'legacy_documentary_pointer_size')
             for match in HASH_TOKEN.finditer(value):
                 token = match.group()
-                found.setdefault(token, set()).add('/' + '/'.join(
-                    str(part).replace('~', '~0').replace('/', '~1') for part in path))
+                hits += 1
+                require(hits <= MAX_REFERENCE_HITS, 'legacy_documentary_hit_limit')
+                if token not in found:
+                    require(len(found) < MAX_UNIQUE_HASHES, 'legacy_documentary_hash_limit')
+                    found[token] = set()
+                if pointer not in found[token]:
+                    total_bytes += pointer_bytes + len(token)
+                    require(total_bytes <= MAX_REFERENCE_BYTES, 'legacy_documentary_aggregate_limit')
+                    found[token].add(pointer)
         elif type(value) is list:
             for index, child in enumerate(value):
                 visit(child, path + (index,))
         elif type(value) is dict:
             for key, child in value.items():
+                require(len(_utf8(key)) <= MAX_KEY_BYTES, 'legacy_documentary_key_size')
                 visit(child, path + (key,))
 
     for field in DOCUMENTARY_FIELDS:
@@ -103,14 +152,15 @@ def _references(report):
 
 def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_pin,
                          published_review_binding, selected_input_sha256=(),
-                         verified_record_identity=None, excluded_sha256=()):
+                         verified_record_identity=None, excluded_sha256=(),
+                         selected_input_classification=None):
     """Build an exact, bounded receipt from independently authenticated inputs.
 
     A directory name alone proves no digest. verified_record_identity is an
-    optional code-injected native archive validator, called for BOTH originals;
-    it must return the computed record id. Without it only exact file-hash or
-    explicit documentary-input joins can qualify. No caller JSON boolean can
-    assert that a record identity was cryptographically verified.
+    optional explicit selection of native_retained_record_id, checked for BOTH
+    originals. Arbitrary callbacks/JSON flags cannot assert digest validation.
+    Without that recipe selection only exact file-hash or explicit documentary
+    input joins can qualify; an unverified directory name remains a hint.
     """
     original = _archive(original_bytes, original_pin)
     review = _archive(review_bytes, review_pin)
@@ -146,15 +196,26 @@ def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_p
     _artifacts(original.get('artifacts'))
     _artifacts(review.get('artifacts'))
     require(type(selected_input_sha256) is tuple and type(excluded_sha256) is tuple
+            and len(selected_input_sha256) <= MAX_SELECTED_INPUTS
+            and len(excluded_sha256) <= MAX_SELECTED_INPUTS
             and all(_hex(item) for item in selected_input_sha256 + excluded_sha256)
             and len(set(selected_input_sha256)) == len(selected_input_sha256),
             'legacy_selected_input_pins')
-    excluded = set(excluded_sha256) | {LEGACY_POLICY_SHA256}
+    excluded = set(excluded_sha256) | KNOWN_SHARED_POLICY_HASHES
     require(not (set(selected_input_sha256) & excluded), 'policy_hash_is_not_selected_input')
+    if selected_input_sha256:
+        require(type(selected_input_classification) is dict
+                and set(selected_input_classification) == set(selected_input_sha256)
+                and all(value == 'selected-documentary-input'
+                        for value in selected_input_classification.values()),
+                'legacy_selected_input_classification_required')
+    else:
+        require(selected_input_classification is None or selected_input_classification == {},
+                'legacy_unselected_input_classification')
     before_refs, after_refs = _references(original['report']), _references(review['report'])
     record_identity_verified = False
     if verified_record_identity is not None:
-        require(callable(verified_record_identity), 'legacy_record_validator')
+        require(verified_record_identity is native_retained_record_id, 'unsupported_legacy_record_recipe')
         for archive, pin in ((original, original_pin), (review, review_pin)):
             before = wire(archive)
             require(verified_record_identity(archive) == pin.record_id,
@@ -183,11 +244,17 @@ def build_legacy_receipt(*, original_bytes, review_bytes, original_pin, review_p
         original_session=original['context']['session_id'], review_session=review['context']['session_id'],
         selected_artifacts=original['artifacts'], selected_artifacts_sha256=sha256(wire(original['artifacts'])).hexdigest(),
         proof=proof, record_identity_verified=record_identity_verified,
+        record_identity_recipe=NATIVE_RETAINED_RECIPE if record_identity_verified else None,
         directory_reference_without_digest_proof=(not record_identity_verified
             and original_pin.record_id in after_refs),
         published_tuple_authentication_required=True, current_scope_and_custody_check_required=True,
         artifact_payloads_verified=False, selected_input_payloads_verified=False,
+        selected_input_classification=selected_input_classification or {},
+        additional_policy_hash_classification_required=True,
         receiving_authorized=False, gate_clearance=False, full_issue_acceptance=False,
         git_publication_authorized=False, runtime_installed=False)
-    receipt['receipt_sha256'] = sha256(wire(receipt)).hexdigest()
+    encoded = wire(receipt)
+    require(len(encoded) <= MAX_RECEIPT_BYTES, 'legacy_receipt_size')
+    receipt['receipt_sha256'] = sha256(encoded).hexdigest()
+    require(len(wire(receipt)) <= MAX_RECEIPT_BYTES, 'legacy_receipt_size')
     return receipt

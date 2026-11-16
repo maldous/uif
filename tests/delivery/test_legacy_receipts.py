@@ -3,9 +3,12 @@ import copy
 from hashlib import sha256
 import json
 import unittest
+from unittest.mock import patch
+import uif.legacy_receipts as module
 
 from uif.handoff_store import Hold, wire
-from uif.legacy_receipts import ArchivePin, build_legacy_receipt, LEGACY_POLICY_SHA256
+from uif.legacy_receipts import (ArchivePin, build_legacy_receipt, LEGACY_POLICY_SHA256,
+                                 native_retained_record_id, NATIVE_RETAINED_RECIPE)
 
 SELECTED = '6' * 64
 BINDING = dict(candidate='issue-uuid', human_context_sha256='4' * 64,
@@ -14,8 +17,8 @@ BINDING = dict(candidate='issue-uuid', human_context_sha256='4' * 64,
 
 
 def identity(archive):
-    # Synthetic identity recipe only. Actual native constructor is qualified separately.
-    return sha256(wire(archive)).hexdigest()
+    # Synthetic records use the exact source-verified native JSON recipe.
+    return native_retained_record_id(archive)
 
 
 def fixture(stage='assess', artifacts=None):
@@ -37,6 +40,9 @@ def fixture(stage='assess', artifacts=None):
 def arguments(original, review, **extra):
     before = (json.dumps(original, indent=2) + '\n').encode()
     after = (json.dumps(review, indent=2) + '\n').encode()
+    if extra.get('selected_input_sha256'):
+        extra.setdefault('selected_input_classification',
+                         {pin: 'selected-documentary-input' for pin in extra['selected_input_sha256']})
     return dict(original_bytes=before, review_bytes=after,
                 original_pin=ArchivePin(identity(original), sha256(before).hexdigest()),
                 review_pin=ArchivePin(identity(review), sha256(after).hexdigest()),
@@ -51,10 +57,11 @@ class LegacyReceiptContracts(unittest.TestCase):
         self.assertFalse(result['record_identity_verified'])
 
     def test_verified_native_record_identity_qualifies_exact_legacy_join(self):
-        result = build_legacy_receipt(**arguments(*fixture(), verified_record_identity=identity))
+        result = build_legacy_receipt(**arguments(*fixture(), verified_record_identity=native_retained_record_id))
         self.assertEqual(result['status'], 'bounded-input-join')
         self.assertEqual(result['proof'][0]['kind'], 'verified-native-record-id')
         self.assertEqual(result['proof'][0]['review_pointers'], ['/report/verification/0/detail'])
+        self.assertEqual(result['record_identity_recipe'], NATIVE_RETAINED_RECIPE)
 
     def test_exact_file_sha_join_needs_no_directory_identity_claim(self):
         original, review = fixture()
@@ -97,6 +104,23 @@ class LegacyReceiptContracts(unittest.TestCase):
             build_legacy_receipt(**arguments(original, review, selected_input_sha256=(LEGACY_POLICY_SHA256,)))
         result = build_legacy_receipt(**arguments(original, review))
         self.assertEqual(result['status'], 'input-join-unresolved')
+
+    def test_all_known_policy_versions_excluded_including_current_201(self):
+        for token in module.KNOWN_SHARED_POLICY_HASHES:
+            original, review = fixture()
+            for archive in (original, review):
+                archive['report']['claims'][0]['evidence'] = token
+            with self.subTest(token=token), self.assertRaisesRegex(Hold, 'policy_hash_is_not_selected_input'):
+                build_legacy_receipt(**arguments(original, review, selected_input_sha256=(token,)))
+
+    def test_caller_must_explicitly_classify_additional_hash_roles(self):
+        for classification in (None, {}, {SELECTED: 'shared-policy'}):
+            args = arguments(*fixture(), selected_input_sha256=(SELECTED,))
+            args['selected_input_classification'] = classification
+            with self.subTest(classification=classification), self.assertRaisesRegex(Hold, 'legacy_selected_input_classification_required'):
+                build_legacy_receipt(**args)
+        with self.assertRaisesRegex(Hold, 'policy_hash_is_not_selected_input'):
+            build_legacy_receipt(**arguments(*fixture(), selected_input_sha256=(SELECTED,), excluded_sha256=(SELECTED,)))
 
     def test_selected_documentary_subset_is_not_original_archive_join(self):
         result = build_legacy_receipt(**arguments(*fixture(), selected_input_sha256=(SELECTED,)))
@@ -172,24 +196,32 @@ class LegacyReceiptContracts(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(Hold):
                 build_legacy_receipt(**arguments(original, review))
 
-    def test_record_verifier_requires_code_and_validates_both_inputs(self):
+    def test_record_verifier_requires_exact_recipe_and_validates_both_inputs(self):
         for verifier in (True, 'verified', lambda _: '0' * 64):
             with self.subTest(verifier=verifier), self.assertRaises(Hold):
                 build_legacy_receipt(**arguments(*fixture(), verified_record_identity=verifier))
-        calls = []
-        def verify(archive):
-            calls.append(archive['state'])
-            return identity(archive)
-        build_legacy_receipt(**arguments(*fixture(), verified_record_identity=verify))
-        self.assertEqual(calls, ['assess', 'independent-review'])
+        args = arguments(*fixture(), verified_record_identity=native_retained_record_id)
+        args['review_pin'] = ArchivePin('0' * 64, args['review_pin'].file_sha256)
+        with self.assertRaisesRegex(Hold, 'legacy_record_identity_mismatch'):
+            build_legacy_receipt(**args)
 
     def test_record_validator_cannot_mutate_checked_input(self):
         def mutate(archive):
             before = identity(archive)
             archive['report']['verdict'] = 'changed'
             return before
-        with self.assertRaisesRegex(Hold, 'legacy_record_validator_mutated_input'):
+        with self.assertRaisesRegex(Hold, 'unsupported_legacy_record_recipe'):
             build_legacy_receipt(**arguments(*fixture(), verified_record_identity=mutate))
+
+    def test_native_recipe_preserves_default_separators_and_unicode(self):
+        archive = {'text': 'π', 'values': [1, 2]}
+        expected = sha256(json.dumps(archive, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        self.assertEqual(native_retained_record_id(archive), expected)
+        self.assertNotEqual(expected, sha256(wire(archive)).hexdigest())
+
+    def test_native_recipe_rejects_nonfinite_json_instead_of_asserting_identity(self):
+        with self.assertRaisesRegex(Hold, 'legacy_native_record_encoding'):
+            native_retained_record_id({'invalid': float('nan')})
 
     def test_duplicate_json_keys_are_rejected_even_with_matching_file_pin(self):
         args = arguments(*fixture())
@@ -206,6 +238,27 @@ class LegacyReceiptContracts(unittest.TestCase):
         self.assertEqual(args['published_review_binding'], external)
         pin = first.pop('receipt_sha256')
         self.assertEqual(pin, sha256(wire(first)).hexdigest())
+
+    def test_long_keys_and_expanded_pointers_fail_before_reference_copy(self):
+        original, review = fixture()
+        review['report']['claims'] = [{'x' * (module.MAX_KEY_BYTES + 1): SELECTED}]
+        with self.assertRaisesRegex(Hold, 'legacy_documentary_key_size'):
+            build_legacy_receipt(**arguments(original, review))
+        with patch.object(module, 'MAX_POINTER_BYTES', 10), self.assertRaisesRegex(Hold, 'legacy_documentary_pointer_size'):
+            build_legacy_receipt(**arguments(*fixture()))
+
+    def test_small_synthetic_hit_hash_and_aggregate_caps(self):
+        original, review = fixture()
+        review['report']['claims'] = [{'evidence': ' '.join([SELECTED, '8' * 64, '9' * 64])}]
+        for name, limit, reason in [('MAX_REFERENCE_HITS', 2, 'legacy_documentary_hit_limit'),
+                                    ('MAX_UNIQUE_HASHES', 1, 'legacy_documentary_hash_limit'),
+                                    ('MAX_REFERENCE_BYTES', 1, 'legacy_documentary_aggregate_limit')]:
+            with self.subTest(name=name), patch.object(module, name, limit), self.assertRaisesRegex(Hold, reason):
+                build_legacy_receipt(**arguments(original, review))
+
+    def test_final_receipt_bytes_have_an_independent_bound(self):
+        with patch.object(module, 'MAX_RECEIPT_BYTES', 64), self.assertRaisesRegex(Hold, 'legacy_receipt_size'):
+            build_legacy_receipt(**arguments(*fixture()))
 
 
 if __name__ == '__main__':
