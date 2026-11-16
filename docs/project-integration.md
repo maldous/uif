@@ -148,3 +148,104 @@ execution are separate. Use permitted evidence for each claim; unavailable
 historical receipts do not prevent qualification of available current source or
 authorize replay. These documents introduce no new scheduler, publication
 identity, product dependency, native admission or runtime transition.
+
+## Source-edition reconciliation for UIF-192
+
+The following 12 November section is retained verbatim from the documentary
+change in [UIF PR50](https://github.com/maldous/uif/pull/50) at
+`54a4ead9a2b7292111cb517080196805ecfcc5e1`. Its uses of “current” refer
+to that selected source edition, not to a fresh runtime or provider audit.
+Its final paragraph describes the separate historical ledger assessment in
+that PR; this doc-only extraction does not import those files, recreate a
+ledger, assert current row status, or make their resolution a delivery gate.
+The later accepted inventory section below is a separately pinned evidence
+edition, not evidence that every intervening product change was inspected.
+Both preserve project ownership and apply only to their stated source scope.
+
+## Current shared client-capability inventory: 12 November 2026
+
+This section integrates the accepted OffMenu and CircularQuay documentation slices for the current shared client baseline. It preserves product ownership and does not activate a provider, deploy a service, grant an entitlement or select a new runtime profile.
+
+| Shared boundary | OffMenu-owned contract | CircularQuay-owned contract |
+| --- | --- | --- |
+| Client configuration and authority | The browser consumes sanitised public `/api/services` configuration. Optional service choices are isolated in `offmenu-third-party-consent-v1`, separate from pantry/account/health stores. | Applications own SDK/MCP transport, authentication, resource authorization and session lifecycle. A client token is not a provider credential; local configuration and provider custody stay distinct. |
+| Optional integrations | Diagnostics and analytics are disabled in the example; advertising IDs/approval and consent/feedback configuration are unset. Current client behavior requires configuration and matching opt-in before optional effects. | Skills, client plugins, SDK sessions, protected MCP servers and distribution packages are different artifacts and contracts. An example URL, manifest or build is not publication, activation or provider authority. |
+| Confirmed effects and recovery | Support/document delivery requires the product's sign-in, explicit preview/confirmation and original idempotency/unknown-outcome rules. Existing app callers use `setupServices()`; no caller may attach arbitrary tracking properties. | Preserve protected per-operation policy, actual caller/provider capability, original operations and release/readback obligations. Do not infer broader provider or native capability from a portable client artifact. |
+| Product independence | OffMenu retains its application, consent and service configuration ownership. | CQ retains its CLI/SDK/MCP and provider policy ownership. Optional UIF orchestration does not become a product dependency. |
+
+Exact OffMenu source is [e16267d](https://github.com/maldous/offmenu/tree/e16267d26c75fb96047ea34159889988220c1677): [client contract](https://github.com/maldous/offmenu/blob/e16267d26c75fb96047ea34159889988220c1677/docs/third-party-client.md), [service inventory](https://github.com/maldous/offmenu/blob/e16267d26c75fb96047ea34159889988220c1677/docs/third-party-service-inventory.json), and [configuration example](https://github.com/maldous/offmenu/blob/e16267d26c75fb96047ea34159889988220c1677/config/third-party.example.json). The inventory retains its own dated observations; this integration is not a fresh provider audit. The current caller is `apps/web/src/app.js:24,302` to `services-ui.js:21`.
+
+Exact CQ source is [192b413](https://github.com/maldous/CircularQuay/tree/192b413662afcf9f323d4afbcaddc6452d174bd4): [agent/client integrations](https://github.com/maldous/CircularQuay/blob/192b413662afcf9f323d4afbcaddc6452d174bd4/docs/agent-integrations.md), [SDK contracts](https://github.com/maldous/CircularQuay/blob/192b413662afcf9f323d4afbcaddc6452d174bd4/docs/sdks.md), [release boundaries](https://github.com/maldous/CircularQuay/blob/192b413662afcf9f323d4afbcaddc6452d174bd4/RELEASE.md), and [portable skill](https://github.com/maldous/CircularQuay/blob/192b413662afcf9f323d4afbcaddc6452d174bd4/integrations/skills/cq/SKILL.md). The existing owners supplied these current slices; ANQR/CIX have no additional selected contribution for this scoped join.
+
+The accompanying ledger assessment records the finite OffMenu profile support, unavailable original routing-candidate relation and CQ continuation plan separately. GitHub server PR records provide supported correlation for a normal authorised PR operation; row 051 remains open because no current shared CQ write/owner-held intent is selected and old raw-push correlation remains unavailable. None of these documentary dispositions releases a live combined effect or relabels missing old receipts successful.
+
+## Accepted client-capability baseline (UIF-192)
+
+This section integrates the independently accepted, bounded source-metadata
+inventory from [UIF-192](https://linear.app/maldous/issue/UIF-192).
+It is a historical source baseline, not a claim that today's product editions,
+service installations or entitlements have been reverified.
+
+The accepted OffMenu edition is commit
+`3540b2d4d5f4e96a518a63c832ccd6c3db809686`, tree
+`62efa45bb564affe4f1f1b2388bbb3447a14482c`. The nine-file inventory SHA-256 is
+`1f52e20702f1faab8c82ddf9fb3688ef25bfa8cc9e456284386267fba0c1e76d`;
+independent review SHA-256 is
+`852b899a535a5a8f304ba78b820ffc0af7143191e797e57e9dd22db8a96ab66d`.
+The [accepted review record](https://linear.app/maldous/issue/UIF-192#comment-617ee572-e937-490d-a7af-26477584bc6a)
+supersedes the earlier pending-review wording without rewriting its history.
+Reuse that acceptance; no repeat inventory or test suite is required solely
+to integrate these source-qualified lessons.
+
+| Accepted source evidence | Shared lesson and product boundary |
+| --- | --- |
+| OffMenu service-config.mjs projects strict V1 public metadata using THIRD_PARTY_CONFIG, SERVICE_GLOBAL_SETTINGS and SENTRY_DSN configuration names. | Record schema/name and applicability separately from actual configured values. Do not copy tenant identifiers, credentials or private configuration into shared documentation. |
+| service-observability.mjs implements a filtered server Sentry envelope, diagnostic-code allowlist, authenticated same-origin consent route, bounded body/rate handling and five-second abort/redirect refusal. | A source hook is not a full browser SDK, replay installation, provider entitlement or demonstrated runtime delivery. |
+| services-model.js/services-ui.js and docs/third-party-client.md describe independent device choices, optional OffMenu categories defaulting off, fixed vendor loaders, Zaraz purpose consent and local/TCF AdSense requirements. | Optional collection remains off until its particular purpose, consent, rights and entitlement are qualified. Preserve the recorded withdrawal limitations; a shared baseline does not activate ads, analytics or replay. |
+| serviceCSP and handler.mjs contain conditional vendor origins. | CSP permission is neither user consent nor evidence that a vendor loaded. |
+| auth-runtime.mjs/netlify.toml contain source-level hosting/auth wiring; OFFMENU_AUTH_MODE selects the existing Netlify/Better Auth route. | Presentation labels that mark Cloudflare or Netlify Identity configured even with an empty environment do not prove deployment, authentication, plan, capacity or entitlement. |
+
+### Applicability and existing follow-ups
+
+The accepted inventory observed browser/server JavaScript. Its bounded path
+scan found no Android directory or .kt/.gradle/.kts files at that edition;
+native Android and actual mobile behavior remain unqualified, not universally
+absent. Eight existing service/consent test files were identified, not run.
+The terminal metadata receipt's hardcoded seven-assertion label was inaccurate:
+the original script contained six assert statements, some covering multiple
+conditions. Preserve that correction; it is not a test-suite count.
+
+Circular Quay adopted the source-hook versus SDK/runtime and configured-label
+versus entitlement distinctions through its existing coordinator. Its
+[UIF-172](https://linear.app/maldous/issue/UIF-172) native telemetry contract
+retains default-on metrics, explicit disable before initialization and optional
+browser diagnostics. OffMenu's optional browser default-off choices do not
+override that different native contract.
+[UIF-176](https://linear.app/maldous/issue/UIF-176) and CQ's existing RELEASE
+documentation retain hosting, provider entitlement, identity and provisioning.
+No product flags or private configuration are selected here.
+
+OffMenu [UIF-184](https://linear.app/maldous/issue/UIF-184) retains its
+developer-interface response-envelope/reference gap. An under-specified OpenAPI
+envelope was observed, but strict schema invalidation was not established:
+missing required-field declarations and allowed extra fields matter.
+Bind a declared schema and actual current response evidence separately.
+Do not duplicate these product follow-ups in a shared queue.
+
+For later reuse, the existing project owner records the selected current source
+and maintained module, configuration schema/name, client surface, purpose,
+entitlement/applicability, consent/privacy/redaction, lifecycle/recovery behavior
+and qualified evidence. Keep compiled, configured, deployed and actually verified
+states distinct. Unknown fields remain unknown; public provider documentation
+and accepted historical source are not grants.
+
+This documentary integration does not resolve all client-surface, entitlement,
+consent or recovery obligations under UIF-192 and does not hold unrelated
+delivery. Current product changes remain with their owners; service activation
+and provider effects require their existing authorization. No new platform,
+adapter, universal release gate or collection requirement is introduced.
+
+Original [submission](https://windmill.aldous.info/run/01a1ae0d-ab59-a4c5-163d-56af76bf8362?workspace=offmenu)
+and [terminal metadata receipt](https://windmill.aldous.info/run/01a1ae0d-e68d-6d21-af54-723203ea5f1e?workspace=offmenu)
+retain their original scope. Publication of this section is not a new runtime
+or provider verification.
