@@ -11,6 +11,9 @@ actual policy digest, task/source, owned paths, executor and original operation
 identities to children; verify their acknowledgements. Project and nested
 instructions retain product, toolchain, privacy, review and publication authority.
 
+Read the [dated cloud-owner process checkpoint](docs/agents/cloud-owner-process-exercise-2026-11-16.md)
+for bounded verified examples; it does not replace the policy or prove BAU.
+
 Use [the operating procedure](docs/operating-procedure.md) for execution or mode
 changes. Before startup, transfer, quota recovery, replacement or interruption
 recovery, read the complete [white-room recovery contract](docs/white-room/startup-and-recovery.md)
