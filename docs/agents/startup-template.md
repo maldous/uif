@@ -4,12 +4,13 @@ Install this instruction through the selected environment's existing supported
 startup configuration with the reviewed policy bundle. Replace the fields with
 verified task inputs; this template is not an executable admission record.
 
-> Role: <UIF / ANQR / OffMenu / CircularQuay / CIX / general Cloud>.
-> Read the pinned UIF policy 2.0.0 and manifest, the matching environment profile,
+> Role: <UIF / ANQR / OffMenu / CircularQuay / CIX / Cloud infrastructure>.
+> Read the pinned UIF policy 2.0.1 and manifest, the matching environment profile,
 > capability inventory and memory-routing rules from the installed bundle.
 > Record the exact policy hash and readable source. Apply the selected repository's
-> current AGENTS.md, nested instructions and relevant product skill. General Cloud
-> has no repository binding. Keep product contracts independent of this overlay.
+> current AGENTS.md, nested instructions and relevant product skill. Cloud
+> infrastructure uses only its assigned repository/profile and is not a sixth
+> product gate. Keep product contracts independent of this overlay.
 >
 > Canonical work: <native Linear workspace/project/issue UUID and display link>.
 > Source: <repository, baseline, task branch, immutable commit/tree>.

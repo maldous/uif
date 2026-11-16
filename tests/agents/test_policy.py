@@ -122,9 +122,37 @@ class PolicyTests(unittest.TestCase):
         self.assertIn('A selected repository requires --role',
                       self.check(project_repository='maldous/offmenu'))
 
-    def test_general_cloud_cannot_acquire_repository_binding(self):
-        self.profiles(lambda data: data['logical_roles']['cloud'].update(repository_binding=['other/repo']))
-        self.assertIn('General Cloud role must have no repository binding', self.check())
+    def test_cloud_repository_binding_is_exact_and_cannot_expand(self):
+        for bindings in ([], ['other/repo'], ['maldous/aldous-info-platform', 'other/repo']):
+            with self.subTest(bindings=bindings):
+                self.profiles(lambda data: data['logical_roles']['cloud'].update(repository_binding=bindings))
+                self.assertIn('Cloud infrastructure role must retain its exact assigned repository and non-product boundary', self.check())
+
+    def test_cloud_cannot_become_sixth_product_gate(self):
+        self.profiles(lambda data: data['project_delivery_matrix'].append('cloud'))
+        self.assertIn('Project delivery matrix must contain exactly the five project roles', self.check())
+
+    def test_delivery_matrix_rejects_duplicates_and_missing_roles(self):
+        for matrix in (['uif'] * 5, ['uif', 'offmenu', 'anqr', 'cix']):
+            with self.subTest(matrix=matrix):
+                self.profiles(lambda data: data.update(project_delivery_matrix=matrix))
+                self.assertIn('Project delivery matrix must contain exactly the five project roles', self.check())
+
+    def test_cloud_role_does_not_inherit_provider_or_publication_authority(self):
+        for change in (dict(baseline='develop'), dict(role_kind='product'),
+                       dict(project_delivery_matrix_member=0), dict(product_instructions=None),
+                       dict(infrastructure_details='public'), dict(repository_visibility_changes=0)):
+            with self.subTest(change=change):
+                original = (ROOT / module.PROFILES_PATH).read_bytes()
+                (self.root / module.PROFILES_PATH).write_bytes(original)
+                self.profiles(lambda data: data['logical_roles']['cloud'].update(change))
+                self.assertIn('Cloud infrastructure role must retain its exact assigned repository and non-product boundary', self.check())
+
+    def test_cloud_routing_reference_selects_only_assigned_infrastructure_repository(self):
+        reference = self.reference(repository='maldous/aldous-info-platform', environment_profile='cloud')
+        self.assertEqual(module.check_reference(self.root, reference, role='cloud'), [])
+        reference = self.reference(repository='maldous/offmenu', environment_profile='cloud')
+        self.assertIn('Policy reference repository does not belong to its role', module.check_reference(self.root, reference))
 
     def test_products_cannot_require_a_local_operational_copy(self):
         self.profiles(lambda data: data['logical_roles']['offmenu'].update(operational_policy='reviewed-local-copy'))
@@ -263,7 +291,7 @@ class PolicyTests(unittest.TestCase):
     def reference(self, **changes):
         value = {
             'schema': 'uif-worker-policy-reference-v1', 'policy_id': 'uif-worker-policy',
-            'required_policy_version': '2.0.0', 'repository': 'maldous/offmenu',
+            'required_policy_version': module.VERSION, 'repository': 'maldous/offmenu',
             'environment_profile': 'offmenu', 'distribution': 'environment-owned-overlay',
             'maintenance_repository': 'maldous/uif', 'maintenance_path': module.POLICY_PATH,
             'manifest_path': module.MANIFEST_PATH,

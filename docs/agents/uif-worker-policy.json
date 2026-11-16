@@ -1,10 +1,10 @@
 {
   "schema": "uif-worker-policy-manifest-v2",
   "policy_id": "uif-worker-policy",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "repository": "maldous/uif",
   "policy_path": "docs/agents/uif-worker-policy.md",
-  "sha256": "a032e8f09c4c67da9a328e19fe25af3c3e1d0a52b143aa70524e3281fb1754d1",
+  "sha256": "7b54579a72c16c504bf4a82d875a0ca770d851787ba62035e446ec673e6db54f",
   "maintenance_repository": "maldous/uif",
   "maintenance_path": "docs/agents/uif-worker-policy.md",
   "distribution": "environment-owned",
@@ -12,6 +12,6 @@
   "capabilities": "docs/agents/skills-and-plugins.md",
   "memory": "docs/agents/memory-routing.md",
   "startup_template": "docs/agents/startup-template.md",
-  "base_commit": "b68cfcb5fa6745f1c1642f2cbe4c211191410901",
+  "base_commit": "f0f2aa4b38ef3f9d761c43c3e842d863d69cf9f9",
   "adoption": "source bundle only; environment installation, acknowledgment and execution require separate evidence"
 }

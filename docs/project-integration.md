@@ -1,9 +1,10 @@
 # Project integration and historical dispositions
 
-The [policy 2.0.0](agents/uif-worker-policy.md) is environment-owned. Its
+The [policy 2.0.1](agents/uif-worker-policy.md) is environment-owned. Its
 [profiles](agents/environment-profiles.json) retain UIF, ANQR, OffMenu,
-CircularQuay and CIX project roles plus a general Cloud role without a Git
-binding. Product AGENTS.md remains self-contained; the overlay does not become
+CircularQuay and CIX project roles plus the assigned Cloud infrastructure role.
+Cloud owns maldous/aldous-info-platform and provider adapters, not a sixth product
+gate; original live-site/publisher custody remains separate from repository source. Product AGENTS.md remains self-contained; the overlay does not become
 a product build/runtime dependency. UIF owns shared Stokowski, Windmill,
 LangChain/LangGraph, GitHub and Linear integration corrections; products retain
 their own source, acceptance and publication controls.
@@ -21,7 +22,7 @@ route execution; they do not assert agent provisioning or product readiness.
 | CircularQuay | maldous/CircularQuay; feature/initial-implementation during PR1 bootstrap | Current product AGENTS, contribution/security/qualification contracts and actual Go/SDK/browser pins. Empty develop is not its current bootstrap source. Preserve exact provider/data grants and synthetic-versus-real evidence. |
 | CIX product | cix-project/cix; develop | Product activation record and independent review, Rust/native/codec requirements and Gitflow. Governance checks are not a native build/runtime pass. |
 | CIX operations | private cix-project/cix-operations; develop | Current custodian/Ready issue, separate reviewer, owned paths and resource budget. Preserve stopped-benchmark and publication holds; dated historical resource policies are not today's global defaults. |
-| General Cloud | No repository binding | Authorized general coordination/non-repository work. Project Git work stays with its owner. |
+| Cloud infrastructure | maldous/aldous-info-platform; main | Assigned source and infrastructure/provider adapters only. Preserve existing live-site/publisher custody; not a sixth product delivery gate or inferred deployment permission. Public-safe infrastructure configuration/assets may be kept in the public repository without mandatory homepage presentation; secrets and private provider details stay private. No visibility change. |
 
 CIX surfaces share one logical role but retain separate repositories and disclosure
 boundaries. Do not expose private operational source, receipts or data in public
