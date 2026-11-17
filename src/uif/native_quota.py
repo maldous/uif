@@ -99,6 +99,13 @@ class NativeQuotaBoundary:
                     "native_pool_binding")
             token(permit.lease_id)
             self.registry._fresh(permit.observed_at)
+            # Pool reservation can outlast provider evidence or allow a stop
+            # observation to commit. Like the awaited boundary, recheck the
+            # admitted intent immediately before launching the native child.
+            self.registry.recheck_effect(
+                principal=profile.principal, actor=profile.actor, key=profile.key,
+                generation=profile.generation, operation_id=operation_id,
+                source=profile.source, reasoning=True)
             # dispatch_native retains the original Stokowski state machine and
             # its exact supported runtime configuration; no replacement runner.
             returned = dispatch_native(issue, permit)
