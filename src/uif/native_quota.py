@@ -152,9 +152,31 @@ class NativeQuotaBoundary:
             return dict(scheduled=False, reason="provider-evidence-stale")
         # A retry timer confers no dispatch permission. dispatch() repeats fresh
         # provider, claim, white-room and real Pool admission before work.
+        def effect():
+            # Reconstruction can admit a newer provider observation before
+            # this callback. Match the awaited boundary's no-start decision.
+            _, current = self._profile(issue)
+            latest = current["provider"]
+            reason = None
+            if current["stopped"]:
+                reason = "service-stopped"
+            elif latest is None or latest["classification"] in {"hard-quota", "auth-failure", "unknown"}:
+                reason = "provider-unavailable"
+            else:
+                try:
+                    self.registry._fresh(latest["observed_at"], FRESH_SECONDS)
+                except Hold:
+                    reason = "provider-evidence-stale"
+            if reason is not None:
+                return dict(status="denied", receipt_sha256=digest(dict(
+                    schema="uif-native-retry-refusal/1", key=profile.key.identity,
+                    generation=profile.generation, attempt=attempt, delay_ms=delay_ms,
+                    provider=latest, stopped=current["stopped"], reason=reason)))
+            return schedule_native(issue, attempt, delay_ms)
+
         return self.guarded_effect(
             issue, operation_id=f"retry-{attempt}", payload_sha256=digest(dict(attempt=attempt, delay_ms=delay_ms)),
-            effect=lambda: schedule_native(issue, attempt, delay_ms))
+            effect=effect)
 
 
 async def _await(value):
