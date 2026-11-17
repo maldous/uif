@@ -24,6 +24,7 @@ P = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(P)
 BUNDLE = ROOT / "config/windmill/project-checks"
 SYNTHETIC = b"OWNED_SYNTHETIC_ARCHIVE_NOT_EXECUTED"
+ACCOUNT_LOOKUP_METHOD = "getpwnam"  # Python method identifier, not a credential.
 
 
 def values(source):
@@ -99,7 +100,7 @@ class StagingContracts(unittest.TestCase):
         self.destination.mkdir(mode=0o700)
         self.addCleanup(mock.patch.stopall)
         mock.patch.object(P, "ARCHIVE_SHA256", hashlib.sha256(SYNTHETIC).hexdigest()).start()
-        mock.patch.object(P.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.geteuid())).start()
+        mock.patch.object(P.pwd, ACCOUNT_LOOKUP_METHOD, return_value=SimpleNamespace(pw_uid=os.geteuid())).start()
 
     def root_context(self):
         stack = contextlib.ExitStack()
