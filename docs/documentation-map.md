@@ -6,7 +6,7 @@ the only current intake, owner, dependency and acceptance system. This map and
 its [machine-readable inventory](documentation-inventory.json) are frozen source
 references, not a second work queue, current claim or operational gate.
 
-## Source and coverage
+## Original inventory edition and later navigation
 
 The input is `maldous/uif` commit
 `98e810989148db793d9fe5e352b4be5405e0f0a6`, tree
@@ -17,8 +17,19 @@ workflow indexed all 40 with no skipped files. Incremental refresh from the
 preceding accepted revision reused 39 and updated 1; source-universe digest is
 `31cea78dbe18ac214a660ae033201150e84f6d2e92fc5b15300b99c765201a94`.
 Indexing proves source coverage, not that every document or runtime is correct.
-This new map, inventory JSON and README pointer are the separate delivery delta;
+The original delivery comprised this map, inventory JSON and README pointer;
 the inventory does not recursively hash itself or relabel baseline blobs.
+
+Those 40 files remain the inventory's frozen edition, not a count of every later
+documentation addition. The accepted maps preserved from documentation composition
+`10000a245087c1a13dedfb8a2ada0e91d93cf7ed`, tree
+`25f8e6e96c0ea16be7dfe1b0f64c29eb475d7c4d`, are now linked through the bounded
+[state-machine index](architecture/state-machines/README.md): ten maps with 39
+stable IDs. The original eleven IDs and five fully read source/test files belong
+to its dated 134-path primary edition. Seven later maps add 28 IDs at source
+`43fa5e645e1cdb91ec75136a7509b8c88c085ab9`; they retain separate input/read
+boundaries. This navigation update neither extends the old 40-file inventory by
+implication nor establishes complete UIF-249/UIF-260 or installed-runtime coverage.
 
 The package metadata declares Python >=3.12, version 2.0.1, no runtime dependencies,
 `uif` and `uif.white_room` packages, and the `uif-quota-handoff` entrypoint.
@@ -38,6 +49,8 @@ installed service, current provider grants or useful unattended operation.
 | Deterministic Foo checks | [Workspace](agents/windmill-workspace.md), [exact-branch checks](operations/project-checks-source-branch.md), [Windmill qualification](windmill/qualification.md) | Actual deployed schema/catalog and immutable expected commit; original operation status, not repeat submission. |
 | Capability selection | [Skills/plugins](agents/skills-and-plugins.md), [startup template](agents/startup-template.md), [memory routing](agents/memory-routing.md) | File access, discovery, engine invocation and permission are separate observations. |
 | Shared architecture | [Architecture](architecture.md), [foundation ADR](adr/0001-foundation-repository.md), [evidence](evidence.md) | Current boundary statements coexist with explicitly dated historical sections. |
+| Implicit machines and adapter protocols | [Bounded machine index](architecture/state-machines/README.md), [source coverage account](architecture/state-machines/source-coverage-20261116.json) | Ten source maps and their distinct editions/read scopes; not exhaustive coverage, live state or execution authority. |
+| Original foundation versus current edition | [Requirements correspondence](architecture/foundation-correspondence-20261116.md) | Accepted donor, evolved develop source, old operation outcome and main/release acceptance remain separate. |
 | Runtime seams and limitations | [Native quota realization](operations/native-quota-realization.md), [continuity decisions](operations/continuity-decisions.md), [drift](operations/foo-stokowski-drift.md) | Code-injected verifiers and actual installed callsites are required. Prototype source is not an off-Foo authority. |
 | Retained source-free compatibility | [Legacy receipts](operations/legacy-source-free-receipts.md) | File, native canonical-record and documentary joins differ; no receiving/clearance/Git/runtime authorization. |
 | Future-clone corrections | [CIX migration](white-room/cix-source-selection.md), [explicit profiles](white-room/future-clone-profiles.md) | Selected source only; preserve old workspaces, publication intents and claim/admission controls. |
@@ -72,12 +85,12 @@ and existing contract tests before using a symbol.
 
 | Finding or remaining outcome | Existing owner/issue and next concrete unit | This unit's disposition |
 | --- | --- | --- |
-| No single current documentation/API navigation index | UIF-260: this exact source inventory, map and thin README pointer | Corrected by this candidate; independent source/usability review is still required. |
+| No single current documentation/API navigation index | UIF-260: this exact source inventory, map and thin README pointer | Accepted bounded source/navigation unit integrated through [PR66](https://github.com/maldous/uif/pull/66); broader completeness/usability remains open. |
 | Environment-owned skills rebuilt after reboot | Cloud owns shared distribution under UIF-266; UIF-247 owns shared policy/adoption and this project consumes its verified source | Do not copy skills into runtime dependencies or rewrite dated original installation receipts as reconstructed bytes. |
 | Unimplemented independent off-Foo authority/scheduling | Existing UIF-247/UIF-120 lifecycle units: select and qualify the actual adapter without fabricating an endpoint/provider | Current policy and source boundaries already say unimplemented/unqualified; no new blanket gate. |
 | Original source-free receiving and publisher effects | UIF-120 and original project owners: preserve exact accepted archives/tuples, current custody and supported original status | Receipt compatibility is source evidence, not original effect clearance. Do not repeat content review to repair an adapter. |
 | Source/caller/consumer role binding | UIF-140 and UIF-161: inspect actual affected consumer and versioned handoff | Future-hook correction does not retarget sealed original publication intents. |
-| Complete implicit state-machine documentation | UIF-249: inventory current producer/consumer transitions and genuine side effects against exact source | API table is an entry point, not completion of that broader behavior audit. |
+| Complete implicit state-machine documentation | UIF-249: reuse the accepted core, adapter, White Room, policy, Windmill and inventory maps; reconcile only uncovered scope and interactions | The machine index and coverage account retain partial/unknown dispositions; neither 39 IDs nor this API table completes the broader behavior audit. |
 | Actual production destination/release readiness | UIF-268 with UIF-267/UIF-127/UIF-218/UIF-160: current destination, publisher, immutable artifact and original operation | Package version, a build or a declared pipeline is not deployment/release readiness. |
 | Cross-project terminology alignment | UIF-260 with fixed peer documentation owners: compare selected public contracts, not implementation identity | Five product roles plus the separate Cloud infrastructure role; no common runtime/release gate. |
 | Rendered design/accessibility | UI work remains with its actual surface/owner, including Cloud dashboard work | This repository unit is documentation/source interfaces, with no visual product surface to justify an Impeccable engine run. |
@@ -91,5 +104,6 @@ catalog discovery and a successful invocation are different facts.
 
 No new security/privacy setting, provider, permission, service, queue or release
 gate is introduced. Validate only this delta's source coverage, links and
-examples; reuse unchanged accepted qualification. The full UIF-260 outcome still
-needs its independent review and any genuinely missing content follow-through.
+examples; reuse unchanged accepted qualification. PR66's bounded inventory review remains credited; the full UIF-260 outcome still
+needs broader completeness/usability/interface review and genuinely missing
+content follow-through.
