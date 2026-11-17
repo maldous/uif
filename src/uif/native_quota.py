@@ -95,7 +95,8 @@ class NativeQuotaBoundary:
         def effect():
             permit = self.pool_admit(profile, operation_id)
             require(isinstance(permit, PoolPermit) and permit.key == profile.key
-                    and permit.generation == profile.generation and permit.operation_id == operation_id,
+                    and permit.generation == profile.generation and permit.operation_id == operation_id
+                    and isinstance(permit.receipt_sha256, str) and SHA.fullmatch(permit.receipt_sha256),
                     "native_pool_binding")
             token(permit.lease_id)
             self.registry._fresh(permit.observed_at)
