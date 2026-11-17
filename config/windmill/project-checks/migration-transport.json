@@ -1,0 +1,578 @@
+{
+  "maximum_expanded_bytes": 59491,
+  "maximum_root_command_bytes": 26276,
+  "method": "Static data/literal transformation mirroring unchanged fixed emitter; no candidate function/import/compile execution, host operation or compression/cap bypass. ast.parse only. Existing zlib transport measured, not changed. Request upperbound38operation/200branch with install_locked=False, whose JSON false literal is one byte longer than true. Guards stay unchanged; overlong/invalid combinations are size bounds, not newly permitted requests.",
+  "profiles": [
+    {
+      "effective_sha256": "79c2e99d008bf1388be98b6cf069d0a4970084d7dca7a067c4e168e1258c9470",
+      "expanded_bytes": 42789,
+      "project": "uif",
+      "root_command_upper_bytes": 20612,
+      "target": "test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "79c2e99d008bf1388be98b6cf069d0a4970084d7dca7a067c4e168e1258c9470",
+      "expanded_bytes": 42789,
+      "project": "uif",
+      "root_command_upper_bytes": 20613,
+      "target": "check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "79c2e99d008bf1388be98b6cf069d0a4970084d7dca7a067c4e168e1258c9470",
+      "expanded_bytes": 42789,
+      "project": "uif",
+      "root_command_upper_bytes": 20615,
+      "target": "compile",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "79c2e99d008bf1388be98b6cf069d0a4970084d7dca7a067c4e168e1258c9470",
+      "expanded_bytes": 42789,
+      "project": "uif",
+      "root_command_upper_bytes": 20613,
+      "target": "build",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "79c2e99d008bf1388be98b6cf069d0a4970084d7dca7a067c4e168e1258c9470",
+      "expanded_bytes": 42789,
+      "project": "uif",
+      "root_command_upper_bytes": 20619,
+      "target": "environment",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "79c2e99d008bf1388be98b6cf069d0a4970084d7dca7a067c4e168e1258c9470",
+      "expanded_bytes": 42789,
+      "project": "uif",
+      "root_command_upper_bytes": 20634,
+      "target": "exact_producer_wheel_smoke",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20110,
+      "target": "typecheck",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20105,
+      "target": "test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20112,
+      "target": "conformance",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20112,
+      "target": "environment",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20134,
+      "target": "http_finite_measurement_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20133,
+      "target": "mcp_finite_measurement_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20126,
+      "target": "roundtrip_proof_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20130,
+      "target": "roundtrip_admission_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20136,
+      "target": "remote_asset_measurements_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20133,
+      "target": "roundtrip_remote_asset_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20127,
+      "target": "artefact_current_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20126,
+      "target": "decoder_current_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "1ff3840fb8c22339a7d82f092307e2ea48ab9114ff141bb59c8ec3b2e2b56796",
+      "expanded_bytes": 42744,
+      "project": "anqr",
+      "root_command_upper_bytes": 20135,
+      "target": "scan_safe_finite_current_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22557,
+      "target": "check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22556,
+      "target": "test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22562,
+      "target": "whitespace",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22564,
+      "target": "native_check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22557,
+      "target": "build",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22563,
+      "target": "environment",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22563,
+      "target": "native_unit",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22572,
+      "target": "native_default_tests",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22572,
+      "target": "native_api_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22577,
+      "target": "decoder_closure_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22569,
+      "target": "sdk_notice_layout",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22575,
+      "target": "sdk_uninstall_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "2033b666dbc5575c5d67c244a52d9743cb09cc98330c5fadac07903a961f24fc",
+      "expanded_bytes": 47698,
+      "project": "cix",
+      "root_command_upper_bytes": 22579,
+      "target": "cli_path_identity_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20025,
+      "target": "build",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20024,
+      "target": "test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20025,
+      "target": "check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20032,
+      "target": "release_plan",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20031,
+      "target": "environment",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20026,
+      "target": "layout",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20034,
+      "target": "delivery_tests",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20034,
+      "target": "delivery_check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20038,
+      "target": "provider_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20047,
+      "target": "standalone_repository_check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20049,
+      "target": "standalone_provider_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20044,
+      "target": "scanner_locale_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20044,
+      "target": "scanner_cancel_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20051,
+      "target": "scanner_static_locale_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20051,
+      "target": "dynamic_ar_vocabulary_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "70b6e9e1c814a338e03754674bfd5a69461fe4a6fab63d8718496f2a4ea8a3c4",
+      "expanded_bytes": 42361,
+      "project": "offmenu",
+      "root_command_upper_bytes": 20055,
+      "target": "pantry_duration_optimizer_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21694,
+      "target": "check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21693,
+      "target": "test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21698,
+      "target": "sdk_build",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21697,
+      "target": "sdk_lint",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21702,
+      "target": "sdk_typecheck",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21697,
+      "target": "sdk_test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21700,
+      "target": "environment",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21697,
+      "target": "go_build",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21707,
+      "target": "go_cq162_candidate",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21709,
+      "target": "audit_evidence_tests",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21710,
+      "target": "go_coverage_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21701,
+      "target": "sdk_coverage",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21710,
+      "target": "go_boundary_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21718,
+      "target": "go_runtime_boundary_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21716,
+      "target": "go_cq174_boundary_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "22aa1e5a2a6cc26b92f8b8811887c4ee7e6084a516ca40092607d6427d7ba066",
+      "expanded_bytes": 47330,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 21713,
+      "target": "go_cq174_guard_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "17355161c892efca0cad0fdbbe0460c8b9089b86c20c1213cbac5533ed5ac8ac",
+      "expanded_bytes": 59491,
+      "project": "circularquay_feature",
+      "root_command_upper_bytes": 26276,
+      "target": "cq_source_sdk_join",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "c335c7f2215ae89f7d9131ff50664fb919ef7329c100ffab4494185c56a6d1b6",
+      "expanded_bytes": 38561,
+      "project": "cloud",
+      "root_command_upper_bytes": 18831,
+      "target": "build",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "c335c7f2215ae89f7d9131ff50664fb919ef7329c100ffab4494185c56a6d1b6",
+      "expanded_bytes": 38561,
+      "project": "cloud",
+      "root_command_upper_bytes": 18830,
+      "target": "test",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "c335c7f2215ae89f7d9131ff50664fb919ef7329c100ffab4494185c56a6d1b6",
+      "expanded_bytes": 38561,
+      "project": "cloud",
+      "root_command_upper_bytes": 18831,
+      "target": "check",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "c335c7f2215ae89f7d9131ff50664fb919ef7329c100ffab4494185c56a6d1b6",
+      "expanded_bytes": 38561,
+      "project": "cloud",
+      "root_command_upper_bytes": 18830,
+      "target": "lint",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "c335c7f2215ae89f7d9131ff50664fb919ef7329c100ffab4494185c56a6d1b6",
+      "expanded_bytes": 38561,
+      "project": "cloud",
+      "root_command_upper_bytes": 18840,
+      "target": "lint_contracts",
+      "within_65536_32000": true
+    },
+    {
+      "effective_sha256": "c335c7f2215ae89f7d9131ff50664fb919ef7329c100ffab4494185c56a6d1b6",
+      "expanded_bytes": 38561,
+      "project": "cloud",
+      "root_command_upper_bytes": 18837,
+      "target": "environment",
+      "within_65536_32000": true
+    }
+  ],
+  "runtime_qualified": false,
+  "schema": "source-only-fixed-helper-transport-measurements/1",
+  "source_sha256": "f5345d0dd0c4e89afac9342059a641440c662d97b27daf87da8401986fa46720"
+}
