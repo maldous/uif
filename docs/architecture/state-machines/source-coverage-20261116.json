@@ -1,7 +1,7 @@
 {
   "schema": "uif-state-machine-source-coverage/1",
   "purpose": "Versioned documentation coverage accounting only; not work intake, a controller, runtime ledger, policy gate or implementation queue.",
-  "edition": "partial-current-Git-source-passes-1-2",
+  "edition": "partial-current-Git-source-passes-1-3",
   "complete": false,
   "primary": {
     "repository": "maldous/uif",
@@ -742,19 +742,21 @@
         "git_blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
         "sha256": "840dec50c59258e341bef7919f2d1fab22e0c733b1da66c0fd29a83d2a556d7e",
         "bytes": 43694,
-        "review_status": "partial-store-consumer-context-read-not-executed",
+        "review_status": "full-static-read-not-executed",
         "machine_ids": [
           "UIF-STORE-HOT-TRANSACTION",
           "UIF-STORE-COLD-RETENTION",
-          "UIF-STORE-TASK-FENCE"
+          "UIF-STORE-TASK-FENCE",
+          "UIF-REG-REQUEST",
+          "UIF-REG-COORDINATOR",
+          "UIF-REG-MODE",
+          "UIF-REG-TASK",
+          "UIF-REG-EFFECT"
         ],
         "reviewed_spans": [
-          "176-230",
-          "284-397",
-          "455-489",
-          "623-765"
+          "1-765"
         ],
-        "review_limit": "Selected store/provisioning/authentication/idempotency/effect context only. Full registry state-machine coverage remains open."
+        "review_limit": "Complete registry module read statically. CLI, adapter callers and full test-source oracles remain separate coverage; no runtime or tests executed."
       },
       {
         "path": "tests/agents/test_install_policy_bundle.py",
@@ -1704,5 +1706,659 @@
     "Installed native Core, helper, service and provider execution surfaces are outside these Git snapshots; current private observations remain in existing issues120/127/247/266/267. No runtime source is copied or alleged absent.",
     "Current Linear impact mapping is partial and must be refreshed before any complete inventory claim."
   ],
-  "evidence_strength": "Source bytes and bounded semantic reads only; full reads and partial consumer spans are distinguished. No old tests/imports/runtime or legacy-effect replay."
+  "evidence_strength": "Source bytes and bounded semantic reads only; full reads and partial consumer spans are distinguished. No old tests/imports/runtime or legacy-effect replay.",
+  "accepted_source_map_supplement_43fa": {
+    "purpose": "Additive reconciliation of attributed accepted source-map evidence; not a replacement source universe, new intake queue or complete coverage claim.",
+    "source_edition": {
+      "repository": "maldous/uif",
+      "commit": "43fa5e645e1cdb91ec75136a7509b8c88c085ab9",
+      "tree": "3e527ec703921bb8efe9e8087b16e5fdcfdcfbae",
+      "tracked_file_count": 139,
+      "whole_edition_review_complete": false
+    },
+    "document_postimage_edition": {
+      "commit": "10000a245087c1a13dedfb8a2ada0e91d93cf7ed",
+      "tree": "25f8e6e96c0ea16be7dfe1b0f64c29eb475d7c4d",
+      "disposition": "Local accepted documentation union; remote publication, merge, installation and runtime adoption are not asserted."
+    },
+    "historical_account_preserved": {
+      "primary_edition": "partial-current-Git-source-passes-1-3",
+      "primary_commit": "5a9d08866066c149e06bb7cde713c77d33b7998b",
+      "primary_tree": "d66db94fbf9276f23a0d35d8daaa9d50c835aa22",
+      "primary_file_count": 134,
+      "primary_and_hosted_boundary_objects_unchanged": true,
+      "complete": false
+    },
+    "read_scope_definitions": {
+      "full": "The referenced accepted map attributes a complete bounded read of this file; not a new read, semantic re-review or test execution by this reconciliation.",
+      "excerpt": "Only the named symbols/span or boundary was attributed; the whole-file hash pins the edition, not a full semantic review.",
+      "context": "Declaration, schema, bundle or dated custody context, not semantic/runtime acceptance."
+    },
+    "counts": {
+      "map_documents": 8,
+      "unique_machine_ids": 33,
+      "additional_navigation_machine_ids": 28,
+      "registry_ids_already_indexed": 5,
+      "input_references_by_read_scope": {
+        "full": 44,
+        "excerpt": 4,
+        "context": 6
+      },
+      "interpretation": "Per-map input references can overlap. Do not sum them with the historical five full reads or treat them as a current whole-repository reviewed-file count."
+    },
+    "maps": [
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/registry-model.md",
+          "git_blob": "b17745b66d2a8662eeecde8b488c8410d14d13bb",
+          "sha256": "530275a24945207c42575ff817fe155c63a58f616988bc0aab1537238f80625a",
+          "bytes": 14686
+        },
+        "machine_ids": [
+          "UIF-REG-REQUEST",
+          "UIF-REG-COORDINATOR",
+          "UIF-REG-MODE",
+          "UIF-REG-TASK",
+          "UIF-REG-EFFECT"
+        ],
+        "source_inputs": [
+          {
+            "path": "src/uif/quota_handoff.py",
+            "git_blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
+            "sha256": "840dec50c59258e341bef7919f2d1fab22e0c733b1da66c0fd29a83d2a556d7e",
+            "bytes": 43694,
+            "role": "implementation-source",
+            "read_scope": "full",
+            "scope_detail": "Complete 765-line registry read already attributed by the accepted map; same blob as the historical primary edition."
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution.",
+        "limits": [
+          "Line references retain the original 5a9d0886 primary edition; the documented registry blob is unchanged at43fa.",
+          "Named quota-handoff, registry-transition and native-quota tests are follow-up entrypoints, not newly inspected full oracles in this map."
+        ]
+      },
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/linear-scope-and-cli.md",
+          "git_blob": "bb4305158273086cbe23d874eeaad4ffc1a347a8",
+          "sha256": "79a46b6f1e23b14858c50a8382ebc303c84e2ad25355fc0d8209fd2d78c8563f",
+          "bytes": 10303
+        },
+        "machine_ids": [
+          "UIF-SCOPE-PROJECTION",
+          "UIF-QUOTA-CLI"
+        ],
+        "source_inputs": [
+          {
+            "path": "src/uif/linear_scope.py",
+            "git_blob": "5bb30283117c89ac825d1eb23abccdcbfac562fe",
+            "sha256": "2e2b84aac1a51adee2586599fab12deb68287c14550e8348dbfc73f91317d83e",
+            "bytes": 2901,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "src/uif/quota_cli.py",
+            "git_blob": "cc79cee62d22c8b9eb5da0bab541151921d29a3c",
+            "sha256": "48d156b3f15623b3dd44966490ea8cec19a0123701017e3bd87a8be43578b083",
+            "bytes": 1512,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/delivery/quota_handoff.py",
+            "git_blob": "9f139c56beed943354b8402ac57f29ba15c568e9",
+            "sha256": "184d954e08f14e3b2602aba21a7af73b62e1010e0d6065b394e845a9447a07a6",
+            "bytes": 283,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/agents/test_linear_scope.py",
+            "git_blob": "f558319402e45c03f99da6d86b1cb0ebf66076ea",
+            "sha256": "02fda46e78e103dd28c55fab0bfd5c773e7ffc9e965207cbfa1f7b012b304f71",
+            "bytes": 5276,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "src/uif/handoff_store.py",
+            "git_blob": "7a850cb4b25a205960208c62f3ed719b1a22fbb9",
+            "sha256": "7a0eb04ab305520b41565aefb3e46c71c87a61d97985c331f8a0f20d145ab51d",
+            "bytes": 19839,
+            "role": "implementation-source",
+            "read_scope": "excerpt",
+            "scope_detail": "Request decoder and authority-path custody boundary only."
+          },
+          {
+            "path": "src/uif/quota_handoff.py",
+            "git_blob": "b7a6f14858e9d8d0ab7f09e60717bda9b1151d7c",
+            "sha256": "840dec50c59258e341bef7919f2d1fab22e0c733b1da66c0fd29a83d2a556d7e",
+            "bytes": 43694,
+            "role": "implementation-source",
+            "read_scope": "excerpt",
+            "scope_detail": "Constructor, authentication and invoke boundary only."
+          },
+          {
+            "path": "tests/delivery/test_quota_handoff.py",
+            "git_blob": "87bcf41d9d7c9d0cbb02ea55984de5f13ee6fece",
+            "sha256": "9f7803071c506472686d2d39409ca4e4da1f24d72214ae1cfa4a251170c3ad80",
+            "bytes": 21673,
+            "role": "test-source",
+            "read_scope": "excerpt",
+            "scope_detail": "CLI identity/missing-authority tests only.",
+            "line_range": [
+              255,
+              274
+            ]
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution."
+      },
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/native-quota-publication-receipts.md",
+          "git_blob": "6b8a6e22bd02862db441c8c8d6b078cfa8fcdbad",
+          "sha256": "33482cedfac246454f886d39ec7e4181d1bd1806febf3c51eae86206b5c8ae12",
+          "bytes": 21872
+        },
+        "machine_ids": [
+          "UIF-NATIVE-DISPATCH",
+          "UIF-NATIVE-RETRY",
+          "UIF-NATIVE-LINEAR-WRITE",
+          "UIF-PUBLICATION-HANDOFF",
+          "UIF-PUBLICATION-RECEIPT",
+          "UIF-LEGACY-RECEIPT-JOIN"
+        ],
+        "source_inputs": [
+          {
+            "path": "src/uif/native_quota.py",
+            "git_blob": "f563a644d6c9025a2745bf0257bc328d7ea0911e",
+            "sha256": "cde8c656a4ac277cb4a73f1c92149e1deeddac40d571ad966acee03d08d4a1fc",
+            "bytes": 22002,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "src/uif/publication_handoff.py",
+            "git_blob": "ecf771147273f4f5bced825c26ca82a2ce2994a1",
+            "sha256": "418f8f8d93f7832669cb822d54b83645ae18ac9774ca77ec2a38489addc85625",
+            "bytes": 5036,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "src/uif/legacy_receipts.py",
+            "git_blob": "03f21ff0ea2ada029a208cd0872d3cd25d59de69",
+            "sha256": "60b341c548ead7b6320ac828963dfb35aa2c813c45650c0c28d45b9159471d75",
+            "bytes": 15660,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_native_quota.py",
+            "git_blob": "ae50078c0612e4d6e3b6bd2c76781f2d0d2d5127",
+            "sha256": "3770ec1f81297331e09997ca579555b096525e5b35058c88974e92e9bde49c95",
+            "bytes": 4450,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_async_native_quota.py",
+            "git_blob": "eb261b120c85b3e17c330c11cfa7e59b5facb9db",
+            "sha256": "83c59ff02b47c8d31ee21f815b529d6a274ee99e734cc1a2634d0d42acf0c1d7",
+            "bytes": 16234,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_publication_handoff.py",
+            "git_blob": "ed833c14bdd3fceb432bc8649ec250e3a008eb3d",
+            "sha256": "76d9ff1554cecc7605527341174ef8c1770a98055c916a13e4fa166d475adbab",
+            "bytes": 2295,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_legacy_receipts.py",
+            "git_blob": "c1b33a7b5617dd999205dd0d5d9471e7719f4ef5",
+            "sha256": "b7f8763fffbaf1468a2dd0bac919aa7f25e7f9c11825c02c1d702e4f28fc665b",
+            "bytes": 18483,
+            "role": "test-source",
+            "read_scope": "full"
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution.",
+        "limits": [
+          "Async test-source references the imported Registry effect machinery; that dependency is not a new complete review by this selection."
+        ]
+      },
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/recovery-preparation-and-observation.md",
+          "git_blob": "8c83d3c842b2718cf257f1915abe01ca401f1b58",
+          "sha256": "916e6c7db622b7d1c473cb468e7b07a34a54bec52806525480c237f2dd73898d",
+          "bytes": 14906
+        },
+        "machine_ids": [
+          "UIF-LABEL-SOURCE",
+          "UIF-CUSTODY-PREPARE",
+          "UIF-CUSTODY-PROJECT",
+          "UIF-RECOVERY-UNION",
+          "UIF-DRIFT-COMPARE"
+        ],
+        "source_inputs": [
+          {
+            "path": "tools/delivery/owner_label_context.py",
+            "git_blob": "819a67bfc04172922411c8644a19fafdd3d9789a",
+            "sha256": "aeff614207cfa62ca8937a94b1c8e0083291449f368183d5301a0f5e9baac04e",
+            "bytes": 4372,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/delivery/native_custody_observation.py",
+            "git_blob": "da5e99197948eb4734506f3fc41c692c247deb26",
+            "sha256": "7f568fcb15360d16e4f4e32e911fdd13e516167c347bfa2f742c5d0d897e6e41",
+            "bytes": 9765,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/delivery/native_recovery_composition.py",
+            "git_blob": "7b00ade8229866e16a9bc4e216a7f2ee8ab27de4",
+            "sha256": "f5105103266c642409421d0f8a2a431238cbc27b676dc138ce2134c703efabcd",
+            "bytes": 6220,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/delivery/check_foo_stokowski_drift.py",
+            "git_blob": "86b857977eb3dab9be08ee339539f5a9f85441a0",
+            "sha256": "ff7080e0215769b62410c4bf7f069d79290457011d2c73bb71feb2df4bc10236",
+            "bytes": 6887,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_owner_label_context.py",
+            "git_blob": "010f3909ee50c0cc762acf059f3e1aaecf8f2f6f",
+            "sha256": "192e6376897ea4b5588608c770de538f21e87b88151b084383fa00352b82873d",
+            "bytes": 4259,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_native_custody_observation.py",
+            "git_blob": "1efe5b8657ffca8b344d325f19b4e45c35358876",
+            "sha256": "302d0a64cf52d8f111f32ac03197f2c87348aafe8aa71a3ba31b98d55019d617",
+            "bytes": 12710,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_native_recovery_composition.py",
+            "git_blob": "6360a9ea289ff284b175e232badfcd2d5c0d39ba",
+            "sha256": "ccb825bd15dcf3c6b60ec2ac7e7f202392c83bed4cefa592fdafd2e034138d0a",
+            "bytes": 8902,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/delivery/test_foo_stokowski_drift.py",
+            "git_blob": "4da9940c16b71e339e1d4c70febb7e599ef7cad2",
+            "sha256": "1fd45a69d4cec755f0bb9bfd1265598c19999aa2fb9b8023307e5779c8b07342",
+            "bytes": 8264,
+            "role": "test-source",
+            "read_scope": "full"
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution.",
+        "limits": [
+          "Native-source digest constants and embedded snippets are described as source requirements, not newly read or verified installed native bodies."
+        ]
+      },
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/git-inventory.md",
+          "git_blob": "487e90c26b7d96ba2ec79d72b2d99fa1d5070eb6",
+          "sha256": "9e24f6734949de4ecf75e2b08e81aec0b33464708295c529e7d3caaac9f1781f",
+          "bytes": 5708
+        },
+        "machine_ids": [
+          "UIF-WR-INVENTORY"
+        ],
+        "source_inputs": [
+          {
+            "path": "tools/white_room/inventory.py",
+            "git_blob": "66e15413b8322b13307152846fc6956d0525dca4",
+            "sha256": "dbb0dc34c52a8d7f24affafdcaed7be4ba495f0a5e78472442f77f64e61498fb",
+            "bytes": 4198,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_check.py",
+            "git_blob": "9a9e0b734fa44276178f953f4b3c34e2a6c3eee0",
+            "sha256": "1720cbad8c1b03f204943b7298b5164756892dee3ef87bc4f7175a410bee9010",
+            "bytes": 9282,
+            "role": "test-source",
+            "read_scope": "excerpt",
+            "scope_detail": "Supporting inventory test only; no new complete comparator-oracle review here.",
+            "line_range": [
+              107,
+              135
+            ]
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution."
+      },
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/policy-installation-and-migration-audit.md",
+          "git_blob": "94301de9a566ae4a19ff184ae21f9e20ce583a9b",
+          "sha256": "8c09c6d1c9bdcf8734d8fac43703bb228dff83d4f5a5ab148a440701d85f852b",
+          "bytes": 15399
+        },
+        "machine_ids": [
+          "UIF-POLICY-CONFORMANCE",
+          "UIF-POLICY-REFERENCE",
+          "UIF-STARTUP-INSTALL",
+          "UIF-MIGRATION-AUDIT"
+        ],
+        "source_inputs": [
+          {
+            "path": "tools/agents/check_policy.py",
+            "git_blob": "6f1550442195b0cd7b4cc5ae705789a6099a5dd1",
+            "sha256": "907e04f8500ca007641bc1c5c48470c28297faa56efabfac23fadad7789c7087",
+            "bytes": 21238,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/agents/install_policy_bundle.py",
+            "git_blob": "401e80a01e3054aae95e74535adeae01d45d75e2",
+            "sha256": "f433c65a3b9be0d96b5e8d4eda5bf687b46c0b3c3a31883b431e057ebb197170",
+            "bytes": 10169,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/agents/audit_linear_migration.py",
+            "git_blob": "07cee344efdca270da82dbb5380c915e86117f47",
+            "sha256": "2b8391ff08bf811c17f770ef14c782198fb9f87bb8138d4c82128c3b8a8e5f09",
+            "bytes": 5116,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/agents/test_policy.py",
+            "git_blob": "370aebb33c8e7dcd5a5aae8fec343804972c0d47",
+            "sha256": "e13cf7393deb2cb509e87b733d736204667632a7a50b7e3b014fcb0aa755c331",
+            "bytes": 19614,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/agents/test_install_policy_bundle.py",
+            "git_blob": "4987036b2f636982601235e6c1770b369ffbd6f8",
+            "sha256": "82b36cc6fbd72814ff15fe85a4b86b91248c17fef3ce1270a432c7f90bd72c54",
+            "bytes": 9355,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/agents/test_linear_migration_audit.py",
+            "git_blob": "c75c09400cc0ac59acc9ce1f9efd292d8eec77f1",
+            "sha256": "059e79ce8e3d9545d18fc424115358842c36b9dfaa3bc2e5642a9b4b0e464b1c",
+            "bytes": 3527,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "docs/agents/uif-worker-policy.json",
+            "git_blob": "7c7977a8c892274e14cf0bad564ae4af062884ca",
+            "sha256": "650ce988e212e44983c9bf6b7c7627718f36120a9a09e4ce50dc39c3f1c24990",
+            "bytes": 813,
+            "role": "declaration-context",
+            "read_scope": "context",
+            "scope_detail": "Policy declaration context only; not installed/adopted-host evidence."
+          },
+          {
+            "path": "docs/agents/environment-profiles.json",
+            "git_blob": "6db2c2aab380a62fd6496217a8fe7e6376be13ce",
+            "sha256": "c0343fc899a24cd10beab60bc24e61c17d928ba5ce4677126895191ca0bc2568",
+            "bytes": 6707,
+            "role": "declaration-context",
+            "read_scope": "context",
+            "scope_detail": "Environment profile declaration context only; not live permission or readiness."
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution."
+      },
+      {
+        "document": {
+          "path": "docs/architecture/state-machines/windmill-recreation-and-transport.md",
+          "git_blob": "c70765bd33022d5189541286fc4b2157f3f25b0b",
+          "sha256": "dcc3c9eeace73241204c2599ff07c9eee45184038e4b537f675203c299c47be7",
+          "bytes": 13541
+        },
+        "machine_ids": [
+          "UIF-WM-DECLARATION",
+          "UIF-WM-MOCK-JOB",
+          "UIF-WM-MOCK-RECREATE",
+          "UIF-WM-REST-COPY",
+          "UIF-WM-CUSTODY-TRANSPORT"
+        ],
+        "source_inputs": [
+          {
+            "path": "tools/windmill/white_room.py",
+            "git_blob": "fac16a33a37b7b37de5f2a1a01ecb00ee38a76ca",
+            "sha256": "0dce7d86bdffb435ffca58e3f2147d5f5523fc73303acf64442aa1df5086aad7",
+            "bytes": 10966,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/windmill/recreate.py",
+            "git_blob": "482308ef80ae325a9051186702f20cfa9be45529",
+            "sha256": "10a0680207bc7d8d27d9e2393fdfb1f322563a157b63da369a8068976facd505",
+            "bytes": 6275,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "config/windmill/source/foo_root_jobs.py",
+            "git_blob": "b0666c0671002283814a986ba8a60fc21d9ea396",
+            "sha256": "ac933811fe4b250e025afb30d5be8d8a9f2afb587d18027e90fdeaa18f5e26ba",
+            "bytes": 3722,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/windmill/test_white_room.py",
+            "git_blob": "1a429196f68273993c1da101efbf8b083231374a",
+            "sha256": "f4416b1025af3f46fb0ee3fb91f875e74dfa764080abcb9be73195e34752cd20",
+            "bytes": 7613,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/windmill/test_recreate.py",
+            "git_blob": "03869e62eec93b403b4588715d4cfee20c7556d4",
+            "sha256": "cb5ed7abd507486a61202960ce940c5eb837a8404833e76fbb9a8f690c0d568b",
+            "bytes": 9003,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/windmill/test_exported_runner.py",
+            "git_blob": "e841a0e647ab9324d07aa914b2795ab8688dd544",
+            "sha256": "88ddb8e3dfb1b6c2f8c8b0fe6e9d639b50a4a5d0ae95c982a7823a8c87f0d706",
+            "bytes": 3880,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "config/windmill/deployment-bundle.json",
+            "git_blob": "b15bd3a6f88acb3408d3a70781d1ec1d52b16958",
+            "sha256": "f5e9b5414b21e5c84ceeadc01bd0d7a426ac9ff6d3fcb5129eaf1a452b87ee8d",
+            "bytes": 691,
+            "role": "declaration-context",
+            "read_scope": "context",
+            "scope_detail": "Bundle declaration context."
+          },
+          {
+            "path": "config/windmill/request.schema.json",
+            "git_blob": "52fe452c124f7592dc5d59de22d07a6c5c981392",
+            "sha256": "fbd4362307faa64f84eb02d7d288219fd1489a22b82943995f2c3f2e6afe8e72",
+            "bytes": 819,
+            "role": "declaration-context",
+            "read_scope": "context",
+            "scope_detail": "Offline schema context."
+          },
+          {
+            "path": "config/windmill/source/foo_root_jobs.schema.json",
+            "git_blob": "b3037482dfe06d2ba22437a57b9d5432a3368932",
+            "sha256": "42e52f00e5427384abd9fd253f0c832fc88a2ac24e0a0b2fe60dde5d993843b0",
+            "bytes": 728,
+            "role": "declaration-context",
+            "read_scope": "context",
+            "scope_detail": "Preserved transport schema context."
+          },
+          {
+            "path": "config/windmill/source-provenance.json",
+            "git_blob": "541e87b561b66d12a43bd53986d628284ac91759",
+            "sha256": "bbe5329adb17de5491d320b93a4e01282a85d9179148df003ce122afde11824d",
+            "bytes": 921,
+            "role": "declaration-context",
+            "read_scope": "context",
+            "scope_detail": "Dated custody context."
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution.",
+        "limits": [
+          "Fixed inventory/disposition snapshots are not a new per-item operational review; mock/source and preserved transport are not qualified live replacement."
+        ]
+      },
+      {
+        "document": {
+          "path": "docs/white-room/source-migration-transition-machines.md",
+          "git_blob": "7e82dc81eb7d72534518a38d5d7330fa3e4a9774",
+          "sha256": "85e906fe0a25caa83275f90d6d4617a4ce939763029e3c11b8164959fdb3d983",
+          "bytes": 21932
+        },
+        "machine_ids": [
+          "UIF-WR-COMPARE",
+          "UIF-WR-REMOTE",
+          "UIF-WR-CHECKPOINT",
+          "UIF-WR-RECOVERY",
+          "UIF-WR-SOURCE-MIGRATION"
+        ],
+        "source_inputs": [
+          {
+            "path": "tools/white_room/check.py",
+            "git_blob": "14df9763d6090ca8f03a743099129b32cd0e82ad",
+            "sha256": "24c2dd56e9ef20375c7d7d2834d291938a8cb132cdfaef0b27d0c791c0514eef",
+            "bytes": 9470,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/white_room/remote_evidence.py",
+            "git_blob": "16d55dc279a09274de6f748f6f76f106f757c2b9",
+            "sha256": "1e9972549dc7324a688f2b0de80595173c5e006938804a602c0ee36365d254d2",
+            "bytes": 13412,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/white_room/transition.py",
+            "git_blob": "99cb6ffd28a5f15b34a0d99bd881384a1c55747d",
+            "sha256": "bf701738b79ebf1a92f592f0dcceb07b89956e530b3eaa023bd03ebdc3f53dd8",
+            "bytes": 10477,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tools/white_room/migrate_cix_source.py",
+            "git_blob": "50969c2bb38b9fba3e0cfcd755d7ee3cf9f48415",
+            "sha256": "4ac23be32659bc4bb661ac3d10a9796cb7f32b94afccf5c8b493bfe54e26d9c5",
+            "bytes": 18681,
+            "role": "implementation-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_check.py",
+            "git_blob": "9a9e0b734fa44276178f953f4b3c34e2a6c3eee0",
+            "sha256": "1720cbad8c1b03f204943b7298b5164756892dee3ef87bc4f7175a410bee9010",
+            "bytes": 9282,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_remote_evidence.py",
+            "git_blob": "3d55a5fdacc15c14b09512cdeaa37bc97ca50c79",
+            "sha256": "6082e9fa686e7b9b30dbef4fce5c558fe57b219de9107a6ca5a10d240872040d",
+            "bytes": 8392,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_transition.py",
+            "git_blob": "185ece44f971d5590ddc973673396ea06f6b6f86",
+            "sha256": "a4c443e525e2b265be68aac8e00043370f2bea96f41e1bc303ef1c954e1727b3",
+            "bytes": 10100,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_registry_transition.py",
+            "git_blob": "9ffe811de768d5c205bb544d08d53885f6b15387",
+            "sha256": "306bb369e653e59c9ae981a3d7a89960825f8e316ed37b8fb502c22c9f612f34",
+            "bytes": 8646,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_migrate_cix_source.py",
+            "git_blob": "f0fb12910814a36c9647a45cd65c61d5feae5941",
+            "sha256": "4764f9278b3f8d1ec453c68c9e3aa99dc94f3a8a882184a9b7eee72f807650b0",
+            "bytes": 13386,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_future_source_profiles.py",
+            "git_blob": "80bc750b7152abaeadfacfad652ccae71109ada6",
+            "sha256": "c8023a83688a2d9483c7baf4f43b25340ba9326d628adff6fe9b60e70406a9f6",
+            "bytes": 5808,
+            "role": "test-source",
+            "read_scope": "full"
+          },
+          {
+            "path": "tests/white_room/test_paused_retry_source.py",
+            "git_blob": "7057861fd3abf5a55fa3394a0495910d2fe6a5e5",
+            "sha256": "bd2cb30669ad9a195c5f18d1fd588798d173fa0a0a79af6b5983dad7c01b2637",
+            "bytes": 6075,
+            "role": "test-source",
+            "read_scope": "full"
+          }
+        ],
+        "evidence_basis": "Attributed accepted bounded source-documentation evidence; pins rechecked mechanically, not a new semantic module review or execution.",
+        "limits": [
+          "test_check.py was read in full for the comparator allocation; its inventory test is contextual there, while inventory implementation is excluded and separately mapped.",
+          "Complete Registry/store/coordinator lifecycle, concrete connector/saver adapters, installed native source and live host behavior are outside this map."
+        ]
+      }
+    ],
+    "remaining_limits": [
+      "The original134-file primary edition and64 OffMenu boundary candidates retain every original pin, byte count and review status.",
+      "This supplement is UIF43fa evidence only; it does not complete all139 tracked files at that edition or all current repository, test, configuration and interface coverage.",
+      "Existing continuity/store maps and accepted source reviews remain credited; no new semantic, test-run or installed-native/body acquisition claim is created.",
+      "No native receipt, original effect, claim, publication boundary, provider permission or missing private input is resolved by this JSON correspondence.",
+      "Source changes after43fa, documentation changes after the pinned accepted union, broader issue-impact refresh and exhaustive independent coverage verification remain separate."
+    ]
+  }
 }
