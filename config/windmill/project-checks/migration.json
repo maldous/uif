@@ -1,0 +1,30 @@
+{
+  "all_catalog_values_except_recorded_engine_provenance_identical": true,
+  "archive_sha256_unchanged": "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840",
+  "baseline_engine_sha256": "442e0641f43107c937baf217f9f5915f0c3d70d6ebc7921dbc18db1a547d28f5",
+  "baseline_sha256": "3568e9a7e3ccf23f33b64b1bde37fc70959b1352a3e350c79b063d34324da0d4",
+  "baseline_source": "source/project_checks.py",
+  "changes": [
+    {
+      "field": "ENGINE fixed Go archive path",
+      "from": "/home/user/src/2026-11-12/cq-hosted-candidate-workflow/assurance-stage-native-run.wsvkQo/go1.27.4.linux-amd64.tar.gz",
+      "to": "/opt/morgan-toolchains/archives/go1.27.4.linux-amd64.tar.gz"
+    },
+    {
+      "field": "only cq_source_sdk_join catalogue base_engine_sha256",
+      "from": "442e0641f43107c937baf217f9f5915f0c3d70d6ebc7921dbc18db1a547d28f5",
+      "to": "04b22628be9e761b9c52a3e6edcde4fe1a210e2a437b5f772efef3843aad64d8"
+    }
+  ],
+  "cleanup": "The dated archive/root remains protected until staged bytes independently verified, actual guarded migration/readback accepted and dependent originals reconciled. No original deletion here.",
+  "desired_engine_sha256": "04b22628be9e761b9c52a3e6edcde4fe1a210e2a437b5f772efef3843aad64d8",
+  "desired_sha256": "f5345d0dd0c4e89afac9342059a641440c662d97b27daf87da8401986fa46720",
+  "desired_source": "migration/project_checks.py",
+  "effects_authorized_by_this_file": false,
+  "no_existing_operation_rebind_or_rerun": true,
+  "qualification": "UNRUN. No desired engine/tool archive staging/target runtime or transport budget acceptance is implied; separate independent review and guarded actual source/settings/operation admission remain required.",
+  "schema": "fixed-helper-toolchain-path-migration/1",
+  "state": "LOCAL_SOURCE_ONLY_NOT_DEPLOYED",
+  "whole_source_two_inverse_proof": true,
+  "wmill_resolved_lock_and_deployed_full_schema_still_unattested": true
+}

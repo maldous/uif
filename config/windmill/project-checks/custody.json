@@ -1,0 +1,66 @@
+{
+  "current_missing": [
+    "Approved exact current schema/settings and genuine resolved dependency lock for fresh provider recreation",
+    "Independent reviewed migration/source tests plus actual guarded provisioning and helper activation scope",
+    "Runtime compatibility and recovery/rollback qualification; publication alone is not installation",
+    "Retained legacy go_cq162_candidate heartbeat-source dependency remains external/unqualified; no original payload reconstruction, target retirement or cleanup clearance is provided."
+  ],
+  "custody": {
+    "approved_deployment_receipt_sha256": "13a5011832d6cb6dede1d2c1aae9af00c415bd7af0a76e1f0b19f2e1ca40b009",
+    "independent_binding_reviews": [
+      "b973b99d7a0043b2e9ecad56b8cd1138fa1cce81116c94fd89c03ca2af2956a3",
+      "f6465839cf4dcf909f8a1943bd26e2cd270b37ce82151d2f831f194d5c418d5e"
+    ],
+    "independent_full_code_reviews": [
+      "946e79cb36308c5457f9245a1f8dbaa1ae299ab98db62806bfc7581d50f960c2",
+      "cddd9a2eb1a22cfab6efde4db455b3a999fc14bb6682bd061530165bf0b20250"
+    ],
+    "original_local_commit": "d597624bfaab302cd8ca426a85a7c0aeb4e48df9",
+    "original_local_tree": "51a43a081e730a7a7ef1f8acba3982ff586d2188",
+    "readback_limit": "Exact source reconstructed from retained old source, complete44-line guarded draft diff, nonforce deployment success, draft removal and postprefix/catalog; no new complete direct source/schema read is claimed."
+  },
+  "deployment_authorized_by_clone": false,
+  "historical_singleton": {
+    "current_admission": "INELIGIBLE: source has advanced; preserve original result and do not rebind or rerun",
+    "effective_engine_sha256": "ce85d8483975cf030bf748644f6891afd328bb6aac9a392afb8ad4a14bdbfa2a",
+    "original_result": "Evidence accepted; strict coverage9531/10594,exit1/globalfalse; not production readiness",
+    "pins_sha256": "b1400af6eaf5cd9016ebe401563bbeaf0189bfb747f0f59100bead71e9bb78b6",
+    "source_commit": "4a9aae67eedfd161c4b23ecf6db1c767421447c3",
+    "source_tree": "bc30c289d672d60070279d1113869c9a02eebe95",
+    "target": "circularquay_feature.cq_source_sdk_join"
+  },
+  "host_change_authorized_by_clone": false,
+  "not_in_repository": [
+    "credential values or OAuth/session tokens",
+    "raw job logs or user data",
+    "private keys",
+    "original protected operation roots/output artifacts",
+    "Go/Rust/Node archive bytes",
+    "resolved deployed wmill dependency lock/current full schema and permissions"
+  ],
+  "purpose": "Exact approved existing helper source preservation, not deployment or restore acceptance",
+  "repository_privacy_required": "private",
+  "restore_qualified": false,
+  "retained_external_legacy_input": {
+    "cleanup_clearance": false,
+    "fresh_reconstruction_qualified": false,
+    "path": "/home/user/heartbeat-handoffs/cq162-pointer-candidate-20261116/cq162_edit_boundary_candidate_test.go",
+    "sha256": "5b20015ae9633335028abd31b3143d57e1d33c1a3c9a926e209aaddf69bf86d1",
+    "state": "Known retained nonrepository input of a legacy target; active use UNKNOWN, payload not read/copied/recreated in this custody task",
+    "target": "circularquay_feature.go_cq162_candidate"
+  },
+  "schema": "uif-private-project-checks-custody/1",
+  "source": {
+    "bytes": 138116,
+    "deployed_extra_permissions_pin": null,
+    "deployed_schema_pin": null,
+    "global_engine_sha256": "442e0641f43107c937baf217f9f5915f0c3d70d6ebc7921dbc18db1a547d28f5",
+    "item": "u/admin/project_checks",
+    "path": "config/windmill/project-checks/source/project_checks.py",
+    "protocol": "project-checks/1",
+    "resolved_dependency_lock": null,
+    "sha256": "3568e9a7e3ccf23f33b64b1bde37fc70959b1352a3e350c79b063d34324da0d4",
+    "wmill_requirement_declared": "wmill==1.850.0",
+    "workspace": "foo"
+  }
+}
