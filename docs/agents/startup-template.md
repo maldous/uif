@@ -43,3 +43,41 @@ healthy reset. Preserve explicit user stop and original uncertain operations.
 If all inference is unavailable, preserve work, continue independent deterministic
 operations and resume automatically on existing authorized capacity; no new
 provider or spending is implied.
+
+## Collaborative subtask creation
+
+Latest owner direction, 18 November 2026: for **each collaborative subtask created
+after any future reboot**, request **GPT-6.2 Astra with reasoning effort ultra**.
+This explicitly supersedes the earlier same-day GPT-6.2 Sol selection. At the
+currently exposed `collaboration.spawn_agent` interface use this field selection,
+not a complete launch command:
+
+```json
+{"model": "gpt-6.2-astra", "reasoning_effort": "ultra", "fork_turns": "none"}
+```
+The current interface accepts explicit model/effort overrides only with
+`fork_turns: "none"`. Therefore provide a self-contained task brief carrying the
+relevant source, instructions, ownership, evidence, constraints and latest user
+decisions; do not omit context merely to select the model. Recheck the actual
+supported schema after any future reboot. If the exact requested model or effort
+is unavailable, disclose the actual limitation and ask Matthew before any fallback.
+Do not silently substitute another model or lower effort.
+
+This latest owner direction supersedes policy 2.0.1's economical GPT-6.1 Sol
+recommendation and the earlier GPT-6.2 Sol guidance **only for this collaborative
+subtask creation scope**. The
+policy bytes/digest, main model, existing agent sessions, ordinary Foo/native
+session policy and five product roles plus Cloud allocation are not changed.
+An existing-agent follow-up exposes no model-change control; do not claim it
+changed an existing worker's effective settings.
+
+Record requested model/effort separately from any effective settings attested by
+the actual creation receipt. If the receipt does not expose the effective
+setting, report it as unverified, not as an applied global default. No worker or
+test run is required solely to prove this preference. Current ownership,
+capacity, privacy, approval and explicit processing-pause controls still apply;
+these fields grant neither a new slot nor dispatch authority. The current reboot
+plan is canceled; this future-facing rule does not reopen it. This repository
+does not implement the platform's collaborative launcher or a persistent setting
+API; use these explicit fields at the supported creation boundary when creation
+is otherwise authorized.
