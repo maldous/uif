@@ -4,14 +4,14 @@ UIF owns shared infrastructure and cross-project operating controls. Linear is
 canonical for current work, scope, ownership, dependencies and acceptance.
 Historical README scopes are provenance, never another intake queue.
 
-For post-reboot collaborative subtask creation, follow the owner's
+For each collaborative subtask created after any future reboot, follow the owner's
 [current creation rule](docs/agents/startup-template.md#collaborative-subtask-creation):
-request GPT-6.2 Sol at the highest supported effort (currently
-`model: "gpt-6.2-sol"`, `reasoning_effort: "ultra"`). This supersedes the older
-GPT-6.1 Sol preference only for newly created collaborative subtasks. It does not
-change the main model, existing workers or ordinary Foo/native session policy.
+request `model: "gpt-6.2-astra"`, `reasoning_effort: "ultra"`. This later direction
+supersedes the earlier GPT-6.2 Sol and GPT-6.1 Sol preferences for this scope.
+If unavailable, disclose the actual limitation and ask Matthew before any fallback.
+Do not change the main model, existing workers or ordinary Foo/native session policy.
 Record requested versus actually observed settings; do not launch a worker just
-to prove the setting or resume processing while the owner's pause is effective.
+to prove the setting, reopen the canceled reboot plan or resume paused processing.
 
 At startup read the [operating policy](docs/agents/uif-worker-policy.md),
 [version/digest manifest](docs/agents/uif-worker-policy.json) and your selected

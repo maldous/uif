@@ -40,11 +40,14 @@ A white room is a clean execution context built from current accepted state. It 
 
 ### Collaborative creation settings at reconstruction
 
-Before creating a replacement or bounded collaborative subtask, apply the
+For each collaborative subtask created after any future reboot, apply the
 [current owner-directed creation rule](../agents/startup-template.md#collaborative-subtask-creation):
-GPT-6.2 Sol with the highest supported effort, currently `ultra` at
-`collaboration.spawn_agent`. Supply the required self-contained brief when using
-the explicit override, and record requested versus observed effective settings.
+request `gpt-6.2-astra` with reasoning effort `ultra` at
+`collaboration.spawn_agent`. This supersedes the earlier Sol guidance for this
+scope. If unavailable, disclose the limitation and ask Matthew before any fallback.
+Supply the required self-contained brief when using the explicit override, and
+record requested versus observed effective settings. The current reboot plan is
+canceled; this future-facing instruction does not reopen it.
 This is not a change to the main model or existing workers, a new launcher, a
 capacity bypass, or permission to resume paused processing. Do not start a worker
 or test solely to demonstrate the preference; retain the normal ownership and

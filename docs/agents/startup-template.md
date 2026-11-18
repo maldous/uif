@@ -46,23 +46,26 @@ provider or spending is implied.
 
 ## Collaborative subtask creation
 
-Owner direction, 18 November 2026. For post-reboot collaborative agent creation, request **GPT-6.2 Sol at the highest
-supported reasoning effort**. At the currently exposed `collaboration.spawn_agent`
-interface this is the following field selection, not a complete launch command:
+Latest owner direction, 18 November 2026: for **each collaborative subtask created
+after any future reboot**, request **GPT-6.2 Astra with reasoning effort ultra**.
+This explicitly supersedes the earlier same-day GPT-6.2 Sol selection. At the
+currently exposed `collaboration.spawn_agent` interface use this field selection,
+not a complete launch command:
 
 ```json
-{"model": "gpt-6.2-sol", "reasoning_effort": "ultra", "fork_turns": "none"}
+{"model": "gpt-6.2-astra", "reasoning_effort": "ultra", "fork_turns": "none"}
 ```
-
 The current interface accepts explicit model/effort overrides only with
 `fork_turns: "none"`. Therefore provide a self-contained task brief carrying the
 relevant source, instructions, ownership, evidence, constraints and latest user
 decisions; do not omit context merely to select the model. Recheck the actual
-supported schema after reboot. Do not invent an unsupported effort or silently
-substitute the older GPT-6.1 Sol preference if this selection is unavailable.
+supported schema after any future reboot. If the exact requested model or effort
+is unavailable, disclose the actual limitation and ask Matthew before any fallback.
+Do not silently substitute another model or lower effort.
 
-This later owner direction supersedes policy 2.0.1's economical GPT-6.1 Sol
-recommendation **only for newly created bounded collaborative subtasks**. The
+This latest owner direction supersedes policy 2.0.1's economical GPT-6.1 Sol
+recommendation and the earlier GPT-6.2 Sol guidance **only for this collaborative
+subtask creation scope**. The
 policy bytes/digest, main model, existing agent sessions, ordinary Foo/native
 session policy and five product roles plus Cloud allocation are not changed.
 An existing-agent follow-up exposes no model-change control; do not claim it
@@ -73,7 +76,8 @@ the actual creation receipt. If the receipt does not expose the effective
 setting, report it as unverified, not as an applied global default. No worker or
 test run is required solely to prove this preference. Current ownership,
 capacity, privacy, approval and explicit processing-pause controls still apply;
-these fields grant neither a new slot nor dispatch authority. This repository
+these fields grant neither a new slot nor dispatch authority. The current reboot
+plan is canceled; this future-facing rule does not reopen it. This repository
 does not implement the platform's collaborative launcher or a persistent setting
 API; use these explicit fields at the supported creation boundary when creation
 is otherwise authorized.
