@@ -38,6 +38,18 @@ Use this sequence on fresh startup, restart, quota restoration, reassignment, an
 
 A white room is a clean execution context built from current accepted state. It is not deletion of historical evidence or a claim that all previous work disappeared.
 
+### Collaborative creation settings at reconstruction
+
+Before creating a replacement or bounded collaborative subtask, apply the
+[current owner-directed creation rule](../agents/startup-template.md#collaborative-subtask-creation):
+GPT-6.2 Sol with the highest supported effort, currently `ultra` at
+`collaboration.spawn_agent`. Supply the required self-contained brief when using
+the explicit override, and record requested versus observed effective settings.
+This is not a change to the main model or existing workers, a new launcher, a
+capacity bypass, or permission to resume paused processing. Do not start a worker
+or test solely to demonstrate the preference; retain the normal ownership and
+readiness checks above.
+
 ## Declared configuration and restoration drift
 
 For UIF and every admitted subproject, discover the repository-defined configuration and deployment contracts for managed dependencies, then compare those declarations at the current accepted revision with the actual running or installed state. Startup is gated by the applicable project-specific declared requirements, not a generic host checklist.
