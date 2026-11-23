@@ -78,7 +78,10 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             await asyncio.gather(task, return_exceptions=True)
             attempt.status = 'cancelled'
             raise
-        except (WorkersAIRequestError, BudgetRefused, OSError, ValueError) as error:
+        except (WorkersAIRequestError, BudgetRefused) as error:
+            attempt.status = 'failed'
+            attempt.error = str(error)
+        except (OSError, ValueError) as error:
             attempt.status = 'failed'
             attempt.error = type(error).__name__
         finally:

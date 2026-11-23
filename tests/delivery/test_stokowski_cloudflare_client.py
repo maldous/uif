@@ -35,7 +35,10 @@ class WorkersAIClientTests(unittest.TestCase):
         conn = connection.return_value
         response = conn.getresponse.return_value
         response.status = 200
-        response.read.return_value = b'{"success":true,"result":{"usage":{"neurons":1.0001}}}'
+        response.read.return_value = json.dumps({
+            'model': MODEL, 'choices': [{'message': {'content': 'Done'}}],
+            'usage': {'neurons': 1.0001},
+        }).encode()
         conn.request.side_effect = lambda *args, **kwargs: self.assertEqual(
             self.usage_record(), (REQUEST_MAXIMUM, 0))
         self.client.complete(**self.request)
@@ -43,7 +46,7 @@ class WorkersAIClientTests(unittest.TestCase):
         connection.assert_called_once_with('api.cloudflare.com', timeout=1)
         (method, path), kwargs = conn.request.call_args
         account = self.accounts['OffMenu']
-        self.assertEqual((method, path), ('POST', f'/client/v4/accounts/{account}/ai/run/{MODEL}'))
+        self.assertEqual((method, path), ('POST', f'/client/v4/accounts/{account}/ai/v1/chat/completions'))
         self.assertEqual(kwargs['headers']['Authorization'], f'Bearer test-{account}')
         self.assertEqual(json.loads(kwargs['body'])['max_tokens'], 2048)
 
@@ -132,11 +135,12 @@ class WorkersAIClientTests(unittest.TestCase):
         conn = connection.return_value
         response = conn.getresponse.return_value
         response.status = 200
+        calls = [{'id': 'edit', 'type': 'function',
+                  'function': {'name': 'replace_line', 'arguments': '{"line":"new"}'}}]
         response.read.side_effect = [
-            b'{"success":true,"result":{"tool_calls":[{"id":"edit","type":"function",'
-            b'"function":{"name":"replace_line","arguments":{"line":"new"}}}],'
-            b'"usage":{"neurons":1}}}',
-            b'{"success":true,"result":{"response":"Patch prepared","usage":{"neurons":2}}}',
+            json.dumps({'model': MODEL, 'choices': [{'message': message}],
+                        'usage': {'neurons': usage}}).encode()
+            for message, usage in [({'tool_calls': calls}, 1), ({'content': 'Patch prepared'}, 2)]
         ]
         target = self.database.parent / 'fixture.txt'
         target.write_text('old')
@@ -172,8 +176,10 @@ class WorkersAIClientTests(unittest.TestCase):
                 barrier.wait()
 
             def getresponse(self):
-                return SimpleNamespace(status=200, read=lambda _: b'{"success":true,'
-                                       b'"result":{"response":"Done","usage":{"neurons":1}}}')
+                return SimpleNamespace(status=200, read=lambda _: json.dumps({
+                    'model': MODEL, 'choices': [{'message': {'content': 'Done'}}],
+                    'usage': {'neurons': 1},
+                }).encode())
 
             def close(self):
                 pass
@@ -186,5 +192,5 @@ class WorkersAIClientTests(unittest.TestCase):
             with ThreadPoolExecutor(max_workers=5) as workers:
                 self.assertEqual(len(list(workers.map(complete, self.accounts))), 5)
         self.assertCountEqual(paths, [
-            f'/client/v4/accounts/{account}/ai/run/{MODEL}' for account in self.accounts.values()
+            f'/client/v4/accounts/{account}/ai/v1/chat/completions' for account in self.accounts.values()
         ])

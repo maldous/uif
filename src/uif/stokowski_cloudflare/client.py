@@ -40,9 +40,11 @@ class WorkersAIClient:
         """Reserve before sending. Uncertain usage retains the full reservation."""
         if not 0 < timeout <= 600:
             raise ValueError('Invalid inference timeout')
-        request = {'messages': messages, 'tools': tools, 'max_tokens': MAX_OUTPUT_TOKENS,
+        request = {'model': MODEL, 'messages': messages, 'max_tokens': MAX_OUTPUT_TOKENS,
                    'stream': False}
-        canonical = json.dumps(dict(request, model=MODEL), sort_keys=True, separators=(',', ':'),
+        if tools:
+            request['tools'] = tools
+        canonical = json.dumps(request, sort_keys=True, separators=(',', ':'),
                                allow_nan=False).encode()
         if len(canonical) > 128_000:
             raise ValueError('Workers AI input exceeds the allowed size')
@@ -59,21 +61,16 @@ class WorkersAIClient:
             budget.settle(request_id, 0)
             raise WorkersAIRequestError('Verified Free-account credential unavailable')
 
-        account_path = f'/client/v4/accounts/{budget.account_id}/ai'
+        path = f'/client/v4/accounts/{budget.account_id}/ai/v1/chat/completions'
         gateway = self.gateways.get(budget.account_id)
         headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
         if gateway is not None:
-            path = account_path + '/v1/chat/completions'
-            body = canonical
             headers.update({'cf-aig-gateway-id': gateway, 'cf-aig-max-attempts': '1',
                             'cf-aig-skip-cache': 'true'})
-        else:
-            path = f'{account_path}/run/{MODEL}'
-            body = json.dumps(request, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
         receipt = None
         conn = HTTPSConnection('api.cloudflare.com', timeout=timeout)
         try:
-            conn.request('POST', path, body=body, headers=headers)
+            conn.request('POST', path, body=canonical, headers=headers)
             response = conn.getresponse()
             if response.status != 200:
                 raise WorkersAIRequestError(f'Workers AI refused request (HTTP {response.status})')
@@ -89,15 +86,9 @@ class WorkersAIClient:
         if len(raw) > MAX_RESPONSE_BYTES:
             raise WorkersAIRequestError('Workers AI response exceeded the size limit')
         try:
-            envelope = json.loads(raw, parse_float=Decimal)
-            if gateway is not None:
-                if envelope['model'] != MODEL or not envelope['choices']:
-                    raise ValueError
-                result = envelope
-            else:
-                if envelope['success'] is not True:
-                    raise ValueError
-                result = envelope['result']
+            result = json.loads(raw, parse_float=Decimal)
+            if result['model'] != MODEL or not result['choices']:
+                raise ValueError
             usage = result['usage']['neurons']
             if type(usage) not in {int, Decimal}:
                 raise ValueError

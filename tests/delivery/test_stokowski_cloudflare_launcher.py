@@ -1,4 +1,5 @@
 import asyncio
+from hashlib import sha256
 from pathlib import Path
 import signal
 from tempfile import TemporaryDirectory
@@ -7,6 +8,7 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 from uif.stokowski_cloudflare.launcher import _start_with_shutdown, configure
+from uif.stokowski_cloudflare.budget import ProjectAccountRouter
 
 
 class LauncherTests(unittest.TestCase):
@@ -21,7 +23,9 @@ class LauncherTests(unittest.TestCase):
         original = Owner._dispatch
         codex = Mock(side_effect=AssertionError('Codex called'))
         runner = SimpleNamespace(run_turn=codex)
-        orchestration = SimpleNamespace(run_turn=codex, Orchestrator=Owner, MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}))
+        orchestration = SimpleNamespace(run_turn=codex, Orchestrator=Owner,
+                                        MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}),
+                                        logger=Mock())
         accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'),
                             (digit * 32 for digit in 'abcde')))
         config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
@@ -49,6 +53,66 @@ class LauncherTests(unittest.TestCase):
 
 
 class ShutdownTests(unittest.IsolatedAsyncioTestCase):
+    async def test_worker_clears_inherited_authorization_and_preserves_original_attempt(self):
+        class Owner:
+            project_name = 'OffMenu'
+            pool = SimpleNamespace(is_paused=lambda _: False)
+            _dispatch = Mock()
+            _release_slot = Mock()
+
+            async def _run_worker(self, issue, attempt):
+                self.running[issue.id] = attempt
+                self._tasks[issue.id] = asyncio.current_task()
+                authorize = binding.call_args.kwargs['authorize_turn']
+                approved = authorize(issue, attempt, self.root / issue.identifier)
+                if attempt is first:
+                    await asyncio.create_task(self._run_worker(issue, second))
+                else:
+                    self.assess_prompt = approved.scoped_prompt
+
+        accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'),
+                            (digit * 32 for digit in 'abcde')))
+        issue = SimpleNamespace(id='id', identifier='UIF-1', state='Todo')
+        first = SimpleNamespace(state_name='investigate')
+        second = SimpleNamespace(state_name='assess')
+        record = dict(project='OffMenu', scope_sha256='scope', attempt='first',
+                      source_head='head', branch='branch', read_paths=[],
+                      write_roots=[], prompt='Bound task')
+        config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
+                      admissions={issue.id: {'investigate': record,
+                                             'assess': dict(record, attempt='second')}})
+        runner = SimpleNamespace()
+        orchestration = SimpleNamespace(
+            Orchestrator=Owner, MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}),
+            logger=Mock(), state_key=str.lower)
+        with (TemporaryDirectory() as scratch,
+              patch('uif.stokowski_cloudflare.launcher._protected_json', return_value=config),
+              patch('uif.stokowski_cloudflare.launcher.install_native_runner') as binding,
+              patch('uif.stokowski_cloudflare.launcher.subprocess.check_output',
+                    side_effect=['head', 'branch', '', 'head', 'branch', ''])):
+            database = Path(scratch) / 'budget.sqlite'
+            configure(runner, orchestration, SimpleNamespace(scope=lambda _: 'scope'),
+                      policy=Path('/etc/owner.json'), database=database)
+            owner = Owner()
+            owner.root = Path(scratch)
+            (owner.root / issue.identifier).mkdir()
+            owner.cfg = SimpleNamespace(workspace=SimpleNamespace(resolved_root=lambda: owner.root))
+            owner.running, owner._tasks, owner.claimed = {}, {}, {issue.id}
+            owner._issue_state_runs = {issue.id: 2}
+            await owner._run_worker(issue, first)
+            self.assertIn('"issue": "UIF-1", "state": "assess", "run": 2', owner.assess_prompt)
+
+            router = ProjectAccountRouter(database, accounts)
+            router.reserve_request('OffMenu', 'first', 'request', 1, {'OffMenu'},
+                                   request_sha256=sha256(b'fixture').hexdigest())
+            owner._issue_current_state = {issue.id: 'investigate'}
+            owner._states_for = lambda _: {'investigate': SimpleNamespace(type='agent')}
+            owner.retry_attempts = {issue.id: SimpleNamespace(error='previous')}
+            owner._dispatch(issue)
+            self.assertEqual(owner.retry_attempts[issue.id].error,
+                             'Original Workers AI request retained for reconciliation')
+            owner._release_slot.assert_called_once_with(issue.id)
+
     async def test_sigterm_uses_and_awaits_native_stop(self):
         loop = asyncio.get_running_loop()
         handlers = {}

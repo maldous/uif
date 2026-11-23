@@ -23,18 +23,24 @@ def repository_tools(workspace, tracked_paths, write_roots):
     """Expose only bounded text operations on the admitted checkout."""
     workspace = Path(workspace).resolve(strict=True)
     tracked = frozenset(tracked_paths)
-    definitions = {'list_files': (), 'read_file': ('path',)}
+    definitions = {
+        'list_files': ('List the tracked files available to this task.', ()),
+        'read_file': ('Read one of the available tracked files by relative path.', ('path',)),
+    } if tracked else {}
     if write_roots:
-        definitions['replace_text'] = ('path', 'old', 'replacement')
+        definitions['replace_text'] = (
+            'Replace one unique text match in a writable tracked file.',
+            ('path', 'old', 'replacement'),
+        )
     tools = [
-        {'type': 'function', 'function': {'name': name, 'parameters': {
+        {'type': 'function', 'function': {'name': name, 'description': description, 'parameters': {
             'type': 'object', 'properties': {key: {'type': 'string'} for key in keys},
             'required': list(keys), 'additionalProperties': False}}}
-        for name, keys in definitions.items()
+        for name, (description, keys) in definitions.items()
     ]
 
     def execute(name, arguments, remaining):
-        if set(arguments) != set(definitions[name]) or not all(
+        if set(arguments) != set(definitions[name][1]) or not all(
                 isinstance(value, str) for value in arguments.values()):
             raise WorkersAIRequestError('Invalid workspace tool arguments')
         if name == 'list_files':
