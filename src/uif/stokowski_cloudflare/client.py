@@ -88,7 +88,9 @@ class WorkersAIClient:
             response = conn.getresponse()
             if response.status == 200 and gateway is not None:
                 receipt = response.getheader('cf-aig-log-id')
-                if not receipt or not re.fullmatch(r'[A-Za-z0-9_-]{1,256}', receipt):
+                if not isinstance(receipt, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,256}', receipt):
+                    # The call may have incurred usage without attributable evidence.
+                    budget.hold(request_id, 'provider-unavailable')
                     raise WorkersAIRequestError('AI Gateway request receipt missing or invalid')
             if response.status == 200:
                 raw = response.read(MAX_RESPONSE_BYTES + 1)

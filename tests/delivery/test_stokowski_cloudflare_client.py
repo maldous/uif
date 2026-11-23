@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import sqlite3
@@ -8,7 +9,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from uif.stokowski_cloudflare.budget import BudgetRefused, ProjectAccountRouter
+from uif.stokowski_cloudflare.budget import AccountRecovery, BudgetRefused, ProjectAccountRouter
 from uif.stokowski_cloudflare.client import (
     GLM_MODEL, MODEL, MODEL_RESERVATIONS, REQUEST_MAXIMUM, WorkersAIClient, WorkersAIRequestError,
 )
@@ -142,15 +143,49 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
-    def test_gateway_success_without_receipt_preserves_reservation(self, connection):
+    def test_gateway_success_with_unqualified_receipt_holds_original(self, connection):
         account = self.accounts['OffMenu']
-        client = WorkersAIClient(self.router, lambda _: 'test-token', gateways={account: 'stokowski'})
-        response = connection.return_value.getresponse.return_value
+        conn = connection.return_value
+        response = conn.getresponse.return_value
         response.status = 200
-        response.getheader.return_value = None
-        with self.assertRaisesRegex(WorkersAIRequestError, 'receipt missing'):
-            client.complete(**self.request)
-        self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
+        for value in (None, '', 'invalid receipt', 'x' * 257):
+            with self.subTest(value=value), TemporaryDirectory() as scratch:
+                connection.reset_mock()
+                self.database = Path(scratch) / 'budget.sqlite'
+                router = ProjectAccountRouter(self.database, self.accounts)
+                client = WorkersAIClient(router, lambda _: 'test-token',
+                                         gateways={account: 'stokowski'})
+                response.getheader.return_value = value
+                with self.assertRaisesRegex(WorkersAIRequestError, 'receipt missing'):
+                    client.complete(**self.request)
+                restarted = ProjectAccountRouter(self.database, self.accounts)
+                client = WorkersAIClient(restarted, lambda _: 'test-token',
+                                         gateways={account: 'stokowski'})
+                with self.assertRaises(BudgetRefused):
+                    client.complete(**dict(self.request, request_id='candidate/two'))
+                with self.assertRaises(BudgetRefused):
+                    client.complete(**self.request)
+                conn.request.assert_called_once()
+                response.read.assert_not_called()
+                self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
+
+                with sqlite3.connect(self.database) as db:
+                    observed = db.execute('SELECT observed_at FROM account_holds').fetchone()[0]
+                fresh = datetime.fromisoformat(observed) + timedelta(seconds=1)
+
+                def recover(hold):
+                    self.assertEqual((hold.account_id, hold.request_id, hold.reason),
+                                     (account, self.request['request_id'], 'provider-unavailable'))
+                    return AccountRecovery(hold, fresh, 'a' * 64)
+
+                restarted.accounts['OffMenu'].recover(recover, now=fresh)
+                with sqlite3.connect(self.database) as db:
+                    self.assertEqual(db.execute('SELECT recovery_sha256 FROM account_holds').fetchone(),
+                                     ('a' * 64,))
+                self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
+                with self.assertRaises(BudgetRefused):
+                    client.complete(**self.request)
+                conn.request.assert_called_once()
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
     @patch('subprocess.Popen', side_effect=FileNotFoundError('No process launcher available'))
