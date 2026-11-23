@@ -11,7 +11,7 @@ import signal
 import stat
 import subprocess
 
-from .budget import ProjectAccountRouter
+from .budget import PAID_ACCOUNT, PROJECTS, ProjectAccountRouter
 from .client import MODEL, WorkersAIClient
 from .native import NativeTurnBinding, install_native_runner
 from .turn import Attempt
@@ -64,7 +64,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         raise ValueError('Unknown Stokowski provider mode')
     accounts = config['accounts']
     projects = frozenset(config['projects'])
-    if not projects <= accounts.keys():
+    if not projects <= PROJECTS or not projects <= accounts.keys():
         raise ValueError('Unknown native project in Workers AI policy')
     credentials = Path(config['credentials'])
     if not credentials.is_absolute():
@@ -72,8 +72,17 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     reverse = {account: project for project, account in accounts.items()}
 
     def token(account):
-        record = _protected_json(credentials / (reverse[account] + '.json'))
-        if record['account_id'] != account or record['plan'] != 'free':
+        name = reverse[account]
+        if name == PAID_ACCOUNT:
+            current = _protected_json(policy)
+            if (current.get('paid_workers_ai_exclusive') is not True
+                    or current['accounts'].get(PAID_ACCOUNT) != account):
+                raise ValueError('Paid Workers AI requires exclusive ledger usage')
+            plan = 'paid'
+        else:
+            plan = 'free'
+        record = _protected_json(credentials / (name + '.json'))
+        if record['account_id'] != account or record['plan'] != plan:
             raise ValueError('Unverified Workers AI account')
         return record['token']
 

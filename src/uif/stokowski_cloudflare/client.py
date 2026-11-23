@@ -28,15 +28,15 @@ class WorkersAIRequestError(RuntimeError):
 
 
 class WorkersAIClient:
-    def __init__(self, router: ProjectAccountRouter, free_account_token, *, gateways=None,
+    def __init__(self, router: ProjectAccountRouter, account_token, *, gateways=None,
                  model=MODEL):
-        """The protected owner supplies tokens only for verified Free accounts."""
+        """The protected owner supplies tokens only for accounts covered by the ledger."""
         if model not in MODEL_RESERVATIONS:
             raise ValueError('Workers AI model has not been admitted')
         self.model = model
         self.request_maximum = MODEL_RESERVATIONS[model]
         self.router = router
-        self.free_account_token = free_account_token
+        self.account_token = account_token
         configured = dict(gateways) if gateways is not None else {}
         account_ids = {budget.account_id for budget in router.accounts.values()}
         if not configured.keys() <= account_ids or any(
@@ -67,13 +67,13 @@ class WorkersAIClient:
             request_sha256=sha256(canonical).hexdigest(), review_of=review_of,
             reviewer_project=reviewer_project)
         try:
-            token = self.free_account_token(budget.account_id)
+            token = self.account_token(budget.account_id)
         except (OSError, ValueError, KeyError):
             token = None
         if not isinstance(token, str) or not token or not token.isascii() or any(
                 char.isspace() for char in token):
             budget.settle(request_id, 0)
-            raise WorkersAIRequestError('Verified Free-account credential unavailable')
+            raise WorkersAIRequestError('Verified Workers AI account credential unavailable')
 
         path = f'/client/v4/accounts/{budget.account_id}/ai/v1/chat/completions'
         gateway = self.gateways.get(budget.account_id)

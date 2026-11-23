@@ -41,18 +41,30 @@ class LauncherTests(unittest.TestCase):
                                         logger=Mock())
         accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'),
                             (digit * 32 for digit in 'abcde')))
+        accounts['Paid'] = 'f' * 32
         config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
                       admissions={})
         records = {'owner.json': config,
                    'OffMenu.json': dict(account_id=accounts['OffMenu'], plan='free', token='test'),
-                   'UIF.json': dict(account_id=accounts['UIF'], plan='paid', token='test')}
+                   'UIF.json': dict(account_id=accounts['UIF'], plan='paid', token='test'),
+                   'Paid.json': dict(account_id=accounts['Paid'], plan='paid', token='test')}
         with (TemporaryDirectory() as scratch,
               patch('uif.stokowski_cloudflare.launcher._protected_json',
-                    side_effect=lambda path: records[path.name]),
+                    side_effect=lambda path: records[path.name]) as read_policy,
               patch('uif.stokowski_cloudflare.launcher.WorkersAIClient') as client):
             configure(runner, orchestration, SimpleNamespace(), policy=Path('/etc/owner.json'),
                       database=Path(scratch)/'budget.sqlite')
             self.assertEqual(client.call_args.args[0].eligible_projects, {'OffMenu'})
+            paid_token = client.call_args.args[1]
+            with self.assertRaisesRegex(ValueError, 'exclusive ledger usage'):
+                paid_token(accounts['Paid'])
+            self.assertNotIn(Path('/etc/uif-stokowski/Paid.json'),
+                             [call.args[0] for call in read_policy.call_args_list])
+            config['paid_workers_ai_exclusive'] = True
+            self.assertEqual(paid_token(accounts['Paid']), 'test')
+            config['paid_workers_ai_exclusive'] = False
+            with self.assertRaisesRegex(ValueError, 'exclusive ledger usage'):
+                paid_token(accounts['Paid'])
             issue = SimpleNamespace(id='issue-id')
             self.assertIs(orchestration.run_turn, runner.run_turn)
             self.assertIsNot(runner.run_turn, codex)

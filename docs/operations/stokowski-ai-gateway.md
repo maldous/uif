@@ -47,3 +47,19 @@ sets it after verifying Codex capability and capacity. No model call checks
 readiness. In `codex` mode, the native workflow supplies the Codex model.
 In `both` mode, a launched native Codex operation retains its original
 settlement path.
+
+## Paid account using the included allocation
+
+An optional `Paid` account can use its included Workers AI allocation when
+every Workers AI caller for the account shares Stokowski's ledger. The
+operator reconciles existing usage before setting `paid_workers_ai_exclusive`
+and supplying the protected paid credential. Each request still reserves its
+maximum usage before dispatch. The same 7,500-neuron admission cap and
+10,000-neuron hard cap apply per UTC day, including concurrent requests and
+unsettled usage. A pending Paid request keeps its reservation across midnight.
+A request that settles on a later day also counts against that day's headroom.
+
+An authenticated AI Gateway can add a secondary spend limit. Its limit uses
+completed requests, so the account-wide ledger provides the concurrency
+control. Clear the exclusivity flag before allowing a separate inference
+caller on the account.
