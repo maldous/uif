@@ -9,7 +9,9 @@ import unittest
 from unittest.mock import patch
 
 from uif.stokowski_cloudflare.budget import BudgetRefused, ProjectAccountRouter
-from uif.stokowski_cloudflare.client import MODEL, REQUEST_MAXIMUM, WorkersAIClient, WorkersAIRequestError
+from uif.stokowski_cloudflare.client import (
+    GLM_MODEL, MODEL, MODEL_RESERVATIONS, REQUEST_MAXIMUM, WorkersAIClient, WorkersAIRequestError,
+)
 from uif.stokowski_cloudflare.turn import Attempt, repository_tools, run_turn
 
 
@@ -29,6 +31,21 @@ class WorkersAIClientTests(unittest.TestCase):
     def usage_record(self):
         with sqlite3.connect(self.database) as db:
             return db.execute('SELECT amount, settled FROM requests').fetchone()
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_glm_reserves_its_own_ceiling_and_rejects_different_reported_model(self, connection):
+        client = WorkersAIClient(self.router, lambda _: 'test-token', model=GLM_MODEL)
+        conn = connection.return_value
+        response = conn.getresponse.return_value
+        response.status = 200
+        response.read.return_value = json.dumps({
+            'model': MODEL, 'choices': [{'message': {'content': 'Done'}}],
+            'usage': {'neurons': 1},
+        }).encode()
+        with self.assertRaisesRegex(WorkersAIRequestError, 'verified usage'):
+            client.complete(**self.request)
+        self.assertEqual(self.usage_record(), (MODEL_RESERVATIONS[GLM_MODEL], 0))
+        self.assertEqual(json.loads(conn.request.call_args.kwargs['body'])['model'], GLM_MODEL)
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
     def test_selected_account_is_used_and_reported_usage_is_rounded_up(self, connection):

@@ -98,7 +98,7 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             owner.running, owner._tasks, owner.claimed = {}, {}, {issue.id}
             owner._issue_state_runs = {issue.id: 2}
 
-            git.side_effect = ['checkpoint', 'native-review', 'base', 'admitted-tree', '']
+            git.side_effect = ['checkpoint', 'native-review', 'base', 'admitted-tree', '', '']
             approved = await owner._run_worker(issue, attempt)
             self.assertEqual((approved.attempt.review_of, approved.attempt.reviewer_project),
                              ('author', 'UIF'))
@@ -106,6 +106,10 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
 
             git.side_effect = ['checkpoint', 'native-review', 'base', 'different-tree']
             with self.assertRaisesRegex(ValueError, 'admitted candidate tree'):
+                await owner._run_worker(issue, attempt)
+
+            git.side_effect = ['checkpoint', 'native-review', 'base', 'admitted-tree', ' M dirty']
+            with self.assertRaisesRegex(ValueError, 'clean candidate worktree'):
                 await owner._run_worker(issue, attempt)
 
     async def test_worker_clears_inherited_authorization_and_preserves_original_attempt(self):

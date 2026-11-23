@@ -11,10 +11,15 @@ from .budget import ProjectAccountRouter
 
 
 MODEL = '@cf/openai/gpt-oss-20b'
+GLM_MODEL = '@cf/zai-org/glm-4.7-flash'
 MAX_OUTPUT_TOKENS = 2048
 # Reserve the whole model input window plus the explicit output cap. Round
 # Cloudflare's published rates up to the next millineuron per token.
 REQUEST_MAXIMUM = 128_000 * 19 + MAX_OUTPUT_TOKENS * 28
+MODEL_RESERVATIONS = MappingProxyType({
+    MODEL: REQUEST_MAXIMUM,
+    GLM_MODEL: 131_072 * 6 + MAX_OUTPUT_TOKENS * 37,
+})
 MAX_RESPONSE_BYTES = 256 * 1024
 
 
@@ -23,8 +28,13 @@ class WorkersAIRequestError(RuntimeError):
 
 
 class WorkersAIClient:
-    def __init__(self, router: ProjectAccountRouter, free_account_token, *, gateways=None):
+    def __init__(self, router: ProjectAccountRouter, free_account_token, *, gateways=None,
+                 model=MODEL):
         """The protected owner supplies tokens only for verified Free accounts."""
+        if model not in MODEL_RESERVATIONS:
+            raise ValueError('Workers AI model has not been admitted')
+        self.model = model
+        self.request_maximum = MODEL_RESERVATIONS[model]
         self.router = router
         self.free_account_token = free_account_token
         configured = dict(gateways) if gateways is not None else {}
@@ -40,7 +50,7 @@ class WorkersAIClient:
         """Reserve before sending. Uncertain usage retains the full reservation."""
         if not 0 < timeout <= 600:
             raise ValueError('Invalid inference timeout')
-        request = {'model': MODEL, 'messages': messages, 'max_tokens': MAX_OUTPUT_TOKENS,
+        request = {'model': self.model, 'messages': messages, 'max_tokens': MAX_OUTPUT_TOKENS,
                    'stream': False}
         if tools:
             request['tools'] = tools
@@ -49,7 +59,7 @@ class WorkersAIClient:
         if len(canonical) > 128_000:
             raise ValueError('Workers AI input exceeds the allowed size')
         budget = self.router.reserve_request(
-            project, attempt_id, request_id, REQUEST_MAXIMUM, active_projects,
+            project, attempt_id, request_id, self.request_maximum, active_projects,
             request_sha256=sha256(canonical).hexdigest(), review_of=review_of,
             reviewer_project=reviewer_project)
         try:
@@ -87,7 +97,7 @@ class WorkersAIClient:
             raise WorkersAIRequestError('Workers AI response exceeded the size limit')
         try:
             result = json.loads(raw, parse_float=Decimal)
-            if result['model'] != MODEL or not result['choices']:
+            if result['model'] != self.model or not result['choices']:
                 raise ValueError
             usage = result['usage']['neurons']
             if type(usage) not in {int, Decimal}:
@@ -99,6 +109,6 @@ class WorkersAIClient:
         except (KeyError, TypeError, ValueError, ArithmeticError):
             raise WorkersAIRequestError('Workers AI response lacks verified usage') from None
         budget.settle(request_id, actual, gateway_receipt=receipt)
-        if actual > REQUEST_MAXIMUM:
+        if actual > self.request_maximum:
             raise WorkersAIRequestError('Workers AI usage exceeded its reservation')
         return result

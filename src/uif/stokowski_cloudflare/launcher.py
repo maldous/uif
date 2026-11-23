@@ -10,7 +10,7 @@ import stat
 import subprocess
 
 from .budget import ProjectAccountRouter
-from .client import WorkersAIClient
+from .client import MODEL, WorkersAIClient
 from .native import NativeTurnBinding, install_native_runner
 from .turn import Attempt
 
@@ -70,7 +70,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         except (OSError, ValueError, KeyError):
             continue
     router = ProjectAccountRouter(database, accounts, eligible_projects=eligible)
-    client = WorkersAIClient(router, token, gateways=config.get('gateways'))
+    client = WorkersAIClient(router, token, gateways=config.get('gateways'),
+                             model=config.get('model', MODEL))
     context = ContextVar('native_workers_ai_owner')
     authorized = ContextVar('native_workers_ai_authorized', default=None)
     original_worker = orchestration.Orchestrator._run_worker
@@ -175,6 +176,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
               or review_binding and (review_binding['kind'] != 'source-free'
                                      or review_binding['candidate'] != issue.id)):
             raise ValueError('Workers AI attempt source has moved')
+        if (review_binding is not None
+                and git('status', '--porcelain', '--untracked-files=all',
+                        '--', '.', ':!.stokowski').strip()):
+            raise ValueError('Workers AI review requires a clean candidate worktree')
         tracked = set(filter(None, git('ls-files', '-z').split('\0')))
         paths = tuple(record['read_paths'])
         if not set(paths) <= tracked:
