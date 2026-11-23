@@ -136,6 +136,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     if mode == 'cloudflare' and config.get('project_intake'):
         original_entry = orchestration.Orchestrator._entry_state_for
         original_resolve = orchestration.Orchestrator._resolve_current_state
+        original_enter_gate = orchestration.Orchestrator._enter_gate
 
         def entry(owner, issue):
             profile = automatic_profile(_protected_json(policy), owner, issue)
@@ -163,8 +164,17 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 owner._announced_states.add((issue.id, state, run))
             return state, run
 
+        async def enter_gate(owner, issue, state, **kwargs):
+            if (owner.project_name in config['project_intake']
+                    and kwargs.get('assessed_context') is None):
+                # Native reread drops the projection when the gate carries no
+                # assessed snapshot. Hash the same inputs at gate creation.
+                owner._dependency_observations.pop(issue.id, None)
+            return await original_enter_gate(owner, issue, state, **kwargs)
+
         orchestration.Orchestrator._entry_state_for = entry
         orchestration.Orchestrator._resolve_current_state = resolve
+        orchestration.Orchestrator._enter_gate = enter_gate
 
     def scoped_workspace(owner, issue):
         base = owner.cfg.workspace.resolved_root().resolve()
@@ -430,6 +440,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         prompt = record['prompt']
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError('Workers AI requires a scoped owner prompt')
+        prompt += ('\nController-verified current worktree source: ' +
+                   json.dumps({'head': head, 'branch': branch}) +
+                   '. Use this source identity for current observations. '
+                   'Treat other source identities in issue history as provenance.\n')
         if attempt.state_name == 'assess':
             routing = {
                 'issue': issue.identifier, 'state': attempt.state_name,
