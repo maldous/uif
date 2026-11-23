@@ -50,7 +50,18 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         return _protected_json(policy)['admissions']
 
     def dispatch(owner, issue, attempt_num=None):
-        if owner.project_name not in projects or issue.id not in admissions():
+        stages = admissions().get(issue.id)
+        if owner.project_name not in projects or not stages:
+            owner._release_slot(issue.id)
+            return None
+        state = owner._issue_current_state.get(issue.id) or owner._entry_state_for(issue)
+        stage = owner._states_for(issue).get(state)
+        if (orchestration.state_key(issue.state) in {'backlog', 'review', 'blocked'}
+                and stage and stage.type == 'agent' and not stage.admission_review):
+            state = owner._entry_state_for(issue)
+        record = stages.get(state)
+        if (record is None or record['project'] != owner.project_name
+                or record['scope_sha256'] != publication.scope(issue)):
             owner._release_slot(issue.id)
             return None
         return original_dispatch(owner, issue, attempt_num)
