@@ -43,6 +43,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     client = WorkersAIClient(router, token, gateways=config.get('gateways'))
     context = ContextVar('native_workers_ai_owner')
+    authorized = ContextVar('native_workers_ai_authorized', default=None)
     original_worker = orchestration.Orchestrator._run_worker
     original_dispatch = orchestration.Orchestrator._dispatch
 
@@ -51,7 +52,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     def dispatch(owner, issue, attempt_num=None):
         stages = admissions().get(issue.id)
-        if owner.project_name not in projects or not stages:
+        if (owner.project_name not in projects or not stages or owner.pool is None
+                or owner.pool.is_paused(owner.project_name)):
             owner._release_slot(issue.id)
             return None
         state = owner._issue_current_state.get(issue.id) or owner._entry_state_for(issue)
@@ -75,6 +77,12 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     def active_projects():
         owner = context.get()
+        binding = authorized.get()
+        if binding is not None:
+            issue_id, stage, attempt, record = binding
+            if (owner.running.get(issue_id) is not attempt or issue_id not in owner.claimed
+                    or admissions().get(issue_id, {}).get(stage) != record):
+                return set()
         return {name for name in projects if owner.pool is not None and not owner.pool.is_paused(name)}
 
     def authorize(issue, attempt, workspace):
@@ -101,6 +109,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
                for root in roots):
             raise ValueError('Invalid Workers AI write scope')
+        authorized.set((issue.id, attempt.state_name, attempt, record))
         return NativeTurnBinding(issue.id, workspace,
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
                     record.get('reviewer_project')), paths, roots)

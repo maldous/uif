@@ -11,6 +11,7 @@ class LauncherTests(unittest.TestCase):
     def test_installs_cloudflare_only_and_holds_unadmitted_issue_before_native_dispatch(self):
         class Owner:
             project_name = 'OffMenu'
+            pool = SimpleNamespace(is_paused=lambda _: True)
             _dispatch = Mock()
             _run_worker = AsyncMock()
             _release_slot = Mock()
@@ -34,3 +35,7 @@ class LauncherTests(unittest.TestCase):
             self.assertIsNone(Owner()._dispatch(issue))
             original.assert_not_called()
             Owner._release_slot.assert_called_once_with(issue.id)
+            config['admissions'][issue.id] = {'investigate': {}}
+            self.assertIsNone(Owner()._dispatch(issue))
+            original.assert_not_called()
+            self.assertEqual(Owner._release_slot.call_count, 2)
