@@ -78,6 +78,19 @@ class Recovery(unittest.TestCase):
         self.contract['requirements'][0]['expected']=None; self.evidence['contract_sha256']=digest(self.contract); self.assertBlocked()
     def test_expired_owner_refused(self):
         self.evidence['recovery']['ownership_expires_at']=STAMP; self.assertBlocked()
+    def test_checkout_must_match_selected_commit_and_registration(self):
+        checkout = {'root': '/fixture', 'head': 'a' * 40, 'branch': 'develop',
+                    'worktrees': [{'path': '/fixture', 'head': 'a' * 40,
+                                   'branch_ref': 'refs/heads/develop'}]}
+        def result():
+            return evaluate(self.contract, self.evidence, 'cloud', 'uif', NOW, checkout=checkout)
+        self.assertTrue(result()['preflight_passed'])
+        checkout['worktrees'][0]['head'] = 'b' * 40
+        checks = {row['id']: row['state'] for row in result()['checks']}
+        self.assertEqual(checks['checkout'], 'drifted')
+        checkout['worktrees'][0]['head'] = checkout['head'] = 'b' * 40
+        self.assertFalse(result()['preflight_passed'])
+
     def test_wrong_project_rejected(self):
         self.evidence['project']='offmenu'; self.assertBlocked()
     def test_type_drift_refused(self):
@@ -85,6 +98,37 @@ class Recovery(unittest.TestCase):
         self.evidence['contract_sha256']=digest(self.contract)
         self.evidence['observations'][0]['actual']={'enabled':1}
         self.assertBlocked()
+    def test_version_must_be_integer_one(self):
+        for document in (self.contract, self.evidence):
+            for invalid_version in (True, 1.0):
+                with self.subTest(document=document is self.contract, version=invalid_version):
+                    document['version'] = invalid_version
+                    self.evidence['contract_sha256'] = digest(self.contract)
+                    with self.assertRaises(ValueError):
+                        self.run_check()
+                    document['version'] = 1
+
+    def test_recovery_issue_and_owner_require_nonblank_strings(self):
+        for key in ('issue', 'owner'):
+            for invalid_identity in (7, True, '  '):
+                with self.subTest(key=key, identity=invalid_identity):
+                    self.setUp()
+                    context = self.evidence['recovery']
+                    context[key] = context['published_checkpoint'][key] = invalid_identity
+                    if key == 'owner':
+                        context['authoritative_owner'] = invalid_identity
+                    result = self.run_check()
+                    self.assertFalse(result['preflight_passed'])
+                    self.assertIn('identity', {row['id'] for row in result['checks']})
+
+    def test_discovery_completion_requires_boolean_map(self):
+        for invalid_discovery in ([], {'cloud': 'true'}):
+            with self.subTest(discovery=invalid_discovery):
+                self.contract['projects']['uif']['discovery_complete'] = invalid_discovery
+                self.evidence['contract_sha256'] = digest(self.contract)
+                with self.assertRaises(ValueError):
+                    self.run_check()
+
     def test_invalid_freshness_refused(self):
         self.contract['requirements'][0]['max_age_seconds']=float('nan')
         with self.assertRaises(ValueError): self.run_check()
@@ -112,6 +156,9 @@ class Inventory(unittest.TestCase):
             git('init','-b','develop'); git('config','user.email','test@example.invalid'); git('config','user.name','Test')
             (root/'AGENTS.md').write_text('instructions'); (root/'package.json').write_text('{}')
             git('add','.'); git('commit','-m','fixture')
+            linked = root / 'linked checkout'
+            git('worktree', 'add', '--detach', str(linked), 'HEAD')
+            git('worktree', 'lock', '--reason', 'private lock reason', str(linked))
             (root/'private.txt').write_text('do not output file contents')
             hook=root/'watcher'
             hook.write_text('#!/bin/sh\ntouch '+str(root/'hook-ran')+'\n')
@@ -126,6 +173,15 @@ class Inventory(unittest.TestCase):
             before={p.name:p.read_bytes() for p in root.iterdir() if p.is_file()}
             result=inventory(root)
             self.assertIsNone(result['dirty']); self.assertFalse(result['remote_verified'])
+            self.assertEqual(Path(result['git_common_dir']), root.resolve() / '.git')
+            worktrees = {Path(row['path']): row for row in result['worktrees']}
+            self.assertEqual(set(worktrees), {root.resolve(), linked.resolve()})
+            self.assertEqual(worktrees[root.resolve()]['branch_ref'], 'refs/heads/develop')
+            self.assertEqual(worktrees[linked.resolve()]['head'], result['head'])
+            self.assertIsNone(worktrees[linked.resolve()]['branch_ref'])
+            self.assertTrue(worktrees[linked.resolve()]['detached'])
+            self.assertTrue(worktrees[linked.resolve()]['locked'])
+            self.assertNotIn('private lock reason', json.dumps(result))
             self.assertIn('package.json',result['declaration_paths'])
             self.assertNotIn('do not output',json.dumps(result))
             self.assertFalse((root/'hook-ran').exists())
