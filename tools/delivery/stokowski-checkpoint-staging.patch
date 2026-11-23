@@ -1,0 +1,20 @@
+--- stokowski/publication.py
++++ stokowski/publication.py
+@@ -378,11 +378,13 @@
+         raise ValueError('Controller metadata cannot be tracked product source')
+     branch = 'stokowski/' + issue.identifier.lower() + '/' + uuid.uuid4().hex
+     git(path, 'switch', '-c', branch)
+-    # Name literal source paths; an exclusion pathspec naming ignored metadata
+-    # makes git-add fail even though the directory is excluded.
+-    listed = subprocess.run(['git', 'ls-files', '-z', '--cached', '--others',
++    # Update tracked files without passing unchanged ignored paths as literals.
++    # New files still pass the standard ignore rules and the metadata exclusion.
++    subprocess.run(['git', 'add', '-u', '--', '.'], cwd=path, capture_output=True,
++                   timeout=60, check=True)
++    listed = subprocess.run(['git', 'ls-files', '-z', '--others',
+                              '--exclude-standard'], cwd=path, capture_output=True,
+-                            timeout=60, check=True).stdout
++                             timeout=60, check=True).stdout
+     paths = sorted(set(name for name in listed.split(b'\0')
+                        if name and name != b'.stokowski'
+                        and not name.startswith(b'.stokowski/')))
