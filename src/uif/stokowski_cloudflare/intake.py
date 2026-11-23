@@ -36,7 +36,9 @@ def intake_stages(profile, project, issue, scope, run):
         'assess': dict(common, attempt=f'cf-intake-{identity}-assess', read_paths=[], prompt=instruction + (
             'Assess readiness for read-only investigation on the existing worktree. If a real '
             'dependency, hold or input is missing, return a bound blocked or deferred report. '
-            'A positive assessment only authorizes investigation within the available tools.')),
+            'A positive assessment only authorizes investigation within the available tools. '
+            'If the issue explicitly selects an authorized exact repo, ref and commit for this '
+            'work, put that exact object in routing.working_source for native verification.')),
         'investigate': dict(common, attempt=f'cf-intake-{identity}-investigate',
                             automatic_review=True, prompt=instruction + (
             'Investigate and deliver the scoped result if feasible in this read-only stage. '

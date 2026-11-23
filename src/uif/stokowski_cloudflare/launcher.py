@@ -136,16 +136,22 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
         async def resolve(owner, issue, *, comments=None):
             profile = automatic_profile(_protected_json(policy), owner, issue)
-            if (profile is None or orchestration.state_key(issue.state) != 'active'
-                    or issue.id in owner._issue_current_state or issue.id in owner.claimed
-                    or owner._settlement_path(issue).exists()):
+            linear_state = orchestration.state_key(issue.state)
+            if (profile is None or linear_state not in {'active', 'blocked', 'review'}
+                    or issue.id in owner._issue_current_state or issue.id in owner.claimed):
                 return await original_resolve(owner, issue, comments=comments)
             if comments is None:
                 comments = await owner._publication_comments(issue.id)
+            unclaimed_checkout = not owner._settlement_path(issue).exists()
             state, run = await original_resolve(owner, issue, comments=comments)
-            if orchestration.parse_latest_tracking(comments) is None:
+            tracking = orchestration.parse_latest_tracking(comments)
+            if (linear_state == 'active' and unclaimed_checkout and tracking is None):
                 owner._issue_current_state[issue.id] = 'assess'
                 return 'assess', run
+            if (linear_state in {'blocked', 'review'} and state == 'assess' and tracking
+                    and tracking.get('type') == 'state' and tracking.get('state') == 'assess'
+                    and tracking.get('run') == run):
+                owner._announced_states.add((issue.id, state, run))
             return state, run
 
         orchestration.Orchestrator._entry_state_for = entry
@@ -176,7 +182,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                     orchestration.state_key(name) for name in owner.cfg.terminal_linear_states()
             } for blocker in getattr(issue, 'blocked_by', ())):
                 return False
-            return linear_state in READY_STATES or linear_state == 'active'
+            return (linear_state in READY_STATES or linear_state == 'active'
+                    or linear_state in {'blocked', 'review'} and (
+                        issue.id, state, owner._issue_state_runs.get(issue.id, 1)
+                    ) in owner._announced_states)
         try:
             workspace = scoped_workspace(owner, issue)
             run = owner._issue_state_runs.get(issue.id, 1)

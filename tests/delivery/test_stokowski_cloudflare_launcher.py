@@ -117,6 +117,7 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             owner = Owner()
             owner._issue_current_state, owner._issue_state_runs, owner.running = {}, {}, {}
             owner.claimed = set()
+            owner._announced_states = set()
             owner._settlement_path = lambda _: Path(scratch) / 'workspace'
             owner.cfg = SimpleNamespace(terminal_linear_states=lambda: ['Done', 'Canceled'])
             self.assertEqual(owner._entry_state_for(issue), 'assess')
@@ -131,6 +132,11 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await owner._resolve_current_state(issue, comments=[]), ('assess', 1))
             issue.blocked_by = [SimpleNamespace(state='In Progress')]
             self.assertFalse(owner._is_eligible(issue))
+            issue.blocked_by.clear()
+            issue.state = 'Blocked'
+            self.assertFalse(owner._is_eligible(issue))
+            owner._announced_states.add((issue.id, 'assess', 1))
+            self.assertTrue(owner._is_eligible(issue))
 
     async def test_native_dispatch_attaches_generated_review_and_preserves_owner_revocation(self):
         class Owner:
