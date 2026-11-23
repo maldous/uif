@@ -14,6 +14,7 @@ import subprocess
 from .budget import PAID_ACCOUNT, PROJECTS, ProjectAccountRouter
 from .client import MODEL, WorkersAIClient
 from .native import NativeTurnBinding, install_native_runner
+from .review import prepare_review
 from .turn import Attempt
 
 
@@ -115,6 +116,17 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 and _codex_is_ready(readiness.get(context.get().project_name),
                                     datetime.now(timezone.utc)))
 
+    def available_projects(owner):
+        return {name for name in projects if owner.pool is not None and not owner.pool.is_paused(name)}
+
+    def current_admission(issue_id, state, record):
+        stages = admissions().get(issue_id, {})
+        author = record.get('automatic_author')
+        if author is not None:
+            return (state == 'independent-review' and state not in stages
+                    and stages.get('investigate') == author)
+        return stages.get(state) == record
+
     def eligible(owner, issue, **kwargs):
         stages = admissions().get(issue.id, {})
         return (owner.project_name in projects
@@ -136,6 +148,26 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             state = owner._entry_state_for(issue)
             stage = owner._states_for(issue).get(state)
         record = stages.get(state)
+        if record is None and state == 'independent-review':
+            author = stages.get('investigate')
+            if (author and author.get('automatic_review') is True
+                    and author['project'] == owner.project_name
+                    and author['scope_sha256'] == publication.scope(issue)):
+                reviewer = router.independent_reviewer(
+                    owner.project_name, author['attempt'], available_projects(owner),
+                    client.request_maximum)
+                if reviewer is not None:
+                    base = owner.cfg.workspace.resolved_root().resolve()
+                    workspace = base / issue.identifier
+                    try:
+                        if workspace.parent != base or workspace.resolve(strict=True) != workspace:
+                            raise ValueError('Review worktree is outside native custody')
+                        record = prepare_review(workspace, issue,
+                                                owner._issue_state_runs.get(issue.id, 1),
+                                                author, reviewer, publication)
+                    except (OSError, ValueError, subprocess.SubprocessError) as error:
+                        logger.warning('Automatic Workers AI review held: %s (%s)',
+                                       issue.identifier, type(error).__name__)
         if record is None:
             retry = owner.retry_attempts.get(issue.id)
             if retry is not None and any(
@@ -157,7 +189,12 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 retry.error = 'Original Workers AI request retained for reconciliation'
             owner._release_slot(issue.id)
             return None
-        return original_dispatch(owner, issue, attempt_num)
+        previous = owner.running.get(issue.id)
+        result = original_dispatch(owner, issue, attempt_num)
+        current = owner.running.get(issue.id)
+        if current is not None and current is not previous and record.get('automatic_author'):
+            current.workers_ai_review = record
+        return result
 
     async def worker(owner, issue, attempt):
         context_token = context.set(owner)
@@ -174,15 +211,19 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if binding is not None:
             issue_id, stage, attempt, record = binding
             if (owner.running.get(issue_id) is not attempt or issue_id not in owner.claimed
-                    or admissions().get(issue_id, {}).get(stage) != record):
+                    or not current_admission(issue_id, stage, record)):
                 return set()
-        return {name for name in projects if owner.pool is not None and not owner.pool.is_paused(name)}
+        return available_projects(owner)
 
     def authorize(issue, attempt, workspace):
         owner = context.get()
-        record = admissions().get(issue.id, {}).get(attempt.state_name)
+        record = getattr(attempt, 'workers_ai_review', None)
+        if record is None:
+            record = admissions().get(issue.id, {}).get(attempt.state_name)
         if record is None or record['project'] != owner.project_name:
             raise ValueError('Workers AI stage has no approved native binding')
+        if not current_admission(issue.id, attempt.state_name, record):
+            raise ValueError('Workers AI stage authorization has changed')
         if (owner.running.get(issue.id) is not attempt
                 or owner._tasks.get(issue.id) is not asyncio.current_task()
                 or issue.id not in owner.claimed):
