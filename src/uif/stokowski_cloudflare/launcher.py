@@ -156,8 +156,24 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         def git(*args):
             return subprocess.check_output(['git', '-C', str(workspace), *args], timeout=10, text=True)
 
-        if (git('rev-parse', 'HEAD').strip() != record['source_head']
-                or git('branch', '--show-current').strip() != record['branch']):
+        head = git('rev-parse', 'HEAD').strip()
+        branch = git('branch', '--show-current').strip()
+        review_binding = None
+        if attempt.state_name == 'independent-review':
+            review_binding = publication.read(workspace, publication.BINDING)
+            run = owner._issue_state_runs.get(issue.id, 1)
+            if (review_binding['issue_id'] != issue.id or review_binding['run'] != run
+                    or review_binding['state'] != attempt.state_name
+                    or review_binding['scope_sha256'] != record['scope_sha256']):
+                raise ValueError('Native review checkpoint does not bind the admitted issue and run')
+        if review_binding and review_binding['kind'] == 'git':
+            if (head != review_binding['candidate'] or branch != review_binding['branch']
+                    or git('show', '-s', '--format=%P', 'HEAD').strip() != record['source_head']
+                    or git('rev-parse', 'HEAD^{tree}').strip() != record['candidate_tree']):
+                raise ValueError('Native review checkpoint differs from the admitted candidate tree')
+        elif (head != record['source_head'] or branch != record['branch']
+              or review_binding and (review_binding['kind'] != 'source-free'
+                                     or review_binding['candidate'] != issue.id)):
             raise ValueError('Workers AI attempt source has moved')
         tracked = set(filter(None, git('ls-files', '-z').split('\0')))
         paths = tuple(record['read_paths'])
@@ -190,6 +206,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 + '\nFor a genuine dependency or unresolved outcome use verdict blocked or '
                 'deferred, explain it, and retain the exact issue, state, and run in routing.'
             )
+        if review_binding is not None:
+            prompt += '\nNative review binding for the admitted candidate: ' + json.dumps(review_binding)
         roots = tuple(record['write_roots'])
         if any(not re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*', root)
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
