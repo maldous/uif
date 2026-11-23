@@ -48,6 +48,7 @@ class WorkersAIClientTests(unittest.TestCase):
         request = json.loads(conn.request.call_args.kwargs['body'])
         self.assertEqual(request['model'], GLM_MODEL)
         self.assertEqual(request['chat_template_kwargs'], {'enable_thinking': False})
+        self.assertEqual(request['response_format'], {'type': 'json_object'})
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
     def test_selected_account_is_used_and_reported_usage_is_rounded_up(self, connection):
@@ -271,6 +272,7 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertEqual(output, '{"summary":"Blocked"}')
         first, second = [json.loads(call.kwargs['body']) for call in conn.request.call_args_list]
         self.assertIn('tools', first)
+        self.assertNotIn('response_format', first)
         self.assertNotIn('tools', second)
         self.assertEqual(second['chat_template_kwargs'], {'enable_thinking': False})
         self.assertEqual(fixture.read_text(), 'old')
