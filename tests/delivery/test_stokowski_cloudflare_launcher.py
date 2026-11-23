@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 from uif.stokowski_cloudflare.launcher import _codex_is_ready, _start_with_shutdown, configure
-from uif.stokowski_cloudflare.budget import ProjectAccountRouter
+from uif.stokowski_cloudflare.budget import NORMAL_LIMIT, ProjectAccountRouter
 
 
 class LauncherTests(unittest.TestCase):
@@ -112,7 +112,9 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
         issue = SimpleNamespace(id='current-issue', identifier='UIF-10', title='Review test coverage',
                                 description='Inspect the existing evidence.', state='Todo')
         with (TemporaryDirectory() as scratch,
-              patch('uif.stokowski_cloudflare.launcher._protected_json', return_value=config),
+              patch('uif.stokowski_cloudflare.launcher._protected_json',
+                    side_effect=lambda path: config if path.name == 'owner.json' else
+                    dict(account_id=config['accounts']['OffMenu'], plan='free', token='fixture')),
               patch('uif.stokowski_cloudflare.launcher.install_native_runner')):
             native_dispatch = Owner._dispatch
             configure(SimpleNamespace(), orchestrator, SimpleNamespace(scope=lambda _: 'current-scope'),
@@ -125,6 +127,14 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             owner.cfg = SimpleNamespace(terminal_linear_states=lambda: ['Done', 'Canceled'])
             self.assertEqual(owner._entry_state_for(issue), 'assess')
             self.assertTrue(owner._is_eligible(issue))
+            ledger = ProjectAccountRouter(Path(scratch) / 'budget.sqlite', config['accounts'],
+                                          eligible_projects={'OffMenu'})
+            reserved = ledger.reserve_request('OffMenu', 'earlier-attempt', 'earlier-call',
+                                              NORMAL_LIMIT - 1, {'OffMenu'}, request_sha256='0' * 64)
+            owner._dispatch(issue)
+            native_dispatch.assert_not_called()
+            Owner._release_slot.assert_called_once_with(issue.id)
+            reserved.settle('earlier-call', 0)
             owner._dispatch(issue)
             native_dispatch.assert_called_once_with(owner, issue, None)
 
@@ -180,6 +190,7 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
               patch('uif.stokowski_cloudflare.launcher.install_native_runner') as binding,
               patch('uif.stokowski_cloudflare.launcher.prepare_review', return_value=review) as prepare,
               patch.object(ProjectAccountRouter, 'independent_reviewer', return_value='UIF'),
+              patch.object(ProjectAccountRouter, 'can_start', return_value=True),
               patch('uif.stokowski_cloudflare.launcher.subprocess.check_output',
                     side_effect=['head', 'branch', '', ''])):
             root = Path(scratch).resolve()

@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import signal
+import sqlite3
 import stat
 import subprocess
 
@@ -317,9 +318,13 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             if (author and author.get('automatic_review') is True
                     and author['project'] == owner.project_name
                     and author['scope_sha256'] == publication.scope(issue)):
-                reviewer = router.independent_reviewer(
-                    owner.project_name, author['attempt'], available_projects(owner),
-                    client.request_maximum)
+                try:
+                    reviewer = router.independent_reviewer(
+                        owner.project_name, author['attempt'], available_projects(owner),
+                        client.request_maximum)
+                except (OSError, sqlite3.Error) as error:
+                    logger.warning('Workers AI review budget unavailable: %s', type(error).__name__)
+                    reviewer = None
                 if reviewer is not None:
                     try:
                         workspace = scoped_workspace(owner, issue)
@@ -344,14 +349,25 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 or record['scope_sha256'] != publication.scope(issue)):
             owner._release_slot(issue.id)
             return None
-        if stage and stage.type == 'agent' and router.has_started(record['attempt']):
-            retry = owner.retry_attempts.get(issue.id)
-            if retry is not None:
-                if retry.error != 'Original Workers AI request retained for reconciliation':
-                    logger.warning('Workers AI retry held for reconciliation: %s', issue.identifier)
-                retry.error = 'Original Workers AI request retained for reconciliation'
-            owner._release_slot(issue.id)
-            return None
+        if stage and stage.type == 'agent':
+            try:
+                started = router.has_started(record['attempt'])
+                has_capacity = started or mode != 'cloudflare' or router.can_start(
+                    owner.project_name, available_projects(owner), client.request_maximum,
+                    reviewer_project=record.get('reviewer_project'))
+            except (OSError, sqlite3.Error) as error:
+                logger.warning('Workers AI budget unavailable: %s', type(error).__name__)
+                owner._release_slot(issue.id)
+                return None
+            if started:
+                retry = owner.retry_attempts.get(issue.id)
+                if retry is not None:
+                    if retry.error != 'Original Workers AI request retained for reconciliation':
+                        logger.warning('Workers AI retry held for reconciliation: %s', issue.identifier)
+                    retry.error = 'Original Workers AI request retained for reconciliation'
+            if started or not has_capacity:
+                owner._release_slot(issue.id)
+                return None
         previous = owner.running.get(issue.id)
         result = original_dispatch(owner, issue, attempt_num)
         current = owner.running.get(issue.id)

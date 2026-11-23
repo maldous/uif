@@ -18,6 +18,7 @@ from uif.quota_handoff import (CLOUD_ACTIVE, LOCAL_READY, LOCAL_RECOVERY, TRANSF
 ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE = str(UUID(int=1))
 PROJECT = str(UUID(int=2))
+MOVED_PROJECT = str(UUID(int=20))
 SOURCE = dict(repository="maldous/uif", branch="develop", base="a" * 40,
               head="b" * 40, tree="c" * 40)
 PIN = "d" * 64
@@ -32,7 +33,7 @@ class QuotaHandoffTests(unittest.TestCase):
         self.reads = []
         actors = {"morgan": dict(role="morgan", projects=[PROJECT]),
                   "native": dict(role="native", projects=[PROJECT]),
-                  "cloud": dict(role="project", projects=[PROJECT]),
+                  "cloud": dict(role="project", projects=[PROJECT, MOVED_PROJECT]),
                   "observer": dict(role="observer", projects=[])}
         principals = {"morgan-session": ["morgan"], "native-session": ["native"],
                       "next-morgan-session": ["morgan"], "cloud-session": ["cloud"],
@@ -52,7 +53,7 @@ class QuotaHandoffTests(unittest.TestCase):
 
     def reconstruct(self, context):
         self.reads.append(context)
-        self.assertEqual(context.key.project_id, PROJECT)
+        self.assertIn(context.key.project_id, {PROJECT, MOVED_PROJECT})
         self.assertEqual(context.source, SOURCE)
         return RecoveryReceipt(PIN, context.evidence_ref, self.now)
 
@@ -98,6 +99,71 @@ class QuotaHandoffTests(unittest.TestCase):
         self.heartbeat()
         self.claim()
         self.provider("hard-quota", 2)
+
+    def test_two_authority_clients_racing_across_project_move_grant_one_claim(self):
+        self.provider("available", 1)
+        self.heartbeat()
+        moved = LinearKey(WORKSPACE, MOVED_PROJECT, self.key.issue_id)
+        cloud = Registry(self.path, recovery_verifier=self.reconstruct, clock=lambda: self.now)
+        ready = threading.Barrier(2)
+        outcomes = []
+
+        def claim_request(actor, lane, key):
+            return dict(action="claim", request_id=actor + "-race", key=asdict(key),
+                        lane=lane, source=SOURCE, evidence_ref="reconstruction-current",
+                        original_operation_id=actor + "-original")
+
+        def contend(registry, actor, request):
+            ready.wait(timeout=5)
+            try:
+                result = registry.invoke(principal=actor + "-session", actor=actor, request=request)
+                outcomes.append((actor, result["status"]))
+            except Hold as error:
+                outcomes.append((actor, str(error)))
+
+        contenders = {
+            "native": (self.registry, claim_request("native", "local", self.key)),
+            "cloud": (cloud, claim_request("cloud", "cloud", moved)),
+        }
+        workers = [threading.Thread(target=contend, args=(registry, actor, request))
+                   for actor, (registry, request) in contenders.items()]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(timeout=10)
+            self.assertFalse(worker.is_alive())
+        self.assertEqual(len(outcomes), 2)
+        self.assertEqual(sum(result == "claimed" for _, result in outcomes), 1)
+        loser, refusal = next((actor, result) for actor, result in outcomes if result != "claimed")
+        self.assertIn(refusal, {"task_effect_busy", "existing_claim_requires_reconciliation"})
+        registry, original = contenders[loser]
+        with self.assertRaisesRegex(Hold, "existing_claim_requires_reconciliation"):
+            registry.invoke(principal=loser + "-session", actor=loser, request=original)
+        self.assertEqual(len(self.status()["tasks"]), 1)
+
+    def test_legacy_project_conflict_holds_new_effects_but_preserves_reconciliation(self):
+        self.provider("available", 1)
+        self.claim()
+
+        def lost_reply():
+            raise TimeoutError("lost reply")
+
+        with self.assertRaises(TimeoutError):
+            self.effect(lost_reply)
+
+        moved = LinearKey(WORKSPACE, MOVED_PROJECT, self.key.issue_id)
+        with self.registry.store.transaction() as (_, state, save):
+            task = state["tasks"][self.key.identity]
+            state["tasks"][moved.identity] = dict(task, key=asdict(moved), operations={})
+            save()
+
+        with self.assertRaisesRegex(Hold, "conflicting_project_claims"):
+            self.effect(lambda: self.fail("conflicting claims reached the effect boundary"))
+        self.registry.operation_verifier = lambda context: context.operation_id == "original-effect"
+        reconciled = self.request(
+            "native", "resolve_operation", key=asdict(self.key), generation=1,
+            operation_id="original-effect", status="verified", receipt_sha256=PIN)
+        self.assertEqual(reconciled["status"], "reconciled")
 
     def test_durable_handoff_reopens_and_fences_old_owner(self):
         self.prepare_transfer()

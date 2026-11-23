@@ -22,9 +22,11 @@ direct endpoint retry. Accounts without a gateway mapping use the direct
 Workers AI endpoint.
 
 Keep standard Workers AI billing and authenticated gateway access. Keep prompt
-and response collection disabled. Any gateway spend rule is a secondary control. Stokowski still caps new work at 7,500 neurons per
-UTC day and work in progress at 10,000. The Workers Free plan supplies the
-provider-enforced cutoff.
+and response collection disabled. Any gateway spend rule is a secondary control.
+Each first call and continuation must keep projected ledger usage strictly below
+7,500 neurons per account and UTC day. The Workers Free plan supplies the
+provider-enforced cutoff. Independent traffic outside the ledger requires
+separate account-wide usage evidence before live qualification.
 
 When gateway routing is enabled, the native owner passes the map from its
 protected launcher configuration.
@@ -47,6 +49,12 @@ sets it after verifying Codex capability and capacity. No model call checks
 readiness. In `codex` mode, the native workflow supplies the Codex model.
 In `both` mode, a launched native Codex operation retains its original
 settlement path.
+
+In Cloudflare-only mode, native inference dispatch waits when the ledger cannot
+cover the first request. The existing native loop reassesses capacity on later
+polls. Concurrent contenders still need an atomic reservation before transport.
+An original attempt that already reserved a request stays in reconciliation
+under its existing identifier.
 
 ## Project intake
 
@@ -82,9 +90,8 @@ An optional `Paid` account can use its included Workers AI allocation when
 every Workers AI caller for the account shares Stokowski's ledger. The
 operator reconciles existing usage before setting `paid_workers_ai_exclusive`
 and supplying the protected paid credential. Each request still reserves its
-maximum usage before dispatch. The same 7,500-neuron admission cap and
-10,000-neuron hard cap apply per UTC day, including concurrent requests and
-unsettled usage. A pending Paid request keeps its reservation across midnight.
+maximum usage before dispatch. The same strict 7,500-neuron threshold applies.
+A pending request keeps its reservation across midnight for every account.
 A request that settles on a later day also counts against that day's headroom.
 
 An authenticated AI Gateway can add a secondary spend limit. Its limit uses

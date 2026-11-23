@@ -78,6 +78,10 @@ class LinearKey:
     def identity(self):
         return ":".join(asdict(self).values())
 
+    @property
+    def claim_identity(self):
+        return f"{self.workspace_id}:{self.issue_id}"
+
 
 @dataclass(frozen=True)
 class RecoveryContext:
@@ -289,6 +293,13 @@ class Registry:
         require(set(request) == {"action", "request_id", *fields}, "request_shape")
         token(request["request_id"])
 
+    def _has_other_project_claim(self, state, key):
+        prefix = key.workspace_id + ":"
+        suffix = ":" + key.issue_id
+        return (any(identity != key.identity and identity.startswith(prefix) and identity.endswith(suffix)
+                    for identity in state["tasks"])
+                or self.store.has_other_project_claim(key.workspace_id, key.project_id, key.issue_id))
+
     def _task(self, state, key, generation):
         require(type(generation) is int and generation > 0, "claim_generation")
         task = state["tasks"].get(key.identity)
@@ -296,13 +307,15 @@ class Registry:
             task = self.store.archived_task(key.identity)
             if task is not None:
                 state["tasks"][key.identity] = task
-        require(task is not None and task["generation"] == generation, "obsolete_claim")
+        require(task is not None and task["generation"] == generation and task["key"] == asdict(key),
+                "obsolete_claim")
         return task
 
     def _active(self, reg, state, actor, key, generation, *, reasoning=False):
         require(state["stopped"] is False, "service_stopped")
         task = self._task(state, key, generation)
         require(task["owner"] == actor and task["state"] == "active", "claim_not_active")
+        require(not self._has_other_project_claim(state, key), "conflicting_project_claims")
         if reasoning and task["lane"] == "local":
             self._provider(state)
             require(state["mode"] in (LOCAL_READY, LOCAL_RECOVERY), "local_admission_closed")
@@ -329,7 +342,7 @@ class Registry:
         token(request.get("request_id"))
         task_actions = {"claim", "retry_claim", "capture_handoff", "acknowledge_handoff", "resolve_operation", "finish"}
         key = LinearKey.from_record(request.get("key")) if request.get("action") in task_actions else None
-        fence = self.store.task_fence(key.identity) if key is not None else nullcontext()
+        fence = self.store.task_fence(key.claim_identity) if key is not None else nullcontext()
         with fence:
             with self.store.transaction() as (reg, state, _):
                 role, command, prior = self._command(reg, state, principal, actor, request)
@@ -471,7 +484,8 @@ class Registry:
             require(req["lane"] in {"local", "cloud"}
                     and role["role"] == ("native" if req["lane"] == "local" else "project"), "lane_authority")
             require(not state["stopped"], "service_stopped")
-            require(key.identity not in state["tasks"] and self.store.archived_task(key.identity) is None,
+            require(key.identity not in state["tasks"] and self.store.archived_task(key.identity) is None
+                    and not self._has_other_project_claim(state, key),
                     "existing_claim_requires_reconciliation")
             self.store.require_headroom(state, active_delta=1)
             if req["lane"] == "local":
@@ -500,6 +514,8 @@ class Registry:
         key = LinearKey.from_record(req.get("key"))
         task = self._task(state, key, req.get("generation"))
         require(key.workspace_id == reg["workspace_id"] and key.project_id in role["projects"], "project_authority")
+        if action in {"retry_claim", "capture_handoff", "acknowledge_handoff"}:
+            require(not self._has_other_project_claim(state, key), "conflicting_project_claims")
         if action == "retry_claim":
             self._fields(req, {"key", "generation", "lane", "source", "evidence_ref", "original_operation_id"})
             require(task["state"] == "failed" and not state["stopped"], "failed_attempt_required")
@@ -630,7 +646,7 @@ class Registry:
         self._effect_arguments(key, operation_id, payload_sha256, effect)
         binding = dict(principal=principal, actor=actor, key=key, generation=generation,
                        operation_id=operation_id, payload_sha256=payload_sha256, reasoning=reasoning)
-        with self.store.task_fence(key.identity):
+        with self.store.task_fence(key.claim_identity):
             snapshot, previous = self._effect_snapshot(**binding)
             if previous is not None:
                 return previous
@@ -657,7 +673,7 @@ class Registry:
         self._effect_arguments(key, operation_id, payload_sha256, effect)
         binding = dict(principal=principal, actor=actor, key=key, generation=generation,
                        operation_id=operation_id, payload_sha256=payload_sha256, reasoning=reasoning)
-        with self.store.task_fence(key.identity):
+        with self.store.task_fence(key.claim_identity):
             snapshot, previous = self._effect_snapshot(**binding)
             if previous is not None:
                 return previous
