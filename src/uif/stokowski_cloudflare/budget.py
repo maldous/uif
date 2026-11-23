@@ -70,7 +70,7 @@ class WorkersAIBudget:
         db.execute('INSERT INTO requests VALUES (?, ?, ?, ?, 0)',
                    (self.account_id, day, request_id, maximum))
 
-    def settle(self, request_id: str, actual: int) -> None:
+    def settle(self, request_id: str, actual: int, *, gateway_receipt: str | None = None) -> None:
         """Record observed usage against the original reservation day."""
         if type(actual) is not int or actual < 0:
             raise ValueError('Expected nonnegative observed usage')
@@ -81,6 +81,13 @@ class WorkersAIBudget:
                 (actual, actual, self.account_id, request_id))
             if updated.rowcount != 1:
                 raise BudgetRefused('No outstanding reservation for this request')
+            if gateway_receipt is not None:
+                db.execute(
+                    'CREATE TABLE IF NOT EXISTS gateway_receipts ('
+                    'account TEXT NOT NULL, request_id TEXT NOT NULL, receipt TEXT NOT NULL, '
+                    'PRIMARY KEY (account, request_id))')
+                db.execute('INSERT INTO gateway_receipts VALUES (?, ?, ?)',
+                           (self.account_id, request_id, gateway_receipt))
 
 
 PROJECTS = frozenset({'UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'})

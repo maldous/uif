@@ -70,14 +70,17 @@ class WorkersAIClient:
         else:
             path = f'{account_path}/run/{MODEL}'
             body = json.dumps(request, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+        receipt = None
         conn = HTTPSConnection('api.cloudflare.com', timeout=timeout)
         try:
             conn.request('POST', path, body=body, headers=headers)
             response = conn.getresponse()
             if response.status != 200:
                 raise WorkersAIRequestError(f'Workers AI refused request (HTTP {response.status})')
-            if gateway is not None and not response.getheader('cf-aig-log-id'):
-                raise WorkersAIRequestError('AI Gateway request receipt missing')
+            if gateway is not None:
+                receipt = response.getheader('cf-aig-log-id')
+                if not receipt or not re.fullmatch(r'[A-Za-z0-9_-]{1,256}', receipt):
+                    raise WorkersAIRequestError('AI Gateway request receipt missing or invalid')
             raw = response.read(MAX_RESPONSE_BYTES + 1)
         except (OSError, HTTPException):
             raise WorkersAIRequestError('Workers AI response is uncertain') from None
@@ -104,7 +107,7 @@ class WorkersAIClient:
             actual = int((usage * 1000).to_integral_value(rounding=ROUND_CEILING))
         except (KeyError, TypeError, ValueError, ArithmeticError):
             raise WorkersAIRequestError('Workers AI response lacks verified usage') from None
-        budget.settle(request_id, actual)
+        budget.settle(request_id, actual, gateway_receipt=receipt)
         if actual > REQUEST_MAXIMUM:
             raise WorkersAIRequestError('Workers AI usage exceeded its reservation')
         return result
