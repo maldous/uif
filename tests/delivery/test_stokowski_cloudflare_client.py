@@ -1,7 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import sqlite3
 from tempfile import TemporaryDirectory
+from threading import Barrier
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -106,3 +109,33 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertEqual(requests[0].args[1], requests[1].args[1])
         self.assertEqual(json.loads(requests[1].kwargs['body'])['messages'][-1],
                          {'role': 'tool', 'tool_call_id': 'edit', 'content': 'Edited fixture'})
+
+    def test_five_active_projects_can_have_requests_in_flight_together(self):
+        barrier = Barrier(5, timeout=5)
+        paths = []
+
+        class Connection:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def request(self, method, path, **kwargs):
+                paths.append(path)
+                barrier.wait()
+
+            def getresponse(self):
+                return SimpleNamespace(status=200, read=lambda _: b'{"success":true,'
+                                       b'"result":{"response":"Done","usage":{"neurons":1}}}')
+
+            def close(self):
+                pass
+
+        def complete(project):
+            return self.client.complete(**dict(self.request, project=project,
+                attempt_id=project, request_id=project+'/one', active_projects=set(self.accounts)))
+
+        with patch('uif.stokowski_cloudflare.client.HTTPSConnection', Connection):
+            with ThreadPoolExecutor(max_workers=5) as workers:
+                self.assertEqual(len(list(workers.map(complete, self.accounts))), 5)
+        self.assertCountEqual(paths, [
+            f'/client/v4/accounts/{account}/ai/run/{MODEL}' for account in self.accounts.values()
+        ])
