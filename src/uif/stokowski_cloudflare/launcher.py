@@ -73,13 +73,15 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     def token(account):
         name = reverse[account]
-        record = _protected_json(credentials / (name + '.json'))
         if name == PAID_ACCOUNT:
-            if _protected_json(policy).get('paid_workers_ai_exclusive') is not True:
+            current = _protected_json(policy)
+            if (current.get('paid_workers_ai_exclusive') is not True
+                    or current['accounts'].get(PAID_ACCOUNT) != account):
                 raise ValueError('Paid Workers AI requires exclusive ledger usage')
             plan = 'paid'
         else:
             plan = 'free'
+        record = _protected_json(credentials / (name + '.json'))
         if record['account_id'] != account or record['plan'] != plan:
             raise ValueError('Unverified Workers AI account')
         return record['token']

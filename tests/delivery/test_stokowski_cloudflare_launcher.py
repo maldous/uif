@@ -50,7 +50,7 @@ class LauncherTests(unittest.TestCase):
                    'Paid.json': dict(account_id=accounts['Paid'], plan='paid', token='test')}
         with (TemporaryDirectory() as scratch,
               patch('uif.stokowski_cloudflare.launcher._protected_json',
-                    side_effect=lambda path: records[path.name]),
+                    side_effect=lambda path: records[path.name]) as read_policy,
               patch('uif.stokowski_cloudflare.launcher.WorkersAIClient') as client):
             configure(runner, orchestration, SimpleNamespace(), policy=Path('/etc/owner.json'),
                       database=Path(scratch)/'budget.sqlite')
@@ -58,6 +58,8 @@ class LauncherTests(unittest.TestCase):
             paid_token = client.call_args.args[1]
             with self.assertRaisesRegex(ValueError, 'exclusive ledger usage'):
                 paid_token(accounts['Paid'])
+            self.assertNotIn(Path('/etc/uif-stokowski/Paid.json'),
+                             [call.args[0] for call in read_policy.call_args_list])
             config['paid_workers_ai_exclusive'] = True
             self.assertEqual(paid_token(accounts['Paid']), 'test')
             config['paid_workers_ai_exclusive'] = False

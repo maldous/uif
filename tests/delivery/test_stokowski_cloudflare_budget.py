@@ -63,6 +63,17 @@ class CloudflareBudgetTests(unittest.TestCase):
             self.budget.reserve('second', 1, new_task=False, now=self.now)
         self.budget.reserve('tomorrow', 1, new_task=True, now=self.now + timedelta(days=1))
 
+    def test_paid_cross_day_request_preserves_headroom_until_and_after_settlement(self):
+        budget = WorkersAIBudget(self.database, 'f' * 32, carry_across_days=True)
+        today = self.now + timedelta(days=1)
+        budget.reserve('overnight', NORMAL_LIMIT, new_task=True, now=self.now)
+        with self.assertRaises(BudgetRefused):
+            budget.reserve('before-receipt', 1, new_task=True, now=today)
+        budget.settle('overnight', NORMAL_LIMIT - 1, now=today)
+        with self.assertRaises(BudgetRefused):
+            budget.reserve('after-receipt', 2, new_task=True, now=today)
+        budget.reserve('remaining', 1, new_task=True, now=today)
+
 
 class ProjectAccountTests(unittest.TestCase):
     def setUp(self):
@@ -116,6 +127,14 @@ class ProjectAccountTests(unittest.TestCase):
             self.assertEqual(self.reserve(project, project, set(self.accounts)).account_id, account)
         used = [self.reserve('OffMenu', f'pool-{i}', {'OffMenu'}).account_id for i in range(6)]
         self.assertEqual(set(used), set(accounts.values()))
+
+    def test_paid_is_available_when_an_active_projects_own_account_cannot_admit(self):
+        accounts = dict(self.accounts, Paid='f' * 32)
+        self.router = ProjectAccountRouter(self.database, accounts, eligible_projects=accounts)
+        active = set(self.accounts)
+        self.assertEqual(self.reserve('OffMenu', 'primary', active, maximum=NORMAL_LIMIT).account_id,
+                         accounts['OffMenu'])
+        self.assertEqual(self.reserve('OffMenu', 'fallback', active).account_id, accounts['Paid'])
 
     def test_resume_restores_account_for_new_attempts_and_preserves_existing_assignment(self):
         self.reserve('OffMenu', 'first', {'OffMenu'})

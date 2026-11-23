@@ -56,7 +56,8 @@ operator reconciles existing usage before setting `paid_workers_ai_exclusive`
 and supplying the protected paid credential. Each request still reserves its
 maximum usage before dispatch. The same 7,500-neuron admission cap and
 10,000-neuron hard cap apply per UTC day, including concurrent requests and
-unsettled usage.
+unsettled usage. A pending Paid request keeps its reservation across midnight.
+A request that settles on a later day also counts against that day's headroom.
 
 An authenticated AI Gateway can add a secondary spend limit. Its limit uses
 completed requests, so the account-wide ledger provides the concurrency

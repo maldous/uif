@@ -22,11 +22,12 @@ class BudgetRefused(RuntimeError):
 
 
 class WorkersAIBudget:
-    def __init__(self, database: Path, account_id: str):
+    def __init__(self, database: Path, account_id: str, *, carry_across_days=False):
         if not re.fullmatch(r'[0-9a-f]{32}', account_id):
             raise ValueError('Expected a Cloudflare account ID')
         self.database = database
         self.account_id = account_id
+        self.carry_across_days = carry_across_days
 
     @contextmanager
     def _transaction(self):
@@ -39,6 +40,11 @@ class WorkersAIBudget:
                 db.execute(
                     'CREATE TABLE IF NOT EXISTS requests ('
                     'account TEXT NOT NULL, day TEXT NOT NULL, id TEXT NOT NULL, '
+                    'amount INTEGER NOT NULL, settled INTEGER NOT NULL, '
+                    'PRIMARY KEY (account, id))')
+                db.execute(
+                    'CREATE TABLE IF NOT EXISTS cross_day_usage ('
+                    'account TEXT NOT NULL, id TEXT NOT NULL, day TEXT NOT NULL, '
                     'amount INTEGER NOT NULL, settled INTEGER NOT NULL, '
                     'PRIMARY KEY (account, id))')
                 yield db
@@ -54,8 +60,16 @@ class WorkersAIBudget:
     def _headroom(self, db, day, limit):
         used, exceeded = db.execute(
             'SELECT COALESCE(SUM(amount),0), COALESCE(MAX(settled),0) '
-            'FROM requests WHERE account=? AND day=?', (self.account_id, day)
+            'FROM requests WHERE account=? AND (day=? OR (? AND settled=0))',
+            (self.account_id, day, self.carry_across_days)
         ).fetchone()
+        if self.carry_across_days:
+            carried, carry_exceeded = db.execute(
+                'SELECT COALESCE(SUM(amount),0), COALESCE(MAX(settled),0) '
+                'FROM cross_day_usage WHERE account=? AND day=?', (self.account_id, day)
+            ).fetchone()
+            used += carried
+            exceeded = max(exceeded, carry_exceeded)
         return 0 if exceeded == 2 else max(0, limit - used)
 
     def _reserve(self, db, request_id, maximum, new_task, day):
@@ -70,7 +84,8 @@ class WorkersAIBudget:
         db.execute('INSERT INTO requests VALUES (?, ?, ?, ?, 0)',
                    (self.account_id, day, request_id, maximum))
 
-    def settle(self, request_id: str, actual: int, *, gateway_receipt: str | None = None) -> None:
+    def settle(self, request_id: str, actual: int, *, gateway_receipt: str | None = None,
+               now: datetime | None = None) -> None:
         """Record observed usage against the original reservation day."""
         if type(actual) is not int or actual < 0:
             raise ValueError('Expected nonnegative observed usage')
@@ -81,6 +96,14 @@ class WorkersAIBudget:
                 (actual, actual, self.account_id, request_id))
             if updated.rowcount != 1:
                 raise BudgetRefused('No outstanding reservation for this request')
+            if self.carry_across_days and actual:
+                day, settled = db.execute(
+                    'SELECT day,settled FROM requests WHERE account=? AND id=?',
+                    (self.account_id, request_id)).fetchone()
+                completion_day = _utc_day(now)
+                if day != completion_day:
+                    db.execute('INSERT INTO cross_day_usage VALUES (?, ?, ?, ?, ?)',
+                               (self.account_id, request_id, completion_day, actual, settled))
             if gateway_receipt is not None:
                 db.execute(
                     'CREATE TABLE IF NOT EXISTS gateway_receipts ('
@@ -112,7 +135,7 @@ class ProjectAccountRouter:
         if not self.eligible_projects <= accounts.keys():
             raise ValueError('Unknown eligible Cloudflare project')
         self.accounts = {
-            project: WorkersAIBudget(database, account_id)
+            project: WorkersAIBudget(database, account_id, carry_across_days=project == PAID_ACCOUNT)
             for project, account_id in accounts.items()
         }
 
