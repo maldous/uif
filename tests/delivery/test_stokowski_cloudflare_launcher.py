@@ -24,11 +24,16 @@ class LauncherTests(unittest.TestCase):
                             (digit * 32 for digit in 'abcde')))
         config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
                       admissions={})
-        with TemporaryDirectory() as scratch, patch(
-            'uif.stokowski_cloudflare.launcher._protected_json', return_value=config
-        ):
+        records = {'owner.json': config,
+                   'OffMenu.json': dict(account_id=accounts['OffMenu'], plan='free', token='test'),
+                   'UIF.json': dict(account_id=accounts['UIF'], plan='paid', token='test')}
+        with (TemporaryDirectory() as scratch,
+              patch('uif.stokowski_cloudflare.launcher._protected_json',
+                    side_effect=lambda path: records[path.name]),
+              patch('uif.stokowski_cloudflare.launcher.WorkersAIClient') as client):
             configure(runner, orchestration, SimpleNamespace(), policy=Path('/etc/owner.json'),
                       database=Path(scratch)/'budget.sqlite')
+            self.assertEqual(client.call_args.args[0].eligible_projects, {'OffMenu'})
             issue = SimpleNamespace(id='issue-id')
             self.assertIs(orchestration.run_turn, runner.run_turn)
             self.assertIsNot(runner.run_turn, codex)

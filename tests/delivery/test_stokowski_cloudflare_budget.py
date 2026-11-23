@@ -78,6 +78,12 @@ class ProjectAccountTests(unittest.TestCase):
         return self.router.reserve_request(project, attempt, request or attempt, maximum, active,
                                            request_sha256='0' * 64, now=self.now, **review)
 
+    def test_unverified_accounts_cannot_receive_new_reservations(self):
+        self.router = ProjectAccountRouter(self.database, self.accounts, eligible_projects={'OffMenu'})
+        self.reserve('OffMenu', 'first', {'OffMenu'}, maximum=NORMAL_LIMIT)
+        with self.assertRaisesRegex(BudgetRefused, 'No eligible account'):
+            self.reserve('OffMenu', 'next', {'OffMenu'})
+
     def test_all_active_projects_use_their_own_accounts(self):
         for project, account in self.accounts.items():
             budget = self.reserve(project, project, set(self.accounts))

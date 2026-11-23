@@ -103,9 +103,12 @@ def _utc_day(now=None):
 class ProjectAccountRouter:
     """Bind attempts to accounts before dispatch using the current project state."""
 
-    def __init__(self, database: Path, accounts: dict[str, str]):
+    def __init__(self, database: Path, accounts: dict[str, str], *, eligible_projects=None):
         if accounts.keys() != PROJECTS or len(set(accounts.values())) != len(PROJECTS):
             raise ValueError('Expected one distinct Cloudflare account per project')
+        self.eligible_projects = PROJECTS if eligible_projects is None else frozenset(eligible_projects)
+        if not self.eligible_projects <= PROJECTS:
+            raise ValueError('Unknown eligible Cloudflare project')
         self.accounts = {
             project: WorkersAIBudget(database, account_id)
             for project, account_id in accounts.items()
@@ -155,8 +158,8 @@ class ProjectAccountRouter:
                         or reviewer_project is not None
                         and account != self.accounts[reviewer_project].account_id):
                     raise BudgetRefused('Attempt identity changed')
-                for budget in self.accounts.values():
-                    if budget.account_id == account:
+                for name, budget in self.accounts.items():
+                    if name in self.eligible_projects and budget.account_id == account:
                         budget._reserve(db, request_id, maximum, False, day)
                         db.execute('INSERT INTO routed_requests VALUES (?, ?, ?)',
                                    (request_id, attempt_id, request_sha256))
@@ -174,6 +177,8 @@ class ProjectAccountRouter:
                     raise BudgetRefused('Author and reviewer must use different accounts')
                 candidates = [reviewer]
 
+            eligible = {self.accounts[name] for name in self.eligible_projects}
+            candidates = [budget for budget in candidates if budget in eligible]
             headroom = {budget: budget._headroom(db, day, NORMAL_LIMIT) for budget in candidates}
             candidates = [budget for budget in candidates if headroom[budget] >= maximum]
             if not candidates:
