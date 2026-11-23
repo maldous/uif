@@ -90,6 +90,9 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             def _entry_state_for(self, issue):
                 return 'investigate'
 
+            async def _enter_gate(self, issue, state, **kwargs):
+                return self._dependency_observations.get(issue.id)
+
             async def _resolve_current_state(self, issue, *, comments=None):
                 self._issue_current_state[issue.id] = 'investigate'
                 return 'investigate', 1
@@ -137,6 +140,10 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(owner._is_eligible(issue))
             owner._announced_states.add((issue.id, 'assess', 1))
             self.assertTrue(owner._is_eligible(issue))
+            owner._dependency_observations = {issue.id: ['old assessment']}
+            self.assertEqual(await owner._enter_gate(
+                issue, 'delivery-exception', assessed_context='retained'), ['old assessment'])
+            self.assertIsNone(await owner._enter_gate(issue, 'delivery-exception'))
 
     async def test_native_dispatch_attaches_generated_review_and_preserves_owner_revocation(self):
         class Owner:
