@@ -44,6 +44,8 @@ class AutomaticReviewTests(unittest.TestCase):
         self.assertEqual(record['read_paths'], [])
         self.assertEqual(record['write_roots'], [])
         self.assertIn('Bounded author result', record['prompt'])
+        self.assertIn('Use "approve" only if the entire original issue', record['prompt'])
+        self.assertIn('Copy every key and value of the native', record['prompt'])
         self.settlement['session_id'] = 'old-attempt'
         with self.assertRaisesRegex(ValueError, 'settlement is not ready'):
             self.prepare()

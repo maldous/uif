@@ -276,3 +276,28 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertNotIn('tools', second)
         self.assertEqual(second['chat_template_kwargs'], {'enable_thinking': False})
         self.assertEqual(fixture.read_text(), 'old')
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_unstructured_settled_result_gets_one_new_report_request(self, connection):
+        conn = connection.return_value
+        response = conn.getresponse.return_value
+        response.status = 200
+        final = '{"summary":"Scoped assessment","verdict":"blocked"}'
+        response.read.side_effect = [
+            json.dumps({'model': GLM_MODEL, 'usage': {'neurons': 1},
+                        'choices': [{'message': {'content': content}}]}).encode()
+            for content in ('Unstructured stage output', final)
+        ]
+        client = WorkersAIClient(self.router, lambda _: 'test-token', model=GLM_MODEL)
+        tools, execute = repository_tools(self.database.parent, ('one.py',), ())
+        self.assertEqual(execute('find_files', {'query': '.py'}, 5), 'one.py')
+        self.assertEqual(run_turn(
+            client, Attempt('OffMenu', 'structured'), 'Return a status',
+            tools=tools, execute_tool=execute, active_projects=lambda: {'OffMenu'},
+            cancelled=lambda: False, timeout=5, structured_report=True,
+        ), final)
+        first, second = [json.loads(call.kwargs['body']) for call in conn.request.call_args_list]
+        self.assertIn('tools', first)
+        self.assertEqual(second['response_format'], {'type': 'json_object'})
+        self.assertNotIn('tools', second)
+        self.assertEqual(second['messages'][-2]['content'], 'Unstructured stage output')

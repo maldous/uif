@@ -48,6 +48,24 @@ readiness. In `codex` mode, the native workflow supplies the Codex model.
 In `both` mode, a launched native Codex operation retains its original
 settlement path.
 
+## Project intake
+
+In Cloudflare-only mode, add a project under `project_intake` in the protected
+owner policy. Give it the canonical checkout `origin` and the tracked
+paths approved for Workers AI investigation. Use `read_paths` for exact
+files, `read_roots` for text files under source directories and `write_roots`
+for the approved subset where the author can edit tracked text. The native Linear workflow
+selects fresh eligible issues, applies dependencies and recovers prior custody.
+The adapter binds each request to its project, issue, scope, run and stage.
+Existing explicit owner records take precedence.
+
+Project-wide assessment is read-only. Investigation can prepare bounded source
+changes in the issue worktree when the project policy supplies writable source.
+The adapter preserves the exact author base and path scope for independent
+review. A fully accepted source-free result proceeds through native publication
+and Linear read-back. Git publication uses the existing publisher authority.
+Historical or uncertain effects retain their original operation identity.
+
 ## Automatic independent review
 
 Set `automatic_review: true` on the protected issue's `investigate` admission
