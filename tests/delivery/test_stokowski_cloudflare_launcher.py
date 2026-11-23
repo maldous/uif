@@ -267,6 +267,7 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
                 self._tasks[issue.id] = asyncio.current_task()
                 authorize = binding.call_args.kwargs['authorize_turn']
                 approved = authorize(issue, attempt, self.root / issue.identifier)
+                self.active_projects = binding.call_args.kwargs['active_projects']()
                 if attempt is first:
                     await asyncio.create_task(self._run_worker(issue, second))
                 else:
@@ -303,6 +304,7 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             owner._issue_state_runs = {issue.id: 2}
             await owner._run_worker(issue, first)
             self.assertIn('"issue": "UIF-1", "state": "assess", "run": 2', owner.assess_prompt)
+            self.assertEqual(owner.active_projects, {'OffMenu'})
             self.assertTrue(owner._is_eligible(issue))
             self.assertFalse(owner._is_eligible(SimpleNamespace(id='unadmitted')))
 

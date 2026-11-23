@@ -414,7 +414,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
                for root in roots):
             raise ValueError('Invalid Workers AI write scope')
-        authorized.set((issue.id, attempt.state_name, attempt, record))
+        authorized.set((issue, attempt.state_name, attempt, record))
         return NativeTurnBinding(issue.id, workspace,
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
                     record.get('reviewer_project')), paths, roots, prompt)
