@@ -142,6 +142,14 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             return allows_native_dispatch(owner.project_name, issue.id) is True
         except (OSError, ValueError):
             return False
+        except Exception:
+            # A broken trust adapter is a denial. Do not expose its detail or
+            # let diagnostics prevent the revoked worker's local cleanup.
+            try:
+                logger.warning('Workers AI native authority check unavailable; holding dispatch')
+            except Exception:
+                pass
+            return False
 
     context = ContextVar('native_workers_ai_owner')
     authorized = ContextVar('native_workers_ai_authorized', default=None)

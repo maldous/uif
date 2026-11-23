@@ -175,9 +175,11 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
         policy.assert_called_once_with(Path('/etc/owner.json'))
 
     async def check_native_worker_handoff(self, *, allowed=False, successor=False,
-                                          retry=False, pending_gate=False, settling=False):
+                                          retry=False, pending_gate=False, settling=False,
+                                          late_reader_error=None, failed_warning=False):
         issue = SimpleNamespace(id='wanted', identifier='FIXTURE-1', state='Active')
         claim = True
+        failure = None
         ledger_start = datetime(2026, 11, 23, 12, tzinfo=timezone.utc)
         window_end = ledger_start + timedelta(minutes=15)
         prior_retry = SimpleNamespace(attempt=8)
@@ -248,6 +250,14 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
                       admissions={issue.id: {'investigate': {'project': 'OffMenu',
                                                              'attempt': 'original-attempt',
                                                              'scope_sha256': 'fixture'}}})
+        if failed_warning:
+            orchestration.logger.warning.side_effect = RuntimeError('synthetic logger failure')
+
+        def read_claim(project, issue_id):
+            if failure is not None:
+                raise failure
+            return claim and (project, issue_id) == ('OffMenu', issue.id)
+
         owner = Owner()
         with (TemporaryDirectory() as scratch,
               patch('uif.stokowski_cloudflare.launcher._protected_json',
@@ -261,8 +271,7 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
                       policy=Path('/etc/owner.json'), database=Path(scratch) / 'budget.sqlite',
                       read_account_usage=lambda _: FreeAdmissionWindow(window_end, {'OffMenu': usage}),
                       open_fenced_connection=opener,
-                      allows_native_dispatch=lambda project, issue_id: claim and
-                      (project, issue_id) == ('OffMenu', issue.id))
+                      allows_native_dispatch=read_claim)
             task = owner._dispatch(issue)
             self.assertIsNotNone(task)
             original = owner.running[issue.id]
@@ -270,6 +279,7 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn(issue.id, owner.claimed)
             self.assertIs(owner._tasks[issue.id], task)
             claim = allowed
+            failure = late_reader_error
             if retry:
                 owner.retry_attempts[issue.id] = newer_retry
             if pending_gate:
@@ -281,7 +291,18 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
                 newer_task = object()
                 owner.running[issue.id] = newer
                 owner._tasks[issue.id] = newer_task
+            if isinstance(late_reader_error, asyncio.CancelledError):
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+                old_original.assert_not_awaited()
+                opener.assert_not_called()
+                writes.assert_not_called()
+                orchestration.logger.warning.assert_not_called()
+                return
             await task
+            if late_reader_error is not None:
+                orchestration.logger.warning.assert_called_once_with(
+                    'Workers AI native authority check unavailable; holding dispatch')
             if allowed:
                 old_original.assert_awaited_once_with(issue, original)
                 self.assertIs(owner.running[issue.id], original)
@@ -329,3 +350,13 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
     async def test_revoked_worker_does_not_discard_pending_gate_claim_or_uncertain_settlement(self):
         await self.check_native_worker_handoff(pending_gate=True)
         await self.check_native_worker_handoff(settling=True)
+
+    async def test_late_authority_reader_exception_refuses_and_releases_exact_worker(self):
+        await self.check_native_worker_handoff(late_reader_error=RuntimeError('private fixture detail'))
+
+    async def test_authority_evaluation_does_not_swallow_async_cancellation(self):
+        await self.check_native_worker_handoff(late_reader_error=asyncio.CancelledError())
+
+    async def test_diagnostics_cannot_prevent_late_revocation_cleanup(self):
+        await self.check_native_worker_handoff(
+            late_reader_error=RuntimeError('private fixture detail'), failed_warning=True)
