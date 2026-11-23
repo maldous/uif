@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from uif.stokowski_cloudflare.budget import (
-    BudgetRefused, HARD_LIMIT, NORMAL_LIMIT, ProjectAccountRouter, WorkersAIBudget,
+    AccountHold, AccountRecovery, BudgetRefused, NORMAL_LIMIT, ProjectAccountRouter, WorkersAIBudget,
 )
 
 
@@ -18,29 +18,31 @@ class CloudflareBudgetTests(unittest.TestCase):
         self.now = datetime(2026, 11, 23, tzinfo=timezone.utc)
 
     def test_thresholds_and_settlement(self):
-        self.budget.reserve('first', NORMAL_LIMIT, new_task=True, now=self.now)
-        with self.assertRaises(BudgetRefused):
-            self.budget.reserve('second', 1, new_task=True, now=self.now)
-        self.budget.reserve('second', HARD_LIMIT - NORMAL_LIMIT, new_task=False, now=self.now)
+        self.budget.reserve('first', NORMAL_LIMIT - 2, new_task=True, now=self.now)
+        for new_task in (True, False):
+            with self.assertRaises(BudgetRefused):
+                self.budget.reserve('second', 2, new_task=new_task, now=self.now)
+        self.budget.reserve('second', 1, new_task=False, now=self.now)
         with self.assertRaises(BudgetRefused):
             self.budget.reserve('third', 1, new_task=False, now=self.now)
-        self.budget.settle('first', NORMAL_LIMIT - 1)
+        self.budget.settle('first', NORMAL_LIMIT - 3, now=self.now)
         self.budget.reserve('third', 1, new_task=False, now=self.now)
 
     def test_unsettled_request_survives_restart_and_cannot_be_replayed(self):
-        self.budget.reserve('first', NORMAL_LIMIT, new_task=True, now=self.now)
+        self.budget.reserve('first', NORMAL_LIMIT - 1, new_task=True, now=self.now)
         restarted = WorkersAIBudget(self.database, 'a' * 32)
-        with self.assertRaises(BudgetRefused):
-            restarted.reserve('replacement', 1, new_task=True, now=self.now)
         tomorrow = self.now + timedelta(days=1)
         with self.assertRaises(BudgetRefused):
+            restarted.reserve('replacement', 1, new_task=True, now=tomorrow)
+        with self.assertRaises(BudgetRefused):
             restarted.reserve('first', 1, new_task=True, now=tomorrow)
-        restarted.reserve('tomorrow', NORMAL_LIMIT, new_task=True, now=tomorrow)
+        restarted.settle('first', 0, now=tomorrow)
+        restarted.reserve('tomorrow', NORMAL_LIMIT - 1, new_task=True, now=tomorrow)
 
     def test_concurrent_reservations_cannot_oversubscribe(self):
         def reserve(index):
             try:
-                self.budget.reserve(str(index), NORMAL_LIMIT, new_task=True, now=self.now)
+                self.budget.reserve(str(index), NORMAL_LIMIT - 1, new_task=True, now=self.now)
             except BudgetRefused:
                 return False
             return True
@@ -49,12 +51,38 @@ class CloudflareBudgetTests(unittest.TestCase):
             self.assertEqual(sum(pool.map(reserve, range(8))), 1)
 
     def test_accounts_have_separate_records(self):
-        self.budget.reserve('first', NORMAL_LIMIT, new_task=True, now=self.now)
+        self.budget.reserve('first', NORMAL_LIMIT - 1, new_task=True, now=self.now)
         other = WorkersAIBudget(self.database, 'b' * 32)
-        other.reserve('first', NORMAL_LIMIT, new_task=True, now=self.now)
+        other.reserve('first', NORMAL_LIMIT - 1, new_task=True, now=self.now)
         self.budget.settle('first', 0)
         with self.assertRaises(BudgetRefused):
             other.reserve('second', 1, new_task=True, now=self.now)
+
+    def test_429_hold_survives_restart_and_resumes_only_with_fresh_bound_evidence(self):
+        self.budget.reserve('original', NORMAL_LIMIT - 2, new_task=True, now=self.now)
+        self.budget.hold('original', 'rate-limit', now=self.now)
+        restarted = WorkersAIBudget(self.database, 'a' * 32)
+        tomorrow = self.now + timedelta(days=1, seconds=100)
+        other = WorkersAIBudget(self.database, 'b' * 32)
+        other.reserve('healthy', 1, new_task=True, now=tomorrow)
+
+        def check_held():
+            with self.assertRaises(BudgetRefused):
+                restarted.reserve('next', 1, new_task=True, now=tomorrow)
+
+        check_held()
+        other_hold = AccountHold('b' * 32, 'original', 'rate-limit', self.now)
+        restarted.recover(lambda _: AccountRecovery(other_hold, tomorrow, 'a' * 64), now=tomorrow)
+        check_held()
+        restarted.recover(lambda hold: AccountRecovery(hold, tomorrow, 'forged'), now=tomorrow)
+        check_held()
+        restarted.recover(lambda hold: AccountRecovery(hold, tomorrow - timedelta(seconds=91),
+                                                       'a' * 64), now=tomorrow)
+        check_held()
+        restarted.recover(lambda hold: AccountRecovery(hold, tomorrow, 'a' * 64), now=tomorrow)
+        with self.assertRaises(BudgetRefused):
+            restarted.reserve('too-much', 2, new_task=True, now=tomorrow)
+        restarted.reserve('next', 1, new_task=True, now=tomorrow)
 
     def test_usage_above_reservation_blocks_further_requests_that_day(self):
         self.budget.reserve('first', 1, new_task=True, now=self.now)
@@ -63,13 +91,13 @@ class CloudflareBudgetTests(unittest.TestCase):
             self.budget.reserve('second', 1, new_task=False, now=self.now)
         self.budget.reserve('tomorrow', 1, new_task=True, now=self.now + timedelta(days=1))
 
-    def test_paid_cross_day_request_preserves_headroom_until_and_after_settlement(self):
-        budget = WorkersAIBudget(self.database, 'f' * 32, carry_across_days=True)
+    def test_free_cross_day_request_preserves_headroom_until_and_after_settlement(self):
+        budget = WorkersAIBudget(self.database, 'f' * 32)
         today = self.now + timedelta(days=1)
-        budget.reserve('overnight', NORMAL_LIMIT, new_task=True, now=self.now)
+        budget.reserve('overnight', NORMAL_LIMIT - 1, new_task=True, now=self.now)
         with self.assertRaises(BudgetRefused):
             budget.reserve('before-receipt', 1, new_task=True, now=today)
-        budget.settle('overnight', NORMAL_LIMIT - 1, now=today)
+        budget.settle('overnight', NORMAL_LIMIT - 2, now=today)
         with self.assertRaises(BudgetRefused):
             budget.reserve('after-receipt', 2, new_task=True, now=today)
         budget.reserve('remaining', 1, new_task=True, now=today)
@@ -91,7 +119,7 @@ class ProjectAccountTests(unittest.TestCase):
 
     def test_unverified_accounts_cannot_receive_new_reservations(self):
         self.router = ProjectAccountRouter(self.database, self.accounts, eligible_projects={'OffMenu'})
-        self.reserve('OffMenu', 'first', {'OffMenu'}, maximum=NORMAL_LIMIT)
+        self.reserve('OffMenu', 'first', {'OffMenu'}, maximum=NORMAL_LIMIT - 1)
         with self.assertRaisesRegex(BudgetRefused, 'No eligible account'):
             self.reserve('OffMenu', 'next', {'OffMenu'})
 
@@ -111,12 +139,10 @@ class ProjectAccountTests(unittest.TestCase):
         self.router = ProjectAccountRouter(self.database, accounts)
         self.assertNotIn('Paid', self.router.eligible_projects)
         self.router = ProjectAccountRouter(self.database, accounts, eligible_projects={'Paid'})
-        self.assertEqual(self.reserve('OffMenu', 'paid', {'OffMenu'}, maximum=NORMAL_LIMIT).account_id,
+        self.assertEqual(self.reserve('OffMenu', 'paid', {'OffMenu'}, maximum=NORMAL_LIMIT - 1).account_id,
                          accounts['Paid'])
         with self.assertRaises(BudgetRefused):
             self.reserve('OffMenu', 'extra', {'OffMenu'})
-        self.reserve('OffMenu', 'paid', {'OffMenu'}, request='continue',
-                     maximum=HARD_LIMIT - NORMAL_LIMIT)
         with self.assertRaises(BudgetRefused):
             self.reserve('OffMenu', 'paid', {'OffMenu'}, request='over-cap')
 
@@ -132,7 +158,7 @@ class ProjectAccountTests(unittest.TestCase):
         accounts = dict(self.accounts, Paid='f' * 32)
         self.router = ProjectAccountRouter(self.database, accounts, eligible_projects=accounts)
         active = set(self.accounts)
-        self.assertEqual(self.reserve('OffMenu', 'primary', active, maximum=NORMAL_LIMIT).account_id,
+        self.assertEqual(self.reserve('OffMenu', 'primary', active, maximum=NORMAL_LIMIT - 1).account_id,
                          accounts['OffMenu'])
         self.assertEqual(self.reserve('OffMenu', 'fallback', active).account_id, accounts['Paid'])
 
@@ -164,13 +190,13 @@ class ProjectAccountTests(unittest.TestCase):
     def test_new_work_uses_headroom_but_existing_attempt_cannot_move(self):
         active = {'OffMenu'}
         for project in ('CIX', 'CQ', 'UIF'):
-            self.reserve(project, project, set(self.accounts), maximum=NORMAL_LIMIT)
-        self.reserve('OffMenu', 'author', active, maximum=NORMAL_LIMIT)
+            self.reserve(project, project, set(self.accounts), maximum=NORMAL_LIMIT - 1)
+        self.reserve('OffMenu', 'author', active, maximum=NORMAL_LIMIT - 1)
         borrowed = self.reserve('OffMenu', 'next', active)
         self.assertEqual(borrowed.account_id, self.accounts['ANQR'])
         with self.assertRaises(BudgetRefused):
             self.reserve('OffMenu', 'author', active, request='continue',
-                         maximum=HARD_LIMIT - NORMAL_LIMIT + 1)
+                         maximum=1)
 
     def test_review_requires_explicit_distinct_account_and_retains_binding(self):
         active = set(self.accounts)

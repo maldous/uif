@@ -200,6 +200,18 @@ class PrivateStore:
                     "archive_task_binding")
             return task
 
+    def has_other_project_claim(self, workspace_id, project_id, issue_id):
+        """Match retained project-scoped keys without rewriting original records."""
+        identity = f"{workspace_id}:{project_id}:{issue_id}"
+        pattern = f"{workspace_id}:*:{issue_id}"
+        with self._cold(readonly=True) as connection:
+            if connection is None:
+                return False
+            return connection.execute(
+                "SELECT 1 FROM task_heads WHERE identity GLOB ? AND identity != ? LIMIT 1",
+                (pattern, identity),
+            ).fetchone() is not None
+
     @staticmethod
     def _terminal(task):
         def known(attempt):

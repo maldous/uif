@@ -6,6 +6,7 @@ This budget covers only traffic admitted through the same database.
 """
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -15,6 +16,24 @@ import sqlite3
 
 NORMAL_LIMIT = 7_500_000
 HARD_LIMIT = 10_000_000
+RECOVERY_FRESH_SECONDS = 90
+
+
+@dataclass(frozen=True)
+class AccountHold:
+    account_id: str
+    request_id: str
+    reason: str
+    observed_at: datetime
+
+
+@dataclass(frozen=True)
+class AccountRecovery:
+    """Evidence returned by an independently authenticated account reader."""
+
+    hold: AccountHold
+    observed_at: datetime
+    evidence_sha256: str
 
 
 class BudgetRefused(RuntimeError):
@@ -22,12 +41,11 @@ class BudgetRefused(RuntimeError):
 
 
 class WorkersAIBudget:
-    def __init__(self, database: Path, account_id: str, *, carry_across_days=False):
+    def __init__(self, database: Path, account_id: str):
         if not re.fullmatch(r'[0-9a-f]{32}', account_id):
             raise ValueError('Expected a Cloudflare account ID')
         self.database = database
         self.account_id = account_id
-        self.carry_across_days = carry_across_days
 
     @contextmanager
     def _transaction(self):
@@ -47,42 +65,99 @@ class WorkersAIBudget:
                     'account TEXT NOT NULL, id TEXT NOT NULL, day TEXT NOT NULL, '
                     'amount INTEGER NOT NULL, settled INTEGER NOT NULL, '
                     'PRIMARY KEY (account, id))')
+                db.execute(
+                    'CREATE TABLE IF NOT EXISTS account_holds ('
+                    'account TEXT NOT NULL, request_id TEXT NOT NULL, reason TEXT NOT NULL, '
+                    'observed_at TEXT NOT NULL, recovery_sha256 TEXT, '
+                    'PRIMARY KEY (account, request_id))')
                 yield db
         finally:
             db.close()
 
     def reserve(self, request_id: str, maximum: int, *, new_task: bool,
                 now: datetime | None = None) -> None:
-        """Persist a one-use request reservation before dispatch."""
+        """Persist a one-use reservation. First calls and continuations share the cap."""
         with self._transaction() as db:
-            self._reserve(db, request_id, maximum, new_task, _utc_day(now))
+            self._reserve(db, request_id, maximum, _utc_day(now))
 
-    def _headroom(self, db, day, limit):
+    def _headroom(self, db, day):
+        if db.execute(
+                'SELECT 1 FROM account_holds WHERE account=? AND recovery_sha256 IS NULL LIMIT 1',
+                (self.account_id,)).fetchone():
+            return 0
         used, exceeded = db.execute(
             'SELECT COALESCE(SUM(amount),0), COALESCE(MAX(settled),0) '
-            'FROM requests WHERE account=? AND (day=? OR (? AND settled=0))',
-            (self.account_id, day, self.carry_across_days)
+            'FROM requests WHERE account=? AND (day=? OR settled=0)',
+            (self.account_id, day),
         ).fetchone()
-        if self.carry_across_days:
-            carried, carry_exceeded = db.execute(
-                'SELECT COALESCE(SUM(amount),0), COALESCE(MAX(settled),0) '
-                'FROM cross_day_usage WHERE account=? AND day=?', (self.account_id, day)
-            ).fetchone()
-            used += carried
-            exceeded = max(exceeded, carry_exceeded)
-        return 0 if exceeded == 2 else max(0, limit - used)
+        carried, carry_exceeded = db.execute(
+            'SELECT COALESCE(SUM(amount),0), COALESCE(MAX(settled),0) '
+            'FROM cross_day_usage WHERE account=? AND day=?', (self.account_id, day),
+        ).fetchone()
+        if max(exceeded, carry_exceeded) == 2:
+            return 0
+        return max(0, NORMAL_LIMIT - 1 - used - carried)
 
-    def _reserve(self, db, request_id, maximum, new_task, day):
+    def _reserve(self, db, request_id, maximum, day):
         if not request_id or type(maximum) is not int or not 0 < maximum <= HARD_LIMIT:
             raise ValueError('Expected a request ID and a bounded positive reservation')
         if db.execute('SELECT 1 FROM requests WHERE account=? AND id=?',
                       (self.account_id, request_id)).fetchone():
             raise BudgetRefused('Request already reserved; reconcile before replay')
-        limit = NORMAL_LIMIT if new_task else HARD_LIMIT
-        if maximum > self._headroom(db, day, limit):
+        if maximum > self._headroom(db, day):
             raise BudgetRefused('Request exceeds the daily Workers AI budget')
         db.execute('INSERT INTO requests VALUES (?, ?, ?, ?, 0)',
                    (self.account_id, day, request_id, maximum))
+
+    def hold(self, request_id, reason, *, now=None):
+        """Hold this account without settling or replaying the original request."""
+        if reason not in {'rate-limit', 'authentication', 'provider-unavailable'}:
+            raise ValueError('Unknown Workers AI account hold reason')
+        now = _utc_time(now)
+        with self._transaction() as db:
+            if not db.execute(
+                    'SELECT 1 FROM requests WHERE account=? AND id=? AND settled=0',
+                    (self.account_id, request_id)).fetchone():
+                raise BudgetRefused('Account hold requires an outstanding original request')
+            db.execute('INSERT OR IGNORE INTO account_holds VALUES (?, ?, ?, ?, NULL)',
+                       (self.account_id, request_id, reason, now.isoformat()))
+
+    def recover(self, read_recovery, *, now=None):
+        """Reconcile individually held operations through a trusted read-only adapter.
+
+        This restores eligibility only. Outstanding neuron reservations still count
+        until the original usage is independently settled.
+        """
+        with self._transaction() as db:
+            pending = db.execute(
+                'SELECT request_id, reason, observed_at FROM account_holds '
+                'WHERE account=? AND recovery_sha256 IS NULL ORDER BY observed_at, request_id',
+                (self.account_id,)).fetchall()
+
+        for request_id, reason, timestamp in pending:
+            hold = AccountHold(self.account_id, request_id, reason, datetime.fromisoformat(timestamp))
+            try:
+                receipt = read_recovery(hold)
+            except (OSError, ValueError):
+                # This observation failed. Other pending holds still get a read.
+                continue
+            if not isinstance(receipt, AccountRecovery) or receipt.hold != hold:
+                continue
+            if not isinstance(receipt.evidence_sha256, str) or not re.fullmatch(
+                    r'[0-9a-f]{64}', receipt.evidence_sha256):
+                continue
+            if not isinstance(receipt.observed_at, datetime) or receipt.observed_at.utcoffset() is None:
+                continue
+            with self._transaction() as db:
+                current = _utc_time(now)
+                if (receipt.observed_at <= hold.observed_at
+                        or current.date() != _utc_time(receipt.observed_at).date()
+                        or not 0 <= (current - receipt.observed_at).total_seconds() <= RECOVERY_FRESH_SECONDS):
+                    continue
+                db.execute(
+                    'UPDATE account_holds SET recovery_sha256=? WHERE account=? AND request_id=? '
+                    'AND reason=? AND observed_at=? AND recovery_sha256 IS NULL',
+                    (receipt.evidence_sha256, self.account_id, request_id, reason, timestamp))
 
     def settle(self, request_id: str, actual: int, *, gateway_receipt: str | None = None,
                now: datetime | None = None) -> None:
@@ -96,7 +171,7 @@ class WorkersAIBudget:
                 (actual, actual, self.account_id, request_id))
             if updated.rowcount != 1:
                 raise BudgetRefused('No outstanding reservation for this request')
-            if self.carry_across_days and actual:
+            if actual:
                 day, settled = db.execute(
                     'SELECT day,settled FROM requests WHERE account=? AND id=?',
                     (self.account_id, request_id)).fetchone()
@@ -117,11 +192,15 @@ PROJECTS = frozenset({'UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'})
 PAID_ACCOUNT = 'Paid'
 
 
-def _utc_day(now=None):
+def _utc_time(now=None):
     now = now if now is not None else datetime.now(timezone.utc)
     if now.utcoffset() is None:
         raise ValueError('Expected a timezone-aware timestamp')
-    return now.astimezone(timezone.utc).date().isoformat()
+    return now.astimezone(timezone.utc)
+
+
+def _utc_day(now=None):
+    return _utc_time(now).date().isoformat()
 
 
 class ProjectAccountRouter:
@@ -135,9 +214,14 @@ class ProjectAccountRouter:
         if not self.eligible_projects <= accounts.keys():
             raise ValueError('Unknown eligible Cloudflare project')
         self.accounts = {
-            project: WorkersAIBudget(database, account_id, carry_across_days=project == PAID_ACCOUNT)
+            project: WorkersAIBudget(database, account_id)
             for project, account_id in accounts.items()
         }
+
+    def refresh_holds(self, read_recovery):
+        """Consume qualifying evidence from the existing owner's trusted reader."""
+        for name in sorted(self.eligible_projects):
+            self.accounts[name].recover(read_recovery)
 
     def has_started(self, attempt_id: str) -> bool:
         """Check whether the first request was durably reserved for this attempt."""
@@ -171,10 +255,41 @@ class ProjectAccountRouter:
                 name for name in sorted(self.eligible_projects)
                 if self.accounts[name].account_id != row[0]
                 and (name == project or name not in active_projects)
-                and self.accounts[name]._headroom(db, day, NORMAL_LIMIT) >= maximum
+                and self.accounts[name]._headroom(db, day) >= maximum
             ]
             return min(choices, key=lambda name: (name == PAID_ACCOUNT, name != project, name),
                        default=None)
+
+    def _new_attempt_accounts(self, db, project, active_projects, maximum, day, reviewer_project):
+        if reviewer_project is not None:
+            names = [reviewer_project]
+        else:
+            names = [project, *sorted(PROJECTS - active_projects)]
+        headroom = {}
+        for name in names:
+            if name in self.eligible_projects:
+                budget = self.accounts[name]
+                available = budget._headroom(db, day)
+                if available >= maximum:
+                    headroom[budget] = available
+        if (reviewer_project is None and PAID_ACCOUNT in self.eligible_projects
+                and (active_projects != PROJECTS or not headroom)):
+            paid = self.accounts[PAID_ACCOUNT]
+            available = paid._headroom(db, day)
+            if available >= maximum:
+                headroom[paid] = available
+        return headroom
+
+    def can_start(self, project, active_projects, maximum, *, reviewer_project=None, now=None):
+        """Check current ledger capacity before native dispatch.
+
+        The request still needs its atomic reservation at the transport boundary.
+        """
+        if project not in active_projects or not self.eligible_projects:
+            return False
+        with self.accounts[project]._transaction() as db:
+            return bool(self._new_attempt_accounts(
+                db, project, active_projects, maximum, _utc_day(now), reviewer_project))
 
     def reserve_request(self, project: str, attempt_id: str, request_id: str,
                         maximum: int, active_projects: set[str], *,
@@ -193,7 +308,6 @@ class ProjectAccountRouter:
         if reviewer_project is not None and reviewer_project not in self.accounts:
             raise BudgetRefused('Reviewer account is not configured')
         preferred = self.accounts[project]
-        candidates = [preferred, *(self.accounts[owner] for owner in sorted(PROJECTS - active_projects))]
         with preferred._transaction() as db:
             day = _utc_day(now)
             db.execute(
@@ -222,7 +336,7 @@ class ProjectAccountRouter:
                     raise BudgetRefused('Attempt identity changed')
                 for name, budget in self.accounts.items():
                     if name in self.eligible_projects and budget.account_id == account:
-                        budget._reserve(db, request_id, maximum, False, day)
+                        budget._reserve(db, request_id, maximum, day)
                         db.execute('INSERT INTO routed_requests VALUES (?, ?, ?)',
                                    (request_id, attempt_id, request_sha256))
                         return budget
@@ -237,22 +351,13 @@ class ProjectAccountRouter:
                 reviewer = self.accounts[reviewer_project]
                 if reviewer.account_id == author[1]:
                     raise BudgetRefused('Author and reviewer must use different accounts')
-                candidates = [reviewer]
 
-            eligible = {self.accounts[name] for name in self.eligible_projects}
-            candidates = [budget for budget in candidates if budget in eligible]
-            headroom = {budget: budget._headroom(db, day, NORMAL_LIMIT) for budget in candidates}
-            candidates = [budget for budget in candidates if headroom[budget] >= maximum]
-            paid = self.accounts.get(PAID_ACCOUNT)
-            if (reviewer_project is None and paid in eligible
-                    and (active_projects != PROJECTS or not candidates)):
-                headroom[paid] = paid._headroom(db, day, NORMAL_LIMIT)
-                if headroom[paid] >= maximum:
-                    candidates.append(paid)
-            if not candidates:
+            headroom = self._new_attempt_accounts(
+                db, project, active_projects, maximum, day, reviewer_project)
+            if not headroom:
                 raise BudgetRefused('No eligible account has sufficient daily budget')
-            selected = max(candidates, key=lambda budget: headroom[budget])
-            selected._reserve(db, request_id, maximum, True, day)
+            selected = max(headroom, key=headroom.__getitem__)
+            selected._reserve(db, request_id, maximum, day)
             db.execute('INSERT INTO assignments VALUES (?, ?, ?, ?)',
                        (attempt_id, project, selected.account_id, day))
             db.execute('INSERT INTO routed_requests VALUES (?, ?, ?)',

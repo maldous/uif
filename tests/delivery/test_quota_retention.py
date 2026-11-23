@@ -13,6 +13,7 @@ from uif.handoff_store import Hold, MAX_STATE_BYTES, CONTROL_RESERVE_BYTES
 from uif.quota_handoff import Registry, LinearKey, RecoveryReceipt
 
 W, P = str(UUID(int=1)), str(UUID(int=2))
+MOVED_PROJECT = str(UUID(int=20))
 PIN = "d" * 64
 SOURCE = dict(repository="maldous/uif", branch="develop", base="a" * 40, head="b" * 40, tree="c" * 40)
 
@@ -26,7 +27,7 @@ class RetentionTests(unittest.TestCase):
         self.coordinator = dict(execution_id="morgan-current", generation=1)
         self.registry = Registry.initialize(
             self.root, workspace_id=W,
-            actors={"morgan": dict(role="morgan", projects=[P]), "native": dict(role="native", projects=[P])},
+            actors={"morgan": dict(role="morgan", projects=[P]), "native": dict(role="native", projects=[P, MOVED_PROJECT])},
             principals={"morgan-session": ["morgan"], "native-session": ["native"]},
             morgan_actor="morgan", morgan_execution_id="morgan-current", morgan_principal="morgan-session",
             recovery_verifier=lambda context: RecoveryReceipt(PIN, context.evidence_ref, self.now),
@@ -143,6 +144,9 @@ class RetentionTests(unittest.TestCase):
         self.assertEqual(retained["operations"]["original-denied"]["status"], "denied")
         with self.assertRaisesRegex(Hold, "existing_claim_requires_reconciliation"):
             self.claim()
+        moved = LinearKey(W, MOVED_PROJECT, self.key.issue_id)
+        with self.assertRaisesRegex(Hold, "existing_claim_requires_reconciliation"):
+            self.claim(moved)
         result = self.call("native", "retry_claim", key=asdict(self.key), generation=1,
                            lane="local", source=SOURCE, evidence_ref="accepted-retry",
                            original_operation_id="second-admission")
