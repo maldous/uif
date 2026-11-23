@@ -52,17 +52,19 @@ settlement path.
 
 In Cloudflare-only mode, add a project under `project_intake` in the protected
 owner policy. Give it the canonical checkout `origin` and the tracked
-`read_paths` approved for Workers AI investigation. The native Linear workflow
+paths approved for Workers AI investigation. Use `read_paths` for exact
+files, `read_roots` for text files under source directories and `write_roots`
+for the approved subset where the author can edit tracked text. The native Linear workflow
 selects fresh eligible issues, applies dependencies and recovers prior custody.
 The adapter binds each request to its project, issue, scope, run and stage.
 Existing explicit owner records take precedence.
 
-The project-wide route assesses issue scope and investigates with read-only
-source tools. It reports required source changes or unavailable evidence using
-the native workflow. The existing issue-specific source binding authorizes
-writes. A fully accepted source-free result proceeds through native publication
-and Linear read-back. Historical or uncertain effects retain their original
-operation identity.
+Project-wide assessment is read-only. Investigation can prepare bounded source
+changes in the issue worktree when the project policy supplies writable source.
+The adapter preserves the exact author base and path scope for independent
+review. A fully accepted source-free result proceeds through native publication
+and Linear read-back. Git publication uses the existing publisher authority.
+Historical or uncertain effects retain their original operation identity.
 
 ## Automatic independent review
 

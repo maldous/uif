@@ -5,6 +5,8 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
+import subprocess
 import tempfile
 import time
 
@@ -29,12 +31,17 @@ def repository_tools(workspace, tracked_paths, write_roots):
     tracked = frozenset(tracked_paths)
     definitions = {
         'list_files': ('List available tracked files. Call with an empty JSON object.', ()),
+        'find_files': ('Find approved tracked files by path substring.', ('query',)),
         'read_file': ('Read one of the available tracked files by relative path.', ('path',)),
     } if tracked else {}
     if write_roots:
         definitions['replace_text'] = (
             'Replace one unique text match in a writable tracked file.',
             ('path', 'old', 'replacement'),
+        )
+        definitions['verify_diff'] = (
+            'Run Git whitespace and conflict-marker checks on the candidate. This is not a functional test.',
+            (),
         )
     tools = [
         {'type': 'function', 'function': {'name': name, 'description': description, 'parameters': {
@@ -52,6 +59,23 @@ def repository_tools(workspace, tracked_paths, write_roots):
                 f'Expected string fields {expected}' if keys else 'Expected an empty JSON object')
         if name == 'list_files':
             return '\n'.join(sorted(tracked))[:8000]
+        if name == 'find_files':
+            query = arguments['query'].strip().casefold()
+            if not query:
+                raise RepositoryToolError('Supply a nonempty path substring')
+            return '\n'.join(sorted(path for path in tracked if query in path.casefold()))[:8000]
+        if name == 'verify_diff':
+            try:
+                result = subprocess.run(
+                    ['git', '-C', str(workspace), 'diff', '--no-ext-diff', '--no-textconv',
+                     '--check', 'HEAD', '--', '.', ':!.stokowski'],
+                    capture_output=True, timeout=min(10, remaining), check=False,
+                )
+            except (OSError, subprocess.SubprocessError) as error:
+                raise RepositoryToolError('Git diff check could not run') from error
+            if result.returncode:
+                return 'Git diff check failed.\n' + result.stdout[:8000].decode(errors='replace')
+            return 'Git diff check passed. Functional tests were not run.'
         relative = arguments['path']
         path = workspace / relative
         if relative not in tracked or path.resolve(strict=True) != path or not path.is_file():
@@ -86,7 +110,8 @@ def repository_tools(workspace, tracked_paths, write_roots):
 
 
 def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
-             tools: list[dict], execute_tool, active_projects, cancelled, timeout: int) -> str:
+             tools: list[dict], execute_tool, active_projects, cancelled, timeout: int,
+             structured_report=False) -> str:
     """Execute only the tools that the protected owner bound to this attempt.
 
     The executor enforces workspace scope and applies the attempt's separate
@@ -116,6 +141,18 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
         content = message.get('content', message.get('response'))
         calls = message.get('tool_calls') or []
         if not calls:
+            if structured_report and not _has_native_report(content):
+                if report_only:
+                    raise WorkersAIRequestError('Workers AI did not return a structured native report')
+                report_only = True
+                if isinstance(content, str) and content.strip():
+                    messages.append({'role': 'assistant', 'content': content})
+                messages.append({'role': 'user', 'content': (
+                    'Return the final report as one JSON object with summary and verdict, and '
+                    'the applicable native routing fields. Preserve the actions actually taken, '
+                    'available evidence and any remaining gaps. No further tools are available.'
+                )})
+                continue
             if not isinstance(content, str) or not content.strip():
                 if tools and not report_only and choices and choices[0].get('finish_reason') == 'length':
                     report_only = True
@@ -157,3 +194,16 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
                 raise WorkersAIRequestError('Workspace tool response exceeded its text boundary')
             messages.append({'role': 'tool', 'tool_call_id': call_id, 'content': output})
     raise WorkersAIRequestError('Workers AI turn exhausted its request limit')
+
+
+def _has_native_report(content):
+    if not isinstance(content, str):
+        return False
+    match = re.search(r'```json\s*(.*?)\s*```', content, re.IGNORECASE | re.DOTALL)
+    try:
+        report = json.loads(match.group(1) if match else content)
+    except json.JSONDecodeError:
+        return False
+    return (isinstance(report, dict) and isinstance(report.get('summary'), str)
+            and bool(report['summary'].strip()) and isinstance(report.get('verdict'), str)
+            and bool(report['verdict'].strip()))

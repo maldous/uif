@@ -3,6 +3,7 @@
 import asyncio
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -106,17 +107,25 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     original_start = orchestration.MultiOrchestrator.start
     logger = orchestration.logger
 
+    def explicit_admissions(current, owner, issue):
+        stages = current['admissions'].get(issue.id)
+        if not stages:
+            return {}
+        scope = publication.scope(issue)
+        return {state: record for state, record in stages.items()
+                if record.get('project') == owner.project_name and record.get('scope_sha256') == scope}
+
     def automatic_profile(current, owner, issue):
         if (mode != 'cloudflare' or current.get('provider_mode', 'cloudflare') != mode
                 or owner.project_name not in current['projects']
-                or issue.id in current['admissions']):
+                or explicit_admissions(current, owner, issue)):
             return None
         return intake_profile(current, owner.project_name, issue)
 
     def admissions(owner, issue):
         current = _protected_json(policy)
-        explicit = current['admissions'].get(issue.id)
-        if explicit is not None:
+        explicit = explicit_admissions(current, owner, issue)
+        if explicit:
             return explicit
         profile = automatic_profile(current, owner, issue)
         if profile is None:
@@ -172,8 +181,36 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if (git('remote', 'get-url', 'origin') != record['project_intake']['origin']
                 or git('status', '--porcelain', '--untracked-files=all', '--', '.', ':!.stokowski')):
             raise ValueError('Project intake requires a clean native checkout of the approved origin')
-        return dict(record, source_head=git('rev-parse', 'HEAD'),
-                    branch=git('branch', '--show-current'))
+        approved = set(record['read_paths'])
+        roots = tuple(record.get('read_roots', ()))
+        if roots:
+            for name in git('ls-files', '-z').split('\0'):
+                if (not any(name.startswith(root + '/') for root in roots)
+                        or any(part.startswith('.') for part in name.split('/'))):
+                    continue
+                path = workspace / name
+                if (path.suffix in {'.py', '.js', '.mjs', '.ts', '.tsx', '.html', '.css', '.md'}
+                        and not path.is_symlink() and path.is_file() and path.stat().st_size <= 24_000):
+                    approved.add(name)
+        return dict(record, source_head=git('rev-parse', 'HEAD'), branch=git('branch', '--show-current'),
+                    read_paths=sorted(approved))
+
+    def author_source(workspace, author, *, establish=False):
+        if not author.get('write_roots'):
+            return checkout_source(workspace, author)
+        path = Path('.stokowski') / 'workers-ai-source' / (author['attempt'] + '.json')
+        contract = sha256(json.dumps(author, sort_keys=True).encode()).hexdigest()
+        if establish:
+            current = checkout_source(workspace, author)
+            source = {key: current[key] for key in ('source_head', 'branch', 'read_paths')}
+            if not (workspace / path).exists():
+                publication.save(workspace, path, dict(source, contract=contract))
+        bound = publication.read(workspace, path)
+        if bound.pop('contract', None) != contract:
+            raise ValueError('Original Workers AI author source binding changed')
+        if establish and bound != source:
+            raise ValueError('Original Workers AI source has moved')
+        return dict(author, **{key: bound[key] for key in ('source_head', 'branch', 'read_paths')})
 
     def automatic_stage_allowed(owner, issue, state, record, stages):
         if state == 'assess':
@@ -251,9 +288,12 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                    for record in stages.values())
 
     def dispatch(owner, issue, attempt_num=None):
-        stages = admissions(owner, issue)
-        if (owner.project_name not in projects or not stages or owner.pool is None
+        if (owner.project_name not in projects or owner.pool is None
                 or owner.pool.is_paused(owner.project_name)):
+            owner._release_slot(issue.id)
+            return None
+        stages = admissions(owner, issue)
+        if not stages:
             owner._release_slot(issue.id)
             return None
         state, stage = dispatch_stage(owner, issue)
@@ -273,7 +313,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 if reviewer is not None:
                     try:
                         workspace = scoped_workspace(owner, issue)
-                        source = checkout_source(workspace, author) if 'project_intake' in author else author
+                        source = author_source(workspace, author) if 'project_intake' in author else author
                         record = prepare_review(workspace, issue,
                                                 owner._issue_state_runs.get(issue.id, 1),
                                                 source, reviewer, publication)
@@ -354,7 +394,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if 'project_intake' in record and attempt.state_name != 'independent-review':
             if not automatic_stage_allowed(owner, issue, attempt.state_name, record, stages):
                 raise ValueError('Project intake continuation no longer has native authority')
-            selected = checkout_source(workspace, record)
+            selected = (author_source(workspace, record, establish=True) if attempt.state_name == 'investigate'
+                        else checkout_source(workspace, record))
 
         def git(*args):
             return subprocess.check_output(['git', '-C', str(workspace), *args], timeout=10, text=True)
@@ -383,7 +424,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                         '--', '.', ':!.stokowski').strip()):
             raise ValueError('Workers AI review requires a clean candidate worktree')
         tracked = set(filter(None, git('ls-files', '-z').split('\0')))
-        paths = tuple(record['read_paths'])
+        paths = tuple(selected['read_paths'])
         if not set(paths) <= tracked:
             raise ValueError('Workers AI read scope includes an untracked file')
         prompt = record['prompt']
@@ -426,7 +467,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         authorized.set((issue, attempt.state_name, attempt, record))
         return NativeTurnBinding(issue.id, workspace,
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
-                    record.get('reviewer_project')), paths, roots, prompt)
+                    record.get('reviewer_project')), paths, roots, prompt,
+            structured_report='project_intake' in record or 'automatic_author' in record)
 
     install_native_runner(runner, orchestration, mode=mode, client=client,
                           authorize_turn=authorize, codex_available=codex_available,
