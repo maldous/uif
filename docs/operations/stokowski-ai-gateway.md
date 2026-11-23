@@ -1,14 +1,15 @@
 # Stokowski AI Gateway routing
 
 The native Stokowski owner supplies the account map and Free-account credential
-resolver when constructing the Workers AI client. To enable the OffMenu gateway,
-map the OffMenu account ID to the existing gateway name in that owner binding.
+resolver when constructing the Workers AI client. Gateway mappings are optional
+and keyed by Cloudflare account ID. Add a mapping only for an account whose
+requests should go through a named gateway.
 
 ```python
 client = WorkersAIClient(
     router,
     free_account_token,
-    gateways={accounts["OffMenu"]: "stokowski"},
+    gateways={account_id: gateway_name},
 )
 ```
 
@@ -21,12 +22,12 @@ direct endpoint retry. Accounts without a gateway mapping use the direct
 Workers AI endpoint.
 
 Keep standard Workers AI billing and authenticated gateway access. Keep prompt
-and response collection disabled. The OffMenu gateway's $0.11 rolling 24-hour
-rule is a secondary control. Stokowski still caps new work at 7,500 neurons per
+and response collection disabled. Any gateway spend rule is a secondary control. Stokowski still caps new work at 7,500 neurons per
 UTC day and work in progress at 10,000. The Workers Free plan supplies the
 provider-enforced cutoff.
 
-The native owner must pass the map from its protected launcher configuration.
+When gateway routing is enabled, the native owner passes the map from its
+protected launcher configuration.
 An installed wheel or saved gateway by itself does not make native Stokowski
 send requests through the gateway. Live qualification should record the gateway
 receipt, account assignment, neuron usage, and native attempt result.

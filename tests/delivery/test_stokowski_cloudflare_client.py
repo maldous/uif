@@ -97,6 +97,9 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertEqual(json.loads(kwargs['body'])['model'], MODEL)
         self.assertEqual(result['choices'][0]['message']['content'], 'Done')
         self.assertEqual(self.usage_record(), (3001, 1))
+        with sqlite3.connect(self.database) as db:
+            self.assertEqual(db.execute('SELECT * FROM gateway_receipts').fetchall(),
+                             [(account, self.request['request_id'], 'gateway-receipt')])
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
     def test_gateway_limit_never_retries_the_direct_endpoint(self, connection):
