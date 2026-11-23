@@ -76,6 +76,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     original_worker = orchestration.Orchestrator._run_worker
     original_dispatch = orchestration.Orchestrator._dispatch
     original_start = orchestration.MultiOrchestrator.start
+    logger = orchestration.logger
 
     def admissions():
         return _protected_json(policy)['admissions']
@@ -91,18 +92,29 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if (orchestration.state_key(issue.state) in {'backlog', 'review', 'blocked'}
                 and stage and stage.type == 'agent' and not stage.admission_review):
             state = owner._entry_state_for(issue)
+            stage = owner._states_for(issue).get(state)
         record = stages.get(state)
         if (record is None or record['project'] != owner.project_name
                 or record['scope_sha256'] != publication.scope(issue)):
+            owner._release_slot(issue.id)
+            return None
+        if stage and stage.type == 'agent' and router.has_started(record['attempt']):
+            retry = owner.retry_attempts.get(issue.id)
+            if retry is not None:
+                if retry.error != 'Original Workers AI request retained for reconciliation':
+                    logger.warning('Workers AI retry held for reconciliation: %s', issue.identifier)
+                retry.error = 'Original Workers AI request retained for reconciliation'
             owner._release_slot(issue.id)
             return None
         return original_dispatch(owner, issue, attempt_num)
 
     async def worker(owner, issue, attempt):
         context_token = context.set(owner)
+        authorization_token = authorized.set(None)
         try:
             return await original_worker(owner, issue, attempt)
         finally:
+            authorized.reset(authorization_token)
             context.reset(context_token)
 
     def active_projects():
@@ -118,12 +130,16 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     def authorize(issue, attempt, workspace):
         owner = context.get()
         record = admissions().get(issue.id, {}).get(attempt.state_name)
-        if (record is None or owner.running.get(issue.id) is not attempt
+        if record is None or record['project'] != owner.project_name:
+            raise ValueError('Workers AI stage has no approved native binding')
+        if (owner.running.get(issue.id) is not attempt
                 or owner._tasks.get(issue.id) is not asyncio.current_task()
-                or issue.id not in owner.claimed or record['project'] != owner.project_name
-                or owner.project_name not in active_projects()
-                or record['scope_sha256'] != publication.scope(issue)):
-            raise ValueError('Workers AI attempt does not hold approved native custody')
+                or issue.id not in owner.claimed):
+            raise ValueError('Original native task or attempt no longer holds custody')
+        if owner.project_name not in active_projects():
+            raise ValueError('Workers AI project is paused')
+        if record['scope_sha256'] != publication.scope(issue):
+            raise ValueError('Workers AI issue scope has changed since approval')
         workspace = workspace.resolve(strict=True)
         if workspace != owner.cfg.workspace.resolved_root().resolve() / issue.identifier:
             raise ValueError('Workers AI workspace is outside native custody')
@@ -141,6 +157,17 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         prompt = record['prompt']
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError('Workers AI requires a scoped owner prompt')
+        if attempt.state_name == 'assess':
+            routing = json.dumps({'issue': issue.identifier, 'state': attempt.state_name,
+                                  'run': owner._issue_state_runs.get(issue.id, 1)})
+            prompt += (
+                '\nUse this authoritative native routing binding in the final JSON: ' + routing
+                + '\nUse verdict approve, deferred, or blocked. Approve only when supported by '
+                'the scoped owner instructions and observed evidence. For approve the routing '
+                'object also requires actionable=true, ownership_clear=true, deferred=false, '
+                'owner_pause=false, uncertain_effects=false and missing_inputs=[]. '
+                'When evidence is missing, report the gap.'
+            )
         roots = tuple(record['write_roots'])
         if any(not re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*', root)
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))

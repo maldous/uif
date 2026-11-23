@@ -114,6 +114,17 @@ class ProjectAccountRouter:
             for project, account_id in accounts.items()
         }
 
+    def has_started(self, attempt_id: str) -> bool:
+        """Check whether the first request was durably reserved for this attempt."""
+        budget = next(iter(self.accounts.values()))
+        with budget._transaction() as db:
+            if not db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='assignments'"
+            ).fetchone():
+                return False
+            return db.execute('SELECT 1 FROM assignments WHERE attempt=?',
+                              (attempt_id,)).fetchone() is not None
+
     def reserve_request(self, project: str, attempt_id: str, request_id: str,
                         maximum: int, active_projects: set[str], *,
                         request_sha256: str,
