@@ -2,9 +2,11 @@
 
 import asyncio
 from contextvars import ContextVar
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import shutil
 import signal
 import stat
 import subprocess
@@ -21,6 +23,16 @@ def _protected_json(path: Path):
         if info.st_uid != 0 or info.st_mode & 0o022 or stat.S_ISLNK(info.st_mode):
             raise ValueError('Workers AI owner policy must be root-controlled')
     return json.loads(path.read_text())
+
+
+def _codex_is_ready(attested_until, now):
+    if not isinstance(attested_until, str) or not attested_until.endswith('Z'):
+        return False
+    try:
+        expiry = datetime.fromisoformat(attested_until[:-1] + '+00:00')
+    except ValueError:
+        return False
+    return expiry > now and shutil.which('codex') is not None
 
 
 async def _start_with_shutdown(owner, start):
@@ -47,6 +59,9 @@ async def _start_with_shutdown(owner, start):
 def configure(runner, orchestration, publication, *, policy: Path, database: Path):
     """Bind the provider to existing native custody before starting intake."""
     config = _protected_json(policy)
+    mode = config.get('provider_mode', 'cloudflare')
+    if mode not in {'cloudflare', 'codex', 'both'}:
+        raise ValueError('Unknown Stokowski provider mode')
     accounts = config['accounts']
     projects = frozenset(config['projects'])
     if not projects <= accounts.keys():
@@ -83,6 +98,14 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     def admissions():
         return _protected_json(policy)['admissions']
 
+    def codex_available(_):
+        current = _protected_json(policy)
+        readiness = current.get('codex_ready_until', {})
+        return (current.get('provider_mode') == 'both'
+                and isinstance(readiness, dict)
+                and _codex_is_ready(readiness.get(context.get().project_name),
+                                    datetime.now(timezone.utc)))
+
     def eligible(owner, issue, **kwargs):
         stages = admissions().get(issue.id, {})
         return (owner.project_name in projects
@@ -104,7 +127,16 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             state = owner._entry_state_for(issue)
             stage = owner._states_for(issue).get(state)
         record = stages.get(state)
-        if (record is None or record['project'] != owner.project_name
+        if record is None:
+            retry = owner.retry_attempts.get(issue.id)
+            if retry is not None and any(
+                    item['project'] == owner.project_name
+                    and item['scope_sha256'] == publication.scope(issue) for item in stages.values()):
+                owner._schedule_retry(issue, attempt_num=retry.attempt, delay_ms=30_000,
+                                      error='Waiting for owner-approved Workers AI stage')
+            owner._release_slot(issue.id)
+            return None
+        if (record['project'] != owner.project_name
                 or record['scope_sha256'] != publication.scope(issue)):
             owner._release_slot(issue.id)
             return None
@@ -223,8 +255,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
                     record.get('reviewer_project')), paths, roots, prompt)
 
-    install_native_runner(runner, orchestration, mode='cloudflare', client=client,
-                          authorize_turn=authorize, codex_available=lambda _: False,
+    install_native_runner(runner, orchestration, mode=mode, client=client,
+                          authorize_turn=authorize, codex_available=codex_available,
                           active_projects=active_projects)
     orchestration.Orchestrator._dispatch = dispatch
     orchestration.Orchestrator._is_eligible = eligible
