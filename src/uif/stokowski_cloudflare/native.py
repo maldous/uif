@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 from threading import Event
 
@@ -19,6 +20,17 @@ class NativeTurnBinding:
     tracked_paths: tuple[str, ...]
     write_roots: tuple[str, ...]
     scoped_prompt: str | None = None
+
+
+def _native_report(result):
+    """Wrap a bare report object in the native controller's existing format."""
+    try:
+        report = json.loads(result)
+    except json.JSONDecodeError:
+        return result
+    if isinstance(report, dict) and ('summary' in report or 'claims' in report):
+        return f'```json\n{result}\n```'
+    return result
 
 
 def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient,
@@ -39,9 +51,6 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
 
     async def selected_turn(runner_type, claude_cfg, hooks_cfg, prompt, workspace_path,
                             issue, attempt, on_event=None, on_pid=None, env=None):
-        if runner_type == 'codex' and mode == 'both' and codex_available(issue) is True:
-            return await original(runner_type, claude_cfg, hooks_cfg, prompt, workspace_path,
-                                  issue, attempt, on_event=on_event, on_pid=on_pid, env=env)
         if runner_type not in {'codex', 'cloudflare'}:
             raise ValueError('Unexpected runner in the Cloudflare workflow')
         binding = authorize_turn(issue, attempt, Path(workspace_path))
@@ -58,6 +67,11 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             raise ValueError('Author workflow cannot consume a review binding')
         if binding.attempt.project not in active_projects():
             raise BudgetRefused('Native project is paused')
+        if (runner_type == 'codex' and mode == 'both' and not review
+                and codex_available(issue) is True):
+            return await original(runner_type, claude_cfg, hooks_cfg, binding.scoped_prompt or prompt,
+                                  workspace_path, issue, attempt, on_event=on_event, on_pid=on_pid,
+                                  env=env)
 
         tools, execute_tool = repository_tools(
             binding.workspace, binding.tracked_paths, binding.write_roots)
@@ -71,7 +85,7 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             execute_tool=execute_tool, active_projects=active_projects,
             cancelled=stop.is_set, timeout=min(600, claude_cfg.turn_timeout_ms // 1000)))
         try:
-            attempt.result_text = await asyncio.shield(task)
+            attempt.result_text = _native_report(await asyncio.shield(task))
             attempt.status = 'succeeded'
         except asyncio.CancelledError:
             stop.set()

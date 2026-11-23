@@ -31,3 +31,19 @@ protected launcher configuration.
 An installed wheel or saved gateway by itself does not make native Stokowski
 send requests through the gateway. Live qualification should record the gateway
 receipt, account assignment, neuron usage, and native attempt result.
+
+## Native provider selection
+
+Set `provider_mode` in the protected owner configuration and restart the
+controller after the active work has settled. The default `cloudflare` runs
+Workers AI exclusively. `codex` selects the existing native Codex runner.
+`both` selects Codex for an eligible author turn when its project has a fresh
+operator readiness attestation and the Codex executable is present. Workers AI
+handles the turn when either condition fails. Independent Workers AI reviews
+still use the separately admitted review account.
+
+The `codex_ready_until` mapping accepts a UTC expiry per project. The operator
+sets it after verifying Codex capability and capacity. No model call checks
+readiness. In `codex` mode, the native workflow supplies the Codex model.
+In `both` mode, a launched native Codex operation retains its original
+settlement path.

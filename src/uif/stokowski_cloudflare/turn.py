@@ -96,6 +96,7 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
         raise ValueError('Invalid turn timeout')
     tool_names = {tool['function']['name'] for tool in tools}
     messages = [{'role': 'user', 'content': prompt}]
+    report_only = False
     deadline = time.monotonic() + timeout
     for ordinal in range(1, 25):
         remaining = deadline - time.monotonic()
@@ -104,7 +105,8 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
         request_id = sha256(f'{attempt.id}:{ordinal}'.encode()).hexdigest()
         result = client.complete(
             project=attempt.project, attempt_id=attempt.id, request_id=request_id,
-            active_projects=active_projects(), messages=messages, tools=tools,
+            active_projects=active_projects(), messages=messages,
+            tools=[] if report_only else tools,
             timeout=remaining, review_of=attempt.review_of, reviewer_project=attempt.reviewer_project)
         if cancelled() or time.monotonic() >= deadline or attempt.project not in active_projects():
             raise WorkersAIRequestError('Workers AI turn stopped before applying a response')
@@ -115,8 +117,17 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
         calls = message.get('tool_calls') or []
         if not calls:
             if not isinstance(content, str) or not content.strip():
+                if tools and not report_only and choices and choices[0].get('finish_reason') == 'length':
+                    report_only = True
+                    messages.append({'role': 'user', 'content': (
+                        'Return only the final report requested above. Report the actions actually '
+                        'completed and any remaining gaps. No further tools are available.'
+                    )})
+                    continue
                 raise WorkersAIRequestError('Workers AI did not return a final message')
             return content
+        if report_only:
+            raise WorkersAIRequestError('Workers AI requested a tool during a report-only response')
 
         messages.append({'role': 'assistant', 'content': content or '', 'tool_calls': calls})
         seen = set()

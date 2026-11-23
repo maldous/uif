@@ -67,3 +67,28 @@ class NativeRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((result.status, result.session_id), ('succeeded', 'review'))
         self.assertEqual(run.call_args.args[1].reviewer_project, 'UIF')
         self.original.assert_not_awaited()
+
+    async def test_both_mode_uses_cloudflare_when_codex_is_unavailable(self):
+        self.install('both')
+        with patch('uif.stokowski_cloudflare.native.run_turn', return_value='Cloudflare result'):
+            result = await self.run_native()
+        self.assertEqual(result.result_text, 'Cloudflare result')
+        self.available.assert_called_once_with(self.issue)
+        self.original.assert_not_awaited()
+
+    async def test_both_mode_uses_only_the_authorized_codex_runner_when_ready(self):
+        self.available.return_value = True
+        self.original.side_effect = None
+        self.original.return_value = 'Codex result'
+        self.install('both')
+        with patch('uif.stokowski_cloudflare.native.run_turn') as cloudflare:
+            self.assertEqual(await self.run_native(), 'Codex result')
+        cloudflare.assert_not_called()
+        self.assertEqual(self.original.call_args.args[3], 'Scoped synthetic prompt')
+
+    async def test_bare_cloudflare_report_keeps_its_fields_in_the_native_report_envelope(self):
+        self.install('cloudflare')
+        bare = '{"summary":"No source receipt","verdict":"blocked"}'
+        with patch('uif.stokowski_cloudflare.native.run_turn', return_value=bare):
+            result = await self.run_native()
+        self.assertEqual(result.result_text, '```json\n' + bare + '\n```')

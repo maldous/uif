@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 import signal
@@ -7,11 +8,22 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from uif.stokowski_cloudflare.launcher import _start_with_shutdown, configure
+from uif.stokowski_cloudflare.launcher import _codex_is_ready, _start_with_shutdown, configure
 from uif.stokowski_cloudflare.budget import ProjectAccountRouter
 
 
 class LauncherTests(unittest.TestCase):
+    def test_both_mode_requires_fresh_readiness_and_a_local_codex_executable(self):
+        now = datetime(2026, 11, 23, 1, 0, tzinfo=timezone.utc)
+        with patch('uif.stokowski_cloudflare.launcher.shutil.which') as which:
+            which.return_value = '/usr/bin/codex'
+            self.assertFalse(_codex_is_ready(None, now))
+            self.assertFalse(_codex_is_ready('2026-11-23T00:59:00Z', now))
+            which.assert_not_called()
+            self.assertTrue(_codex_is_ready('2026-11-23T01:03:00Z', now))
+            which.return_value = None
+            self.assertFalse(_codex_is_ready('2026-11-23T01:03:00Z', now))
+
     def test_installs_cloudflare_only_and_holds_unadmitted_issue_before_native_dispatch(self):
         class Owner:
             project_name = 'OffMenu'
@@ -174,6 +186,12 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(owner.retry_attempts[issue.id].error,
                              'Original Workers AI request retained for reconciliation')
             owner._release_slot.assert_called_once_with(issue.id)
+            owner._issue_current_state[issue.id] = 'independent-review'
+            owner._schedule_retry = Mock()
+            owner.retry_attempts[issue.id].attempt = 0
+            owner._dispatch(issue)
+            owner._schedule_retry.assert_called_once_with(
+                issue, attempt_num=0, delay_ms=30_000, error='Waiting for owner-approved Workers AI stage')
 
     async def test_sigterm_uses_and_awaits_native_stop(self):
         loop = asyncio.get_running_loop()
