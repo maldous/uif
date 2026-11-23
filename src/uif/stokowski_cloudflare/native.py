@@ -18,6 +18,7 @@ class NativeTurnBinding:
     attempt: Attempt
     tracked_paths: tuple[str, ...]
     write_roots: tuple[str, ...]
+    scoped_prompt: str | None = None
 
 
 def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient,
@@ -66,7 +67,7 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
         attempt.session_id = binding.attempt.id
         attempt.status = 'running'
         task = asyncio.create_task(asyncio.to_thread(
-            run_turn, client, binding.attempt, prompt, tools=tools,
+            run_turn, client, binding.attempt, binding.scoped_prompt or prompt, tools=tools,
             execute_tool=execute_tool, active_projects=active_projects,
             cancelled=stop.is_set, timeout=min(600, claude_cfg.turn_timeout_ms // 1000)))
         try:

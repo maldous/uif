@@ -32,7 +32,6 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     credentials = Path(config['credentials'])
     if not credentials.is_absolute():
         raise ValueError('Expected absolute Workers AI credentials directory')
-    router = ProjectAccountRouter(database, accounts)
     reverse = {account: project for project, account in accounts.items()}
 
     def token(account):
@@ -41,6 +40,14 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             raise ValueError('Unverified Workers AI account')
         return record['token']
 
+    eligible = set()
+    for project, account in accounts.items():
+        try:
+            if token(account):
+                eligible.add(project)
+        except (OSError, ValueError, KeyError):
+            continue
+    router = ProjectAccountRouter(database, accounts, eligible_projects=eligible)
     client = WorkersAIClient(router, token, gateways=config.get('gateways'))
     context = ContextVar('native_workers_ai_owner')
     authorized = ContextVar('native_workers_ai_authorized', default=None)
@@ -101,9 +108,16 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         def git(*args):
             return subprocess.check_output(['git', '-C', str(workspace), *args], timeout=10, text=True)
 
-        if git('rev-parse', 'HEAD').strip() != record['source_head']:
+        if (git('rev-parse', 'HEAD').strip() != record['source_head']
+                or git('branch', '--show-current').strip() != record['branch']):
             raise ValueError('Workers AI attempt source has moved')
-        paths = tuple(filter(None, git('ls-files', '-z').split('\0')))
+        tracked = set(filter(None, git('ls-files', '-z').split('\0')))
+        paths = tuple(record['read_paths'])
+        if not set(paths) <= tracked:
+            raise ValueError('Workers AI read scope includes an untracked file')
+        prompt = record['prompt']
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError('Workers AI requires a scoped owner prompt')
         roots = tuple(record['write_roots'])
         if any(not re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*', root)
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
@@ -112,7 +126,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         authorized.set((issue.id, attempt.state_name, attempt, record))
         return NativeTurnBinding(issue.id, workspace,
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
-                    record.get('reviewer_project')), paths, roots)
+                    record.get('reviewer_project')), paths, roots, prompt)
 
     install_native_runner(runner, orchestration, mode='cloudflare', client=client,
                           authorize_turn=authorize, codex_available=lambda _: False,
