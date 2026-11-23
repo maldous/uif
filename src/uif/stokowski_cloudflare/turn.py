@@ -13,6 +13,14 @@ import time
 from .client import WorkersAIClient, WorkersAIRequestError
 
 
+MAX_TURN_REQUESTS = 24
+FINAL_REPORT = (
+    'Return the final report as one JSON object with summary and verdict, and '
+    'the applicable native routing fields. Preserve the actions actually taken, '
+    'available evidence and any remaining gaps. No further tools are available.'
+)
+
+
 @dataclass(frozen=True)
 class Attempt:
     project: str
@@ -123,10 +131,13 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
     messages = [{'role': 'user', 'content': prompt}]
     report_only = False
     deadline = time.monotonic() + timeout
-    for ordinal in range(1, 25):
+    for ordinal in range(1, MAX_TURN_REQUESTS + 1):
         remaining = deadline - time.monotonic()
         if remaining <= 0 or cancelled():
             raise WorkersAIRequestError('Workers AI turn stopped before completion')
+        if structured_report and ordinal == MAX_TURN_REQUESTS and not report_only:
+            report_only = True
+            messages.append({'role': 'user', 'content': FINAL_REPORT})
         request_id = sha256(f'{attempt.id}:{ordinal}'.encode()).hexdigest()
         result = client.complete(
             project=attempt.project, attempt_id=attempt.id, request_id=request_id,
@@ -147,11 +158,7 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
                 report_only = True
                 if isinstance(content, str) and content.strip():
                     messages.append({'role': 'assistant', 'content': content})
-                messages.append({'role': 'user', 'content': (
-                    'Return the final report as one JSON object with summary and verdict, and '
-                    'the applicable native routing fields. Preserve the actions actually taken, '
-                    'available evidence and any remaining gaps. No further tools are available.'
-                )})
+                messages.append({'role': 'user', 'content': FINAL_REPORT})
                 continue
             if not isinstance(content, str) or not content.strip():
                 if tools and not report_only and choices and choices[0].get('finish_reason') == 'length':
