@@ -5,6 +5,7 @@ from contextvars import ContextVar
 import json
 from pathlib import Path
 import re
+import signal
 import stat
 import subprocess
 
@@ -20,6 +21,27 @@ def _protected_json(path: Path):
         if info.st_uid != 0 or info.st_mode & 0o022 or stat.S_ISLNK(info.st_mode):
             raise ValueError('Workers AI owner policy must be root-controlled')
     return json.loads(path.read_text())
+
+
+async def _start_with_shutdown(owner, start):
+    """Connect service signals to native stop and await its drain."""
+    loop = asyncio.get_running_loop()
+    stop_requested = asyncio.Event()
+    signals = (signal.SIGTERM, signal.SIGINT)
+    for sig in signals:
+        loop.add_signal_handler(sig, stop_requested.set)
+    startup = asyncio.create_task(start(owner))
+    request = asyncio.create_task(stop_requested.wait())
+    try:
+        done, _ = await asyncio.wait((startup, request), return_when=asyncio.FIRST_COMPLETED)
+        if request in done and not startup.done():
+            await owner.stop()
+        return await startup
+    finally:
+        request.cancel()
+        await asyncio.gather(request, return_exceptions=True)
+        for sig in signals:
+            loop.remove_signal_handler(sig)
 
 
 def configure(runner, orchestration, publication, *, policy: Path, database: Path):
@@ -53,6 +75,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     authorized = ContextVar('native_workers_ai_authorized', default=None)
     original_worker = orchestration.Orchestrator._run_worker
     original_dispatch = orchestration.Orchestrator._dispatch
+    original_start = orchestration.MultiOrchestrator.start
 
     def admissions():
         return _protected_json(policy)['admissions']
@@ -133,3 +156,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                           active_projects=active_projects)
     orchestration.Orchestrator._dispatch = dispatch
     orchestration.Orchestrator._run_worker = worker
+
+    async def start(owner):
+        return await _start_with_shutdown(owner, original_start)
+
+    orchestration.MultiOrchestrator.start = start
