@@ -247,3 +247,30 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertTrue(all(t['function']['description'] for t in first['tools']))
         self.assertEqual(second['messages'][-1], {'role': 'tool', 'tool_call_id': 'bad',
                          'content': 'Tool did not run. Expected string fields path, old, replacement'})
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_settled_length_limit_requests_one_final_report_without_tools(self, connection):
+        conn = connection.return_value
+        response = conn.getresponse.return_value
+        response.status = 200
+        responses = [
+            {'choices': [{'finish_reason': 'length', 'message': {'content': None}}]},
+            {'choices': [{'finish_reason': 'stop', 'message': {'content': '{"summary":"Blocked"}'}}]},
+        ]
+        response.read.side_effect = [
+            json.dumps(dict(value, model=GLM_MODEL, usage={'neurons': 1})).encode()
+            for value in responses
+        ]
+        client = WorkersAIClient(self.router, lambda _: 'test-token', model=GLM_MODEL)
+        fixture = self.database.parent / 'fixture.txt'
+        fixture.write_text('old')
+        tools, execute = repository_tools(fixture.parent, (fixture.name,), (fixture.name,))
+        output = run_turn(client, Attempt('OffMenu', 'length'), 'Check fixture',
+                          tools=tools, execute_tool=execute, active_projects=lambda: {'OffMenu'},
+                          cancelled=lambda: False, timeout=5)
+        self.assertEqual(output, '{"summary":"Blocked"}')
+        first, second = [json.loads(call.kwargs['body']) for call in conn.request.call_args_list]
+        self.assertIn('tools', first)
+        self.assertNotIn('tools', second)
+        self.assertEqual(second['chat_template_kwargs'], {'enable_thinking': False})
+        self.assertEqual(fixture.read_text(), 'old')
