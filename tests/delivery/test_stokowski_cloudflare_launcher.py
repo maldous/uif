@@ -78,6 +78,60 @@ class LauncherTests(unittest.TestCase):
 
 
 class ShutdownTests(unittest.IsolatedAsyncioTestCase):
+    async def test_project_intake_uses_native_custody_without_an_issue_admission(self):
+        class Owner:
+            project_name = 'OffMenu'
+            pool = SimpleNamespace(is_paused=lambda _: False)
+            _is_eligible = Mock(return_value=True)
+            _dispatch = Mock()
+            _release_slot = Mock()
+            _run_worker = AsyncMock()
+
+            def _entry_state_for(self, issue):
+                return 'investigate'
+
+            async def _resolve_current_state(self, issue, *, comments=None):
+                self._issue_current_state[issue.id] = 'investigate'
+                return 'investigate', 1
+
+            def _states_for(self, issue):
+                return {'assess': SimpleNamespace(type='agent', admission_review=True),
+                        'investigate': SimpleNamespace(type='agent', admission_review=False)}
+
+        config = dict(accounts={name: digit * 32 for name, digit in
+                                zip(('OffMenu', 'UIF', 'ANQR', 'CIX', 'CQ'), 'abcde')},
+                      projects=['OffMenu'], credentials='/etc/uif-stokowski', admissions={},
+                      project_intake={'OffMenu': {'origin': 'https://github.com/maldous/offmenu.git'}})
+        orchestrator = SimpleNamespace(
+            Orchestrator=Owner, MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}),
+            logger=Mock(), state_key=lambda state: {'In Progress': 'active'}.get(state, state.lower()),
+            parse_latest_tracking=lambda comments: comments or None)
+        issue = SimpleNamespace(id='current-issue', identifier='UIF-10', title='Review test coverage',
+                                description='Inspect the existing evidence.', state='Todo')
+        with (TemporaryDirectory() as scratch,
+              patch('uif.stokowski_cloudflare.launcher._protected_json', return_value=config),
+              patch('uif.stokowski_cloudflare.launcher.install_native_runner')):
+            native_dispatch = Owner._dispatch
+            configure(SimpleNamespace(), orchestrator, SimpleNamespace(scope=lambda _: 'current-scope'),
+                      policy=Path('/etc/owner.json'), database=Path(scratch) / 'budget.sqlite')
+            owner = Owner()
+            owner._issue_current_state, owner._issue_state_runs, owner.running = {}, {}, {}
+            owner.claimed = set()
+            owner._settlement_path = lambda _: Path(scratch) / 'workspace'
+            owner.cfg = SimpleNamespace(terminal_linear_states=lambda: ['Done', 'Canceled'])
+            self.assertEqual(owner._entry_state_for(issue), 'assess')
+            self.assertTrue(owner._is_eligible(issue))
+            owner._dispatch(issue)
+            native_dispatch.assert_called_once_with(owner, issue, None)
+
+            issue.state = 'In Progress'
+            self.assertEqual(await owner._resolve_current_state(issue, comments=['native history']),
+                             ('investigate', 1))
+            owner._issue_current_state.clear()
+            self.assertEqual(await owner._resolve_current_state(issue, comments=[]), ('assess', 1))
+            issue.blocked_by = [SimpleNamespace(state='In Progress')]
+            self.assertFalse(owner._is_eligible(issue))
+
     async def test_native_dispatch_attaches_generated_review_and_preserves_owner_revocation(self):
         class Owner:
             project_name = 'OffMenu'

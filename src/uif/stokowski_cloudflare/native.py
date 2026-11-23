@@ -4,12 +4,15 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import logging
 from pathlib import Path
 from threading import Event
 
 from .budget import BudgetRefused
 from .client import WorkersAIClient, WorkersAIRequestError
 from .turn import Attempt, repository_tools, run_turn
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -80,6 +83,8 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
         attempt.model = client.model
         attempt.session_id = binding.attempt.id
         attempt.status = 'running'
+        logger.info('Workers AI turn started issue=%s stage=%s model=%s',
+                    getattr(issue, 'identifier', issue.id), attempt.state_name, client.model)
         task = asyncio.create_task(asyncio.to_thread(
             run_turn, client, binding.attempt, binding.scoped_prompt or prompt, tools=tools,
             execute_tool=execute_tool, active_projects=active_projects,
