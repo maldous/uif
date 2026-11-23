@@ -31,7 +31,8 @@ service unit is added. Run on each executor independently, using its own files.
 python3 -m unittest discover -s tests/white_room -v
 python3 tools/white_room/inventory.py /absolute/checkout
 python3 tools/white_room/check.py --contract config/white-room.json \
-  --evidence /private/observations.json --profile cloud --project uif
+  --evidence /private/observations.json --profile cloud --project uif \
+  --checkout /absolute/checkout
 ```
 
 Exit 0 means the **supplied** evidence passed comparison; 1 means failed/unknown
@@ -92,21 +93,48 @@ from runtime enforcement or full product compliance.
 1. Discover current remote GitHub and Linear, existing ownership and original
    operation receipts. Do not infer remote freshness from local tracking refs.
 2. Run inventory as the checkout owner, never root merely because transport is
-   root. It reads tracked filenames, local refs, HEAD and branch; dirtiness stays explicitly unknown;
+   root. It reads tracked filenames, local refs, HEAD,
+   branch, the common Git directory and the worktree registry. Each registration
+   includes its recorded HEAD, branch or detached state, and lock/prune flags.
+   Dirtiness stays explicitly unknown;
    never reads file bodies or remotes containing credentials, and never
    fetches/resets/cleans. Status/diff are excluded because Git filters can execute
    arbitrary commands; hooks, fsmonitor and inherited Git overrides are disabled.
    Detached or partial/promisor checkouts return an explicit inventory error;
    lazy fetch is disabled and promisor configuration is refused for portability. This bounded
-   discovery helper does not inspect all worktrees or all external dependencies.
+   discovery helper lists registrations without visiting sibling checkout files.
+   Reconcile their status, custody and unpushed work separately.
 3. Resolve project-specific declarations and all undiscovered entries. Obtain
    permitted live health/configuration observations. Compare deployed script
    source and schema, not only Windmill names or misleading summary labels.
 4. Reconcile uncertain effects under their original IDs. Retain dirty/local-only
    work; choose a separate clean task checkout rather than rewriting it.
-5. Compare evidence with this tool. Carry precise gaps to the current owner.
+5. Compare evidence with this tool using `--checkout` on the selected checkout
+   before editing. This checks its observed HEAD and worktree registration against
+   the selected commit in the evidence. Verify dirtiness, repository identity and
+   remote acceptance through their own observations. Carry gaps to the current owner.
    Only the existing harness may admit or resume after its own authoritative
    ownership and effect reconciliation. Do not resume historical workers here.
+
+## First run on Foo
+
+Run this procedure for UIF before using it for another project. Attach observations
+and original operation receipts to the existing task or coordination record. Record
+the declaration revision, observed time, state, evidence source and responsible
+owner for each applicable dependency.
+
+| Check | Evidence to collect |
+| --- | --- |
+| Agent and checkout | Agent acknowledgment of the parent and project policy hashes, selected repository, accepted remote ref and commit, task worktree and branch, owner, clean status, and disposition of recoverable work. Use the project's accepted baseline when it has an explicit branch exception. |
+| Host and toolchain | Actual Foo account and paths, required mounts and access, storage and measured capacity, runtime binaries and versions from the path each service uses, and current provider availability for any selected reasoning route. |
+| Windmill transport | Effective workspace, deployed script/source/schema/dependencies, eligible worker tags and health, target host and execution identity, and terminal readback under the original job ID. Check project-specific scripts only when the workflow calls them. |
+| Coordinator and persistence | Effective unit and runtime binding, declared source and dependency closure, checkpoint and lease identity, old-owner fencing, and outcome of any uncertain operation. Confirm startup and coding admission separately. |
+| Delivery | With coordination approval and current ownership, observe a bounded task through pickup, execution, verification, publication or its explicitly scoped outcome, and eligible refill. Preserve the original receipts. |
+
+Keep the current operational decision and unresolved dependencies with the existing
+owner. A failed shared dependency applies to the projects that use it. Each
+project still requires its own accepted source, storage, service, lease and
+operation evidence before recovery or admission.
 
 ## Recovery test boundary
 
