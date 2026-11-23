@@ -97,6 +97,9 @@ class WorkersAIClientTests(unittest.TestCase):
         response.read.return_value = credential.encode()
         with self.assertRaisesRegex(WorkersAIRequestError, r'^Workers AI refused request \(HTTP 429\)$'):
             client.complete(**self.request)
+        with self.assertRaises(BudgetRefused):
+            client.complete(**dict(self.request, request_id='candidate/two'))
+        connection.assert_called_once()
         response.read.assert_not_called()
         self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
 

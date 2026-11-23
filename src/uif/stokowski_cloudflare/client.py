@@ -86,17 +86,25 @@ class WorkersAIClient:
         try:
             conn.request('POST', path, body=canonical, headers=headers)
             response = conn.getresponse()
-            if response.status != 200:
-                raise WorkersAIRequestError(f'Workers AI refused request (HTTP {response.status})')
-            if gateway is not None:
+            if response.status == 200 and gateway is not None:
                 receipt = response.getheader('cf-aig-log-id')
                 if not receipt or not re.fullmatch(r'[A-Za-z0-9_-]{1,256}', receipt):
                     raise WorkersAIRequestError('AI Gateway request receipt missing or invalid')
-            raw = response.read(MAX_RESPONSE_BYTES + 1)
+            if response.status == 200:
+                raw = response.read(MAX_RESPONSE_BYTES + 1)
         except (OSError, HTTPException):
+            budget.hold(request_id, 'provider-unavailable')
             raise WorkersAIRequestError('Workers AI response is uncertain') from None
         finally:
             conn.close()
+        if response.status != 200:
+            if response.status == 429:
+                budget.hold(request_id, 'rate-limit')
+            elif response.status in {401, 403}:
+                budget.hold(request_id, 'authentication')
+            elif 500 <= response.status <= 599:
+                budget.hold(request_id, 'provider-unavailable')
+            raise WorkersAIRequestError(f'Workers AI refused request (HTTP {response.status})')
         if len(raw) > MAX_RESPONSE_BYTES:
             raise WorkersAIRequestError('Workers AI response exceeded the size limit')
         try:

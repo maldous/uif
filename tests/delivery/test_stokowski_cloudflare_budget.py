@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from uif.stokowski_cloudflare.budget import (
-    BudgetRefused, NORMAL_LIMIT, ProjectAccountRouter, WorkersAIBudget,
+    AccountHold, AccountRecovery, BudgetRefused, NORMAL_LIMIT, ProjectAccountRouter, WorkersAIBudget,
 )
 
 
@@ -57,6 +57,32 @@ class CloudflareBudgetTests(unittest.TestCase):
         self.budget.settle('first', 0)
         with self.assertRaises(BudgetRefused):
             other.reserve('second', 1, new_task=True, now=self.now)
+
+    def test_429_hold_survives_restart_and_resumes_only_with_fresh_bound_evidence(self):
+        self.budget.reserve('original', NORMAL_LIMIT - 2, new_task=True, now=self.now)
+        self.budget.hold('original', 'rate-limit', now=self.now)
+        restarted = WorkersAIBudget(self.database, 'a' * 32)
+        tomorrow = self.now + timedelta(days=1, seconds=100)
+        other = WorkersAIBudget(self.database, 'b' * 32)
+        other.reserve('healthy', 1, new_task=True, now=tomorrow)
+
+        def check_held():
+            with self.assertRaises(BudgetRefused):
+                restarted.reserve('next', 1, new_task=True, now=tomorrow)
+
+        check_held()
+        other_hold = AccountHold('b' * 32, 'original', 'rate-limit', self.now)
+        restarted.recover(lambda _: AccountRecovery(other_hold, tomorrow, 'a' * 64), now=tomorrow)
+        check_held()
+        restarted.recover(lambda hold: AccountRecovery(hold, tomorrow, 'forged'), now=tomorrow)
+        check_held()
+        restarted.recover(lambda hold: AccountRecovery(hold, tomorrow - timedelta(seconds=91),
+                                                       'a' * 64), now=tomorrow)
+        check_held()
+        restarted.recover(lambda hold: AccountRecovery(hold, tomorrow, 'a' * 64), now=tomorrow)
+        with self.assertRaises(BudgetRefused):
+            restarted.reserve('too-much', 2, new_task=True, now=tomorrow)
+        restarted.reserve('next', 1, new_task=True, now=tomorrow)
 
     def test_usage_above_reservation_blocks_further_requests_that_day(self):
         self.budget.reserve('first', 1, new_task=True, now=self.now)

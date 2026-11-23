@@ -6,6 +6,7 @@ This budget covers only traffic admitted through the same database.
 """
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -15,6 +16,24 @@ import sqlite3
 
 NORMAL_LIMIT = 7_500_000
 HARD_LIMIT = 10_000_000
+RECOVERY_FRESH_SECONDS = 90
+
+
+@dataclass(frozen=True)
+class AccountHold:
+    account_id: str
+    request_id: str
+    reason: str
+    observed_at: datetime
+
+
+@dataclass(frozen=True)
+class AccountRecovery:
+    """Evidence returned by an independently authenticated account reader."""
+
+    hold: AccountHold
+    observed_at: datetime
+    evidence_sha256: str
 
 
 class BudgetRefused(RuntimeError):
@@ -46,6 +65,11 @@ class WorkersAIBudget:
                     'account TEXT NOT NULL, id TEXT NOT NULL, day TEXT NOT NULL, '
                     'amount INTEGER NOT NULL, settled INTEGER NOT NULL, '
                     'PRIMARY KEY (account, id))')
+                db.execute(
+                    'CREATE TABLE IF NOT EXISTS account_holds ('
+                    'account TEXT NOT NULL, request_id TEXT NOT NULL, reason TEXT NOT NULL, '
+                    'observed_at TEXT NOT NULL, recovery_sha256 TEXT, '
+                    'PRIMARY KEY (account, request_id))')
                 yield db
         finally:
             db.close()
@@ -57,6 +81,10 @@ class WorkersAIBudget:
             self._reserve(db, request_id, maximum, _utc_day(now))
 
     def _headroom(self, db, day):
+        if db.execute(
+                'SELECT 1 FROM account_holds WHERE account=? AND recovery_sha256 IS NULL LIMIT 1',
+                (self.account_id,)).fetchone():
+            return 0
         used, exceeded = db.execute(
             'SELECT COALESCE(SUM(amount),0), COALESCE(MAX(settled),0) '
             'FROM requests WHERE account=? AND (day=? OR settled=0)',
@@ -80,6 +108,56 @@ class WorkersAIBudget:
             raise BudgetRefused('Request exceeds the daily Workers AI budget')
         db.execute('INSERT INTO requests VALUES (?, ?, ?, ?, 0)',
                    (self.account_id, day, request_id, maximum))
+
+    def hold(self, request_id, reason, *, now=None):
+        """Hold this account without settling or replaying the original request."""
+        if reason not in {'rate-limit', 'authentication', 'provider-unavailable'}:
+            raise ValueError('Unknown Workers AI account hold reason')
+        now = _utc_time(now)
+        with self._transaction() as db:
+            if not db.execute(
+                    'SELECT 1 FROM requests WHERE account=? AND id=? AND settled=0',
+                    (self.account_id, request_id)).fetchone():
+                raise BudgetRefused('Account hold requires an outstanding original request')
+            db.execute('INSERT OR IGNORE INTO account_holds VALUES (?, ?, ?, ?, NULL)',
+                       (self.account_id, request_id, reason, now.isoformat()))
+
+    def recover(self, read_recovery, *, now=None):
+        """Reconcile individually held operations through a trusted read-only adapter.
+
+        This restores eligibility only. Outstanding neuron reservations still count
+        until the original usage is independently settled.
+        """
+        with self._transaction() as db:
+            pending = db.execute(
+                'SELECT request_id, reason, observed_at FROM account_holds '
+                'WHERE account=? AND recovery_sha256 IS NULL ORDER BY observed_at, request_id',
+                (self.account_id,)).fetchall()
+
+        for request_id, reason, timestamp in pending:
+            hold = AccountHold(self.account_id, request_id, reason, datetime.fromisoformat(timestamp))
+            try:
+                receipt = read_recovery(hold)
+            except (OSError, ValueError):
+                # This observation failed. Other pending holds still get a read.
+                continue
+            if not isinstance(receipt, AccountRecovery) or receipt.hold != hold:
+                continue
+            if not isinstance(receipt.evidence_sha256, str) or not re.fullmatch(
+                    r'[0-9a-f]{64}', receipt.evidence_sha256):
+                continue
+            if not isinstance(receipt.observed_at, datetime) or receipt.observed_at.utcoffset() is None:
+                continue
+            with self._transaction() as db:
+                current = _utc_time(now)
+                if (receipt.observed_at <= hold.observed_at
+                        or current.date() != _utc_time(receipt.observed_at).date()
+                        or not 0 <= (current - receipt.observed_at).total_seconds() <= RECOVERY_FRESH_SECONDS):
+                    continue
+                db.execute(
+                    'UPDATE account_holds SET recovery_sha256=? WHERE account=? AND request_id=? '
+                    'AND reason=? AND observed_at=? AND recovery_sha256 IS NULL',
+                    (receipt.evidence_sha256, self.account_id, request_id, reason, timestamp))
 
     def settle(self, request_id: str, actual: int, *, gateway_receipt: str | None = None,
                now: datetime | None = None) -> None:
@@ -114,11 +192,15 @@ PROJECTS = frozenset({'UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'})
 PAID_ACCOUNT = 'Paid'
 
 
-def _utc_day(now=None):
+def _utc_time(now=None):
     now = now if now is not None else datetime.now(timezone.utc)
     if now.utcoffset() is None:
         raise ValueError('Expected a timezone-aware timestamp')
-    return now.astimezone(timezone.utc).date().isoformat()
+    return now.astimezone(timezone.utc)
+
+
+def _utc_day(now=None):
+    return _utc_time(now).date().isoformat()
 
 
 class ProjectAccountRouter:
@@ -135,6 +217,11 @@ class ProjectAccountRouter:
             project: WorkersAIBudget(database, account_id)
             for project, account_id in accounts.items()
         }
+
+    def refresh_holds(self, read_recovery):
+        """Consume qualifying evidence from the existing owner's trusted reader."""
+        for name in sorted(self.eligible_projects):
+            self.accounts[name].recover(read_recovery)
 
     def has_started(self, attempt_id: str) -> bool:
         """Check whether the first request was durably reserved for this attempt."""

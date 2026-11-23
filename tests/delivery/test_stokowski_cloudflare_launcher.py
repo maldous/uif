@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from pathlib import Path
 import signal
@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 from uif.stokowski_cloudflare.launcher import _codex_is_ready, _start_with_shutdown, configure
-from uif.stokowski_cloudflare.budget import NORMAL_LIMIT, ProjectAccountRouter
+from uif.stokowski_cloudflare.budget import AccountRecovery, NORMAL_LIMIT, ProjectAccountRouter
 
 
 class LauncherTests(unittest.TestCase):
@@ -117,8 +117,10 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
                     dict(account_id=config['accounts']['OffMenu'], plan='free', token='fixture')),
               patch('uif.stokowski_cloudflare.launcher.install_native_runner')):
             native_dispatch = Owner._dispatch
+            recovery = Mock(return_value=None)
             configure(SimpleNamespace(), orchestrator, SimpleNamespace(scope=lambda _: 'current-scope'),
-                      policy=Path('/etc/owner.json'), database=Path(scratch) / 'budget.sqlite')
+                      policy=Path('/etc/owner.json'), database=Path(scratch) / 'budget.sqlite',
+                      read_account_recovery=recovery)
             owner = Owner()
             owner._issue_current_state, owner._issue_state_runs, owner.running = {}, {}, {}
             owner.claimed = set()
@@ -135,6 +137,20 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             native_dispatch.assert_not_called()
             Owner._release_slot.assert_called_once_with(issue.id)
             reserved.settle('earlier-call', 0)
+            owner._dispatch(issue)
+            native_dispatch.assert_called_once_with(owner, issue, None)
+
+            native_dispatch.reset_mock()
+            Owner._release_slot.reset_mock()
+            observed = datetime.now(timezone.utc)
+            limited = ledger.reserve_request('OffMenu', 'limited-attempt', 'limited-call', 1,
+                                             {'OffMenu'}, request_sha256='1' * 64, now=observed)
+            limited.hold('limited-call', 'rate-limit', now=observed - timedelta(seconds=1))
+            owner._dispatch(issue)
+            native_dispatch.assert_not_called()
+            Owner._release_slot.assert_called_once_with(issue.id)
+            self.assertEqual(recovery.call_args.args[0].request_id, 'limited-call')
+            recovery.side_effect = lambda hold: AccountRecovery(hold, observed, '2' * 64)
             owner._dispatch(issue)
             native_dispatch.assert_called_once_with(owner, issue, None)
 

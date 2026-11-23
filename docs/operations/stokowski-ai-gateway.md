@@ -56,6 +56,15 @@ polls. Concurrent contenders still need an atomic reservation before transport.
 An original attempt that already reserved a request stays in reconciliation
 under its existing identifier.
 
+HTTP 429, authentication failure, server failure and uncertain transport hold
+the affected account in the same reservation database. An existing launcher
+can attach a trusted, cached `read_account_recovery` adapter. On later dispatch
+polls the adapter can return evidence bound to the original account and request.
+The ledger requires an observation after the hold and within 90 seconds on the
+current UTC day. The hold survives restart and midnight. Clearing it leaves the
+original reservation charged until settlement. An owner must qualify the reader
+and its actual account-wide limits before live adoption.
+
 ## Project intake
 
 In Cloudflare-only mode, add a project under `project_intake` in the protected
