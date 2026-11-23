@@ -13,7 +13,7 @@ description = "Source-qualified UIF quota handoff and white-room recovery contro
 uif-quota-handoff = "uif.quota_cli:main"
 
 [tool.setuptools]
-packages = ["uif", "uif.white_room"]
+packages = ["uif", "uif.stokowski_cloudflare", "uif.white_room"]
 
 [tool.setuptools.package-dir]
 uif = "src/uif"
