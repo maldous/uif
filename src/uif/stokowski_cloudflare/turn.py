@@ -19,12 +19,16 @@ class Attempt:
     reviewer_project: str | None = None
 
 
+class RepositoryToolError(WorkersAIRequestError):
+    """A rejected bounded tool operation that the model can correct."""
+
+
 def repository_tools(workspace, tracked_paths, write_roots):
     """Expose only bounded text operations on the admitted checkout."""
     workspace = Path(workspace).resolve(strict=True)
     tracked = frozenset(tracked_paths)
     definitions = {
-        'list_files': ('List the tracked files available to this task.', ()),
+        'list_files': ('List available tracked files. Call with an empty JSON object.', ()),
         'read_file': ('Read one of the available tracked files by relative path.', ('path',)),
     } if tracked else {}
     if write_roots:
@@ -40,29 +44,32 @@ def repository_tools(workspace, tracked_paths, write_roots):
     ]
 
     def execute(name, arguments, remaining):
-        if set(arguments) != set(definitions[name][1]) or not all(
+        _, keys = definitions[name]
+        if set(arguments) != set(keys) or not all(
                 isinstance(value, str) for value in arguments.values()):
-            raise WorkersAIRequestError('Invalid workspace tool arguments')
+            expected = ', '.join(keys)
+            raise RepositoryToolError(
+                f'Expected string fields {expected}' if keys else 'Expected an empty JSON object')
         if name == 'list_files':
             return '\n'.join(sorted(tracked))[:8000]
         relative = arguments['path']
         path = workspace / relative
         if relative not in tracked or path.resolve(strict=True) != path or not path.is_file():
-            raise WorkersAIRequestError('Workspace file is outside the tracked scope')
+            raise RepositoryToolError('Workspace file is outside the tracked scope')
         stat = path.stat()
         if stat.st_nlink != 1 or stat.st_size > 24_000:
-            raise WorkersAIRequestError('Workspace file exceeds the tool size limit')
+            raise RepositoryToolError('Workspace file exceeds the tool size limit')
         content = path.read_text(encoding='utf-8')
         if name == 'read_file':
             return content
         if not any(relative == root or relative.startswith(root + '/') for root in write_roots):
-            raise WorkersAIRequestError('Workspace file is outside the write scope')
+            raise RepositoryToolError('Workspace file is outside the write scope')
         old = arguments['old']
         if not old or content.count(old) != 1:
-            raise WorkersAIRequestError('Edit requires one unambiguous match')
+            raise RepositoryToolError('Edit requires one unambiguous match')
         updated = content.replace(old, arguments['replacement'], 1)
         if len(updated.encode()) > 24_000:
-            raise WorkersAIRequestError('Updated file exceeds the tool size limit')
+            raise RepositoryToolError('Updated file exceeds the tool size limit')
         with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as stream:
             staged = Path(stream.name)
             try:
@@ -118,16 +125,23 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
             name = function['name']
             call_id = call['id']
             args = function['arguments']
-            if isinstance(args, str):
-                args = json.loads(args)
-            if (name not in tool_names or not isinstance(args, dict)
-                    or not isinstance(call_id, str) or not call_id or call_id in seen):
+            if (name not in tool_names or not isinstance(call_id, str)
+                    or not call_id or call_id in seen):
                 raise WorkersAIRequestError('Invalid or unapproved Workers AI tool call')
             seen.add(call_id)
             remaining = deadline - time.monotonic()
             if remaining <= 0 or cancelled() or attempt.project not in active_projects():
                 raise WorkersAIRequestError('Workers AI turn stopped before executing a tool')
-            output = execute_tool(name, args, remaining)
+            try:
+                if isinstance(args, str):
+                    args = json.loads(args)
+                if not isinstance(args, dict):
+                    raise RepositoryToolError('Expected a JSON object for tool arguments')
+                output = execute_tool(name, args, remaining)
+            except json.JSONDecodeError:
+                output = 'Tool did not run. Supply arguments as a valid JSON object.'
+            except RepositoryToolError as error:
+                output = f'Tool did not run. {error}'
             if not isinstance(output, str) or len(output.encode()) > 32_000:
                 raise WorkersAIRequestError('Workspace tool response exceeded its text boundary')
             messages.append({'role': 'tool', 'tool_call_id': call_id, 'content': output})

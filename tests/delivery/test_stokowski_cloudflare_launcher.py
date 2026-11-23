@@ -19,6 +19,7 @@ class LauncherTests(unittest.TestCase):
             _dispatch = Mock()
             _run_worker = AsyncMock()
             _release_slot = Mock()
+            _is_eligible = Mock()
 
         original = Owner._dispatch
         codex = Mock(side_effect=AssertionError('Codex called'))
@@ -59,6 +60,7 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             pool = SimpleNamespace(is_paused=lambda _: False)
             _dispatch = Mock()
             _release_slot = Mock()
+            _is_eligible = Mock(return_value=True)
 
             async def _run_worker(self, issue, attempt):
                 self.running[issue.id] = attempt
@@ -101,6 +103,8 @@ class ShutdownTests(unittest.IsolatedAsyncioTestCase):
             owner._issue_state_runs = {issue.id: 2}
             await owner._run_worker(issue, first)
             self.assertIn('"issue": "UIF-1", "state": "assess", "run": 2', owner.assess_prompt)
+            self.assertTrue(owner._is_eligible(issue))
+            self.assertFalse(owner._is_eligible(SimpleNamespace(id='unadmitted')))
 
             router = ProjectAccountRouter(database, accounts)
             router.reserve_request('OffMenu', 'first', 'request', 1, {'OffMenu'},

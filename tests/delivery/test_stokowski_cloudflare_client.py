@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from uif.stokowski_cloudflare.budget import BudgetRefused, ProjectAccountRouter
 from uif.stokowski_cloudflare.client import MODEL, REQUEST_MAXIMUM, WorkersAIClient, WorkersAIRequestError
-from uif.stokowski_cloudflare.turn import Attempt, run_turn
+from uif.stokowski_cloudflare.turn import Attempt, repository_tools, run_turn
 
 
 class WorkersAIClientTests(unittest.TestCase):
@@ -194,3 +194,37 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertCountEqual(paths, [
             f'/client/v4/accounts/{account}/ai/v1/chat/completions' for account in self.accounts.values()
         ])
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_malformed_tool_arguments_can_be_corrected_without_broadening_scope(self, connection):
+        conn = connection.return_value
+        response = conn.getresponse.return_value
+        response.status = 200
+        fixture = self.database.parent / 'fixture.txt'
+        fixture.write_text('old')
+        shape = {'model': MODEL, 'usage': {'neurons': 1}}
+
+        def calls(call_id, args):
+            return {'tool_calls': [{'type': 'function', 'id': call_id,
+                                    'function': {'name': 'replace_text', 'arguments': args}}]}
+
+        messages = [
+            calls('bad', '{"path":"fixture.txt"}'),
+            calls('good', '{"path":"fixture.txt","old":"old","replacement":"new"}'),
+            {'content': 'Patched fixture'},
+        ]
+        response.read.side_effect = [
+            json.dumps(dict(shape, choices=[{'message': message}])).encode()
+            for message in messages
+        ]
+        tools, execute = repository_tools(fixture.parent, (fixture.name,), (fixture.name,))
+        output = run_turn(self.client, Attempt('OffMenu', 'fix-tool'), 'Fix fixture',
+                          tools=tools, execute_tool=execute, active_projects=lambda: {'OffMenu'},
+                          cancelled=lambda: False, timeout=5)
+        self.assertEqual((output, fixture.read_text()), ('Patched fixture', 'new'))
+        requests = conn.request.call_args_list
+        first = json.loads(requests[0].kwargs['body'])
+        second = json.loads(requests[1].kwargs['body'])
+        self.assertTrue(all(t['function']['description'] for t in first['tools']))
+        self.assertEqual(second['messages'][-1], {'role': 'tool', 'tool_call_id': 'bad',
+                         'content': 'Tool did not run. Expected string fields path, old, replacement'})

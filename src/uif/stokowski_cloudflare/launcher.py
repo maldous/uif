@@ -75,11 +75,20 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     authorized = ContextVar('native_workers_ai_authorized', default=None)
     original_worker = orchestration.Orchestrator._run_worker
     original_dispatch = orchestration.Orchestrator._dispatch
+    original_eligible = orchestration.Orchestrator._is_eligible
     original_start = orchestration.MultiOrchestrator.start
     logger = orchestration.logger
 
     def admissions():
         return _protected_json(policy)['admissions']
+
+    def eligible(owner, issue, **kwargs):
+        stages = admissions().get(issue.id, {})
+        return (owner.project_name in projects
+                and any(record['project'] == owner.project_name
+                        and record['scope_sha256'] == publication.scope(issue)
+                        for record in stages.values())
+                and original_eligible(owner, issue, **kwargs))
 
     def dispatch(owner, issue, attempt_num=None):
         stages = admissions().get(issue.id)
@@ -158,15 +167,28 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError('Workers AI requires a scoped owner prompt')
         if attempt.state_name == 'assess':
-            routing = json.dumps({'issue': issue.identifier, 'state': attempt.state_name,
-                                  'run': owner._issue_state_runs.get(issue.id, 1)})
+            routing = {
+                'issue': issue.identifier, 'state': attempt.state_name,
+                'run': owner._issue_state_runs.get(issue.id, 1),
+            }
             prompt += (
-                '\nUse this authoritative native routing binding in the final JSON: ' + routing
-                + '\nUse verdict approve, deferred, or blocked. Approve only when supported by '
-                'the scoped owner instructions and observed evidence. For approve the routing '
-                'object also requires actionable=true, ownership_clear=true, deferred=false, '
-                'owner_pause=false, uncertain_effects=false and missing_inputs=[]. '
-                'When evidence is missing, report the gap.'
+                '\nAssess readiness to start the bounded work. The owner instructions above '
+                'form the authorized scope. An exclusion is not a missing input unless it '
+                'prevents the bounded work itself. Do not claim implementation, tool use or '
+                'tests at assessment. Use this final fenced JSON shape when approval is supported:\n'
+                + json.dumps({
+                    'summary': 'Explain why the bounded work can start.',
+                    'verdict': 'approve',
+                    'data_sources': [{'name': 'Owner-approved task scope',
+                                      'how_verified': 'Describe the scope and its actual limits.'}],
+                    'claims': [],
+                    'verification': [],
+                    'routing': dict(routing, actionable=True, ownership_clear=True,
+                                    deferred=False, owner_pause=False, uncertain_effects=False,
+                                    missing_inputs=[]),
+                })
+                + '\nFor a genuine dependency or unresolved outcome use verdict blocked or '
+                'deferred, explain it, and retain the exact issue, state, and run in routing.'
             )
         roots = tuple(record['write_roots'])
         if any(not re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*', root)
@@ -182,6 +204,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                           authorize_turn=authorize, codex_available=lambda _: False,
                           active_projects=active_projects)
     orchestration.Orchestrator._dispatch = dispatch
+    orchestration.Orchestrator._is_eligible = eligible
     orchestration.Orchestrator._run_worker = worker
 
     async def start(owner):
