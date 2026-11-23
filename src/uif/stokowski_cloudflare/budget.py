@@ -150,6 +150,32 @@ class ProjectAccountRouter:
             return db.execute('SELECT 1 FROM assignments WHERE attempt=?',
                               (attempt_id,)).fetchone() is not None
 
+    def independent_reviewer(self, project: str, author: str, active_projects: set[str],
+                             maximum: int) -> str | None:
+        """Choose an eligible distinct account for a settled, same-project author."""
+        with self.accounts[project]._transaction() as db:
+            if not db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='routed_requests'"
+            ).fetchone():
+                return None
+            row = db.execute(
+                'SELECT a.account,count(q.id),count(CASE WHEN r.settled=1 THEN 1 END) '
+                'FROM assignments a JOIN routed_requests q ON a.attempt=q.attempt '
+                'LEFT JOIN requests r ON q.id=r.id AND a.account=r.account '
+                'WHERE a.attempt=? AND a.project=? GROUP BY a.account',
+                (author, project)).fetchone()
+            if row is None or not row[1] or row[1] != row[2]:
+                return None
+            day = _utc_day()
+            choices = [
+                name for name in sorted(self.eligible_projects)
+                if self.accounts[name].account_id != row[0]
+                and (name == project or name not in active_projects)
+                and self.accounts[name]._headroom(db, day, NORMAL_LIMIT) >= maximum
+            ]
+            return min(choices, key=lambda name: (name == PAID_ACCOUNT, name != project, name),
+                       default=None)
+
     def reserve_request(self, project: str, attempt_id: str, request_id: str,
                         maximum: int, active_projects: set[str], *,
                         request_sha256: str,

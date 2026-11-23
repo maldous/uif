@@ -48,6 +48,16 @@ readiness. In `codex` mode, the native workflow supplies the Codex model.
 In `both` mode, a launched native Codex operation retains its original
 settlement path.
 
+## Automatic independent review
+
+Set `automatic_review: true` on the protected issue's `investigate` admission
+to let Stokowski continue from a settled author attempt into native independent
+review. It binds the review to the posted settlement and exact candidate tree,
+then selects a different eligible Cloudflare account with capacity. An explicit
+review admission takes precedence. Keep issue custody and release decisions in
+the native workflow. Automatic review grants read-only access to the bounded
+report and candidate diff and creates no publication admission.
+
 ## Paid account using the included allocation
 
 An optional `Paid` account can use its included Workers AI allocation when

@@ -78,6 +78,70 @@ class LauncherTests(unittest.TestCase):
 
 
 class ShutdownTests(unittest.IsolatedAsyncioTestCase):
+    async def test_native_dispatch_attaches_generated_review_and_preserves_owner_revocation(self):
+        class Owner:
+            project_name = 'OffMenu'
+            pool = SimpleNamespace(is_paused=lambda _: False)
+            _is_eligible = Mock()
+            _release_slot = Mock()
+
+            def _dispatch(self, issue, attempt_num=None):
+                attempt = SimpleNamespace(state_name='independent-review')
+                self.running[issue.id] = attempt
+                self._tasks[issue.id] = asyncio.create_task(self._run_worker(issue, attempt))
+
+            async def _run_worker(self, issue, attempt):
+                return binding.call_args.kwargs['authorize_turn'](issue, attempt, workspace)
+
+        accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'),
+                            (digit * 32 for digit in 'abcde')))
+        issue = SimpleNamespace(id='issue', identifier='UIF-1', state='In Progress')
+        author = dict(project='OffMenu', scope_sha256='scope', attempt='author',
+                      source_head='head', branch='branch', automatic_review=True)
+        review = dict(author, attempt='author-auto-review', review_of='author', reviewer_project='UIF',
+                      read_paths=[], write_roots=[], prompt='Review evidence', automatic_author=author)
+        stages = {'investigate': author}
+        config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
+                      admissions={issue.id: stages})
+        native = dict(issue_id=issue.id, run=2, state='independent-review', scope_sha256='scope',
+                      kind='source-free', candidate=issue.id)
+        orchestration = SimpleNamespace(
+            Orchestrator=Owner, MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}),
+            logger=Mock(), state_key=str.lower)
+        with (TemporaryDirectory() as scratch,
+              patch('uif.stokowski_cloudflare.launcher._protected_json', return_value=config),
+              patch('uif.stokowski_cloudflare.launcher.install_native_runner') as binding,
+              patch('uif.stokowski_cloudflare.launcher.prepare_review', return_value=review) as prepare,
+              patch.object(ProjectAccountRouter, 'independent_reviewer', return_value='UIF'),
+              patch('uif.stokowski_cloudflare.launcher.subprocess.check_output',
+                    side_effect=['head', 'branch', '', ''])):
+            root = Path(scratch).resolve()
+            workspace = root / issue.identifier
+            workspace.mkdir()
+            publication = SimpleNamespace(scope=lambda _: 'scope', read=Mock(return_value=native),
+                                          BINDING=Path('.stokowski/review-binding.json'))
+            configure(SimpleNamespace(), orchestration, publication,
+                      policy=Path('/etc/owner.json'), database=root / 'budget.sqlite')
+            owner = Owner()
+            owner.cfg = SimpleNamespace(workspace=SimpleNamespace(resolved_root=lambda: root))
+            owner.running, owner._tasks, owner.claimed = {}, {}, {issue.id}
+            owner._issue_state_runs = {issue.id: 2}
+            owner._issue_current_state = {issue.id: 'independent-review'}
+            owner._states_for = lambda _: {'independent-review': SimpleNamespace(type='agent')}
+            owner.retry_attempts = {}
+
+            owner._dispatch(issue)
+            approved = await owner._tasks[issue.id]
+            prepare.assert_called_once_with(workspace, issue, 2, author, 'UIF', publication)
+            self.assertEqual(approved.attempt.id, 'author-auto-review')
+            self.assertEqual(approved.attempt.reviewer_project, 'UIF')
+            self.assertEqual(set(stages), {'investigate'})
+
+            owner._dispatch(issue)
+            del stages['investigate']
+            with self.assertRaisesRegex(ValueError, 'stage authorization has changed'):
+                await owner._tasks[issue.id]
+
     async def test_review_validates_the_native_checkpoint_against_the_owner_candidate_tree(self):
         class Owner:
             project_name = 'OffMenu'
