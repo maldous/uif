@@ -13,7 +13,8 @@ import sqlite3
 import stat
 import subprocess
 
-from .budget import PAID_ACCOUNT, PROJECTS, ProjectAccountRouter
+from .account_admission import FreeRoute
+from .budget import BudgetRefused, PAID_ACCOUNT, PROJECTS, ProjectAccountRouter
 from .client import MODEL, WorkersAIClient
 from .intake import READY_STATES, intake_profile, intake_stages
 from .native import NativeTurnBinding, install_native_runner
@@ -61,7 +62,8 @@ async def _start_with_shutdown(owner, start):
 
 
 def configure(runner, orchestration, publication, *, policy: Path, database: Path,
-              read_account_recovery=None):
+              read_account_recovery=None, read_account_usage=None,
+              open_fenced_connection=None, allows_native_dispatch=None):
     """Bind native custody and an optional trusted, cached account evidence reader."""
     if read_account_recovery is not None and not callable(read_account_recovery):
         raise ValueError('Expected a Workers AI account recovery reader')
@@ -77,6 +79,21 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     if not credentials.is_absolute():
         raise ValueError('Expected absolute Workers AI credentials directory')
     reverse = {account: project for project, account in accounts.items()}
+    strict_config = config.get('workers_ai_strict_free_routes')
+    strict_routes = None
+    if 'workers_ai_strict_free_routes' in config:
+        if (mode != 'cloudflare' or type(strict_config) is not dict or not strict_config
+                or not strict_config.keys() <= PROJECTS
+                or not strict_config.keys() <= accounts.keys()
+                or any(type(epoch) is not str or not re.fullmatch(r'[a-f0-9]{64}', epoch)
+                       for epoch in strict_config.values())):
+            raise ValueError('Strict Workers AI requires Cloudflare Free routes and credential epochs')
+        gateways = config.get('gateways') or {}
+        strict_routes = {
+            name: FreeRoute(accounts[name], config.get('model', MODEL),
+                            gateways.get(accounts[name]), epoch)
+            for name, epoch in strict_config.items()
+        }
 
     def token(account):
         name = reverse[account]
@@ -93,16 +110,39 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             raise ValueError('Unverified Workers AI account')
         return record['token']
 
-    eligible = set()
-    for project, account in accounts.items():
-        try:
-            if token(account):
-                eligible.add(project)
-        except (OSError, ValueError, KeyError):
-            continue
-    router = ProjectAccountRouter(database, accounts, eligible_projects=eligible)
+    eligible = set(strict_routes) if strict_routes is not None else set()
+    if strict_routes is None:
+        for project, account in accounts.items():
+            try:
+                if token(account):
+                    eligible.add(project)
+            except (OSError, ValueError, KeyError):
+                continue
+    router = ProjectAccountRouter(database, accounts, eligible_projects=eligible,
+                                  strict_routes=strict_routes)
     client = WorkersAIClient(router, token, gateways=config.get('gateways'),
-                             model=config.get('model', MODEL))
+                             model=config.get('model', MODEL),
+                             read_account_usage=read_account_usage,
+                             open_fenced_connection=open_fenced_connection)
+
+    def native_allowed(owner, issue):
+        if strict_routes is None:
+            return True
+        if not client.strict_ports_ready or not callable(allows_native_dispatch):
+            return False
+        try:
+            current = _protected_json(policy)
+            if (current.get('workers_ai_strict_free_routes') != strict_config
+                    or current.get('provider_mode', 'cloudflare') != mode
+                    or current.get('accounts') != accounts
+                    or owner.project_name not in (current.get('projects') or [])
+                    or current.get('model', MODEL) != client.model
+                    or (current.get('gateways') or {}) != dict(client.gateways)):
+                return False
+            return allows_native_dispatch(owner.project_name, issue.id) is True
+        except (OSError, ValueError):
+            return False
+
     context = ContextVar('native_workers_ai_owner')
     authorized = ContextVar('native_workers_ai_authorized', default=None)
     original_worker = orchestration.Orchestrator._run_worker
@@ -287,7 +327,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         return state, stage
 
     def eligible(owner, issue, **kwargs):
-        if owner.project_name not in projects or not original_eligible(owner, issue, **kwargs):
+        if (owner.project_name not in projects or not native_allowed(owner, issue)
+                or not original_eligible(owner, issue, **kwargs)):
             return False
         stages = admissions(owner, issue)
         assess = stages.get('assess', {})
@@ -303,7 +344,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     def dispatch(owner, issue, attempt_num=None):
         if (owner.project_name not in projects or owner.pool is None
-                or owner.pool.is_paused(owner.project_name)):
+                or owner.pool.is_paused(owner.project_name) or not native_allowed(owner, issue)):
             owner._release_slot(issue.id)
             return None
         stages = admissions(owner, issue)
@@ -331,8 +372,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 try:
                     reviewer = router.independent_reviewer(
                         owner.project_name, author['attempt'], available_projects(owner),
-                        client.request_maximum)
-                except (OSError, sqlite3.Error) as error:
+                        client.request_maximum, **client.reservation_options(600))
+                except (OSError, sqlite3.Error, BudgetRefused) as error:
                     logger.warning('Workers AI review budget unavailable: %s', type(error).__name__)
                     reviewer = None
                 if reviewer is not None:
@@ -364,8 +405,9 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 started = router.has_started(record['attempt'])
                 has_capacity = started or mode != 'cloudflare' or router.can_start(
                     owner.project_name, available_projects(owner), client.request_maximum,
-                    reviewer_project=record.get('reviewer_project'))
-            except (OSError, sqlite3.Error) as error:
+                    reviewer_project=record.get('reviewer_project'),
+                    **client.reservation_options(600))
+            except (OSError, sqlite3.Error, BudgetRefused) as error:
                 logger.warning('Workers AI budget unavailable: %s', type(error).__name__)
                 owner._release_slot(issue.id)
                 return None
@@ -386,6 +428,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         return result
 
     async def worker(owner, issue, attempt):
+        if not native_allowed(owner, issue):
+            raise BudgetRefused('Exclusive native Workers AI dispatch is unavailable')
         context_token = context.set(owner)
         authorization_token = authorized.set(None)
         try:
@@ -401,12 +445,14 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             issue, stage, attempt, record = binding
             issue_id = issue.id
             if (owner.running.get(issue_id) is not attempt or issue_id not in owner.claimed
-                    or not current_admission(owner, issue, stage, record)):
+                    or not native_allowed(owner, issue) or not current_admission(owner, issue, stage, record)):
                 return set()
         return available_projects(owner)
 
     def authorize(issue, attempt, workspace):
         owner = context.get()
+        if not native_allowed(owner, issue):
+            raise BudgetRefused('Exclusive native Workers AI dispatch is unavailable')
         stages = admissions(owner, issue)
         record = getattr(attempt, 'workers_ai_review', None)
         if record is None:
