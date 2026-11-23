@@ -7,7 +7,7 @@ from pathlib import Path
 from threading import Event
 
 from .budget import BudgetRefused
-from .client import MODEL, WorkersAIClient, WorkersAIRequestError
+from .client import WorkersAIClient, WorkersAIRequestError
 from .turn import Attempt, repository_tools, run_turn
 
 
@@ -63,7 +63,7 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             binding.workspace, binding.tracked_paths, binding.write_roots)
         stop = Event()
         attempt.turn_count += 1
-        attempt.model = MODEL
+        attempt.model = client.model
         attempt.session_id = binding.attempt.id
         attempt.status = 'running'
         task = asyncio.create_task(asyncio.to_thread(

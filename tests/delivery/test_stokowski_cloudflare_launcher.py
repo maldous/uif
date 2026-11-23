@@ -54,6 +54,64 @@ class LauncherTests(unittest.TestCase):
 
 
 class ShutdownTests(unittest.IsolatedAsyncioTestCase):
+    async def test_review_validates_the_native_checkpoint_against_the_owner_candidate_tree(self):
+        class Owner:
+            project_name = 'OffMenu'
+            pool = SimpleNamespace(is_paused=lambda _: False)
+            _dispatch = Mock()
+            _is_eligible = Mock()
+
+            async def _run_worker(self, issue, attempt):
+                self.running[issue.id] = attempt
+                self._tasks[issue.id] = asyncio.current_task()
+                authorize = install_binding.call_args.kwargs['authorize_turn']
+                return authorize(issue, attempt, self.root / issue.identifier)
+
+        accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'),
+                            (digit * 32 for digit in 'abcde')))
+        issue = SimpleNamespace(id='issue', identifier='UIF-1')
+        attempt = SimpleNamespace(state_name='independent-review')
+        record = dict(project='OffMenu', scope_sha256='scope', attempt='review',
+                      source_head='base', branch='author', candidate_tree='admitted-tree',
+                      review_of='author', reviewer_project='UIF', read_paths=[],
+                      write_roots=[], prompt='Review candidate')
+        native = dict(issue_id=issue.id, run=2, state=attempt.state_name, scope_sha256='scope',
+                      kind='git', candidate='checkpoint', branch='native-review')
+        config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
+                      admissions={issue.id: {attempt.state_name: record}})
+        orchestration = SimpleNamespace(
+            Orchestrator=Owner, MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}),
+            logger=Mock())
+        with (TemporaryDirectory() as scratch,
+              patch('uif.stokowski_cloudflare.launcher._protected_json', return_value=config),
+              patch('uif.stokowski_cloudflare.launcher.install_native_runner') as install_binding,
+              patch('uif.stokowski_cloudflare.launcher.subprocess.check_output') as git):
+            database = Path(scratch) / 'budget.sqlite'
+            configure(SimpleNamespace(), orchestration,
+                      SimpleNamespace(scope=lambda _: 'scope', read=Mock(return_value=native),
+                                      BINDING=Path('.stokowski/review-binding.json')),
+                      policy=Path('/etc/owner.json'), database=database)
+            owner = Owner()
+            owner.root = Path(scratch)
+            (owner.root / issue.identifier).mkdir()
+            owner.cfg = SimpleNamespace(workspace=SimpleNamespace(resolved_root=lambda: owner.root))
+            owner.running, owner._tasks, owner.claimed = {}, {}, {issue.id}
+            owner._issue_state_runs = {issue.id: 2}
+
+            git.side_effect = ['checkpoint', 'native-review', 'base', 'admitted-tree', '', '']
+            approved = await owner._run_worker(issue, attempt)
+            self.assertEqual((approved.attempt.review_of, approved.attempt.reviewer_project),
+                             ('author', 'UIF'))
+            self.assertIn('"candidate": "checkpoint"', approved.scoped_prompt)
+
+            git.side_effect = ['checkpoint', 'native-review', 'base', 'different-tree']
+            with self.assertRaisesRegex(ValueError, 'admitted candidate tree'):
+                await owner._run_worker(issue, attempt)
+
+            git.side_effect = ['checkpoint', 'native-review', 'base', 'admitted-tree', ' M dirty']
+            with self.assertRaisesRegex(ValueError, 'clean candidate worktree'):
+                await owner._run_worker(issue, attempt)
+
     async def test_worker_clears_inherited_authorization_and_preserves_original_attempt(self):
         class Owner:
             project_name = 'OffMenu'
