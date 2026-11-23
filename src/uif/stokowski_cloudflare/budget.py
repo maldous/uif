@@ -91,6 +91,7 @@ class WorkersAIBudget:
 
 
 PROJECTS = frozenset({'UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'})
+PAID_ACCOUNT = 'Paid'
 
 
 def _utc_day(now=None):
@@ -104,10 +105,11 @@ class ProjectAccountRouter:
     """Bind attempts to accounts before dispatch using the current project state."""
 
     def __init__(self, database: Path, accounts: dict[str, str], *, eligible_projects=None):
-        if accounts.keys() != PROJECTS or len(set(accounts.values())) != len(PROJECTS):
+        if (accounts.keys() not in (PROJECTS, PROJECTS | {PAID_ACCOUNT})
+                or len(set(accounts.values())) != len(accounts)):
             raise ValueError('Expected one distinct Cloudflare account per project')
         self.eligible_projects = PROJECTS if eligible_projects is None else frozenset(eligible_projects)
-        if not self.eligible_projects <= PROJECTS:
+        if not self.eligible_projects <= accounts.keys():
             raise ValueError('Unknown eligible Cloudflare project')
         self.accounts = {
             project: WorkersAIBudget(database, account_id)
@@ -139,7 +141,7 @@ class ProjectAccountRouter:
             raise ValueError('Expected a bounded positive reservation')
         if (review_of is None) != (reviewer_project is None):
             raise BudgetRefused('Review requires a named reviewer account and author attempt')
-        if reviewer_project is not None and reviewer_project not in PROJECTS:
+        if reviewer_project is not None and reviewer_project not in self.accounts:
             raise BudgetRefused('Reviewer account is not configured')
         preferred = self.accounts[project]
         candidates = [preferred, *(self.accounts[owner] for owner in sorted(PROJECTS - active_projects))]
@@ -192,6 +194,12 @@ class ProjectAccountRouter:
             candidates = [budget for budget in candidates if budget in eligible]
             headroom = {budget: budget._headroom(db, day, NORMAL_LIMIT) for budget in candidates}
             candidates = [budget for budget in candidates if headroom[budget] >= maximum]
+            paid = self.accounts.get(PAID_ACCOUNT)
+            if (reviewer_project is None and paid in eligible
+                    and (active_projects != PROJECTS or not candidates)):
+                headroom[paid] = paid._headroom(db, day, NORMAL_LIMIT)
+                if headroom[paid] >= maximum:
+                    candidates.append(paid)
             if not candidates:
                 raise BudgetRefused('No eligible account has sufficient daily budget')
             selected = max(candidates, key=lambda budget: headroom[budget])

@@ -95,6 +95,28 @@ class ProjectAccountTests(unittest.TestCase):
         self.assertEqual(accounts[0], self.accounts['OffMenu'])
         self.assertEqual(set(accounts), set(self.accounts.values()))
 
+    def test_paid_account_shares_the_same_caps_when_it_is_explicitly_eligible(self):
+        accounts = dict(self.accounts, Paid='f' * 32)
+        self.router = ProjectAccountRouter(self.database, accounts)
+        self.assertNotIn('Paid', self.router.eligible_projects)
+        self.router = ProjectAccountRouter(self.database, accounts, eligible_projects={'Paid'})
+        self.assertEqual(self.reserve('OffMenu', 'paid', {'OffMenu'}, maximum=NORMAL_LIMIT).account_id,
+                         accounts['Paid'])
+        with self.assertRaises(BudgetRefused):
+            self.reserve('OffMenu', 'extra', {'OffMenu'})
+        self.reserve('OffMenu', 'paid', {'OffMenu'}, request='continue',
+                     maximum=HARD_LIMIT - NORMAL_LIMIT)
+        with self.assertRaises(BudgetRefused):
+            self.reserve('OffMenu', 'paid', {'OffMenu'}, request='over-cap')
+
+    def test_paid_account_joins_idle_capacity_and_keeps_project_preferences(self):
+        accounts = dict(self.accounts, Paid='f' * 32)
+        self.router = ProjectAccountRouter(self.database, accounts, eligible_projects=accounts)
+        for project, account in self.accounts.items():
+            self.assertEqual(self.reserve(project, project, set(self.accounts)).account_id, account)
+        used = [self.reserve('OffMenu', f'pool-{i}', {'OffMenu'}).account_id for i in range(6)]
+        self.assertEqual(set(used), set(accounts.values()))
+
     def test_resume_restores_account_for_new_attempts_and_preserves_existing_assignment(self):
         self.reserve('OffMenu', 'first', {'OffMenu'})
         borrowed = self.reserve('OffMenu', 'second', {'OffMenu'})
