@@ -1,5 +1,7 @@
 """Single-request Workers AI transport for an admitted Stokowski attempt."""
 
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_CEILING
 from hashlib import sha256
 from http.client import HTTPException, HTTPSConnection
@@ -7,7 +9,8 @@ import json
 import re
 from types import MappingProxyType
 
-from .budget import ProjectAccountRouter
+from .account_admission import FreeRoute
+from .budget import BudgetRefused, ProjectAccountRouter
 
 
 MODEL = '@cf/openai/gpt-oss-20b'
@@ -23,13 +26,42 @@ MODEL_RESERVATIONS = MappingProxyType({
 MAX_RESPONSE_BYTES = 256 * 1024
 
 
+def _utc_now():
+    return datetime.now(timezone.utc)
+
+
 class WorkersAIRequestError(RuntimeError):
     """An unqualified response. The request must not be replayed."""
 
 
+@dataclass(frozen=True)
+class FreeAdmissionWindow:
+    """Already authenticated budget evidence and an owner-enforceable deadline."""
+
+    request_not_after: datetime
+    usage_snapshots: dict
+
+
+@dataclass(frozen=True)
+class FencedFreeCall:
+    """The installed receiver must bind the exact operation, route and deadline.
+
+    A connection returned by the trusted port owns credential resolution and
+    rejects a lost fence, changed route, expired deadline, retries or fallbacks
+    at the physical send boundary. It must not send from the factory itself.
+    """
+
+    project: str
+    attempt_id: str
+    request_id: str
+    request_sha256: str
+    route: FreeRoute
+    request_not_after: datetime
+
+
 class WorkersAIClient:
     def __init__(self, router: ProjectAccountRouter, account_token, *, gateways=None,
-                 model=MODEL):
+                 model=MODEL, read_account_usage=None, open_fenced_connection=None):
         """The protected owner supplies tokens only for accounts covered by the ledger."""
         if model not in MODEL_RESERVATIONS:
             raise ValueError('Workers AI model has not been admitted')
@@ -44,6 +76,35 @@ class WorkersAIClient:
                 for name in configured.values()):
             raise ValueError('Invalid account-bound AI Gateway configuration')
         self.gateways = MappingProxyType(configured)
+        self._strict_routes = router.strict_routes
+        self._read_account_usage = read_account_usage
+        self._open_fenced_connection = open_fenced_connection
+        if self._strict_routes is not None and any(
+                route.model != self.model or route.gateway_id != self.gateways.get(route.account_id)
+                for route in self._strict_routes.values()):
+            raise ValueError('Actual Workers AI model or Gateway differs from the guarded route')
+
+    @property
+    def strict_ports_ready(self):
+        return (self._strict_routes is None or
+                (callable(self._read_account_usage) and callable(self._open_fenced_connection)))
+
+    def reservation_options(self, timeout):
+        if self._strict_routes is None:
+            return {}
+        if not self.strict_ports_ready:
+            raise BudgetRefused('Workers AI account-wide evidence or fenced transport unavailable')
+        try:
+            window = self._read_account_usage(timeout)
+        except (OSError, ValueError):
+            raise BudgetRefused('Workers AI account-wide evidence unavailable') from None
+        if (type(window) is not FreeAdmissionWindow or type(window.usage_snapshots) is not dict
+                or type(window.request_not_after) is not datetime
+                or window.request_not_after.tzinfo is not timezone.utc
+                or not window.usage_snapshots):
+            raise BudgetRefused('Workers AI account-wide evidence unavailable')
+        return dict(usage_snapshots=dict(window.usage_snapshots),
+                    request_not_after=window.request_not_after)
 
     def complete(self, *, project, attempt_id, request_id, active_projects, messages, tools,
                  timeout, review_of=None, reviewer_project=None):
@@ -62,28 +123,44 @@ class WorkersAIClient:
                                allow_nan=False).encode()
         if len(canonical) > 128_000:
             raise ValueError('Workers AI input exceeds the allowed size')
+        digest = sha256(canonical).hexdigest()
+        options = self.reservation_options(timeout)
         budget = self.router.reserve_request(
             project, attempt_id, request_id, self.request_maximum, active_projects,
-            request_sha256=sha256(canonical).hexdigest(), review_of=review_of,
-            reviewer_project=reviewer_project)
-        try:
-            token = self.account_token(budget.account_id)
-        except (OSError, ValueError, KeyError):
-            token = None
-        if not isinstance(token, str) or not token or not token.isascii() or any(
-                char.isspace() for char in token):
-            budget.settle(request_id, 0)
-            raise WorkersAIRequestError('Verified Workers AI account credential unavailable')
-
+            request_sha256=digest, review_of=review_of,
+            reviewer_project=reviewer_project, **options)
         path = f'/client/v4/accounts/{budget.account_id}/ai/v1/chat/completions'
         gateway = self.gateways.get(budget.account_id)
-        headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+        headers = {'Content-Type': 'application/json'}
+        if self._strict_routes is None:
+            try:
+                token = self.account_token(budget.account_id)
+            except (OSError, ValueError, KeyError):
+                token = None
+            if not isinstance(token, str) or not token or not token.isascii() or any(
+                    char.isspace() for char in token):
+                budget.settle(request_id, 0)
+                raise WorkersAIRequestError('Verified Workers AI account credential unavailable')
+            headers['Authorization'] = f'Bearer {token}'
+            conn = HTTPSConnection('api.cloudflare.com', timeout=timeout)
+        else:
+            route = next((item for item in self._strict_routes.values()
+                          if item.account_id == budget.account_id), None)
+            deadline = options['request_not_after']
+            if (route is None or route.gateway_id != gateway or route.model != self.model
+                    or _utc_now() >= deadline):
+                raise BudgetRefused('Guarded Workers AI route or deadline changed')
+            conn = self._open_fenced_connection(FencedFreeCall(
+                project, attempt_id, request_id, digest, route, deadline))
+            if conn is None:
+                raise BudgetRefused('Exclusive Workers AI effect fence unavailable')
         if gateway is not None:
             headers.update({'cf-aig-gateway-id': gateway, 'cf-aig-max-attempts': '1',
                             'cf-aig-skip-cache': 'true'})
         receipt = None
-        conn = HTTPSConnection('api.cloudflare.com', timeout=timeout)
         try:
+            if self._strict_routes is not None and _utc_now() >= deadline:
+                raise BudgetRefused('Guarded Workers AI request deadline elapsed')
             conn.request('POST', path, body=canonical, headers=headers)
             response = conn.getresponse()
             if response.status == 200 and gateway is not None:
