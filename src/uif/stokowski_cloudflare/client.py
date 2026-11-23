@@ -54,6 +54,9 @@ class WorkersAIClient:
                    'stream': False}
         if tools:
             request['tools'] = tools
+        elif self.model == GLM_MODEL:
+            # Leave the output budget available for the structured report.
+            request['chat_template_kwargs'] = {'enable_thinking': False}
         canonical = json.dumps(request, sort_keys=True, separators=(',', ':'),
                                allow_nan=False).encode()
         if len(canonical) > 128_000:

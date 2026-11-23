@@ -45,7 +45,9 @@ class WorkersAIClientTests(unittest.TestCase):
         with self.assertRaisesRegex(WorkersAIRequestError, 'verified usage'):
             client.complete(**self.request)
         self.assertEqual(self.usage_record(), (MODEL_RESERVATIONS[GLM_MODEL], 0))
-        self.assertEqual(json.loads(conn.request.call_args.kwargs['body'])['model'], GLM_MODEL)
+        request = json.loads(conn.request.call_args.kwargs['body'])
+        self.assertEqual(request['model'], GLM_MODEL)
+        self.assertEqual(request['chat_template_kwargs'], {'enable_thinking': False})
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
     def test_selected_account_is_used_and_reported_usage_is_rounded_up(self, connection):
