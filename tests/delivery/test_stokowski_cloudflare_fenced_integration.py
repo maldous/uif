@@ -1,4 +1,5 @@
 """Real router/client/launcher boundaries with invented receipts and no network."""
+import asyncio
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
@@ -142,6 +143,8 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
             _run_worker = AsyncMock()
             _release_slot = Mock()
             _is_eligible = Mock(return_value=True)
+            running = {}
+            _tasks = {}
 
         old_dispatch, old_worker, old_eligible = Owner._dispatch, Owner._run_worker, Owner._is_eligible
         codex = Mock(side_effect=AssertionError('started Codex'))
@@ -163,11 +166,166 @@ class ParkedNativeTests(unittest.IsolatedAsyncioTestCase):
             owner, issue = Owner(), SimpleNamespace(id='wanted')
             self.assertFalse(owner._is_eligible(issue))
             self.assertIsNone(owner._dispatch(issue))
-            with self.assertRaises(BudgetRefused):
-                await owner._run_worker(issue, SimpleNamespace())
+            self.assertIsNone(await owner._run_worker(issue, SimpleNamespace()))
             self.assertFalse((Path(scratch) / 'budget.sqlite').exists())
         old_dispatch.assert_not_called()
         old_eligible.assert_not_called()
         old_worker.assert_not_awaited()
         codex.assert_not_called()
         policy.assert_called_once_with(Path('/etc/owner.json'))
+
+    async def check_native_worker_handoff(self, *, allowed=False, successor=False,
+                                          retry=False, pending_gate=False, settling=False):
+        issue = SimpleNamespace(id='wanted', identifier='FIXTURE-1', state='Active')
+        claim = True
+        ledger_start = datetime(2026, 11, 23, 12, tzinfo=timezone.utc)
+        window_end = ledger_start + timedelta(minutes=15)
+        prior_retry = SimpleNamespace(attempt=8)
+        newer_retry = SimpleNamespace(attempt=9)
+        old_original = AsyncMock()
+        writes = Mock(side_effect=AssertionError('revoked worker must not produce effects'))
+
+        class Owner:
+            project_name = 'OffMenu'
+            pool = SimpleNamespace(is_paused=lambda _: False)
+
+            def __init__(self):
+                self.running = {}
+                self._tasks = {}
+                self.claimed = {issue.id, 'unrelated'}
+                self.retry_attempts = {issue.id: prior_retry, 'unrelated': object()}
+                self._slot_held = {issue.id, 'unrelated'}
+                self._pending_gates = {}
+                self._issue_current_state = {}
+                self.releases = []
+
+            def _is_eligible(self, *_args, **_kwargs):
+                return True
+
+            def _states_for(self, _):
+                return {'investigate': SimpleNamespace(type='agent')}
+
+            def _entry_state_for(self, _):
+                return 'investigate'
+
+            def _release_slot(self, issue_id):
+                if issue_id in self._slot_held:
+                    self._slot_held.discard(issue_id)
+                    self.releases.append(issue_id)
+
+            def _dispatch(self, current, attempt_num=None):
+                # Native 610cbf97... lines 1680–1681 and 1722–1724: consume the
+                # original retry; register current attempt and task; no done hook.
+                self.retry_attempts.pop(current.id, None)
+                self.claimed.add(current.id)
+                attempt = SimpleNamespace(attempt=attempt_num)
+                self.running[current.id] = attempt
+                task = asyncio.create_task(self._run_worker(current, attempt))
+                self._tasks[current.id] = task
+                return task
+
+            async def _run_worker(self, current, attempt):
+                # Only the authorized native path may begin the original worker.
+                assert self.running[current.id] is attempt
+                assert self._tasks[current.id] is asyncio.current_task()
+                assert current.id in self.claimed
+                await old_original(current, attempt)
+
+            def _on_worker_exit(self, *_args):
+                writes('worker exit / settlement')
+
+            def _schedule_retry(self, *_args):
+                writes('schedule a retry')
+
+        codex = Mock(side_effect=AssertionError('started Codex'))
+        opener = Mock(side_effect=AssertionError('opened inference connection'))
+        runner = SimpleNamespace(run_turn=codex)
+        orchestration = SimpleNamespace(run_turn=codex, Orchestrator=Owner,
+                                        MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}),
+                                        logger=Mock(), state_key=lambda value: value.lower())
+        config = dict(accounts=ACCOUNTS, projects=['OffMenu'], credentials='/etc/dormant',
+                      workers_ai_strict_free_routes={'OffMenu': ROUTE.credential_epoch_sha256},
+                      admissions={issue.id: {'investigate': {'project': 'OffMenu',
+                                                             'attempt': 'original-attempt',
+                                                             'scope_sha256': 'fixture'}}})
+        owner = Owner()
+        with (TemporaryDirectory() as scratch,
+              patch('uif.stokowski_cloudflare.launcher._protected_json',
+                    side_effect=lambda path: config if path == Path('/etc/owner.json')
+                    else self.fail('strict run opened a credential file')),
+              patch('uif.stokowski_cloudflare.budget._utc_time',
+                    side_effect=lambda now=None: ledger_start if now is None else now)):
+            usage = AccountUsageEvidence(ROUTE, ledger_start.date().isoformat(),
+                                         ledger_start, window_end, 0, 0, True, True)
+            configure(runner, orchestration, SimpleNamespace(scope=lambda _: 'fixture'),
+                      policy=Path('/etc/owner.json'), database=Path(scratch) / 'budget.sqlite',
+                      read_account_usage=lambda _: FreeAdmissionWindow(window_end, {'OffMenu': usage}),
+                      open_fenced_connection=opener,
+                      allows_native_dispatch=lambda project, issue_id: claim and
+                      (project, issue_id) == ('OffMenu', issue.id))
+            task = owner._dispatch(issue)
+            self.assertIsNotNone(task)
+            original = owner.running[issue.id]
+            self.assertNotIn(issue.id, owner.retry_attempts)
+            self.assertIn(issue.id, owner.claimed)
+            self.assertIs(owner._tasks[issue.id], task)
+            claim = allowed
+            if retry:
+                owner.retry_attempts[issue.id] = newer_retry
+            if pending_gate:
+                owner._pending_gates[issue.id] = object()
+            if settling:
+                original.settlement_record = {'phase': 'unknown'}
+            if successor:
+                newer = SimpleNamespace(attempt=10)
+                newer_task = object()
+                owner.running[issue.id] = newer
+                owner._tasks[issue.id] = newer_task
+            await task
+            if allowed:
+                old_original.assert_awaited_once_with(issue, original)
+                self.assertIs(owner.running[issue.id], original)
+                self.assertIn(issue.id, owner.claimed)
+                self.assertEqual(owner.releases, [])
+            else:
+                old_original.assert_not_awaited()
+                if successor:
+                    self.assertIs(owner.running[issue.id], newer)
+                    self.assertIs(owner._tasks[issue.id], newer_task)
+                    self.assertIn(issue.id, owner.claimed)
+                    self.assertEqual(owner.releases, [])
+                elif settling:
+                    self.assertIs(owner.running[issue.id], original)
+                    self.assertIs(owner._tasks[issue.id], task)
+                    self.assertIn(issue.id, owner.claimed)
+                    self.assertEqual(owner.releases, [])
+                else:
+                    self.assertNotIn(issue.id, owner.running)
+                    self.assertNotIn(issue.id, owner._tasks)
+                    self.assertNotIn(issue.id, owner._slot_held)
+                    self.assertEqual(owner.releases, [issue.id])
+                    self.assertEqual(issue.id in owner.claimed, retry or pending_gate)
+                if retry:
+                    self.assertIs(owner.retry_attempts[issue.id], newer_retry)
+            self.assertIn('unrelated', owner.claimed)
+            self.assertIn('unrelated', owner.retry_attempts)
+            self.assertIn('unrelated', owner._slot_held)
+        codex.assert_not_called()
+        opener.assert_not_called()
+        writes.assert_not_called()
+
+    async def test_late_revocation_releases_only_original_volatile_slot_and_claim(self):
+        await self.check_native_worker_handoff()
+
+    async def test_same_authority_uses_original_registered_worker_and_retains_custody(self):
+        await self.check_native_worker_handoff(allowed=True)
+
+    async def test_stale_worker_cannot_release_successor_or_its_retry_or_slot(self):
+        await self.check_native_worker_handoff(successor=True, retry=True)
+
+    async def test_revoked_worker_preserves_existing_retry_and_its_claim_without_rescheduling(self):
+        await self.check_native_worker_handoff(retry=True)
+
+    async def test_revoked_worker_does_not_discard_pending_gate_claim_or_uncertain_settlement(self):
+        await self.check_native_worker_handoff(pending_gate=True)
+        await self.check_native_worker_handoff(settling=True)

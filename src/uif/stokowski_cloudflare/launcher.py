@@ -429,7 +429,20 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     async def worker(owner, issue, attempt):
         if not native_allowed(owner, issue):
-            raise BudgetRefused('Exclusive native Workers AI dispatch is unavailable')
+            # Native dispatch already registered this task and acquired its
+            # local slot. It installs no independent done/cleanup callback.
+            # The native worker/exit path can publish or retry; do not enter
+            # it under revoked authority or discard an unresolved original.
+            issue_id = issue.id
+            if (owner.running.get(issue_id) is attempt
+                    and owner._tasks.get(issue_id) is asyncio.current_task()
+                    and not getattr(attempt, 'settlement_record', None)):
+                owner.running.pop(issue_id)
+                owner._tasks.pop(issue_id)
+                owner._release_slot(issue_id)
+                if issue_id not in owner.retry_attempts and issue_id not in owner._pending_gates:
+                    owner.claimed.discard(issue_id)
+            return None
         context_token = context.set(owner)
         authorization_token = authorized.set(None)
         try:
