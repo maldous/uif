@@ -12,6 +12,9 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+from types import MappingProxyType
+
+from .account_admission import FreeRoute, allows_request
 
 
 NORMAL_LIMIT = 7_500_000
@@ -206,13 +209,23 @@ def _utc_day(now=None):
 class ProjectAccountRouter:
     """Bind attempts to accounts before dispatch using the current project state."""
 
-    def __init__(self, database: Path, accounts: dict[str, str], *, eligible_projects=None):
+    def __init__(self, database: Path, accounts: dict[str, str], *, eligible_projects=None, strict_routes=None):
         if (accounts.keys() not in (PROJECTS, PROJECTS | {PAID_ACCOUNT})
                 or len(set(accounts.values())) != len(accounts)):
             raise ValueError('Expected one distinct Cloudflare account per project')
         self.eligible_projects = PROJECTS if eligible_projects is None else frozenset(eligible_projects)
         if not self.eligible_projects <= accounts.keys():
             raise ValueError('Unknown eligible Cloudflare project')
+        self.strict_routes = None
+        if strict_routes is not None:
+            routes = dict(strict_routes)
+            if (not routes or not routes.keys() <= PROJECTS
+                    or not routes.keys() <= self.eligible_projects
+                    or PAID_ACCOUNT in self.eligible_projects
+                    or any(type(route) is not FreeRoute or route.account_id != accounts[name]
+                           for name, route in routes.items())):
+                raise ValueError('Strict account admission requires bound Free project routes')
+            self.strict_routes = MappingProxyType(routes)
         self.accounts = {
             project: WorkersAIBudget(database, account_id)
             for project, account_id in accounts.items()
@@ -234,9 +247,27 @@ class ProjectAccountRouter:
             return db.execute('SELECT 1 FROM assignments WHERE attempt=?',
                               (attempt_id,)).fetchone() is not None
 
+    def _invalid_strict_maximum(self, maximum):
+        return self.strict_routes is not None and (
+            type(maximum) is not int or not 0 < maximum <= HARD_LIMIT)
+
+    def _qualified_headroom(self, db, name, day, maximum, snapshots, request_not_after, now):
+        available = self.accounts[name]._headroom(db, day)
+        if available < maximum or self.strict_routes is None:
+            return available
+        route = self.strict_routes.get(name)
+        if route is None or not allows_request(
+                route, snapshots.get(name), now=now, request_not_after=request_not_after,
+                outstanding_local=NORMAL_LIMIT - 1 - available, request_maximum=maximum):
+            return 0
+        return available
+
     def independent_reviewer(self, project: str, author: str, active_projects: set[str],
-                             maximum: int) -> str | None:
+                             maximum: int, *, usage_snapshots=None, request_not_after=None) -> str | None:
         """Choose an eligible distinct account for a settled, same-project author."""
+        if self._invalid_strict_maximum(maximum):
+            return None
+        snapshots = dict(usage_snapshots or {})
         with self.accounts[project]._transaction() as db:
             if not db.execute(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='routed_requests'"
@@ -250,17 +281,18 @@ class ProjectAccountRouter:
                 (author, project)).fetchone()
             if row is None or not row[1] or row[1] != row[2]:
                 return None
-            day = _utc_day()
+            now = _utc_time()
+            day = _utc_day(now)
             choices = [
                 name for name in sorted(self.eligible_projects)
                 if self.accounts[name].account_id != row[0]
                 and (name == project or name not in active_projects)
-                and self.accounts[name]._headroom(db, day) >= maximum
+                and self._qualified_headroom(db, name, day, maximum, snapshots, request_not_after, now) >= maximum
             ]
             return min(choices, key=lambda name: (name == PAID_ACCOUNT, name != project, name),
                        default=None)
 
-    def _new_attempt_accounts(self, db, project, active_projects, maximum, day, reviewer_project):
+    def _new_attempt_accounts(self, db, project, active_projects, maximum, day, reviewer_project, snapshots, request_not_after, now):
         if reviewer_project is not None:
             names = [reviewer_project]
         else:
@@ -269,7 +301,8 @@ class ProjectAccountRouter:
         for name in names:
             if name in self.eligible_projects:
                 budget = self.accounts[name]
-                available = budget._headroom(db, day)
+                available = self._qualified_headroom(
+                    db, name, day, maximum, snapshots, request_not_after, now)
                 if available >= maximum:
                     headroom[budget] = available
         if (reviewer_project is None and PAID_ACCOUNT in self.eligible_projects
@@ -280,22 +313,28 @@ class ProjectAccountRouter:
                 headroom[paid] = available
         return headroom
 
-    def can_start(self, project, active_projects, maximum, *, reviewer_project=None, now=None):
+    def can_start(self, project, active_projects, maximum, *, reviewer_project=None, now=None,
+                  usage_snapshots=None, request_not_after=None):
         """Check current ledger capacity before native dispatch.
 
         The request still needs its atomic reservation at the transport boundary.
         """
-        if project not in active_projects or not self.eligible_projects:
+        if (project not in active_projects or not self.eligible_projects
+                or self._invalid_strict_maximum(maximum)):
             return False
+        snapshots = dict(usage_snapshots or {})
         with self.accounts[project]._transaction() as db:
+            now = _utc_time(now)
             return bool(self._new_attempt_accounts(
-                db, project, active_projects, maximum, _utc_day(now), reviewer_project))
+                db, project, active_projects, maximum, _utc_day(now), reviewer_project,
+                snapshots, request_not_after, now))
 
     def reserve_request(self, project: str, attempt_id: str, request_id: str,
                         maximum: int, active_projects: set[str], *,
                         request_sha256: str,
                         review_of: str | None = None, reviewer_project: str | None = None,
-                        now: datetime | None = None) -> WorkersAIBudget:
+                        now: datetime | None = None, usage_snapshots=None,
+                        request_not_after=None) -> WorkersAIBudget:
         """Bind an attempt and reserve its request in the same transaction."""
         if not active_projects <= PROJECTS or project not in active_projects or not attempt_id:
             raise BudgetRefused('Expected an active project and an attempt ID')
@@ -308,7 +347,9 @@ class ProjectAccountRouter:
         if reviewer_project is not None and reviewer_project not in self.accounts:
             raise BudgetRefused('Reviewer account is not configured')
         preferred = self.accounts[project]
+        snapshots = dict(usage_snapshots or {})
         with preferred._transaction() as db:
+            now = _utc_time(now)
             day = _utc_day(now)
             db.execute(
                 'CREATE TABLE IF NOT EXISTS assignments ('
@@ -336,6 +377,9 @@ class ProjectAccountRouter:
                     raise BudgetRefused('Attempt identity changed')
                 for name, budget in self.accounts.items():
                     if name in self.eligible_projects and budget.account_id == account:
+                        if self.strict_routes is not None and self._qualified_headroom(
+                                db, name, day, maximum, snapshots, request_not_after, now) < maximum:
+                            raise BudgetRefused('No eligible account has sufficient daily budget')
                         budget._reserve(db, request_id, maximum, day)
                         db.execute('INSERT INTO routed_requests VALUES (?, ?, ?)',
                                    (request_id, attempt_id, request_sha256))
@@ -353,7 +397,8 @@ class ProjectAccountRouter:
                     raise BudgetRefused('Author and reviewer must use different accounts')
 
             headroom = self._new_attempt_accounts(
-                db, project, active_projects, maximum, day, reviewer_project)
+                db, project, active_projects, maximum, day, reviewer_project,
+                snapshots, request_not_after, now)
             if not headroom:
                 raise BudgetRefused('No eligible account has sufficient daily budget')
             selected = max(headroom, key=headroom.__getitem__)
