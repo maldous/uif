@@ -1,10 +1,12 @@
+import asyncio
 from pathlib import Path
+import signal
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from uif.stokowski_cloudflare.launcher import configure
+from uif.stokowski_cloudflare.launcher import _start_with_shutdown, configure
 
 
 class LauncherTests(unittest.TestCase):
@@ -19,7 +21,7 @@ class LauncherTests(unittest.TestCase):
         original = Owner._dispatch
         codex = Mock(side_effect=AssertionError('Codex called'))
         runner = SimpleNamespace(run_turn=codex)
-        orchestration = SimpleNamespace(run_turn=codex, Orchestrator=Owner)
+        orchestration = SimpleNamespace(run_turn=codex, Orchestrator=Owner, MultiOrchestrator=type('Multi', (), {'start': AsyncMock()}))
         accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'),
                             (digit * 32 for digit in 'abcde')))
         config = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/uif-stokowski',
@@ -44,3 +46,30 @@ class LauncherTests(unittest.TestCase):
             self.assertIsNone(Owner()._dispatch(issue))
             original.assert_not_called()
             self.assertEqual(Owner._release_slot.call_count, 2)
+
+
+class ShutdownTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sigterm_uses_and_awaits_native_stop(self):
+        loop = asyncio.get_running_loop()
+        handlers = {}
+        stopped = asyncio.Event()
+        drained = asyncio.Event()
+
+        async def start(_):
+            await stopped.wait()
+
+        async def stop():
+            stopped.set()
+            await asyncio.sleep(0)
+            drained.set()
+
+        owner = SimpleNamespace(stop=AsyncMock(side_effect=stop))
+        with (patch.object(loop, 'add_signal_handler', side_effect=handlers.__setitem__),
+              patch.object(loop, 'remove_signal_handler') as remove):
+            running = asyncio.create_task(_start_with_shutdown(owner, start))
+            await asyncio.sleep(0)
+            handlers[signal.SIGTERM]()
+            await asyncio.wait_for(running, 1)
+        owner.stop.assert_awaited_once()
+        self.assertTrue(drained.is_set())
+        self.assertEqual(remove.call_count, 2)
