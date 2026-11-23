@@ -173,17 +173,19 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
         if report_only:
             raise WorkersAIRequestError('Workers AI requested a tool during a report-only response')
 
-        messages.append({'role': 'assistant', 'content': content or '', 'tool_calls': calls})
-        seen = set()
-        for call in calls:
-            function = call['function']
-            name = function['name']
-            call_id = call['id']
-            args = function['arguments']
-            if (name not in tool_names or not isinstance(call_id, str)
-                    or not call_id or call_id in seen):
+        permitted_calls = _validate_tool_calls(calls, tool_names)
+        if permitted_calls is None:
+            if not structured_report:
                 raise WorkersAIRequestError('Invalid or unapproved Workers AI tool call')
-            seen.add(call_id)
+            report_only = True
+            messages.append({'role': 'user', 'content': (
+                'The controller declined the last tool-call batch before execution. '
+                'Report the outcome using the verified evidence already available. ' + FINAL_REPORT
+            )})
+            continue
+
+        messages.append({'role': 'assistant', 'content': content or '', 'tool_calls': calls})
+        for call_id, name, args in permitted_calls:
             remaining = deadline - time.monotonic()
             if remaining <= 0 or cancelled() or attempt.project not in active_projects():
                 raise WorkersAIRequestError('Workers AI turn stopped before executing a tool')
@@ -201,6 +203,23 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
                 raise WorkersAIRequestError('Workspace tool response exceeded its text boundary')
             messages.append({'role': 'tool', 'tool_call_id': call_id, 'content': output})
     raise WorkersAIRequestError('Workers AI turn exhausted its request limit')
+
+
+def _validate_tool_calls(calls, tool_names):
+    if not isinstance(calls, list):
+        return None
+    validated, seen = [], set()
+    for call in calls:
+        if not isinstance(call, dict) or not isinstance(call.get('function'), dict):
+            return None
+        function = call['function']
+        call_id, name = call.get('id'), function.get('name')
+        if (not isinstance(call_id, str) or not call_id or call_id in seen
+                or not isinstance(name, str) or name not in tool_names):
+            return None
+        seen.add(call_id)
+        validated.append((call_id, name, function.get('arguments')))
+    return validated
 
 
 def _has_native_report(content):

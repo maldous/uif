@@ -322,3 +322,27 @@ class WorkersAIClientTests(unittest.TestCase):
                 cancelled=lambda: False, timeout=5, structured_report=True,
             ), final)
         self.assertEqual(requested_tools, [True, True, False])
+
+    def test_invalid_tool_batch_requests_a_report_without_executing_any_call(self):
+        final = '{"summary":"Tool unavailable","verdict":"blocked"}'
+        calls = [
+            {'id': 'allowed', 'function': {'name': 'list_files', 'arguments': {}}},
+            {'id': 'outside', 'function': {'name': 'unapproved', 'arguments': {}}},
+        ]
+        responses = iter([{'tool_calls': calls}, {'content': final}])
+        requested_tools = []
+
+        def complete(**request):
+            requested_tools.append(bool(request['tools']))
+            return {'choices': [{'message': next(responses)}]}
+
+        def execute(*_):
+            self.fail('A declined batch executed a tool')
+
+        tools, _ = repository_tools(self.database.parent, ('one.py',), ())
+        self.assertEqual(run_turn(
+            SimpleNamespace(complete=complete), Attempt('OffMenu', 'bad-tool'), 'Check fixture',
+            tools=tools, execute_tool=execute, active_projects=lambda: {'OffMenu'},
+            cancelled=lambda: False, timeout=5, structured_report=True,
+        ), final)
+        self.assertEqual(requested_tools, [True, False])
