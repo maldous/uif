@@ -78,6 +78,52 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
 
     @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_gateway_routes_to_the_selected_account_and_settles_usage(self, connection):
+        account = self.accounts['OffMenu']
+        client = WorkersAIClient(self.router, lambda _: 'test-token', gateways={account: 'stokowski'})
+        conn = connection.return_value
+        response = conn.getresponse.return_value
+        response.status = 200
+        response.getheader.return_value = 'gateway-receipt'
+        response.read.return_value = json.dumps({
+            'model': MODEL, 'choices': [{'message': {'content': 'Done'}}],
+            'usage': {'neurons': 3.0001},
+        }).encode()
+        result = client.complete(**self.request)
+        (method, path), kwargs = conn.request.call_args
+        self.assertEqual((method, path), ('POST', f'/client/v4/accounts/{account}/ai/v1/chat/completions'))
+        self.assertEqual(kwargs['headers']['cf-aig-gateway-id'], 'stokowski')
+        self.assertEqual(kwargs['headers']['cf-aig-max-attempts'], '1')
+        self.assertEqual(json.loads(kwargs['body'])['model'], MODEL)
+        self.assertEqual(result['choices'][0]['message']['content'], 'Done')
+        self.assertEqual(self.usage_record(), (3001, 1))
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_gateway_limit_never_retries_the_direct_endpoint(self, connection):
+        account = self.accounts['OffMenu']
+        client = WorkersAIClient(self.router, lambda _: 'test-token', gateways={account: 'stokowski'})
+        conn = connection.return_value
+        conn.getresponse.return_value.status = 429
+        with self.assertRaisesRegex(WorkersAIRequestError, 'HTTP 429'):
+            client.complete(**self.request)
+        with self.assertRaises(BudgetRefused):
+            client.complete(**self.request)
+        conn.request.assert_called_once()
+        self.assertTrue(conn.request.call_args.args[1].endswith('/v1/chat/completions'))
+        self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
+    def test_gateway_success_without_receipt_preserves_reservation(self, connection):
+        account = self.accounts['OffMenu']
+        client = WorkersAIClient(self.router, lambda _: 'test-token', gateways={account: 'stokowski'})
+        response = connection.return_value.getresponse.return_value
+        response.status = 200
+        response.getheader.return_value = None
+        with self.assertRaisesRegex(WorkersAIRequestError, 'receipt missing'):
+            client.complete(**self.request)
+        self.assertEqual(self.usage_record(), (REQUEST_MAXIMUM, 0))
+
+    @patch('uif.stokowski_cloudflare.client.HTTPSConnection')
     @patch('subprocess.Popen', side_effect=FileNotFoundError('No process launcher available'))
     def test_turn_works_without_codex_and_stays_on_one_account(self, popen, connection):
         conn = connection.return_value
