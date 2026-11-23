@@ -23,7 +23,7 @@ class NativeRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.config = SimpleNamespace(permission_mode='default', turn_timeout_ms=5000)
         self.binding = NativeTurnBinding(
             self.issue.id, self.workspace, Attempt('OffMenu', 'author'),
-            ('fixture.txt',), ('fixture.txt',))
+            ('fixture.txt',), ('fixture.txt',), 'Scoped synthetic prompt')
 
     def install(self, mode):
         install_native_runner(self.runner, self.orchestrator, mode=mode, client=Mock(),
@@ -39,6 +39,7 @@ class NativeRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.install('cloudflare')
 
         def edit(client, binding, prompt, *, execute_tool, **kwargs):
+            self.assertEqual(prompt, 'Scoped synthetic prompt')
             execute_tool('replace_text', {'path': 'fixture.txt', 'old': 'old',
                                           'replacement': 'new'}, 1)
             return 'Patch prepared'
