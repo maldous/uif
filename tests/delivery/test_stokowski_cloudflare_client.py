@@ -301,3 +301,24 @@ class WorkersAIClientTests(unittest.TestCase):
         self.assertEqual(second['response_format'], {'type': 'json_object'})
         self.assertNotIn('tools', second)
         self.assertEqual(second['messages'][-2]['content'], 'Unstructured stage output')
+
+    def test_structured_turn_reserves_its_last_request_for_the_report(self):
+        requested_tools = []
+        final = '{"summary":"Budget reached","verdict":"blocked"}'
+
+        def complete(**request):
+            requested_tools.append(bool(request['tools']))
+            if not request['tools']:
+                return {'choices': [{'message': {'content': final}}]}
+            return {'choices': [{'message': {'tool_calls': [{
+                'id': str(len(requested_tools)), 'function': {'name': 'list_files', 'arguments': {}},
+            }]}}]}
+
+        tools, execute = repository_tools(self.database.parent, ('one.py',), ())
+        with patch('uif.stokowski_cloudflare.turn.MAX_TURN_REQUESTS', 3):
+            self.assertEqual(run_turn(
+                SimpleNamespace(complete=complete), Attempt('OffMenu', 'limit'), 'Check fixture',
+                tools=tools, execute_tool=execute, active_projects=lambda: {'OffMenu'},
+                cancelled=lambda: False, timeout=5, structured_report=True,
+            ), final)
+        self.assertEqual(requested_tools, [True, True, False])
