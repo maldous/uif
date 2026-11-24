@@ -7,6 +7,7 @@ import json
 import logging
 from pathlib import Path
 from threading import Event
+from typing import Callable
 
 from .budget import BudgetRefused
 from .client import WorkersAIClient, WorkersAIRequestError
@@ -24,6 +25,8 @@ class NativeTurnBinding:
     write_roots: tuple[str, ...]
     scoped_prompt: str | None = None
     structured_report: bool = False
+    remote_tools: Callable | None = None
+    finish_original: Callable | None = None
 
 
 def _native_report(result):
@@ -77,8 +80,11 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
                                   workspace_path, issue, attempt, on_event=on_event, on_pid=on_pid,
                                   env=env)
 
-        tools, execute_tool = repository_tools(
-            binding.workspace, binding.tracked_paths, binding.write_roots)
+        if binding.remote_tools is None:
+            tools, execute_tool = repository_tools(
+                binding.workspace, binding.tracked_paths, binding.write_roots)
+        else:
+            tools, execute_tool = binding.remote_tools()
         stop = Event()
         attempt.turn_count += 1
         attempt.model = client.model
@@ -90,7 +96,7 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             run_turn, client, binding.attempt, binding.scoped_prompt or prompt, tools=tools,
             execute_tool=execute_tool, active_projects=active_projects,
             cancelled=stop.is_set, timeout=min(600, claude_cfg.turn_timeout_ms // 1000),
-            structured_report=binding.structured_report))
+            structured_report=binding.structured_report, finish_original=binding.finish_original))
         try:
             attempt.result_text = _native_report(await asyncio.shield(task))
             attempt.status = 'succeeded'

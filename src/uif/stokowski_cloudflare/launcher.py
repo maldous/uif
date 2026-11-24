@@ -1,6 +1,7 @@
 """Protected launch binding for the native Stokowski controller."""
 
 import asyncio
+from contextlib import nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -63,7 +64,7 @@ async def _start_with_shutdown(owner, start):
 
 def configure(runner, orchestration, publication, *, policy: Path, database: Path,
               read_account_recovery=None, read_account_usage=None,
-              open_fenced_connection=None, allows_native_dispatch=None):
+              open_fenced_connection=None, allows_native_dispatch=None, authority_lifecycle=None):
     """Bind native custody and an optional trusted, cached account evidence reader."""
     if read_account_recovery is not None and not callable(read_account_recovery):
         raise ValueError('Expected a Workers AI account recovery reader')
@@ -125,7 +126,13 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                              read_account_usage=read_account_usage,
                              open_fenced_connection=open_fenced_connection)
 
-    def native_allowed(owner, issue):
+    if authority_lifecycle is not None:
+        from .native_composition import NativeComposition
+        if (type(authority_lifecycle) is not NativeComposition or mode != 'cloudflare'
+                or projects != {'OffMenu'} or strict_routes != authority_lifecycle.remote.routes):
+            raise ValueError('Remote authority requires the exact protected OffMenu route')
+
+    def native_allowed(owner, issue, *, selecting=False):
         if strict_routes is None:
             return True
         if not client.strict_ports_ready or not callable(allows_native_dispatch):
@@ -139,6 +146,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                     or current.get('model', MODEL) != client.model
                     or (current.get('gateways') or {}) != dict(client.gateways)):
                 return False
+            if authority_lifecycle is not None:
+                if selecting:
+                    return authority_lifecycle.selected(owner.project_name, issue, publication.scope(issue))
+                return authority_lifecycle.current(issue.id) is not None
             return allows_native_dispatch(owner.project_name, issue.id) is True
         except (OSError, ValueError):
             return False
@@ -289,6 +300,9 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             workspace = scoped_workspace(owner, issue)
             run = owner._issue_state_runs.get(issue.id, 1)
             if state == 'investigate':
+                if (authority_lifecycle is not None and record.get('write_roots')
+                        and not authority_lifecycle.supports_source(issue.id, record)):
+                    return False
                 prior = publication.read(workspace, Path('.stokowski/settlement.json'))
                 return (prior.get('issue_id') == issue.id and prior.get('run') == run
                         and prior.get('scope_sha256') == record['scope_sha256']
@@ -335,7 +349,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         return state, stage
 
     def eligible(owner, issue, **kwargs):
-        if (owner.project_name not in projects or not native_allowed(owner, issue)
+        if (owner.project_name not in projects or not native_allowed(owner, issue, selecting=True)
                 or not original_eligible(owner, issue, **kwargs)):
             return False
         stages = admissions(owner, issue)
@@ -352,7 +366,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     def dispatch(owner, issue, attempt_num=None):
         if (owner.project_name not in projects or owner.pool is None
-                or owner.pool.is_paused(owner.project_name) or not native_allowed(owner, issue)):
+                or owner.pool.is_paused(owner.project_name) or not native_allowed(owner, issue, selecting=True)):
             owner._release_slot(issue.id)
             return None
         stages = admissions(owner, issue)
@@ -380,18 +394,29 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 try:
                     reviewer = router.independent_reviewer(
                         owner.project_name, author['attempt'], available_projects(owner),
-                        client.request_maximum, **client.reservation_options(600))
+                        client.request_maximum, **client.reservation_options(90 if authority_lifecycle is not None else 600))
                 except (OSError, sqlite3.Error, BudgetRefused) as error:
                     logger.warning('Workers AI review budget unavailable: %s', type(error).__name__)
                     reviewer = None
                 if reviewer is not None:
                     try:
-                        workspace = scoped_workspace(owner, issue)
-                        source = author_source(workspace, author) if 'project_intake' in author else author
-                        record = prepare_review(workspace, issue,
-                                                owner._issue_state_runs.get(issue.id, 1),
-                                                source, reviewer, publication)
-                        record['automatic_author'] = author
+                        review_identity = dict(attempt=author['attempt'] + '-auto-review',
+                                               review_of=author['attempt'], reviewer_project=reviewer)
+                        prepare_binding = (authority_lifecycle.bind_dispatch(
+                            owner, issue, author['scope_sha256'], review_identity)
+                            if authority_lifecycle is not None else nullcontext())
+                        # Preparing the original review can write to the
+                        # isolated Git object store. Bind the review attempt
+                        # before preparation as well as before native launch.
+                        with prepare_binding:
+                            workspace = scoped_workspace(owner, issue)
+                            source = author_source(workspace, author) if 'project_intake' in author else author
+                            record = prepare_review(workspace, issue,
+                                                    owner._issue_state_runs.get(issue.id, 1),
+                                                    source, reviewer, publication)
+                            if authority_lifecycle is not None:
+                                record = authority_lifecycle.prepare_source_review(issue.id, author, record)
+                            record['automatic_author'] = author
                     except (OSError, ValueError, subprocess.SubprocessError) as error:
                         logger.warning('Automatic Workers AI review held: %s (%s)',
                                        issue.identifier, type(error).__name__)
@@ -405,16 +430,22 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             owner._release_slot(issue.id)
             return None
         if (record['project'] != owner.project_name
-                or record['scope_sha256'] != publication.scope(issue)):
+                or record['scope_sha256'] != publication.scope(issue)
+                or authority_lifecycle is not None and record.get('write_roots')
+                   and not authority_lifecycle.supports_source(issue.id, record)):
             owner._release_slot(issue.id)
             return None
         if stage and stage.type == 'agent':
             try:
                 started = router.has_started(record['attempt'])
-                has_capacity = started or mode != 'cloudflare' or router.can_start(
-                    owner.project_name, available_projects(owner), client.request_maximum,
-                    reviewer_project=record.get('reviewer_project'),
-                    **client.reservation_options(600))
+                has_capacity = started or mode != 'cloudflare'
+                if not has_capacity:
+                    options = client.reservation_options(90 if authority_lifecycle is not None else 600)
+                    if authority_lifecycle is not None:
+                        name = record.get('reviewer_project') or owner.project_name
+                        options['usage_snapshots'] = {k: v for k, v in options['usage_snapshots'].items() if k == name}
+                    has_capacity = router.can_start(owner.project_name, available_projects(owner),
+                        client.request_maximum, reviewer_project=record.get('reviewer_project'), **options)
             except (OSError, sqlite3.Error, BudgetRefused) as error:
                 logger.warning('Workers AI budget unavailable: %s', type(error).__name__)
                 owner._release_slot(issue.id)
@@ -429,7 +460,23 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 owner._release_slot(issue.id)
                 return None
         previous = owner.running.get(issue.id)
-        result = original_dispatch(owner, issue, attempt_num)
+        binding = (authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record)
+                   if authority_lifecycle is not None else nullcontext())
+        # Enter before native dispatch consumes the retry or acquires custody.
+        # The task it creates inherits the bound original via contextvars.
+        try:
+            with binding:
+                if authority_lifecycle is not None and record.get('write_roots'):
+                    source = authority_lifecycle.source_receiver(issue.id, record)
+                    if source.list()['sealed']:
+                        raise ValueError('Original source candidate already checkpointed')
+                result = original_dispatch(owner, issue, attempt_num)
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+            if authority_lifecycle is None or owner.running.get(issue.id) is not previous:
+                raise
+            logger.warning('Native authority admission held for %s (%s)', issue.identifier, type(error).__name__)
+            owner._release_slot(issue.id)
+            return None
         current = owner.running.get(issue.id)
         if current is not None and current is not previous and record.get('automatic_author'):
             current.workers_ai_review = record
@@ -566,16 +613,33 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if 'project_intake' in record and attempt.state_name == 'publish':
             acceptance = publication.read(workspace, publication.RECORD)
             prompt += '\nAccepted source-free native report: ' + json.dumps(acceptance['accepted_review'])
+        if authority_lifecycle is not None:
+            if review_binding is not None:
+                authority_lifecycle.review_candidate(issue.id, record, prompt)
+            else:
+                grant = authority_lifecycle.assignment(owner.project_name, issue.id, record['scope_sha256'])
+                if grant is None:
+                    raise ValueError('Original authority source assignment is unavailable')
+                authority_lifecycle.verify_workspace(owner, issue, grant)
         roots = tuple(record['write_roots'])
+        remote_tools = None
+        if authority_lifecycle is not None and roots:
+            remote_tools = authority_lifecycle.source_receiver(issue.id, record).tools
         if any(not re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*', root)
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
                for root in roots):
             raise ValueError('Invalid Workers AI write scope')
+        finish_original = None
+        if remote_tools is not None:
+            finish_original = authority_lifecycle.retain_source_checkpoint(issue.id, record)
+        elif authority_lifecycle is not None and record.get('source_candidate_sha256'):
+            finish_original = authority_lifecycle.retain_final_review
         authorized.set((issue, attempt.state_name, attempt, record))
         return NativeTurnBinding(issue.id, workspace,
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
                     record.get('reviewer_project')), paths, roots, prompt,
-            structured_report='project_intake' in record or 'automatic_author' in record)
+            structured_report='project_intake' in record or 'automatic_author' in record,
+            remote_tools=remote_tools, finish_original=finish_original)
 
     install_native_runner(runner, orchestration, mode=mode, client=client,
                           authorize_turn=authorize, codex_available=codex_available,
