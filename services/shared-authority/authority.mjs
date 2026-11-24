@@ -1,0 +1,1870 @@
+import {
+  need,
+  Refusal,
+  canonical,
+  equal,
+  digest,
+  digestBytes,
+  fields,
+  uint,
+  sha,
+  token,
+  uuid,
+  now,
+  day,
+  scopeSource,
+  identity,
+  wire,
+  models,
+  bytes64,
+  readBytes,
+  json,
+} from './protocol.mjs';
+
+import { sourceTables, sourceRoute } from './source-overlay.mjs';
+
+const tables = [
+  ...sourceTables,
+  'CREATE TABLE IF NOT EXISTS installation (singleton INTEGER PRIMARY KEY CHECK(singleton=1), realm TEXT NOT NULL, anchor TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS authorizations (kind TEXT NOT NULL,id TEXT NOT NULL,realm TEXT NOT NULL,PRIMARY KEY(kind,id))',
+  'CREATE TABLE IF NOT EXISTS control (singleton INTEGER PRIMARY KEY CHECK(singleton=1), epoch INTEGER NOT NULL, stopped INTEGER NOT NULL)',
+  'INSERT OR IGNORE INTO control VALUES (1,1,1)',
+  'CREATE TABLE IF NOT EXISTS startup (unit TEXT NOT NULL, stage TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(unit,stage))',
+  'CREATE TABLE IF NOT EXISTS grants (issue TEXT PRIMARY KEY, body TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS claims (issue TEXT PRIMARY KEY, attempt TEXT UNIQUE NOT NULL, lease TEXT NOT NULL, state TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS receipts (peer TEXT NOT NULL, id TEXT NOT NULL, fingerprint TEXT NOT NULL, result TEXT NOT NULL, PRIMARY KEY(peer,id))',
+  'CREATE TABLE IF NOT EXISTS completions (fence TEXT PRIMARY KEY, completion TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS claim_generations (issue TEXT NOT NULL,generation INTEGER NOT NULL,record TEXT NOT NULL,PRIMARY KEY(issue,generation))',
+  'CREATE TABLE IF NOT EXISTS provider_results (id TEXT PRIMARY KEY,response BLOB NOT NULL,gateway TEXT,issue TEXT NOT NULL,policy TEXT NOT NULL,body_sha TEXT NOT NULL,ack TEXT)',
+  'CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, issue TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS next_attempts (fence TEXT NOT NULL, previous TEXT NOT NULL, successor TEXT NOT NULL, PRIMARY KEY(fence,previous,successor))',
+  'CREATE TABLE IF NOT EXISTS review_bindings (attempt TEXT PRIMARY KEY, body TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS carryovers (account TEXT NOT NULL,id TEXT NOT NULL,amount INTEGER NOT NULL,receipt TEXT NOT NULL, PRIMARY KEY(account,id))',
+  'CREATE TABLE IF NOT EXISTS facts (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS destination_results (id TEXT PRIMARY KEY, result TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS budget_breaches (account TEXT PRIMARY KEY, original TEXT NOT NULL, observed INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS usage (account TEXT PRIMARY KEY, receipt TEXT NOT NULL)',
+  `CREATE TABLE IF NOT EXISTS effects (id TEXT PRIMARY KEY, issue TEXT NOT NULL, op TEXT NOT NULL, attempt TEXT NOT NULL,
+     account TEXT, amount INTEGER NOT NULL, state TEXT NOT NULL, receipt TEXT, settled_at INTEGER)`,
+  'CREATE INDEX IF NOT EXISTS effects_issue ON effects(issue,state)',
+  'CREATE INDEX IF NOT EXISTS effects_account ON effects(account,state,settled_at)',
+];
+const LIMIT = 7500000;
+const peerRoles = ['native', 'morgan'];
+const leaseKind = (name) => 'uif.shared-lease.' + name + '/3';
+const issueKey = (s) => s.key.workspace_id + ':' + s.key.issue_id;
+const boundedRequest = (deadline) =>
+  Number.isSafeInteger(deadline) && deadline > 0 && deadline <= 8640000000000;
+function only(peer, ...roles) {
+  need(roles.includes(peer.role), 'peer_role_not_granted', 403);
+}
+function list(a, check, max) {
+  return (
+    Array.isArray(a) && a.length > 0 && a.length <= max && a.every(check) && new Set(a).size === a.length
+  );
+}
+function operationShape(c, op, historical = false) {
+  fields(op, 'fence', 'original_id', 'payload_sha256');
+  const f = op.fence;
+  fields(
+    f,
+    'scope',
+    'source',
+    'owner_session',
+    'coordinator_epoch',
+    'generation',
+    'lease_id',
+    'authority_id',
+    'deployment_sha256',
+    'policy_sha256',
+  );
+  scopeSource(c, f.scope, f.source);
+  need(
+    token(op.original_id) &&
+      sha(op.payload_sha256) &&
+      token(f.owner_session) &&
+      token(f.lease_id) &&
+      uint(f.generation) &&
+      f.generation > 0 &&
+      uint(f.coordinator_epoch) &&
+      f.coordinator_epoch > 0 &&
+      f.authority_id === c.authority_id &&
+      sha(f.deployment_sha256) &&
+      sha(f.policy_sha256) &&
+      (historical ||
+        (f.deployment_sha256 === c.deployment_sha256 && f.policy_sha256 === c.policy_sha256)),
+    'operation_unbound',
+  );
+}
+function projectionOK(p, route, t, end, liability, maximum) {
+  need(
+    route &&
+      equal(p.route, route) &&
+      p.free_standard_no_fallback === true &&
+      p.completeness_verified === true &&
+      [p.upper, p.gap_upper, liability, maximum].every((x) => uint(x) && x < LIMIT) &&
+      maximum > 0 &&
+      p.upper + p.gap_upper + liability + maximum < LIMIT &&
+      boundedRequest(p.covered_through) &&
+      boundedRequest(p.valid_until) &&
+      p.covered_through <= t &&
+      t - p.covered_through <= 90 &&
+      t < end &&
+      end <= p.valid_until &&
+      p.utc_day === day(t) &&
+      day(p.covered_through) === day(t) &&
+      day(end) === day(t),
+    'free_headroom_or_evidence_unavailable',
+  );
+}
+
+// One object for ALL peers and accounts. No network I/O occurs inside transactionSync.
+export class Authority {
+  constructor(
+    storage,
+    c,
+    {
+      clock = now,
+      provider = (request) => fetch(request),
+      providerToken,
+      reviewerProviderToken,
+      linearAuthorization,
+      quotaVerifier,
+      trust = null,
+    } = {},
+  ) {
+    this.store = storage;
+    this.sql = storage.sql;
+    this.c = c;
+    this.realmReady = digest({ configuration: c, trust }).then((hash) => (this.realm = hash));
+    this.anchor = canonical({
+      authority: c.authority_id,
+      workspace: c.workspace_id,
+      project: c.project_id,
+      repository: c.repository_id,
+      peers: c.peers,
+      trust,
+    });
+    this.clock = clock;
+    this.provider = provider;
+    this.providerToken = providerToken;
+    this.reviewerProviderToken = reviewerProviderToken;
+    this.linearAuthorization = linearAuthorization;
+    this.inflight = new Set();
+    this.quotaVerifier = quotaVerifier;
+    storage.transactionSync(() => {
+      for (const statement of tables) this.sql.exec(statement);
+      if (c.reviewer_route) {
+        const a = c.reviewer_route.account_id,
+          p = c.reviewer_opening_liability;
+        need(
+          p &&
+            token(p.original_id) &&
+            sha(p.receipt_sha256) &&
+            uint(p.millineurons) &&
+            p.millineurons >= 2489344,
+          'opening_review_liability_unbound',
+        );
+        this.put(
+          'INSERT OR IGNORE INTO carryovers VALUES (?,?,?,?)',
+          a,
+          p.original_id,
+          p.millineurons,
+          p.receipt_sha256,
+        );
+        const row = this.row('SELECT * FROM carryovers WHERE account=? AND id=?', a, p.original_id);
+        need(
+          row.amount === p.millineurons && row.receipt === p.receipt_sha256,
+          'opening_liability_changed',
+        );
+      }
+    });
+  }
+  row(query, ...args) {
+    return [...this.sql.exec(query, ...args)][0];
+  }
+  put(query, ...args) {
+    this.sql.exec(query, ...args);
+  }
+  commissioned() {
+    return this.row('SELECT realm FROM installation WHERE singleton=1')?.realm === this.realm;
+  }
+  authorized(kind, id) {
+    return (
+      this.row('SELECT realm FROM authorizations WHERE kind=? AND id=?', kind, id)?.realm === this.realm
+    );
+  }
+  stamp(kind, id) {
+    this.put(
+      'INSERT INTO authorizations VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET realm=excluded.realm',
+      kind,
+      id,
+      this.realm,
+    );
+  }
+  peerKey(peer) {
+    return this.realm + ':' + peer.session_id;
+  }
+  control() {
+    return this.row('SELECT epoch,stopped FROM control WHERE singleton=1');
+  }
+  live(peer) {
+    need(peer.expires_at > this.clock(), 'access_assertion_expired', 403);
+  }
+  grant(scope, source, peer) {
+    const r = this.row('SELECT body FROM grants WHERE issue=?', issueKey(scope));
+    need(
+      r && this.commissioned() && this.authorized('grant', issueKey(scope)),
+      'issue_grant_missing',
+      403,
+    );
+    const g = JSON.parse(r.body);
+    need(
+      equal(g.scope, scope) &&
+        equal(g.source, source) &&
+        g.valid_until > this.clock() &&
+        g.sessions.includes(peer.session_id),
+      'issue_grant_not_current',
+      403,
+    );
+    return g;
+  }
+  owner(peer, fence, live = true) {
+    this.live(peer);
+    scopeSource(this.c, fence.scope, fence.source);
+    const row = this.row('SELECT * FROM claims WHERE issue=?', issueKey(fence.scope));
+    need(row && row.state === 'active' && fence.owner_session === peer.session_id, 'owner_not_current');
+    const lease = JSON.parse(row.lease);
+    need(equal(lease.fence, fence), 'claim_fence_changed');
+    if (live) {
+      need(
+        fence.authority_id === this.c.authority_id &&
+          fence.deployment_sha256 === this.c.deployment_sha256 &&
+          fence.policy_sha256 === this.c.policy_sha256,
+        'authority_pins_changed',
+      );
+      const ctl = this.control();
+      this.grant(fence.scope, fence.source, peer);
+      need(
+        !ctl.stopped && ctl.epoch === fence.coordinator_epoch && lease.expires_at > this.clock(),
+        'stopped_expired_or_superseded',
+      );
+    }
+    return { row, lease };
+  }
+  reconciled(scope) {
+    need(
+      !this.row(
+        "SELECT 1 AS held FROM effects WHERE issue=? AND state='sending' LIMIT 1",
+        issueKey(scope),
+      ),
+      'uncertain_original_effect',
+    );
+  }
+  fact(id, expected) {
+    const r = this.row('SELECT body FROM facts WHERE id=?', id);
+    need(
+      r && this.authorized('fact', id) && equal(JSON.parse(r.body), expected),
+      'independent_original_evidence_missing',
+    );
+  }
+  async receipt(peer, id, path, body, apply, commission = false) {
+    need(token(id), 'invalid_request_id', 400);
+    const fingerprint = await digest({ path, body });
+    return this.store.transactionSync(() => {
+      this.live(peer);
+      need(commission || this.commissioned(), 'installation_recommission_required');
+      const prev = this.row(
+        'SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+        this.peerKey(peer),
+        id,
+      );
+      if (prev) {
+        need(prev.fingerprint === fingerprint, 'original_request_changed');
+        return JSON.parse(prev.result);
+      }
+      const result = apply();
+      this.put(
+        'INSERT INTO receipts VALUES (?,?,?,?)',
+        this.peerKey(peer),
+        id,
+        fingerprint,
+        canonical(result),
+      );
+      return result;
+    });
+  }
+  async handle(path, body, peer) {
+    await this.realmReady;
+    this.live(peer);
+    this.put('INSERT OR IGNORE INTO installation VALUES (1,?,?)', this.realm, this.anchor);
+    if (path === '/v1/commission') {
+      only(peer, 'control');
+      fields(
+        body,
+        'request_id',
+        'previous_realm',
+        'new_realm',
+        'expected_coordinator_epoch',
+        'reconstruction_sha256',
+      );
+      need(
+        sha(body.previous_realm) &&
+          body.new_realm === this.realm &&
+          body.new_realm !== body.previous_realm &&
+          sha(body.reconstruction_sha256),
+        'invalid_recommission',
+      );
+      return this.receipt(
+        peer,
+        body.request_id,
+        path,
+        body,
+        () => {
+          const installed = this.row('SELECT realm,anchor FROM installation WHERE singleton=1'),
+            ctl = this.control();
+          need(
+            installed.realm === body.previous_realm &&
+              installed.anchor === this.anchor &&
+              ctl.epoch === body.expected_coordinator_epoch,
+            'prior_realm_or_trust_anchor_changed',
+          );
+          // Keep every original, claim generation, receipt and liability; require new
+          // issue-specific grants and startup authority before admitting fresh effects.
+          this.put('UPDATE installation SET realm=? WHERE singleton=1', this.realm);
+          this.put('UPDATE control SET stopped=1,epoch=epoch+1 WHERE singleton=1');
+          this.put("UPDATE claims SET state='revoked' WHERE state='active'");
+          return { realm: this.realm, coordinator_epoch: ctl.epoch + 1, stopped: true };
+        },
+        true,
+      );
+    }
+    need(path === '/v1/status' || this.commissioned(), 'installation_recommission_required');
+    const c = this.c;
+    if (path.startsWith('/v1/source/')) return sourceRoute(this, path, body, peer, operationShape);
+    if (path === '/v1/transition/original') {
+      fields(body, 'installation_sha256', 'session_id', 'request_id');
+      need(
+        sha(body.installation_sha256) &&
+          token(body.session_id) &&
+          token(body.request_id) &&
+          (peer.role === 'control' || body.session_id === peer.session_id),
+        'original_owner_required',
+        403,
+      );
+      const r = this.row(
+        'SELECT result FROM receipts WHERE peer=? AND id=?',
+        body.installation_sha256 + ':' + body.session_id,
+        body.request_id,
+      );
+      need(r, 'original_transition_absent', 404);
+      return JSON.parse(r.result);
+    }
+    if (path === '/v1/status') {
+      const ctl = this.control(),
+        quota = Object.values(c.peers).find((p) => p.role === 'quota');
+      return {
+        ...identity(c, peer),
+        role: peer.role,
+        coordinator_epoch: ctl.epoch,
+        stopped: !!ctl.stopped || !this.commissioned(),
+        installation_sha256: this.realm,
+        commissioned_sha256: this.row('SELECT realm FROM installation WHERE singleton=1').realm,
+        lease_seconds: c.lease_seconds,
+        quota_issuer: identity(c, quota),
+      };
+    }
+    if (path === '/v1/startup/bind') {
+      only(peer, 'control');
+      fields(
+        body,
+        'request_id',
+        'unit',
+        'stage',
+        'session_id',
+        'coordinator_epoch',
+        'valid_until',
+        'evidence_sha256',
+      );
+      need(
+        token(body.unit) &&
+          token(body.stage) &&
+          Object.values(c.peers).some((p) => p.role === 'native' && p.session_id === body.session_id) &&
+          boundedRequest(body.valid_until) &&
+          sha(body.evidence_sha256),
+        'invalid_startup_binding',
+        400,
+      );
+      return this.receipt(peer, body.request_id, path, body, () => {
+        need(
+          body.coordinator_epoch === this.control().epoch && body.valid_until > this.clock(),
+          'startup_binding_changed',
+        );
+        this.put(
+          'INSERT INTO startup VALUES (?,?,?) ON CONFLICT(unit,stage) DO UPDATE SET body=excluded.body',
+          body.unit,
+          body.stage,
+          canonical(body),
+        );
+        this.stamp('startup', canonical([body.unit, body.stage]));
+        return { request_id: body.request_id, unit: body.unit, stage: body.stage };
+      });
+    }
+    if (path === '/v1/startup/read') {
+      only(peer, 'native');
+      fields(body, 'unit', 'stage', 'nonce');
+      need(token(body.nonce), 'invalid_challenge', 400);
+      const ctl = this.control(),
+        r = this.row('SELECT body FROM startup WHERE unit=? AND stage=?', body.unit, body.stage);
+      const b = r && JSON.parse(r.body),
+        t = this.clock();
+      need(
+        b &&
+          this.authorized('startup', canonical([body.unit, body.stage])) &&
+          !ctl.stopped &&
+          b.coordinator_epoch === ctl.epoch &&
+          b.session_id === peer.session_id &&
+          b.valid_until > t,
+        'startup_not_bound',
+      );
+      return {
+        ...body,
+        ...identity(c, peer),
+        coordinator_epoch: ctl.epoch,
+        expires_at: Math.min(t + 5, b.valid_until, peer.expires_at),
+      };
+    }
+    if (path === '/v1/control') {
+      only(peer, 'control');
+      fields(body, 'request_id', 'expected_coordinator_epoch', 'stopped');
+      need(typeof body.stopped === 'boolean', 'invalid_control', 400);
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const ctl = this.control();
+        need(ctl.epoch === body.expected_coordinator_epoch, 'control_epoch_changed');
+        const epoch = ctl.epoch + (!!ctl.stopped !== body.stopped ? 1 : 0);
+        this.put('UPDATE control SET epoch=?,stopped=? WHERE singleton=1', epoch, Number(body.stopped));
+        return { coordinator_epoch: epoch, stopped: body.stopped };
+      });
+    }
+    if (path === '/v1/grant') {
+      only(peer, 'control');
+      fields(body, 'request_id', 'grant', 'previous_sha256');
+      const g = body.grant;
+      fields(
+        g,
+        'scope',
+        'source',
+        'sessions',
+        'attempt_ids',
+        'reconstruction_sha256',
+        'valid_until',
+        'allow_comments',
+        'allow_uploads',
+        'allow_provider',
+        'review_of',
+        ...(Object.hasOwn(g, 'result_retention') ? ['result_retention'] : []),
+      );
+      scopeSource(c, g.scope, g.source);
+      if (g.result_retention != null) {
+        const p = g.result_retention;
+        fields(p, 'max_response_bytes', 'max_retained_results', 'readers', 'evidence_sha256');
+        need(
+          uint(p.max_response_bytes) &&
+            p.max_response_bytes > 0 &&
+            p.max_response_bytes <= 256 * 1024 &&
+            uint(p.max_retained_results) &&
+            p.max_retained_results > 0 &&
+            p.max_retained_results <= 128 &&
+            sha(p.evidence_sha256) &&
+            list(
+              p.readers,
+              (id) => Object.values(c.peers).some((x) => x.session_id === id && x.role !== 'quota'),
+              3,
+            ),
+          'invalid_result_retention_grant',
+        );
+      }
+      const workers = Object.values(c.peers)
+        .filter((p) => peerRoles.includes(p.role))
+        .map((p) => p.session_id);
+      need(
+        typeof g.allow_provider === 'boolean' &&
+          typeof g.allow_comments === 'boolean' &&
+          typeof g.allow_uploads === 'boolean' &&
+          list(g.sessions, (s) => workers.includes(s), 2) &&
+          list(g.attempt_ids, token, 200) &&
+          g.review_of &&
+          typeof g.review_of === 'object' &&
+          !Array.isArray(g.review_of) &&
+          Object.entries(g.review_of).every(
+            ([r, a]) =>
+              r !== a &&
+              g.attempt_ids.includes(r) &&
+              g.attempt_ids.includes(a) &&
+              !Object.hasOwn(g.review_of, a),
+          ) &&
+          sha(g.reconstruction_sha256) &&
+          boundedRequest(g.valid_until) &&
+          (body.previous_sha256 === null || sha(body.previous_sha256)),
+        'invalid_grant',
+        400,
+      );
+      const id = issueKey(g.scope),
+        blob = canonical(g),
+        grantSHA = await digest(g);
+      const prior = this.row('SELECT body FROM grants WHERE issue=?', id)?.body;
+      const priorSHA = prior ? await digest(JSON.parse(prior)) : null;
+      return this.receipt(peer, body.request_id, path, body, () => {
+        need(
+          g.valid_until > this.clock() &&
+            body.previous_sha256 === priorSHA &&
+            this.row('SELECT body FROM grants WHERE issue=?', id)?.body === prior,
+          'grant_preimage_changed',
+        );
+        // Changed scope, permissions or reconstruction must never be inherited by
+        // an already-issued fence, including after a peer is removed and re-added.
+        if (prior && prior !== blob)
+          this.put("UPDATE claims SET state='revoked' WHERE issue=? AND state='active'", id);
+        this.put(
+          'INSERT INTO grants VALUES (?,?) ON CONFLICT(issue) DO UPDATE SET body=excluded.body',
+          id,
+          blob,
+        );
+        this.stamp('grant', id);
+        return { grant_sha256: grantSHA };
+      });
+    }
+    if (path === '/v1/attest') {
+      only(peer, 'control');
+      fields(body, 'request_id', 'fact');
+      const f = body.fact;
+      need(
+        ['handoff', 'completion', 'original-terminal'].includes(f?.kind),
+        'unsupported_attestation',
+        400,
+      );
+      if (f.kind === 'completion') {
+        fields(f, 'kind', 'completion');
+        const x = f.completion;
+        fields(x, 'fence', 'accepted', 'receipt_sha256');
+        operationShape(
+          c,
+          {
+            fence: x.fence,
+            original_id: 'completion-attestation',
+            payload_sha256: x.receipt_sha256,
+          },
+          true,
+        );
+        need(typeof x.accepted === 'boolean', 'invalid_completion', 400);
+      } else if (f.kind === 'original-terminal') {
+        fields(f, 'kind', 'operation', 'status', 'destination_receipt_sha256');
+        operationShape(c, f.operation, true);
+        need(
+          ['verified', 'failed', 'denied'].includes(f.status) && sha(f.destination_receipt_sha256),
+          'invalid_original_attestation',
+          400,
+        );
+      } else {
+        fields(
+          f,
+          'kind',
+          'current',
+          'successor_session',
+          'expected_coordinator_epoch',
+          'quiesced_sha256',
+          'reconstruction_sha256',
+        );
+        operationShape(
+          c,
+          {
+            fence: f.current.fence,
+            original_id: 'handoff-attestation',
+            payload_sha256: f.reconstruction_sha256,
+          },
+          true,
+        );
+        need(
+          sha(f.quiesced_sha256) && token(f.successor_session) && uint(f.expected_coordinator_epoch),
+          'invalid_handoff_attestation',
+          400,
+        );
+      }
+      const id = await digest(f);
+      return this.receipt(peer, body.request_id, path, body, () => {
+        if (f.kind === 'completion') {
+          const key = canonical(f.completion.fence),
+            blob = canonical(f.completion);
+          const prev = this.row('SELECT completion FROM completions WHERE fence=?', key);
+          need(!prev || prev.completion === blob, 'completion_already_bound');
+          this.put('INSERT OR IGNORE INTO completions VALUES (?,?)', key, blob);
+        }
+        this.put('INSERT OR IGNORE INTO facts VALUES (?,?)', id, canonical(f));
+        this.stamp('fact', id);
+        return { fact_sha256: id };
+      });
+    }
+    if (path === '/v1/reclaim' || path === '/v1/reclaim/observe') {
+      only(peer, ...peerRoles);
+      fields(
+        body,
+        'request_id',
+        'previous',
+        'scope',
+        'source',
+        'reconstruction_sha256',
+        'expected_coordinator_epoch',
+        'attempt_id',
+        'previous_completion_sha256',
+      );
+      scopeSource(c, body.scope, body.source);
+      const previous = body.previous,
+        f = previous.fence;
+      need(
+        issueKey(f.scope) === issueKey(body.scope) &&
+          token(body.attempt_id) &&
+          sha(body.previous_completion_sha256) &&
+          sha(body.reconstruction_sha256),
+        'new_attempt_unbound',
+      );
+      const kind = 'uif.shared-lease.reclaim/1',
+        authority = identity(c, peer),
+        request_sha256 = await digest({ kind, request: { ...body, authority } });
+      if (path === '/v1/reclaim/observe') {
+        const r = this.row(
+          'SELECT * FROM receipts WHERE peer=? AND id=?',
+          this.peerKey(peer),
+          body.request_id,
+        );
+        need(r, 'original_reclaim_absent', 404);
+        need(
+          r.fingerprint === (await digest({ path: '/v1/reclaim', body })),
+          'original_request_changed',
+        );
+        return JSON.parse(r.result);
+      }
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const id = issueKey(body.scope),
+          ctl = this.control(),
+          old = this.row('SELECT * FROM claims WHERE issue=?', id);
+        need(
+          old?.state === 'released' &&
+            equal(JSON.parse(old.lease), previous) &&
+            !ctl.stopped &&
+            body.expected_coordinator_epoch === ctl.epoch,
+          'prior_claim_not_released_or_changed',
+        );
+        this.reconciled(body.scope);
+        const completed = this.row('SELECT completion FROM completions WHERE fence=?', canonical(f));
+        const history = this.row(
+          'SELECT record FROM claim_generations WHERE issue=? AND generation=?',
+          id,
+          f.generation,
+        );
+        need(
+          completed &&
+            JSON.parse(completed.completion).receipt_sha256 === body.previous_completion_sha256 &&
+            history &&
+            JSON.parse(history.record).grant.reconstruction_sha256 !== body.reconstruction_sha256,
+          'prior_completion_or_new_reconstruction_unverified',
+        );
+        const g = this.grant(body.scope, body.source, peer);
+        need(
+          g.reconstruction_sha256 === body.reconstruction_sha256 &&
+            g.attempt_ids.includes(body.attempt_id) &&
+            !Object.hasOwn(g.review_of, body.attempt_id) &&
+            !this.row('SELECT id FROM attempts WHERE id=?', body.attempt_id),
+          'fresh_attempt_unverified',
+        );
+        const { session_id, ...realm } = authority;
+        const lease = {
+          fence: {
+            scope: body.scope,
+            source: body.source,
+            owner_session: session_id,
+            coordinator_epoch: ctl.epoch,
+            generation: f.generation + 1,
+            lease_id: crypto.randomUUID(),
+            ...realm,
+          },
+          expires_at: Math.min(this.clock() + c.lease_seconds, g.valid_until),
+        };
+        this.put('INSERT INTO attempts VALUES (?,?)', body.attempt_id, id);
+        this.put(
+          "UPDATE claims SET attempt=?,lease=?,state='active' WHERE issue=?",
+          body.attempt_id,
+          canonical(lease),
+          id,
+        );
+        this.put(
+          'INSERT INTO claim_generations VALUES (?,?,?)',
+          id,
+          lease.fence.generation,
+          canonical({ grant: g, lease, request_id: body.request_id }),
+        );
+        return { request_id: body.request_id, request_kind: kind, request_sha256, lease };
+      });
+    }
+    if (path === '/v1/completion/read') {
+      only(peer, ...peerRoles);
+      fields(body, 'current');
+      const l = body.current;
+      operationShape(c, {
+        fence: l.fence,
+        original_id: 'completion-read',
+        payload_sha256: c.policy_sha256,
+      });
+      need(l.fence.owner_session === peer.session_id, 'original_owner_required', 403);
+      const r = this.row('SELECT completion FROM completions WHERE fence=?', canonical(l.fence));
+      need(r, 'original_completion_absent', 404);
+      return JSON.parse(r.completion);
+    }
+    if (path === '/v1/revoke') {
+      only(peer, 'control');
+      fields(body, 'request_id', 'fence');
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const id = issueKey(body.fence.scope),
+          r = this.row('SELECT lease,state FROM claims WHERE issue=?', id);
+        need(
+          r && r.state === 'active' && equal(JSON.parse(r.lease).fence, body.fence),
+          'claim_fence_changed',
+        );
+        this.put("UPDATE claims SET state='revoked' WHERE issue=?", id);
+        return { revoked: body.fence };
+      });
+    }
+    if (path === '/v1/review/bind') {
+      only(peer, 'control');
+      fields(
+        body,
+        'request_id',
+        'current',
+        'candidate',
+        'author_operation',
+        'author_receipt_sha256',
+        'checkpoint_receipt_sha256',
+        'send_prompt_sha256',
+      );
+      const { current, candidate, author_operation } = body;
+      fields(
+        candidate,
+        'kind',
+        'issue_id',
+        'scope_sha256',
+        'author_attempt_id',
+        'review_attempt_id',
+        'source',
+        'candidate_tree',
+        'review_prompt_sha256',
+        ...(Object.hasOwn(candidate, 'source_candidate_sha256') ? ['source_candidate_sha256'] : []),
+      );
+      operationShape(c, author_operation);
+      const f = current.fence;
+      need(
+        candidate.kind === 'uif.native-review-candidate/1' &&
+          candidate.issue_id === f.scope.key.issue_id &&
+          equal(candidate.source, f.source) &&
+          sha(body.send_prompt_sha256) &&
+          sha(candidate.scope_sha256) &&
+          sha(candidate.review_prompt_sha256) &&
+          sha(body.checkpoint_receipt_sha256) &&
+          sha(body.author_receipt_sha256) &&
+          (candidate.candidate_tree === null ||
+            (typeof candidate.candidate_tree === 'string' &&
+              /^[0-9a-f]{40}$/.test(candidate.candidate_tree))) &&
+          equal(author_operation.fence, f),
+        'review_candidate_not_bound',
+      );
+      const record = {
+        fence: f,
+        send_prompt_sha256: body.send_prompt_sha256,
+        candidate,
+        candidate_sha256: await digest(candidate),
+        author_operation,
+        author_receipt_sha256: body.author_receipt_sha256,
+        checkpoint_receipt_sha256: body.checkpoint_receipt_sha256,
+      };
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const id = issueKey(f.scope),
+          r = this.row('SELECT * FROM claims WHERE issue=?', id),
+          g = this.row('SELECT body FROM grants WHERE issue=?', id);
+        need(
+          r?.state === 'active' &&
+            equal(JSON.parse(r.lease), current) &&
+            [candidate.author_attempt_id, candidate.review_attempt_id].includes(r.attempt) &&
+            g &&
+            JSON.parse(g.body).review_of[candidate.review_attempt_id] === candidate.author_attempt_id,
+          'review_attempt_not_bound',
+        );
+        const overlay = this.row(
+          'SELECT sealed,fence FROM source_attempts WHERE attempt=?',
+          candidate.author_attempt_id,
+        );
+        if (overlay || Object.hasOwn(candidate, 'source_candidate_sha256')) {
+          need(
+            overlay &&
+              overlay.fence === canonical(f) &&
+              sha(overlay.sealed) &&
+              candidate.candidate_tree === null &&
+              candidate.source_candidate_sha256 === overlay.sealed,
+            'frozen_source_candidate_required',
+          );
+        }
+        this.reconciled(f.scope);
+        const original = this.row('SELECT * FROM effects WHERE id=?', author_operation.original_id);
+        need(
+          original &&
+            equal(JSON.parse(original.op), author_operation) &&
+            original.state === 'verified' &&
+            original.receipt === body.author_receipt_sha256 &&
+            original.account === c.route?.account_id &&
+            original.attempt === candidate.author_attempt_id,
+          'original_author_not_verified',
+        );
+        const prior = this.row(
+          'SELECT body FROM review_bindings WHERE attempt=?',
+          candidate.review_attempt_id,
+        );
+        need(!prior || equal(JSON.parse(prior.body), record), 'review_candidate_already_bound');
+        this.put(
+          'INSERT OR IGNORE INTO review_bindings VALUES (?,?)',
+          candidate.review_attempt_id,
+          canonical(record),
+        );
+        this.put(
+          'INSERT OR IGNORE INTO next_attempts VALUES (?,?,?)',
+          canonical(f),
+          candidate.author_attempt_id,
+          candidate.review_attempt_id,
+        );
+        return record;
+      });
+    }
+    if (path === '/v1/review/read') {
+      only(peer, ...peerRoles);
+      fields(body, 'current', 'review_attempt_id', 'author_attempt_id');
+      const { lease } = this.owner(peer, body.current.fence);
+      need(equal(body.current, lease), 'claim_fence_changed');
+      const row = this.row('SELECT body FROM review_bindings WHERE attempt=?', body.review_attempt_id);
+      need(row, 'original_review_binding_absent', 404);
+      const record = JSON.parse(row.body);
+      need(
+        equal(record.fence, lease.fence) &&
+          record.candidate.author_attempt_id === body.author_attempt_id,
+        'review_author_or_generation_changed',
+      );
+      return record;
+    }
+    if (path === '/v1/attempt/attest') {
+      only(peer, 'control');
+      fields(body, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
+      operationShape(c, {
+        fence: body.fence,
+        original_id: body.previous,
+        payload_sha256: body.terminal_receipt_sha256,
+      });
+      need(token(body.successor) && body.previous !== body.successor, 'invalid_stage_transition');
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const r = this.row('SELECT * FROM claims WHERE issue=?', issueKey(body.fence.scope));
+        need(
+          r?.state === 'active' &&
+            r.attempt === body.previous &&
+            equal(JSON.parse(r.lease).fence, body.fence),
+          'attempt_preimage_changed',
+        );
+        this.reconciled(body.fence.scope);
+        this.put(
+          'INSERT OR IGNORE INTO next_attempts VALUES (?,?,?)',
+          canonical(body.fence),
+          body.previous,
+          body.successor,
+        );
+        return { terminal_receipt_sha256: body.terminal_receipt_sha256 };
+      });
+    }
+    if (path === '/v1/usage/write') {
+      only(peer, 'quota');
+      fields(body, 'request_id', 'projection', 'source_receipt_sha256');
+      const p = body.projection;
+      fields(
+        p,
+        'route',
+        'utc_day',
+        'covered_through',
+        'valid_until',
+        'upper',
+        'gap_upper',
+        'free_standard_no_fallback',
+        'completeness_verified',
+      );
+      need(
+        this.allowedRoute(p.route) &&
+          sha(body.source_receipt_sha256) &&
+          boundedRequest(p.covered_through) &&
+          boundedRequest(p.valid_until) &&
+          p.covered_through <= this.clock() &&
+          p.covered_through < p.valid_until &&
+          p.utc_day === day(p.covered_through) &&
+          uint(p.upper) &&
+          uint(p.gap_upper) &&
+          typeof p.free_standard_no_fallback === 'boolean' &&
+          typeof p.completeness_verified === 'boolean',
+        'invalid_usage_attestation',
+        400,
+      );
+      // A service token identifies the submitter; it cannot verify account-wide
+      // telemetry or bound uncoordinated spend. Read the independently installed
+      // verifier's original observation via a private, fixed service binding.
+      need(
+        sha(c.quota_verification_sha256) && this.quotaVerifier,
+        'independent_account_observer_unbound',
+        503,
+      );
+      const verified = await this.quotaVerifier(body.source_receipt_sha256, p.route);
+      fields(
+        verified,
+        'binding_sha256',
+        'source_receipt_sha256',
+        'projection',
+        'coverage',
+        'gap_evidence_sha256',
+      );
+      need(
+        verified.binding_sha256 === c.quota_verification_sha256 &&
+          verified.source_receipt_sha256 === body.source_receipt_sha256 &&
+          sha(verified.gap_evidence_sha256) &&
+          verified.coverage === 'entire-account-all-routes-from-utc-midnight' &&
+          equal(verified.projection, p),
+        'independent_account_projection_unverified',
+      );
+      const issuer = identity(c, peer),
+        provenance = {
+          source_receipt_sha256: body.source_receipt_sha256,
+          admission_binding_sha256: c.quota_verification_sha256,
+        };
+      const hash = await digest({
+        issuer,
+        projection: p,
+        ...provenance,
+        gap_evidence_sha256: verified.gap_evidence_sha256,
+      });
+      const receipt = { issuer, receipt_sha256: hash, projection: p, ...provenance };
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const prior = this.usage(p.route);
+        need(
+          !prior ||
+            equal(receipt, prior) ||
+            (p.covered_through > prior.projection.covered_through &&
+              (p.utc_day !== prior.projection.utc_day || p.upper >= prior.projection.upper)),
+          'usage_snapshot_not_monotonic',
+        );
+        this.put(
+          'INSERT INTO usage VALUES (?,?) ON CONFLICT(account) DO UPDATE SET receipt=excluded.receipt',
+          p.route.account_id,
+          canonical(receipt),
+        );
+        this.stamp('quota', p.route.account_id);
+        return { receipt_sha256: hash };
+      });
+    }
+    if (path === '/v1/usage/read') {
+      only(peer, 'native', 'morgan', 'quota');
+      fields(body, 'route');
+      const receipt = this.usage(body.route);
+      need(
+        this.allowedRoute(body.route) && this.authorized('quota', body.route.account_id) && receipt,
+        'usage_unavailable',
+        404,
+      );
+      return receipt;
+    }
+    if (path === '/v1/linear/state') throw new Refusal('linear_atomic_state_cas_unavailable');
+    if (path === '/v1/publication') throw new Refusal('offmenu_sole_git_publisher_required');
+    if (['/v1/send', '/v1/linear/comment', '/v1/linear/upload'].includes(path)) {
+      only(peer, ...peerRoles);
+      const id = (path === '/v1/send' ? body.intent?.operation : body.operation)?.original_id;
+      need(token(id) && !this.inflight.has(id), 'original_in_flight');
+      this.inflight.add(id);
+      try {
+        if (path === '/v1/send') return await this.send(body, peer);
+        if (path === '/v1/linear/upload') return await this.upload(body, peer);
+        return await this.comment(body, peer);
+      } finally {
+        this.inflight.delete(id);
+      }
+    }
+    if (path === '/v1/reconcile') {
+      only(peer, 'control');
+      fields(body, 'request_id', 'operation', 'status', 'destination_receipt_sha256');
+      const op = body.operation;
+      operationShape(c, op, true);
+      need(
+        ['verified', 'failed', 'denied'].includes(body.status) && sha(body.destination_receipt_sha256),
+        'invalid_terminal',
+      );
+      const fact = {
+        kind: 'original-terminal',
+        operation: op,
+        status: body.status,
+        destination_receipt_sha256: body.destination_receipt_sha256,
+      };
+      const factId = await digest(fact);
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const r = this.row('SELECT * FROM effects WHERE id=?', op.original_id);
+        need(
+          r && equal(JSON.parse(r.op), op) && !this.inflight.has(op.original_id),
+          'original_not_reconcilable',
+        );
+        this.fact(factId, fact);
+        need(
+          r.state === 'sending' ||
+            (r.state === body.status && r.receipt === body.destination_receipt_sha256),
+          'terminal_receipt_immutable',
+        );
+        if (r.state === 'sending')
+          this.put(
+            'UPDATE effects SET state=?,settled_at=?,receipt=? WHERE id=?',
+            body.status,
+            this.clock(),
+            body.destination_receipt_sha256,
+            op.original_id,
+          );
+        return { operation: op, status: body.status, receipt_sha256: body.destination_receipt_sha256 };
+      });
+    }
+    if (path === '/v1/provider/ack' || path === '/v1/provider/prune') {
+      const prune = path.endsWith('/prune');
+      only(peer, ...(prune ? ['control'] : peerRoles));
+      fields(body, 'request_id', 'operation', 'receipt_sha256', 'body_sha256');
+      const op = body.operation;
+      operationShape(c, op, true);
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const result = this.row('SELECT * FROM provider_results WHERE id=?', op.original_id),
+          r = this.row('SELECT * FROM effects WHERE id=?', op.original_id);
+        need(
+          result &&
+            r?.state === 'verified' &&
+            equal(JSON.parse(r.op), op) &&
+            r.receipt === body.receipt_sha256 &&
+            result.body_sha === body.body_sha256,
+          'original_verified_body_required',
+        );
+        this.bodyReader(peer, op, JSON.parse(result.policy));
+        if (prune) {
+          const sourceAttempt = this.row(
+            'SELECT sealed FROM source_attempts WHERE attempt=?',
+            r.attempt,
+          );
+          need(!sourceAttempt || sourceAttempt.sealed, 'unsealed_source_attempt_needs_original_tools');
+          need(result.ack === op.fence.owner_session, 'consumer_ack_required');
+          this.put('DELETE FROM provider_results WHERE id=?', op.original_id);
+          return { pruned: true, receipt_sha256: r.receipt };
+        }
+        this.put('UPDATE provider_results SET ack=? WHERE id=?', peer.session_id, op.original_id);
+        return { acknowledged: true, receipt_sha256: r.receipt };
+      });
+    }
+    if (path === '/v1/provider/receipt') {
+      only(peer, ...peerRoles, 'control');
+      fields(body, 'operation');
+      const op = body.operation;
+      operationShape(c, op, true);
+      if (peer.role !== 'control') {
+        need(op.fence.owner_session === peer.session_id, 'original_owner_required', 403);
+        this.grant(op.fence.scope, op.fence.source, peer);
+      }
+      const r = this.row('SELECT * FROM effects WHERE id=?', op.original_id);
+      need(r, 'original_absent', 404);
+      need(equal(JSON.parse(r.op), op), 'original_operation_changed');
+      const prior = this.row('SELECT * FROM provider_results WHERE id=?', op.original_id);
+      need(r.state === 'verified' && prior, 'original_provider_result_unresolved');
+      const retention = JSON.parse(prior.policy);
+      this.bodyReader(peer, op, retention);
+      const raw = new Uint8Array(prior.response);
+      const expected = await digest({
+        operation: op,
+        body_sha256: await digestBytes(raw),
+        gateway_receipt: prior.gateway,
+        status: 'verified',
+      });
+      need(raw.length <= 256 * 1024 && expected === r.receipt, 'original_provider_result_changed');
+      // Reading/hashing a large result yields. Recheck read authorization at release.
+      this.bodyReader(peer, op, retention);
+      return this.providerResponse(raw, prior.gateway, r.receipt);
+    }
+    if (path === '/v1/linear/receipt') {
+      only(peer, ...peerRoles, 'control');
+      fields(body, 'operation');
+      const op = body.operation;
+      operationShape(c, op, true);
+      need(
+        peer.role === 'control' || op.fence.owner_session === peer.session_id,
+        'original_owner_required',
+        403,
+      );
+      const r = this.row('SELECT * FROM effects WHERE id=?', op.original_id);
+      need(r, 'original_absent', 404);
+      need(equal(JSON.parse(r.op), op), 'original_operation_changed');
+      const result = this.row('SELECT result FROM destination_results WHERE id=?', op.original_id);
+      need(r.state === 'verified' && result, 'original_destination_unresolved');
+      return JSON.parse(result.result);
+    }
+    if (path === '/v1/original') {
+      only(peer, ...peerRoles, 'control');
+      fields(body, 'operation');
+      const op = body.operation;
+      operationShape(c, op, true);
+      need(
+        peer.role === 'control' || op.fence.owner_session === peer.session_id,
+        'original_owner_required',
+        403,
+      );
+      const r = this.row('SELECT * FROM effects WHERE id=?', op.original_id);
+      if (!r) return { operation: op, state: 'unknown', terminal: null };
+      need(equal(JSON.parse(r.op), op), 'original_operation_changed');
+      return r.receipt
+        ? {
+            operation: op,
+            state: 'terminal',
+            terminal: { operation: op, status: r.state, receipt_sha256: r.receipt },
+          }
+        : { operation: op, state: 'unknown', terminal: null };
+    }
+    if (path === '/v1/claim/read') {
+      only(peer, ...peerRoles);
+      fields(body, 'identifier', 'by_attempt', 'project');
+      need(
+        body.project === 'OffMenu' && token(body.identifier) && typeof body.by_attempt === 'boolean',
+        'invalid_lookup',
+        400,
+      );
+      const row = body.by_attempt
+        ? this.row('SELECT * FROM claims WHERE attempt=?', body.identifier)
+        : this.row('SELECT * FROM claims WHERE issue=?', c.workspace_id + ':' + body.identifier);
+      need(row, 'claim_absent', 404);
+      const lease = JSON.parse(row.lease);
+      this.owner(peer, lease.fence);
+      return { project: 'OffMenu', attempt_id: row.attempt, lease };
+    }
+    if (path === '/v1/claim/attempt') {
+      only(peer, ...peerRoles);
+      fields(body, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
+      return this.receipt(peer, body.request_id, path, body, () => {
+        const l = body.current,
+          { lease, row } = this.owner(peer, l.fence);
+        need(equal(lease, l), 'claim_fence_changed');
+        const g = this.grant(l.fence.scope, l.fence.source, peer);
+        need(
+          g.attempt_ids.includes(body.attempt_id) && row.attempt === body.expected_attempt_id,
+          'attempt_preimage_changed',
+        );
+        this.reconciled(l.fence.scope);
+        need(
+          this.row(
+            'SELECT 1 FROM next_attempts WHERE fence=? AND previous=? AND successor=?',
+            canonical(l.fence),
+            row.attempt,
+            body.attempt_id,
+          ),
+          'prior_attempt_terminal_unverified',
+        );
+        need(
+          !this.row('SELECT 1 FROM attempts WHERE id=?', body.attempt_id),
+          'attempt_already_consumed',
+        );
+        this.put('INSERT INTO attempts VALUES (?,?)', body.attempt_id, issueKey(l.fence.scope));
+        this.put('UPDATE claims SET attempt=? WHERE issue=?', body.attempt_id, issueKey(l.fence.scope));
+        return { project: 'OffMenu', attempt_id: body.attempt_id, lease };
+      });
+    }
+    if (['/v1/claim', '/v1/claim/observe', '/v1/renew', '/v1/handoff', '/v1/release'].includes(path))
+      return this.transition(path, body, peer);
+    throw new Refusal('unknown_route', 404);
+  }
+  allowedRoute(route) {
+    return !!route && [this.c.route, this.c.reviewer_route].some((r) => r && equal(r, route));
+  }
+  usage(route) {
+    const r =
+      this.allowedRoute(route) &&
+      this.row('SELECT receipt FROM usage WHERE account=?', route.account_id);
+    return r ? JSON.parse(r.receipt) : null;
+  }
+  async transition(path, body, peer) {
+    only(peer, ...peerRoles);
+    const c = this.c,
+      observe = path === '/v1/claim/observe';
+    const action = observe ? 'claim' : path.slice(4),
+      kind = leaseKind(action),
+      authority = identity(c, peer);
+    let typed = { ...body, authority };
+    if (action === 'claim') {
+      fields(
+        body,
+        'request_id',
+        'expected_coordinator_epoch',
+        'scope',
+        'source',
+        'reconstruction_sha256',
+        'attempt_id',
+      );
+      scopeSource(c, body.scope, body.source);
+      delete typed.attempt_id;
+    } else if (action === 'renew') fields(body, 'request_id', 'current');
+    else if (action === 'handoff')
+      fields(
+        body,
+        'request_id',
+        'current',
+        'successor_session',
+        'expected_coordinator_epoch',
+        'quiesced_sha256',
+        'reconstruction_sha256',
+      );
+    else fields(body, 'request_id', 'completion');
+    const hash = await digest({ kind, request: typed });
+    if (observe) {
+      const prev = this.row(
+        'SELECT * FROM receipts WHERE peer=? AND id=?',
+        this.peerKey(peer),
+        body.request_id,
+      );
+      need(prev, 'original_claim_not_found', 404);
+      need(prev.fingerprint === (await digest({ path: '/v1/claim', body })), 'original_request_changed');
+      return JSON.parse(prev.result);
+    }
+    const handoffFact =
+      action === 'handoff'
+        ? {
+            kind: 'handoff',
+            current: body.current,
+            successor_session: body.successor_session,
+            expected_coordinator_epoch: body.expected_coordinator_epoch,
+            quiesced_sha256: body.quiesced_sha256,
+            reconstruction_sha256: body.reconstruction_sha256,
+          }
+        : null;
+    const completionFact =
+      action === 'release' ? { kind: 'completion', completion: body.completion } : null;
+    const fact = handoffFact || completionFact,
+      factId = fact && (await digest(fact));
+    return this.receipt(peer, body.request_id, path, body, () => {
+      const t = this.clock(),
+        ctl = this.control(),
+        result = { request_kind: kind, request_id: body.request_id, request_sha256: hash };
+      if (action === 'claim') {
+        const g = this.grant(body.scope, body.source, peer),
+          id = issueKey(body.scope);
+        need(
+          !ctl.stopped && body.expected_coordinator_epoch === ctl.epoch,
+          'admission_stopped_or_epoch_changed',
+        );
+        need(
+          g.reconstruction_sha256 === body.reconstruction_sha256 &&
+            g.attempt_ids.includes(body.attempt_id),
+          'reconstruction_or_attempt_unverified',
+        );
+        need(
+          !this.row('SELECT issue FROM claims WHERE issue=? OR attempt=?', id, body.attempt_id),
+          'issue_or_attempt_already_claimed',
+        );
+        need(
+          !Object.hasOwn(g.review_of, body.attempt_id) &&
+            !this.row('SELECT 1 FROM attempts WHERE id=?', body.attempt_id),
+          'initial_author_attempt_required',
+        );
+        this.put('INSERT INTO attempts VALUES (?,?)', body.attempt_id, id);
+        const { session_id, ...realm } = authority;
+        const fence = {
+          scope: body.scope,
+          source: body.source,
+          owner_session: session_id,
+          generation: 1,
+          coordinator_epoch: ctl.epoch,
+          lease_id: crypto.randomUUID(),
+          ...realm,
+        };
+        const lease = { fence, expires_at: Math.min(t + c.lease_seconds, g.valid_until) };
+        this.put("INSERT INTO claims VALUES (?,?,?,'active')", id, body.attempt_id, canonical(lease));
+        this.put(
+          'INSERT INTO claim_generations VALUES (?,?,?)',
+          id,
+          lease.fence.generation,
+          canonical({ grant: g, lease, request_id: body.request_id }),
+        );
+        return { ...result, lease };
+      }
+      const current = body.current || { fence: body.completion.fence },
+        f = current.fence,
+        id = issueKey(f.scope);
+      if (action === 'renew') {
+        const { lease } = this.owner(peer, f);
+        const g = this.grant(f.scope, f.source, peer);
+        const end = Math.min(t + c.lease_seconds, g.valid_until);
+        need(equal(current, lease) && end > current.expires_at, 'lease_preimage_or_expiry_changed');
+        const renewed = { fence: f, expires_at: end };
+        this.put('UPDATE claims SET lease=? WHERE issue=?', canonical(renewed), id);
+        return { ...result, lease: renewed };
+      }
+      const r = this.row('SELECT * FROM claims WHERE issue=?', id);
+      need(r && ['active', 'revoked'].includes(r.state), 'claim_not_reconcilable');
+      const prior = JSON.parse(r.lease);
+      need(equal(prior.fence, f) && f.owner_session === peer.session_id, 'original_owner_required');
+      this.reconciled(f.scope);
+      this.fact(factId, fact);
+      if (action === 'release') {
+        fields(body.completion, 'fence', 'accepted', 'receipt_sha256');
+        need(
+          typeof body.completion.accepted === 'boolean' && sha(body.completion.receipt_sha256),
+          'invalid_completion',
+        );
+        this.put("UPDATE claims SET state='released' WHERE issue=?", id);
+        return { ...result, completion: body.completion };
+      }
+      const next = Object.values(c.peers).find(
+        (p) => p.session_id === body.successor_session && peerRoles.includes(p.role),
+      );
+      need(
+        next &&
+          next.session_id !== peer.session_id &&
+          !ctl.stopped &&
+          ctl.epoch === body.expected_coordinator_epoch &&
+          equal(current, prior) &&
+          sha(body.quiesced_sha256),
+        'handoff_not_bound',
+      );
+      const g = this.grant(f.scope, f.source, next);
+      need(
+        g.reconstruction_sha256 === body.reconstruction_sha256 && g.attempt_ids.includes(r.attempt),
+        'successor_not_qualified',
+      );
+      const lease = {
+        fence: {
+          ...f,
+          authority_id: c.authority_id,
+          deployment_sha256: c.deployment_sha256,
+          policy_sha256: c.policy_sha256,
+          owner_session: next.session_id,
+          coordinator_epoch: ctl.epoch,
+          generation: f.generation + 1,
+          lease_id: crypto.randomUUID(),
+        },
+        expires_at: Math.min(t + c.lease_seconds, g.valid_until),
+      };
+      this.put("UPDATE claims SET lease=?,state='active' WHERE issue=?", canonical(lease), id);
+      this.put(
+        'INSERT INTO claim_generations VALUES (?,?,?)',
+        id,
+        lease.fence.generation,
+        canonical({ grant: g, lease, request_id: body.request_id }),
+      );
+      return { ...result, lease };
+    });
+  }
+  recordDestination(op, result) {
+    return this.store.transactionSync(() => {
+      this.put(
+        "UPDATE effects SET state='verified',settled_at=?,receipt=? WHERE id=? AND state='sending'",
+        this.clock(),
+        result.receipt_sha256,
+        op.original_id,
+      );
+      this.put('INSERT INTO destination_results VALUES (?,?)', op.original_id, canonical(result));
+      return result;
+    });
+  }
+  linearRequest(query, variables) {
+    need(
+      typeof this.linearAuthorization === 'string' &&
+        /^(?:Bearer )?[!-~]+$/.test(this.linearAuthorization),
+      'linear_receiver_unbound',
+      503,
+    );
+    return new Request('https://api.linear.app/graphql', {
+      method: 'POST',
+      redirect: 'manual',
+      headers: { 'content-type': 'application/json', Authorization: this.linearAuthorization },
+      body: JSON.stringify({ query, variables }),
+      signal: AbortSignal.timeout(15000),
+    });
+  }
+  linearGrant(peer, op, attempt, permission) {
+    const { row } = this.owner(peer, op.fence),
+      g = this.grant(op.fence.scope, op.fence.source, peer);
+    need(
+      g.attempt_ids.includes(row.attempt) && row.attempt === attempt && g[permission] === true,
+      'linear_action_not_granted',
+    );
+  }
+  async comment(body, peer) {
+    fields(body, 'operation', 'attempt_id', 'body');
+    const op = body.operation;
+    operationShape(this.c, op);
+    const issue = op.fence.scope.key.issue_id,
+      text = body.body;
+    need(
+      token(body.attempt_id) && typeof text === 'string' && text.length > 0 && text.length <= 60000,
+      'invalid_linear_intent',
+      400,
+    );
+    need(
+      (await digest({
+        kind: 'uif.linear-comment/1',
+        attempt_id: body.attempt_id,
+        issue_id: issue,
+        body: text,
+      })) === op.payload_sha256,
+      'linear_fingerprint_changed',
+    );
+    const hash = await digest({ kind: 'uif.linear-comment-id/1', operation: op });
+    const id = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+    const out = this.linearRequest(
+      'mutation Add($input:CommentCreateInput!){commentCreate(input:$input){success comment{id body issue{id}}}}',
+      { input: { id, issueId: issue, body: text } },
+    );
+    const response = await this.physical(
+      op,
+      body.attempt_id,
+      null,
+      0,
+      () => this.linearGrant(peer, op, body.attempt_id, 'allow_comments'),
+      out,
+    );
+    need(response.status === 200, 'original_linear_outcome_unknown', 502);
+    const raw = await readBytes(response.body, 768000),
+      doc = json(raw),
+      r = doc.data?.commentCreate;
+    need(
+      !doc.errors &&
+        r?.success === true &&
+        r.comment?.id === id &&
+        r.comment?.issue?.id === issue &&
+        r.comment?.body === text,
+      'original_linear_outcome_unknown',
+      502,
+    );
+    const receipt_sha256 = await digest({ operation: op, id, body_sha256: await digestBytes(raw) });
+    return this.recordDestination(op, { id, receipt_sha256 });
+  }
+  async upload(body, peer) {
+    fields(body, 'operation', 'attempt_id', 'filename', 'content_type', 'body_base64');
+    const { operation: op, attempt_id, filename, content_type } = body;
+    operationShape(this.c, op);
+    need(
+      token(attempt_id) &&
+        typeof filename === 'string' &&
+        /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,199}$/.test(filename) &&
+        [
+          'application/json',
+          'text/plain',
+          'text/markdown',
+          'text/csv',
+          'application/octet-stream',
+          'application/zip',
+          'image/png',
+        ].includes(content_type),
+      'invalid_attachment',
+      400,
+    );
+    const raw = bytes64(body.body_base64, 8 * 1024 * 1024),
+      body_sha256 = await digestBytes(raw),
+      size = raw.length;
+    need(
+      (await digest({
+        kind: 'uif.linear-upload/1',
+        attempt_id,
+        issue_id: op.fence.scope.key.issue_id,
+        filename,
+        content_type,
+        size,
+        body_sha256,
+      })) === op.payload_sha256,
+      'upload_fingerprint_changed',
+    );
+    const qualify = () => this.linearGrant(peer, op, attempt_id, 'allow_uploads');
+    const out = this.linearRequest(
+      'mutation Upload($type:String!,$name:String!,$size:Int!){fileUpload(contentType:$type,filename:$name,size:$size){success uploadFile{uploadUrl assetUrl headers{key value}}}}',
+      { type: content_type, name: filename, size },
+    );
+    const response = await this.physical(op, attempt_id, null, 0, qualify, out);
+    need(response.status === 200, 'upload_allocation_unknown', 502);
+    const doc = json(await readBytes(response.body, 32768)),
+      allocation = doc.data?.fileUpload;
+    need(!doc.errors && allocation?.success === true, 'upload_allocation_unknown', 502);
+    const file = allocation.uploadFile,
+      target = new URL(file.uploadUrl),
+      asset = new URL(file.assetUrl);
+    const hosts = this.c.upload_hosts || [];
+    need(
+      target.protocol === 'https:' &&
+        !target.username &&
+        !target.password &&
+        !target.port &&
+        !target.hash &&
+        hosts.includes(target.hostname) &&
+        asset.origin === 'https://uploads.linear.app' &&
+        !asset.username &&
+        !asset.password &&
+        !asset.search &&
+        !asset.hash &&
+        asset.pathname.startsWith('/' + this.c.workspace_id + '/'),
+      'unbound_upload_destination',
+      502,
+    );
+    const headers = new Headers({ 'content-type': content_type });
+    need(Array.isArray(file.headers) && file.headers.length <= 16, 'invalid_upload_headers', 502);
+    for (const { key, value } of file.headers) {
+      need(
+        typeof key === 'string' &&
+          /^(content-type|cache-control|x-goog-content-length-range|x-(goog|amz)-meta-[a-z0-9-]+)$/i.test(
+            key,
+          ) &&
+          typeof value === 'string' &&
+          value.length <= 2048 &&
+          !/[\x00-\x1f]/.test(value),
+        'invalid_upload_headers',
+        502,
+      );
+      if (key.toLowerCase() === 'cache-control')
+        need(
+          /^(private|no-store)(,\s*(private|no-store))*$/i.test(value),
+          'upload_cache_policy_unbound',
+        );
+      headers.set(key, value);
+    }
+    need(headers.get('content-type') === content_type, 'upload_content_type_changed', 502);
+    const put = new Request(target, {
+      method: 'PUT',
+      redirect: 'manual',
+      headers,
+      body: raw,
+      signal: AbortSignal.timeout(30000),
+    });
+    // First mutation already reached the provider. A revoke or crash here leaves
+    // this same original unknown. Never request another signed URL or PUT again.
+    qualify();
+    const stored = await this.provider(put);
+    need(stored.ok, 'original_upload_unknown', 502);
+    const receipt_sha256 = await digest({
+      operation: op,
+      asset_url: asset.href,
+      body_sha256,
+      size,
+      status: stored.status,
+    });
+    return this.recordDestination(op, { asset_url: asset.href, receipt_sha256 });
+  }
+  async physical(op, attempt, account, amount, qualify, outgoing) {
+    this.store.transactionSync(() => {
+      qualify(false);
+      need(
+        !this.row('SELECT 1 AS found FROM effects WHERE id=?', op.original_id),
+        'original_already_recorded',
+      );
+      this.reconciled(op.fence.scope);
+      this.put(
+        "INSERT INTO effects VALUES (?,?,?,?,?,?,'sending',NULL,NULL)",
+        op.original_id,
+        issueKey(op.fence.scope),
+        canonical(op),
+        attempt,
+        account,
+        amount,
+      );
+    });
+    // Re-evaluate after storage confirmation. No task switch/await, queue, proxy
+    // callback or caller-controlled URL exists between the final check and fetch.
+    await this.store.sync();
+    try {
+      need(
+        this.row('SELECT state FROM effects WHERE id=?', op.original_id)?.state === 'sending',
+        'original_state_changed',
+      );
+      qualify(true);
+    } catch (e) {
+      const hash = await digest({ operation: op, status: 'denied', kind: 'pre-egress-fence' });
+      this.put(
+        "UPDATE effects SET state='denied',amount=0,settled_at=?,receipt=? WHERE id=? AND state='sending'",
+        this.clock(),
+        hash,
+        op.original_id,
+      );
+      throw e;
+    }
+    try {
+      return await this.provider(outgoing);
+    } catch {
+      throw new Refusal('original_external_effect_unknown', 502);
+    }
+  }
+  bodyReader(peer, op, retention) {
+    this.live(peer);
+    need(retention.readers.includes(peer.session_id), 'private_result_reader_not_granted', 403);
+    if (peer.role !== 'control') {
+      need(op.fence.owner_session === peer.session_id, 'original_owner_required', 403);
+      const g = this.grant(op.fence.scope, op.fence.source, peer);
+      need(
+        g.result_retention && equal(g.result_retention, retention),
+        'private_result_grant_changed',
+        403,
+      );
+    }
+  }
+  qualifySend(peer, intent, promptSHA, includeThis = false) {
+    const op = intent.operation,
+      { row, lease } = this.owner(peer, op.fence),
+      g = this.grant(op.fence.scope, op.fence.source, peer);
+    need(
+      g.allow_provider &&
+        row.attempt === intent.attempt_id &&
+        g.attempt_ids.includes(row.attempt) &&
+        intent.request_not_after <= lease.expires_at,
+      'attempt_or_deadline_not_current',
+    );
+    const retention = g.result_retention;
+    need(retention && retention.readers.includes(peer.session_id), 'private_original_retention_unbound');
+    need(
+      this.row('SELECT COUNT(*) AS n FROM provider_results WHERE issue=?', issueKey(op.fence.scope)).n <
+        retention.max_retained_results,
+      'private_result_storage_bound',
+    );
+    const reviewOf = Object.hasOwn(g.review_of, row.attempt) ? g.review_of[row.attempt] : null;
+    const wanted = reviewOf ? this.c.reviewer_route : this.c.route;
+    need(wanted && equal(wanted, intent.route), 'attempt_account_route_changed');
+    if (reviewOf) {
+      const bound = this.row('SELECT body FROM review_bindings WHERE attempt=?', row.attempt);
+      const r = bound && JSON.parse(bound.body);
+      need(
+        r &&
+          equal(r.fence, op.fence) &&
+          r.candidate.author_attempt_id === reviewOf &&
+          r.send_prompt_sha256 === promptSHA,
+        'independent_review_candidate_unbound',
+      );
+    }
+    const receipt = this.usage(intent.route);
+    need(
+      this.quotaVerifier &&
+        this.authorized('quota', intent.route.account_id) &&
+        sha(this.c.quota_verification_sha256) &&
+        receipt &&
+        receipt.admission_binding_sha256 === this.c.quota_verification_sha256 &&
+        receipt.receipt_sha256 === intent.quota_receipt_sha256,
+      'usage_receipt_not_current',
+    );
+    need(
+      !this.row('SELECT original FROM budget_breaches WHERE account=?', intent.route.account_id),
+      'account_reservation_maximum_breached',
+    );
+    const p = receipt.projection;
+    // Unknown effects count across midnight and process restarts. A later complete
+    // account observation may cover a verified terminal charge, never an unknown one.
+    const { debt } = this.row(
+      `SELECT COALESCE(SUM(amount),0) AS debt FROM effects WHERE account=?
+      AND (state='sending' OR settled_at>=?) AND id!=?`,
+      intent.route.account_id,
+      p.covered_through,
+      includeThis ? op.original_id : '',
+    );
+    const { opening } = this.row(
+      'SELECT COALESCE(SUM(amount),0) AS opening FROM carryovers WHERE account=?',
+      intent.route.account_id,
+    );
+    projectionOK(
+      p,
+      intent.route,
+      this.clock(),
+      intent.request_not_after,
+      debt + opening,
+      intent.maximum_millineurons,
+    );
+  }
+  async send(body, peer) {
+    fields(body, 'intent', 'body_base64');
+    const i = body.intent;
+    fields(
+      i,
+      'operation',
+      'route',
+      'attempt_id',
+      'request_sha256',
+      'quota_receipt_sha256',
+      'request_not_after',
+      'maximum_millineurons',
+    );
+    const op = i.operation;
+    operationShape(this.c, op);
+    need(
+      this.allowedRoute(i.route) &&
+        sha(op.original_id) &&
+        sha(i.request_sha256) &&
+        sha(i.quota_receipt_sha256) &&
+        boundedRequest(i.request_not_after) &&
+        token(i.attempt_id) &&
+        models.get(i.route.model) === i.maximum_millineurons,
+      'send_intent_not_bound',
+    );
+    const raw = bytes64(body.body_base64, 128000),
+      request = json(raw);
+    const { method, path, headers } = wire(i.route);
+    // Accept only the native canonical request. Duplicate keys, provider overrides,
+    // streams, paid fallback and caller-chosen transport headers cannot reach egress.
+    need(
+      canonical(request) === new TextDecoder().decode(raw) &&
+        Object.keys(request).every((k) =>
+          [
+            'model',
+            'messages',
+            'max_tokens',
+            'stream',
+            'tools',
+            'chat_template_kwargs',
+            'response_format',
+          ].includes(k),
+        ) &&
+        request.model === i.route.model &&
+        request.max_tokens === 2048 &&
+        request.stream === false &&
+        Array.isArray(request.messages) &&
+        request.messages.length > 0 &&
+        (await digestBytes(raw)) === i.request_sha256,
+      'model_body_not_bound',
+      400,
+    );
+    const payload = await digest({
+      kind: 'uif.workers-ai-free-send/1',
+      route: i.route,
+      attempt: i.attempt_id,
+      request_sha256: i.request_sha256,
+      quota: i.quota_receipt_sha256,
+      not_after: i.request_not_after,
+      maximum_millineurons: i.maximum_millineurons,
+      method,
+      path,
+      headers,
+    });
+    need(
+      payload === op.payload_sha256 && op.fence.owner_session === peer.session_id,
+      'send_fingerprint_changed',
+    );
+    const reviewRoute = !!this.c.reviewer_route && equal(i.route, this.c.reviewer_route),
+      credential = reviewRoute ? this.reviewerProviderToken : this.providerToken;
+    const first = request.messages[0];
+    need(first?.role === 'user' && typeof first.content === 'string', 'original_prompt_unbound');
+    const promptSHA = await digestBytes(new TextEncoder().encode(first.content));
+    need(
+      typeof credential === 'string' &&
+        /^[!-~]+$/.test(credential) &&
+        (!reviewRoute || credential !== this.providerToken),
+      'physical_sender_unbound',
+      503,
+    );
+    const outgoing = new Request('https://api.cloudflare.com' + path, {
+      method,
+      redirect: 'manual',
+      headers: { ...headers, Authorization: 'Bearer ' + credential },
+      body: raw,
+      signal: AbortSignal.timeout(
+        Math.min(600000, Math.max(1, (i.request_not_after - this.clock()) * 1000)),
+      ),
+    });
+    const retention = this.grant(op.fence.scope, op.fence.source, peer).result_retention;
+    const response = await this.physical(
+      op,
+      i.attempt_id,
+      i.route.account_id,
+      i.maximum_millineurons,
+      (include) => this.qualifySend(peer, i, promptSHA, include),
+      outgoing,
+    );
+    // Read and authenticate response at the same fixed origin. HTTP errors,
+    // timeout, malformed/missing usage, and missing gateway IDs retain maximum.
+    if (response.status !== 200) {
+      await response.body?.cancel();
+      throw new Refusal('original_provider_effect_unknown', 502);
+    }
+    const gatewayReceipt = response.headers.get('cf-aig-log-id');
+    need(
+      i.route.gateway_id === null ||
+        (typeof gatewayReceipt === 'string' && /^[A-Za-z0-9_-]{1,256}$/.test(gatewayReceipt)),
+      'original_gateway_receipt_missing',
+      502,
+    );
+    const responseBytes = await readBytes(response.body, retention.max_response_bytes);
+    const result = json(responseBytes);
+    const neurons = result.usage?.neurons;
+    need(
+      result.model === i.route.model &&
+        Array.isArray(result.choices) &&
+        result.choices.length > 0 &&
+        typeof neurons === 'number' &&
+        Number.isFinite(neurons) &&
+        neurons >= 0,
+      'original_usage_unknown',
+      502,
+    );
+    if (neurons * 1000 > i.maximum_millineurons) {
+      const observed = Math.min(Number.MAX_SAFE_INTEGER, Math.ceil(neurons * 1000));
+      this.store.transactionSync(() => {
+        this.put(
+          'INSERT OR IGNORE INTO budget_breaches VALUES (?,?,?)',
+          i.route.account_id,
+          op.original_id,
+          observed,
+        );
+        this.put('UPDATE effects SET amount=? WHERE id=?', observed, op.original_id);
+      });
+      throw new Refusal('account_reservation_maximum_breached', 502);
+    }
+    const bodySHA = await digestBytes(responseBytes);
+    const hash = await digest({
+      operation: op,
+      body_sha256: bodySHA,
+      gateway_receipt: gatewayReceipt,
+      status: 'verified',
+    });
+    // Retain the verified bytes in private authority storage in the same commit as
+    // the terminal status. A lost client ACK can recover the original without cost.
+    const currentGrant = this.row('SELECT body FROM grants WHERE issue=?', issueKey(op.fence.scope));
+    const g = currentGrant && JSON.parse(currentGrant.body);
+    const consent =
+      this.commissioned() &&
+      this.authorized('grant', issueKey(op.fence.scope)) &&
+      g &&
+      equal(g.source, op.fence.source) &&
+      g.valid_until > this.clock() &&
+      g.result_retention &&
+      equal(g.result_retention, retention);
+    this.store.transactionSync(() => {
+      this.put(
+        "UPDATE effects SET state='verified',settled_at=?,receipt=? WHERE id=? AND state='sending'",
+        this.clock(),
+        hash,
+        op.original_id,
+      );
+      if (consent)
+        this.put(
+          'INSERT INTO provider_results VALUES (?,?,?,?,?,?,NULL)',
+          op.original_id,
+          responseBytes.buffer,
+          gatewayReceipt,
+          issueKey(op.fence.scope),
+          canonical(retention),
+          bodySHA,
+        );
+    });
+    need(consent, 'private_result_grant_changed', 403);
+    this.bodyReader(peer, op, retention);
+    return this.providerResponse(responseBytes, gatewayReceipt, hash);
+  }
+  providerResponse(responseBytes, gatewayReceipt, hash) {
+    return new Response(responseBytes, {
+      headers: {
+        'content-type': 'application/json',
+        'uif-receipt-sha256': hash,
+        'cache-control': 'no-store',
+        ...(gatewayReceipt ? { 'cf-aig-log-id': gatewayReceipt } : {}),
+      },
+    });
+  }
+}

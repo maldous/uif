@@ -119,7 +119,7 @@ def repository_tools(workspace, tracked_paths, write_roots):
 
 def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
              tools: list[dict], execute_tool, active_projects, cancelled, timeout: int,
-             structured_report=False) -> str:
+             structured_report=False, finish_original=None) -> str:
     """Execute only the tools that the protected owner bound to this attempt.
 
     The executor enforces workspace scope and applies the attempt's separate
@@ -169,6 +169,8 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
                     )})
                     continue
                 raise WorkersAIRequestError('Workers AI did not return a final message')
+            if finish_original is not None:
+                finish_original(request_id, content)
             return content
         if report_only:
             raise WorkersAIRequestError('Workers AI requested a tool during a report-only response')
@@ -185,7 +187,7 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
             continue
 
         messages.append({'role': 'assistant', 'content': content or '', 'tool_calls': calls})
-        for call_id, name, args in permitted_calls:
+        for index, (call_id, name, args) in enumerate(permitted_calls):
             remaining = deadline - time.monotonic()
             if remaining <= 0 or cancelled() or attempt.project not in active_projects():
                 raise WorkersAIRequestError('Workers AI turn stopped before executing a tool')
@@ -194,7 +196,12 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
                     args = json.loads(args)
                 if not isinstance(args, dict):
                     raise RepositoryToolError('Expected a JSON object for tool arguments')
-                output = execute_tool(name, args, remaining)
+                original = getattr(execute_tool, 'execute_original', None)
+                if original is None:
+                    output = execute_tool(name, args, remaining)
+                else:
+                    output = original(name, args, remaining, request_id=request_id,
+                                      ordinal=index, call_id=call_id)
             except json.JSONDecodeError:
                 output = 'Tool did not run. Supply arguments as a valid JSON object.'
             except RepositoryToolError as error:
