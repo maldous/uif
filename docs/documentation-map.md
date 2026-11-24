@@ -42,6 +42,7 @@ installed service, current provider grants or useful unattended operation.
 | --- | --- | --- |
 | Repository worker | [AGENTS](../AGENTS.md) | Entry point; preserve applicable nested/product instructions. Only one AGENTS file exists in this source inventory. |
 | Shared execution rules | [Policy](agents/uif-worker-policy.md), [manifest](agents/uif-worker-policy.json), [profiles](agents/environment-profiles.json) | Read the actual version/digest and selected profile. Published prose is not runtime enforcement. |
+| Normal BAU service | [Business-as-usual contract](operations/business-as-usual.md) | Unattended Morgan–Stokowski delivery, no paid fallback, recovery and end-to-end acceptance. |
 | Current operating model | [Operating procedure](operating-procedure.md), [project integration](project-integration.md) | Native Linear intake, disjoint owners and existing effect custody; no inferred claim transfer. |
 | Startup/recovery/transition | [Recovery contract](white-room/startup-and-recovery.md), [White Room guide](white-room/README.md), [remote evidence](white-room/remote-evidence.md), [discovery](white-room/discovery.md) | Compare the selected operation; source-only comparators never authorize execution. |
 | Practical operation-scoped readiness | [Alignment skill](../.agents/skills/uif-environment-alignment/SKILL.md), [evidence matrix](../.agents/skills/uif-environment-alignment/references/evidence.md) | Source, guidance, actual auth/tools and original receipts; dependent gaps only, not blanket product compliance. |

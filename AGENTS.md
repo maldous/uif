@@ -42,7 +42,9 @@ Reuse accepted stages, current remote source and compatible checkpoint/operation
 evidence; preserve dirty work and custody. A quota reset or a green comparator
 never grants a claim, replays a session or authorizes publication.
 
-The required normal state is unattended continuous BAU without this chat.
+The [business-as-usual service contract](docs/operations/business-as-usual.md)
+defines unattended continuous delivery without this chat and the required live
+acceptance evidence.
 Stokowski coordinates local-ready mode; an independently durably scheduled
 logical Morgan lifecycle appoints/reconstructs failed coordinator/project
 executions through atomic epochs and effect fences. Native Linear is sole
