@@ -314,6 +314,7 @@ class Registry:
     def _active(self, reg, state, actor, key, generation, *, reasoning=False):
         require(state["stopped"] is False, "service_stopped")
         task = self._task(state, key, generation)
+        require("shared_lease" not in task, "typed_shared_authority_required")
         require(task["owner"] == actor and task["state"] == "active", "claim_not_active")
         require(not self._has_other_project_claim(state, key), "conflicting_project_claims")
         if reasoning and task["lane"] == "local":
@@ -329,7 +330,9 @@ class Registry:
                 self._authenticate(reg, principal, actor)
                 return dict(schema=state["schema"], revision=state["revision"], mode=state["mode"],
                             stopped=state["stopped"], local_limit=state["local_limit"], coordinator=state["coordinator"],
-                            provider=state["provider"], morgan=state["morgan"], tasks=state["tasks"],
+                            provider=state["provider"], morgan=state["morgan"],
+                            tasks={key: task for key, task in state["tasks"].items()
+                                   if "shared_lease" not in task},
                             archive=state.get("cold_archive"), archive_degraded=state.get("archive_degraded"),
                             terminal_history="task_status-by-exact-Linear-key")
         if set(request) == {"action", "key"} and request["action"] == "task_status":
@@ -338,7 +341,9 @@ class Registry:
                 role = self._authenticate(reg, principal, actor)
                 require(key.workspace_id == reg["workspace_id"] and
                         (key.project_id in role["projects"] or actor == reg["morgan_actor"]), "project_authority")
-                return deepcopy(state["tasks"].get(key.identity) or self.store.archived_task(key.identity, readonly=True))
+                task = state["tasks"].get(key.identity) or self.store.archived_task(key.identity, readonly=True)
+                require(task is None or "shared_lease" not in task, "typed_shared_authority_required")
+                return deepcopy(task)
         token(request.get("request_id"))
         task_actions = {"claim", "retry_claim", "capture_handoff", "acknowledge_handoff", "resolve_operation", "finish"}
         key = LinearKey.from_record(request.get("key")) if request.get("action") in task_actions else None
@@ -513,6 +518,7 @@ class Registry:
                 "unsupported_action")
         key = LinearKey.from_record(req.get("key"))
         task = self._task(state, key, req.get("generation"))
+        require("shared_lease" not in task, "typed_shared_authority_required")
         require(key.workspace_id == reg["workspace_id"] and key.project_id in role["projects"], "project_authority")
         if action in {"retry_claim", "capture_handoff", "acknowledge_handoff"}:
             require(not self._has_other_project_claim(state, key), "conflicting_project_claims")
