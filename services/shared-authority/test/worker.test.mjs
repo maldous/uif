@@ -72,8 +72,18 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     quota_verification_sha256: 'd'.repeat(64),
     lease_seconds: 300,
   };
+  let runtimeOutput = '';
+  const diagnosticLines = () =>
+    runtimeOutput.match(/uif\.access\.service_identity_invalid:[^\r\n]*/g) ?? [];
   const make = () =>
     new Miniflare({
+      handleRuntimeStdio(stdout, stderr) {
+        for (const stream of [stdout, stderr]) {
+          stream.setEncoding('utf8').on('data', (chunk) => {
+            runtimeOutput += chunk;
+          });
+        }
+      },
       modules: true,
       scriptPath: join(root, 'worker.mjs'),
       modulesRoot: root,
@@ -155,6 +165,19 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       ).status,
       401,
     );
+    const badsig = tokens.native.split('.');
+    badsig[2] = (badsig[2][0] === 'A' ? 'B' : 'A') + badsig[2].slice(1);
+    assert.equal((await call(badsig.join('.'), 'status')).status, 401);
+    const signedInvalid = await sign('native', { sub: 'human' });
+    assert.equal((await call(signedInvalid, 'control', {})).status, 403);
+    assert.deepEqual(diagnosticLines(), []);
+    const repeated = await Promise.all(
+      Array.from({ length: 5 }, () => call(signedInvalid, 'status')),
+    );
+    for (const result of repeated) {
+      assert.equal(result.status, 403);
+      assert.deepEqual(await result.json(), { error: 'access_service_identity_invalid' });
+    }
     for (const bad of [
       { sub: 'human' },
       { iss: 'https://elsewhere.test' },
@@ -165,9 +188,6 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     ]) {
       assert.equal((await call(await sign('native', bad), 'status')).status, 403);
     }
-    const badsig = tokens.native.split('.');
-    badsig[2] = (badsig[2][0] === 'A' ? 'B' : 'A') + badsig[2].slice(1);
-    assert.equal((await call(badsig.join('.'), 'status')).status, 401);
     assert.equal(
       (await call(await sign('native', {}, { alg: 'none', kid: jwk.kid, typ: 'JWT' }), 'status')).status,
       401,
@@ -337,7 +357,9 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       200,
     );
     await instance.dispose();
+    assert.deepEqual(diagnosticLines(), ['uif.access.service_identity_invalid:empty_subject']);
     instance = make();
+    assert.equal((await call(signedInvalid, 'status')).status, 403);
     assert.equal((await (await call(jwt, 'status')).json()).stopped, true);
     const read = {
       fence: original.lease.fence,
@@ -366,6 +388,7 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     );
   } finally {
     await instance.dispose();
+    assert.deepEqual(diagnosticLines(), ['uif.access.service_identity_invalid:empty_subject']);
     await rm(dir, { recursive: true, force: true });
   }
 });

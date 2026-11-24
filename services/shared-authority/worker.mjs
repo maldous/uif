@@ -5,6 +5,7 @@ import { config, json, readBytes, need, Refusal } from './protocol.mjs';
 
 const verify = accessVerifier();
 const SINGLETON = 'uif.shared-effect-authority/1';
+const ACCESS_DIAGNOSTIC_SLOT = 'uif:diagnostic:access-reasons:109:v1';
 const reply = (value, status = 200) =>
   Response.json(value, { status, headers: { 'cache-control': 'no-store' } });
 function error(e) {
@@ -71,6 +72,18 @@ export class SharedAuthority extends DurableObject {
       trust: { issuer: env.ACCESS_ISSUER, audience: env.ACCESS_AUD },
     });
   }
+  async logAccessFailureOnce(failures) {
+    const storage = this.ctx.storage;
+    const reserved = storage.transactionSync(() => {
+      if (storage.kv.get(ACCESS_DIAGNOSTIC_SLOT)) return false;
+      storage.kv.put(ACCESS_DIAGNOSTIC_SLOT, true);
+      return true;
+    });
+    if (!reserved) return;
+    // Commit the one-shot reservation before emitting anything, including across restarts.
+    await storage.sync();
+    console.warn('uif.access.service_identity_invalid:' + failures.join(','));
+  }
   async fetch(request) {
     try {
       need(
@@ -78,8 +91,12 @@ export class SharedAuthority extends DurableObject {
         'wrong_authority_instance',
         403,
       );
-      const peer = await verify(request, this.env, this.config),
-        path = new URL(request.url).pathname;
+      const path = new URL(request.url).pathname;
+      const diagnose =
+        path === '/v1/status' && request.method === 'GET'
+          ? (failures) => this.logAccessFailureOnce(failures)
+          : undefined;
+      const peer = await verify(request, this.env, this.config, diagnose);
       let body = {};
       if (path === '/v1/status') need(request.method === 'GET', 'method_not_allowed', 405);
       else {

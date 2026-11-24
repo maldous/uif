@@ -41,7 +41,7 @@ export function accessVerifier(fetchKeys = fetch, clock = now) {
     cached = { issuer, until: clock() + 60, keys: jwks.keys };
     return cached.keys;
   }
-  return async function verify(request, env, c) {
+  return async function verify(request, env, c, onIdentityFailure) {
     const jwt = request.headers.get('Cf-Access-Jwt-Assertion');
     need(jwt && jwt.length <= 16384, 'access_assertion_required', 401);
     const parts = jwt.split('.');
@@ -80,9 +80,11 @@ export function accessVerifier(fetchKeys = fetch, clock = now) {
     );
     const failures = serviceIdentityFailures(claims, env, c.peers, clock());
     if (failures.length) {
-      // Cloudflare receiver console only, after signature verification.
-      // Never log claim values, request fields, or peer identifiers.
-      console.warn('uif.access.service_identity_invalid:' + failures.join(','));
+      try {
+        await onIdentityFailure?.(failures);
+      } catch {
+        // Diagnostic failure must preserve the original refusal.
+      }
       throw new Refusal('access_service_identity_invalid', 403);
     }
     return { ...c.peers[claims.common_name], expires_at: claims.exp };
