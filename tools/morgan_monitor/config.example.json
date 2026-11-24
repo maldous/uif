@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "statePath": "./private-monitor-state/monitor.sqlite3",
+  "intervalSeconds": 30,
+  "maxPending": 10000,
+  "sources": {
+    "codexRegistry": {
+      "path": null,
+      "pageSize": 100,
+      "maxRecords": 1000,
+      "deadlineSeconds": 2
+    },
+    "codexTurns": {
+      "path": null,
+      "pageSize": 100,
+      "maxRecords": 1000,
+      "deadlineSeconds": 2
+    },
+    "symphonyRegistry": {
+      "path": null,
+      "pageSize": 100,
+      "maxRecords": 1000,
+      "deadlineSeconds": 2
+    },
+    "controllerService": {
+      "unit": null,
+      "user": false,
+      "timeoutSeconds": 3
+    },
+    "processIdentity": {
+      "pid": null,
+      "startTicks": null
+    },
+    "fooAllowance": {
+      "socketPath": null,
+      "expectedExecutable": null,
+      "expectedExecutableSha256": null,
+      "expectedCodexHome": null,
+      "expectedUid": null,
+      "expectedVersion": "0.167.0",
+      "timeoutSeconds": 5
+    }
+  },
+  "bindings": [],
+  "receiver": {
+    "enabled": false,
+    "url": null,
+    "allowedUrls": [],
+    "tokenEnvs": {},
+    "timeoutSeconds": 5
+  },
+  "selectedSources": [
+    "codex_registry",
+    "codex_turns",
+    "symphony_registry",
+    "controller_service",
+    "process_identity",
+    "cloud_feed",
+    "foo_allowance"
+  ]
+}

@@ -1,0 +1,66 @@
+[
+  {
+    "options": {
+      "mode": "full",
+      "theme": "light"
+    },
+    "sha256": "aff9e7345ef97b9c9e6470164f98bcbc51af4bb2d25a63c9a36b48b95e6e4772"
+  },
+  {
+    "options": {
+      "mode": "full",
+      "theme": "light",
+      "footer": false,
+      "interactive": false
+    },
+    "sha256": "be6e4bf4e3107d0055d3693ac9fba212957ff0c8704015c39f3a1c4b2c5954de"
+  },
+  {
+    "options": {
+      "mode": "full",
+      "theme": "dark"
+    },
+    "sha256": "7611f2e9cc02096f911f5fd997b7cea0c1aa6a3a1e76fa099fdca7ea75134d8d"
+  },
+  {
+    "options": {
+      "mode": "full",
+      "theme": "dark",
+      "footer": false,
+      "interactive": false
+    },
+    "sha256": "5e614fef07ebdd917a09e04dda225045a569c9035aacf73dc3cef8757e7e9f05"
+  },
+  {
+    "options": {
+      "mode": "compact",
+      "theme": "light"
+    },
+    "sha256": "ac4f994cc0454aa65456e997db41fd715afaeb3fdd0fc17432765321878dded2"
+  },
+  {
+    "options": {
+      "mode": "compact",
+      "theme": "light",
+      "footer": false,
+      "interactive": false
+    },
+    "sha256": "9c385617689b143f085158fc2641637d0902a67888207b616249efcf03083309"
+  },
+  {
+    "options": {
+      "mode": "compact",
+      "theme": "dark"
+    },
+    "sha256": "49765c3909d24a2f859dedc7f657b195d39cf927cd4396f90eb822b00c1696d3"
+  },
+  {
+    "options": {
+      "mode": "compact",
+      "theme": "dark",
+      "footer": false,
+      "interactive": false
+    },
+    "sha256": "21a7263d5c240e3611e11ff265ab2888c5832e69dc0ac9f32bdab00e24f8c9aa"
+  }
+]

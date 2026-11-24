@@ -1,0 +1,85 @@
+{
+  "brandANQR": {
+    "file": "anqr-logo.png",
+    "sha256": "59fbcb409b8601be089af9462c315c8b897b61c1c6f90d5c62555aa1de28cba8"
+  },
+  "brandOMLight": {
+    "file": "offmenu-selected-balanced-final.png",
+    "sha256": "632d5635dc9fe84be2d1f7779124d3305bbaa444a01e9d7e81cc3ae36dca2df1"
+  },
+  "brandOMDark": {
+    "file": "offmenu-selected-balanced-final-dark.png",
+    "sha256": "ca883c0607d4f13c530a62115ddde8be8552c8c6fd0900992d9ada6eb8ccaeff"
+  },
+  "brandCQLight": {
+    "file": "circularquay-logo-light.png",
+    "sha256": "d40ff8ee2dc8cc9e92021b865a92f1194c1c0dd6063f6d780cb0a1d89d43d8b5"
+  },
+  "brandCQDark": {
+    "file": "circularquay-logo-dark.png",
+    "sha256": "71dc68040179bb922e16ab26d37eb7e48d19c19196aca3d69182cb0332f3190e"
+  },
+  "fontRegular": {
+    "file": "Roboto-Regular.ttf",
+    "sha256": "97736c47ac0976fa601709b7d7450e27ad8b91bb33ff43ce1de240cb650c5a3f"
+  },
+  "fontSemibold": {
+    "file": "Roboto-SemiBold.ttf",
+    "sha256": "7e4670482f986261591c7fc72a263c252744a60dad708a765d3be8f269e5d61e"
+  },
+  "tools": {
+    "file": "tools.png",
+    "sha256": "55316a5dd8651bd43fc17731b68a54b456ff487017245db5552b5cea10c4ea89"
+  },
+  "test": {
+    "file": "test.png",
+    "sha256": "6db9741f388e4565fdb2b3fb97802c3878717f292cbf05ce1f05550ed37d2788"
+  },
+  "search": {
+    "file": "search.png",
+    "sha256": "0a4e87257e89edcb94498b47ac10fc3885549e6de5dd441fff0cf1bb6701f38f"
+  },
+  "document": {
+    "file": "document.png",
+    "sha256": "e9be50622fb798a3eccc648e73f9f0a588323cf4732aaded9b5b3fed9b4b1735"
+  },
+  "package": {
+    "file": "package.png",
+    "sha256": "8d91e0e3ff4108aeece7393cb51c9f5f40486197b8e2687aba3897759d457db7"
+  },
+  "note": {
+    "file": "note.png",
+    "sha256": "fcce3f228914a2c3f7888818d1b2cea8db511e98e119dc41ad35b1a4a6c61c09"
+  },
+  "bug": {
+    "file": "bug.png",
+    "sha256": "ef8c003bbcbb383db3f91295050adbed88d1bc6047bdba5cc8ad980b5f7e76d1"
+  },
+  "puzzle": {
+    "file": "puzzle.png",
+    "sha256": "87cd6c03d1e0ee3134290e193baf082ae3a8dcc35142305a0f4316bab9a28f4e"
+  },
+  "chart": {
+    "file": "chart.png",
+    "sha256": "2a58730f633fd979784dd98ac6e5ebf3589dbedc9012a64bbe0bfe9ebd6c311b"
+  },
+  "compass": {
+    "file": "compass.png",
+    "sha256": "3f33f850d848ea0d7753d5a0605180fc6559958dcfd640288b3e9a5c5915e2df"
+  },
+  "chat": {
+    "file": "chat.png",
+    "sha256": "b836481aea2aca22a67f5d9bb7e3e43f479f5318bd3cc1cdc4de413abbe0d43f"
+  },
+  "hourglass": {
+    "file": "hourglass.png",
+    "sha256": "0dfa1e0001c52648245bae7a666a76745015ea1ed1ef543096984248c3637c1b"
+  },
+  "server": {
+    "file": "server.png",
+    "sha256": "81907211b9bc3f83c12e72d9ac735bd4ca6f42cb937c54c38b670982d7fc6e22"
+  },
+  "geometry-full.json": {
+    "sha256": "c76de80e8729d722181cec049cfb456f29f172be3075b571cfe7f9e197cc5a3b"
+  }
+}

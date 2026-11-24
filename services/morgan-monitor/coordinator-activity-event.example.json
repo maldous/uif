@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "native_activity",
+  "eventId": "native-sample-1",
+  "sequence": 1,
+  "rosterGeneration": 1,
+  "observedAt": "2026-11-10T20:00:00.000Z",
+  "health": "ok",
+  "coverage": {"complete": false, "observed": 0, "total": null},
+  "sessions": [],
+  "activities": [
+    {
+      "project": "CIX",
+      "observedAt": "2026-11-10T20:00:00.000Z",
+      "state": "completed",
+      "topicKeys": ["review"],
+      "blockerKeys": []
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "cloud_runtime",
+  "eventId": "sample-1",
+  "sequence": 1,
+  "runtimeGeneration": 4,
+  "observedAt": "2026-11-10T20:00:00.000Z",
+  "health": "ok",
+  "coverage": {"complete": false, "observed": 1, "total": null},
+  "sessions": [
+    {
+      "alias": "A",
+      "assignment": "assigned",
+      "observedAt": "2026-11-10T20:00:00.000Z",
+      "state": "running",
+      "proof": "session_runtime",
+      "runtime": {"type": "active", "activeFlags": []},
+      "topicKeys": [],
+      "blockerKeys": []
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "sources": [
+    {
+      "id": "cloud_runtime",
+      "domain": "cloud",
+      "aliases": ["A"],
+      "capabilities": ["session_runtime"],
+      "runtimeGeneration": 4,
+      "projectBindings": [{"alias": "A", "project": "Cloud", "kind": "durable"}],
+      "staleAfterSeconds": 120,
+      "outageAfterSeconds": 600,
+      "tokenEnv": "CLOUD_RUNTIME_INGEST_TOKEN"
+    }
+  ]
+}
