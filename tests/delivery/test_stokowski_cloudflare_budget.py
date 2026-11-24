@@ -86,7 +86,7 @@ class CloudflareBudgetTests(unittest.TestCase):
 
     def test_usage_above_reservation_blocks_further_requests_that_day(self):
         self.budget.reserve('first', 1, new_task=True, now=self.now)
-        self.budget.settle('first', 2)
+        self.budget.settle('first', 2, now=self.now)
         with self.assertRaises(BudgetRefused):
             self.budget.reserve('second', 1, new_task=False, now=self.now)
         self.budget.reserve('tomorrow', 1, new_task=True, now=self.now + timedelta(days=1))

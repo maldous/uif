@@ -180,8 +180,8 @@ class PrivateStore:
         finally:
             temporary.unlink(missing_ok=True)
 
-    def request_receipt(self, identity):
-        with self._cold() as connection:
+    def request_receipt(self, identity, *, readonly=False):
+        with self._cold(readonly=readonly) as connection:
             if connection is None:
                 return None
             row = connection.execute("SELECT fingerprint,result FROM requests WHERE identity=?", (identity,)).fetchone()
