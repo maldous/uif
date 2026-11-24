@@ -1,0 +1,37 @@
+{
+  "environment_resources_external_to_clone": [
+    "authorized root provisioning for fixed protected managed archive directory",
+    "Linux x86_64/systemd/user account and fixed system tools selected by helper",
+    "provider schema/settings/dependency lock and external authenticated connection",
+    "protected per-operation originals and result/log retention"
+  ],
+  "go": {
+    "format": "tar.gz",
+    "independently_authenticated_acquisition_url": "https://go.dev/dl/go1.27.4.linux-amd64.tar.gz",
+    "input": "Separately authorized pre-existing regular archive with this digest; no download/execution/extraction by the staging utility",
+    "managed_archive_location": "/opt/morgan-toolchains/archives/go1.27.4.linux-amd64.tar.gz",
+    "maximum_bytes": 268435456,
+    "migration_status": "SOURCE PREPARATION ONLY. Protect original until separately verified durable staging, desired-helper independent review and guarded activation/readback.",
+    "original_declared_location": "/home/user/src/2026-11-12/cq-hosted-candidate-workflow/assurance-stage-native-run.wsvkQo/go1.27.4.linux-amd64.tar.gz",
+    "platform": "linux/amd64",
+    "sha256": "7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840",
+    "source_of_pin": "Existing reviewed engine442e and actual successful original checks; no new archive/host read in this source task",
+    "vendor_declared_bytes": 70680823,
+    "vendor_metadata_observation": "Official Go release metadata read2026-11-17; declared Go1.27.4/linux/amd64/archive hash matches exact existing reviewed ENGINE constant. Archive bytes not acquired by this task. This is an acquisition locator, not authorization to download or stage.",
+    "vendor_metadata_url": "https://go.dev/dl/?mode=json",
+    "version": "go1.27.4"
+  },
+  "other_toolchains": {
+    "node": "Existing24.16/npm11.13 conditional cache or exact system match; not migrated here",
+    "rust": "Existing/opt/cix-toolchains/rust-1.98.1/bin; not installed or migrated here"
+  },
+  "schema": "uif-managed-toolchain-archive/1",
+  "staging_effects": {
+    "archive_extract_or_tool_execution": false,
+    "deletion_of_original": false,
+    "modify_helper_or_service": false,
+    "network": false,
+    "overwrite_existing_path": false,
+    "repair_permissions": false
+  }
+}
