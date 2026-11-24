@@ -8,6 +8,24 @@ function segment(part) {
     throw new Refusal('access_assertion_invalid', 401);
   }
 }
+
+// Fixed reason codes only. The Worker keeps its existing generic rejection.
+export function serviceIdentityFailures(claims, env, peers, t) {
+  const checks = {
+    issuer: claims?.iss === env.ACCESS_ISSUER,
+    audience: Array.isArray(claims?.aud) && claims.aud.includes(env.ACCESS_AUD),
+    application_type: claims?.type === 'app',
+    empty_subject: claims?.sub === '',
+    issued_at: Number.isSafeInteger(claims?.iat) && claims.iat >= 0 && claims.iat <= t,
+    expiry: Number.isSafeInteger(claims?.exp) && claims.exp > t,
+    not_before: claims?.nbf === undefined ||
+      (Number.isSafeInteger(claims.nbf) && claims.nbf <= t),
+    registered_client: typeof claims?.common_name === 'string' &&
+      Object.hasOwn(peers, claims.common_name),
+  };
+  return Object.keys(checks).filter((name) => !checks[name]);
+}
+
 // Trust only signer keys at the installed team origin. Never follow a JWT URL.
 export function accessVerifier(fetchKeys = fetch, clock = now) {
   let cached;
@@ -60,24 +78,13 @@ export function accessVerifier(fetchKeys = fetch, clock = now) {
       'access_signature_invalid',
       401,
     );
-    const t = clock();
-    need(
-      claims?.iss === env.ACCESS_ISSUER &&
-        Array.isArray(claims.aud) &&
-        claims.aud.includes(env.ACCESS_AUD) &&
-        claims.type === 'app' &&
-        claims.sub === '' &&
-        Number.isSafeInteger(claims.iat) &&
-        claims.iat >= 0 &&
-        claims.iat <= t &&
-        Number.isSafeInteger(claims.exp) &&
-        claims.exp > t &&
-        (claims.nbf === undefined || (Number.isSafeInteger(claims.nbf) && claims.nbf <= t)) &&
-        typeof claims.common_name === 'string' &&
-        Object.hasOwn(c.peers, claims.common_name),
-      'access_service_identity_invalid',
-      403,
-    );
+    const failures = serviceIdentityFailures(claims, env, c.peers, clock());
+    if (failures.length) {
+      // Cloudflare receiver console only, after signature verification.
+      // Never log claim values, request fields, or peer identifiers.
+      console.warn('uif.access.service_identity_invalid:' + failures.join(','));
+      throw new Refusal('access_service_identity_invalid', 403);
+    }
     return { ...c.peers[claims.common_name], expires_at: claims.exp };
   };
 }
