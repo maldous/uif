@@ -11,8 +11,8 @@ from scoped_reviewed_release import FIELDS, PROFILE, exact_release
 
 REPOSITORY = "maldous/offmenu"
 ROUTE = ("offmenu", REPOSITORY, PROFILE)
-OFFMENU_SOURCE = "4676f2d72dd430f5d6b356d34c19d69a7d8213d7"
-OFFMENU_TREE = "3a1141a2e3565aa5320f6923f2851f69757213c4"
+OFFMENU_SOURCE = "ce5b0943f4c8d4e9b110ac1c5f864043e4b486b7"
+OFFMENU_TREE = "42abc1cbf160faf8744b2ee8ca6db0b4f555aeb1"
 
 
 class ProtectedOffMenuApproval(NamedTuple):

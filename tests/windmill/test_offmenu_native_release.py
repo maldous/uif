@@ -59,3 +59,14 @@ class NativeReleaseTest(unittest.TestCase):
         self.assertFalse(list(Path(self.temp.name).iterdir()))
         with self.assertRaisesRegex(PermissionError, "SOURCE"):
             self.bind(canonical, self.fixed._replace(tree="f"*40))
+
+    def test_fixed_340_source_pair_rejects_339_and_mixed_pairs(self):
+        head = "ce5b0943f4c8d4e9b110ac1c5f864043e4b486b7"
+        tree = "42abc1cbf160faf8744b2ee8ca6db0b4f555aeb1"
+        old_head = "4676f2d72dd430f5d6b356d34c19d69a7d8213d7"
+        old_tree = "3a1141a2e3565aa5320f6923f2851f69757213c4"
+        self.assertEqual((head, tree), (native.OFFMENU_SOURCE, native.OFFMENU_TREE))
+        for bad_head, bad_tree in ((old_head, old_tree), (head, old_tree), (old_head, tree)):
+            with self.subTest(head=bad_head, tree=bad_tree):
+                with self.assertRaisesRegex(PermissionError, "UNQUALIFIED_OFFMENU_SOURCE"):
+                    self.bind(None, self.fixed._replace(head=bad_head, tree=bad_tree))
