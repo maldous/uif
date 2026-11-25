@@ -1223,3 +1223,28 @@ test('named recovery custodian reopens only exact retained source after stop and
   });
   await assert.rejects(original(known), /reader_not_granted/);
 });
+
+test('existing atomic journal reserves a synthetic vendor original before fake egress and retains unknown', async () => {
+  const x = fixture();
+  const key = 'fixture-groq-account';
+  const operation = {
+    original_id: hex('6'),
+    payload_sha256: hex('7'),
+    fence: { scope },
+  };
+  const req = new Request('https://fixture.invalid/api');
+  const qualifies = (include) => {
+    assert.equal(x.a.accountReservationDebt(key, start, include ? operation.original_id : ''), 0);
+  };
+  x.respond = async () => {
+    assert.equal(x.a.accountReservationDebt(key, start), 20);
+    throw new Error('fixture uncertain reply');
+  };
+  await assert.rejects(x.a.physical(operation, 'fixture-attempt', key, 20, qualifies, req),
+    /original_external_effect_unknown/);
+  assert.equal(x.a.accountReservationDebt(key, start + 86400), 20);
+  assert.equal(x.restart().accountReservationDebt(key, start + 86400), 20);
+  await assert.rejects(x.a.physical(operation, 'fixture-attempt', key, 20, () => {}, req),
+    /original_already_recorded/);
+  assert.equal(x.calls.length, 1);
+});
