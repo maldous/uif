@@ -44,6 +44,9 @@ const tables = [
   'CREATE TABLE IF NOT EXISTS destination_results (id TEXT PRIMARY KEY, result TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS budget_breaches (account TEXT PRIMARY KEY, original TEXT NOT NULL, observed INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS usage (account TEXT PRIMARY KEY, receipt TEXT NOT NULL)',
+  `CREATE TABLE IF NOT EXISTS usage_checkpoints (
+     account TEXT PRIMARY KEY, receipt_sha TEXT NOT NULL, checkpoint_sha TEXT NOT NULL,
+     opening_sha TEXT NOT NULL, unresolved_upper INTEGER NOT NULL, opening_upper INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS effects (id TEXT PRIMARY KEY, issue TEXT NOT NULL, op TEXT NOT NULL, attempt TEXT NOT NULL,
      account TEXT, amount INTEGER NOT NULL, state TEXT NOT NULL, receipt TEXT, settled_at INTEGER)`,
   'CREATE INDEX IF NOT EXISTS effects_issue ON effects(issue,state)',
@@ -268,21 +271,24 @@ export class Authority {
       'independent_original_evidence_missing',
     );
   }
+  originalReceipt(peer, id, fingerprint) {
+    const prev = this.row(
+      'SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+      this.peerKey(peer), id,
+    );
+    if (prev) {
+      need(prev.fingerprint === fingerprint, 'original_request_changed');
+      return JSON.parse(prev.result);
+    }
+  }
   async receipt(peer, id, path, body, apply, commission = false) {
     need(token(id), 'invalid_request_id', 400);
     const fingerprint = await digest({ path, body });
     return this.store.transactionSync(() => {
       this.live(peer);
       need(commission || this.commissioned(), 'installation_recommission_required');
-      const prev = this.row(
-        'SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
-        this.peerKey(peer),
-        id,
-      );
-      if (prev) {
-        need(prev.fingerprint === fingerprint, 'original_request_changed');
-        return JSON.parse(prev.result);
-      }
+      const prev = this.originalReceipt(peer, id, fingerprint);
+      if (prev !== undefined) return prev;
       const result = apply();
       this.put(
         'INSERT INTO receipts VALUES (?,?,?,?)',
@@ -912,6 +918,13 @@ export class Authority {
         'invalid_usage_attestation',
         400,
       );
+      need(token(body.request_id), 'invalid_request_id', 400);
+      const original = this.originalReceipt(peer, body.request_id, await digest({ path, body }));
+      if (original !== undefined) {
+        this.live(peer);
+        need(this.commissioned(), 'installation_recommission_required');
+        return original;
+      }
       // A service token identifies the submitter; it cannot verify account-wide
       // telemetry or bound uncoordinated spend. Read the independently installed
       // verifier's original observation via a private, fixed service binding.
@@ -928,11 +941,17 @@ export class Authority {
         'projection',
         'coverage',
         'gap_evidence_sha256',
+        'checkpoint',
       );
+      fields(verified.checkpoint, 'sha256', 'opening_sha256', 'unresolved_upper', 'opening_upper');
       need(
         verified.binding_sha256 === c.quota_verification_sha256 &&
           verified.source_receipt_sha256 === body.source_receipt_sha256 &&
           sha(verified.gap_evidence_sha256) &&
+          sha(verified.checkpoint.sha256) &&
+          sha(verified.checkpoint.opening_sha256) &&
+          uint(verified.checkpoint.unresolved_upper) && uint(verified.checkpoint.opening_upper) &&
+          verified.checkpoint.unresolved_upper + verified.checkpoint.opening_upper <= p.upper &&
           verified.coverage === 'entire-account-all-routes-from-utc-midnight' &&
           equal(verified.projection, p),
         'independent_account_projection_unverified',
@@ -947,10 +966,18 @@ export class Authority {
         projection: p,
         ...provenance,
         gap_evidence_sha256: verified.gap_evidence_sha256,
+        checkpoint: verified.checkpoint,
       });
       const receipt = { issuer, receipt_sha256: hash, projection: p, ...provenance };
       return this.receipt(peer, body.request_id, path, body, () => {
         const prior = this.usage(p.route);
+        const previousCheckpoint = this.checkpoint(p.route.account_id);
+        need(!previousCheckpoint ||
+          (previousCheckpoint.opening_sha === verified.checkpoint.opening_sha256 &&
+            previousCheckpoint.opening_upper === verified.checkpoint.opening_upper),
+          'quota_checkpoint_opening_changed');
+        need(!previousCheckpoint || previousCheckpoint.unresolved_upper <= verified.checkpoint.unresolved_upper,
+          'quota_checkpoint_unresolved_liability_reduced');
         need(
           !prior ||
             equal(receipt, prior) ||
@@ -963,6 +990,13 @@ export class Authority {
           p.route.account_id,
           canonical(receipt),
         );
+        this.put(
+          `INSERT INTO usage_checkpoints VALUES (?,?,?,?,?,?) ON CONFLICT(account) DO UPDATE SET
+           receipt_sha=excluded.receipt_sha, checkpoint_sha=excluded.checkpoint_sha,
+           unresolved_upper=excluded.unresolved_upper`,
+          p.route.account_id, hash, verified.checkpoint.sha256, verified.checkpoint.opening_sha256,
+          verified.checkpoint.unresolved_upper, verified.checkpoint.opening_upper,
+        );
         this.stamp('quota', p.route.account_id);
         return { receipt_sha256: hash };
       });
@@ -972,7 +1006,8 @@ export class Authority {
       fields(body, 'route');
       const receipt = this.usage(body.route);
       need(
-        this.allowedRoute(body.route) && this.authorized('quota', body.route.account_id) && receipt,
+        this.allowedRoute(body.route) && this.authorized('quota', body.route.account_id) && receipt &&
+          this.checkpointMatches(body.route.account_id, receipt),
         'usage_unavailable',
         404,
       );
@@ -1189,6 +1224,13 @@ export class Authority {
       this.allowedRoute(route) &&
       this.row('SELECT receipt FROM usage WHERE account=?', route.account_id);
     return r ? JSON.parse(r.receipt) : null;
+  }
+  checkpoint(account) {
+    return this.row('SELECT * FROM usage_checkpoints WHERE account=?', account);
+  }
+  checkpointMatches(account, receipt) {
+    const row = this.checkpoint(account);
+    return row && row.receipt_sha === receipt.receipt_sha256 && sha(row.checkpoint_sha) && sha(row.opening_sha);
   }
   async transition(path, body, peer) {
     only(peer, ...peerRoles);
@@ -1648,6 +1690,7 @@ export class Authority {
         this.authorized('quota', intent.route.account_id) &&
         sha(this.c.quota_verification_sha256) &&
         receipt &&
+        this.checkpointMatches(intent.route.account_id, receipt) &&
         receipt.admission_binding_sha256 === this.c.quota_verification_sha256 &&
         receipt.receipt_sha256 === intent.quota_receipt_sha256,
       'usage_receipt_not_current',

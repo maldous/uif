@@ -31,12 +31,16 @@ const binding = {
 
 async function fixture(modify = (proof) => proof, handler = (blob) => new Response(blob, {
   headers: { 'content-type': 'application/octet-stream' },
-})) {
+}), headOptions = {}) {
+  const opening = {
+    schema: 'uif.exclusive-quota.opening/1', binding_sha256: await digest(binding),
+    outside_carryover_upper: 150,
+  };
   const closure = {
     schema: 'uif.exclusive-quota.closure/1',
     binding_sha256: await digest(binding), route, utc_day: '2026-11-25', covered_from: epoch,
     valid_until: epoch + 200, inventory_sha256: h('d'), egress_enforcement_sha256: h('e'),
-    carryover_sha256: h('f'), outside_gap_upper: 100, outside_carryover_upper: 150,
+    carryover_sha256: await digest(opening), outside_gap_upper: 100, outside_carryover_upper: 150,
     billing_mode: 'workers-free-standard-no-fallback',
   };
   const ledger = {
@@ -48,13 +52,31 @@ async function fixture(modify = (proof) => proof, handler = (blob) => new Respon
     closure, closure_signature: signClosure(closure), ledger, ledger_signature: signLedger(ledger),
   })));
   const originalSha = await digestBytes(original);
+  const checkpoint = {
+    schema: 'uif.exclusive-quota.current-checkpoint/1',
+    binding_sha256: closure.binding_sha256, opening_sha256: closure.carryover_sha256,
+    source_receipt_sha256: originalSha, ledger_chain_sha256: ledger.chain_sha256,
+    utc_day: closure.utc_day, valid_until: ledger.valid_until,
+    windows: [{ from: epoch, through: epoch + 20, usage_upper: 400 },
+      { from: epoch + 20, through: epoch + 50, usage_upper: 800 }],
+    outside_unresolved_upper: ledger.outside_unresolved_upper, ...headOptions.fields,
+  };
+  const head = enc.encode(canonical({
+    checkpoint, signature: (headOptions.signer || signLedger)(checkpoint),
+    opening: { ...opening, ...headOptions.opening },
+  }));
   const lookup = { source_receipt_sha256: originalSha, route };
   const calls = [];
   const env = {
     EXCLUSIVE_QUOTA_BINDING: JSON.stringify(binding),
+    EXCLUSIVE_QUOTA_OPENING_SHA256: closure.carryover_sha256,
     QUOTA_EVIDENCE: {
       fetch: async (r) => {
         calls.push(r);
+        if (r.url === 'https://quota-evidence.internal/v1/checkpoint/current/' + route.account_id)
+          return headOptions.missing ? new Response(null, { status: 404 }) : new Response(head, {
+            headers: { 'content-type': 'application/octet-stream' },
+          });
         return handler(original);
       },
     },
@@ -67,17 +89,19 @@ async function fixture(modify = (proof) => proof, handler = (blob) => new Respon
   return { env, lookup, calls, submit };
 }
 
-test('exact shared-authority request uses a single internal digest GET and returns a bounded projection', async () => {
+test('exact request joins independent original bytes to the private account current head', async () => {
   const f = await fixture();
   const response = await f.submit();
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'private, no-store');
-  assert.equal(f.calls.length, 1);
-  const [request] = f.calls;
+  assert.equal(f.calls.length, 2);
+  const [request, head] = f.calls;
   assert.equal(request.url, 'https://quota-evidence.internal/v1/original/' + f.lookup.source_receipt_sha256);
   assert.equal(request.method, 'GET');
   assert.equal(request.redirect, 'error');
   assert.equal(request.headers.has('authorization'), false);
+  assert.equal(head.url, 'https://quota-evidence.internal/v1/checkpoint/current/' + route.account_id);
+  assert.equal(head.headers.has('authorization'), false);
   const result = await response.json();
   assert.equal(result.binding_sha256, await digest(binding));
   assert.equal(result.source_receipt_sha256, f.lookup.source_receipt_sha256);
@@ -85,6 +109,37 @@ test('exact shared-authority request uses a single internal digest GET and retur
   assert.equal(result.projection.gap_upper, 100);
   assert.equal(result.projection.free_standard_no_fallback, true);
   assert.equal(result.projection.completeness_verified, true);
+  assert.equal(result.checkpoint.opening_sha256, f.env.EXCLUSIVE_QUOTA_OPENING_SHA256);
+  assert.equal(result.checkpoint.unresolved_upper, 300);
+});
+
+test('missing current head or opening pin fail closed', async () => {
+  const absent = await fixture(undefined, undefined, { missing: true });
+  assert.deepEqual(await (await absent.submit()).json(), { error: 'checkpoint_unavailable' });
+  const noOpening = await fixture();
+  delete noOpening.env.EXCLUSIVE_QUOTA_OPENING_SHA256;
+  assert.equal((await noOpening.submit()).status, 503);
+  assert.equal(noOpening.calls.length, 0);
+});
+
+test('rejects forged, historical, stale, wrong-opening, missing-window, and reduced-liability checkpoints', async () => {
+  for (const options of [
+    { signer: signClosure },
+    { fields: { source_receipt_sha256: h('0') } },
+    { fields: { valid_until: epoch + 59 } },
+    { fields: { opening_sha256: h('0') } },
+    { opening: { outside_carryover_upper: 149 } },
+    { fields: { outside_unresolved_upper: 299 } },
+    { fields: { windows: [{ from: epoch, through: epoch + 19, usage_upper: 400 },
+      { from: epoch + 20, through: epoch + 50, usage_upper: 800 }] } },
+    { fields: { windows: [{ from: epoch, through: epoch + 50, usage_upper: 1199 }] } },
+  ]) {
+    const f = await fixture(undefined, undefined, options);
+    assert.equal((await f.submit()).status, 403);
+  }
+  const wrongPin = await fixture();
+  wrongPin.env.EXCLUSIVE_QUOTA_OPENING_SHA256 = h('0');
+  assert.equal((await wrongPin.submit()).status, 403);
 });
 
 test('public, alternate, paid and inline input cannot resolve evidence or perform paid effects', async () => {
