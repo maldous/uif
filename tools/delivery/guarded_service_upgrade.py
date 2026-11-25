@@ -2,7 +2,7 @@
 """Read-only operator preflight for a reviewed, fixed service upgrade."""
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import hashlib
 import json
 import os
@@ -20,6 +20,22 @@ import time
 class Profile:
     unit: str
     reviewed_head: str | None
+
+
+@dataclass(frozen=True)
+class ApplyAdmission:
+    """Exact transaction pins supplied by the protected host admission adapter."""
+
+    profile: str
+    unit: str
+    stage: str
+    operation_id: str
+    preflight_sha256: str
+    lock_custody_sha256: str
+    prior_selection_sha256: str
+    idle_selection_sha256: str
+    issued_at: int
+    expires_at: int
 
 
 PROFILES = {
@@ -49,6 +65,10 @@ def require(condition, reason):
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def plan_digest(plan):
+    return digest(json.dumps(plan, sort_keys=True, separators=(',', ':'), allow_nan=False).encode())
 
 
 def record(raw, fields):
@@ -202,7 +222,75 @@ def preflight(profile_name, stage):
     return {'schema': 'uif.guarded-upgrade-preflight/1', 'mode': 'read_only',
             'profile': profile_name, 'unit': profile.unit, 'stage': stage, 'head': review['head'],
             'bundle_sha256': review['bundle_sha256'], 'parked_unit_sha256': review['parked_unit_sha256'],
-            'review_sha256': admission['review_sha256'], 'apply_supported': False}
+            'launcher_sha256': review['launcher_sha256'], 'config_sha256': review['config_sha256'],
+            'review_sha256': admission['review_sha256'], 'confirmation_sha256': admission['confirmation_sha256'],
+            'quiescence_sha256': admission['quiescence_sha256'],
+            'valid_until': min(admission['expires_at'], witness['observed_at'] + 60), 'apply_supported': False}
+
+
+def apply(profile_name, stage, *, admission, host):
+    """Select an exact idle stage through a qualified host adapter. No default host or CLI.
+
+    The adapter authenticates the external admission, holds all qualified
+    selector writers, and implements durable create-only intent and completion.
+    It exposes only the fixed unit's idle selection, never a start or marker.
+    """
+    profile = PROFILES[profile_name]
+    require(profile.reviewed_head is not None, 'legacy OffMenu retains its existing owner-only upgrade route')
+    require(re.fullmatch('uif1313-idle-[a-z0-9][a-z0-9.-]{0,60}', stage) is not None, 'invalid UIF idle stage')
+    require(type(admission) is ApplyAdmission
+            and (admission.profile, admission.unit, admission.stage) == (profile_name, profile.unit, stage)
+            and all(hash_pin(value) for value in (admission.operation_id, admission.preflight_sha256,
+                                                 admission.lock_custody_sha256, admission.prior_selection_sha256,
+                                                 admission.idle_selection_sha256))
+            and admission.prior_selection_sha256 != admission.idle_selection_sha256
+            and type(admission.issued_at) is int and type(admission.expires_at) is int
+            and 0 < admission.expires_at - admission.issued_at <= 300,
+            'invalid apply admission')
+    intent = {'schema': 'uif.guarded-upgrade-intent/1', 'admission': asdict(admission)}
+    result = {'schema': 'uif.guarded-upgrade-selected/1', 'operation_id': admission.operation_id,
+              'intent_sha256': plan_digest(intent), 'selection_sha256': admission.idle_selection_sha256}
+    with host.lock(profile.unit, admission.lock_custody_sha256) as locked:
+        require(locked.verify_admission(admission) is True, 'trusted host admission unavailable')
+        require(locked.verify_custody() is True, 'qualified selector lock unavailable')
+        previous_intent, completion, prior_fence = locked.receipts(
+            admission.operation_id, admission.prior_selection_sha256,
+        )
+        if previous_intent is not None or completion is not None or prior_fence is not None:
+            require(previous_intent == intent and completion == result and prior_fence == admission.operation_id
+                    and locked.selection_sha256() == admission.idle_selection_sha256,
+                    'original upgrade effects require reconciliation')
+            return completion
+
+        def qualify():
+            require(locked.verify_custody() is True, 'qualified selector lock unavailable')
+            plan = locked.preflight(profile_name, stage)
+            require(isinstance(plan, dict) and plan_digest(plan) == admission.preflight_sha256
+                    and (plan.get('profile'), plan.get('unit'), plan.get('stage'), plan.get('head')) ==
+                    (profile_name, profile.unit, stage, profile.reviewed_head)
+                    and plan.get('schema') == 'uif.guarded-upgrade-preflight/1'
+                    and plan.get('mode') == 'read_only',
+                    'locked preflight differs from exact admission')
+            require(locked.selection_sha256() == admission.prior_selection_sha256,
+                    'parked selection changed')
+            require(locked.verify_idle_stage(plan, admission.idle_selection_sha256) is True,
+                    'sealed idle selection differs from exact admission')
+            require(locked.verify_custody() is True, 'qualified selector lock unavailable')
+            require(type(plan.get('valid_until')) is int
+                    and admission.issued_at <= time.time() < min(plan['valid_until'], admission.expires_at),
+                    'admission or quiescence expired under lock')
+            return plan['valid_until']
+
+        qualify()
+        locked.create_intent(admission.operation_id, admission.prior_selection_sha256, intent)
+        deadline = min(qualify(), admission.expires_at)
+        locked.select_idle(stage, admission.prior_selection_sha256, admission.idle_selection_sha256, deadline)
+        require(locked.verify_custody() is True and locked.selection_sha256() == admission.idle_selection_sha256,
+                'selection readback requires reconciliation')
+        require(time.time() < deadline,
+                'selection occurred; completion requires reconciliation')
+        locked.create_completion(admission.operation_id, result)
+        return result
 
 
 def main():
