@@ -1,0 +1,12 @@
+{
+  "schema": "uif-windmill-release-projects-v1",
+  "canonical_roles": "docs/agents/environment-profiles.json",
+  "projects": {
+    "uif": {"state": "unqualified"},
+    "offmenu": {"state": "eligible", "profile": "offmenu-native-upgrade-v1"},
+    "anqr": {"state": "unqualified"},
+    "circularquay": {"state": "held"},
+    "cix": {"state": "held"},
+    "cloud": {"state": "infrastructure-only"}
+  }
+}
