@@ -273,10 +273,25 @@ With the exact signed JSON and signature in the protected packet directory,
 run `foo_idle start-idle` within the earlier of the signature and the
 60-second start-witness windows. It commits a create-only start intent and
 the expiring, selection-bound marker under the same lock, then releases the
-lock so the fixed systemd ExecStart can acquire it. That entry point refuses
-an empty, malformed, stale or differently selected marker before exec.
-A successful readback
-requires a live PID and the exact closed-admission idle message in that
-systemd invocation's journal. After an interrupted or uncertain start,
-reconcile the original intent, marker and unit state. Retrying cannot
-dispatch another start for that original operation.
+lock so the fixed systemd ExecStart can take it exclusively. The idle
+drop-in uses systemd's `!` credential override for that one entry point and
+sets `NoNewPrivileges=yes`. It preserves the unit sandbox and the service
+account. Bootstrap must qualify the effective systemd unit, its cgroup v2
+membership, and protected receipt writes under the existing sandbox.
+
+ExecStart checks its parent, system-manager MainPID and invocation ID, and
+kernel cgroup before it can consume anything. While holding the exclusive
+lock, it revalidates the exact protected intent, original owner signature,
+reviewed bundle and selection, and writes a create-only
+`<operation_id>.start-consumed.json` under the existing protected receipts
+directory. That receipt binds the one invocation and PID. It preserves the
+intent and marker, downgrades to the shared runtime lock, drops to the
+configured `user:user` account with no effective or retained capabilities,
+and execs the pinned idle launcher. Invalid, expired or reused proof refuses
+before exec.
+
+A successful readback requires the live PID and the closed-admission idle
+message from the exact consumed invocation. If the start is interrupted,
+reconcile its original intent, consumption receipt, marker and unit state.
+Consumption cannot be repeated even when no launch or success receipt can
+be established.

@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 
 SOURCE = Path(__file__).resolve().parents[2] / 'tools/delivery/guarded_service_upgrade.py'
@@ -146,6 +146,12 @@ class UpgradePreflight(unittest.TestCase):
                 PREFLIGHT('offmenu-legacy', STAGE)
 
     def test_linux_adapter_atomically_selects_and_holds_the_same_start_lock(self):
+        self.exercise_linux_workflow(interrupted=False)
+
+    def test_interrupted_start_cannot_reuse_the_consumed_intent(self):
+        self.exercise_linux_workflow(interrupted=True)
+
+    def exercise_linux_workflow(self, *, interrupted):
         base = self.stage.parent
         stage = self.targets / STAGE
         receipts = base / 'receipts'
@@ -172,8 +178,11 @@ class UpgradePreflight(unittest.TestCase):
                     path.write_bytes(file.read())
                 path.chmod(member.mode)
         dropin.write_bytes(TOOL['selector_dropin']())
-        effective = dropin.read_text().split('ExecStart=\nExecStart=', 1)[1].strip()
+        effective = dropin.read_text().split('ExecStart=\nExecStart=!', 1)[1].strip()
         effective_restart = 'on-failure'
+        manager_cgroup = '/system.slice/' + UNIT
+        process_cgroup = manager_cgroup
+        parent = 1
 
         def systemctl(argv, **_):
             if argv[0] == TOOL['JOURNALCTL']:
@@ -188,6 +197,10 @@ class UpgradePreflight(unittest.TestCase):
                 return f'Restart={effective_restart}\n'
             if '--property=ActiveState,SubState,MainPID,InvocationID' in argv:
                 return 'ActiveState=active\nSubState=running\nMainPID=42\nInvocationID=' + 'a' * 32
+            if any(arg.startswith('--property=Id,') for arg in argv):
+                return (f'Id={UNIT}\nUser=user\nGroup=user\nSupplementaryGroups=\nType=simple\n'
+                        f'Restart={effective_restart}\nNoNewPrivileges=yes\nMainPID=42\n'
+                        f'InvocationID={"a" * 32}\nControlGroup={manager_cgroup}\nActiveState=active\n')
             return '\n'.join(f'{k}={v}' for k, v in TOOL['STOPPED'].items())
 
         self.enterContext(patch.object(TOOL['subprocess'], 'check_output', side_effect=systemctl))
@@ -201,6 +214,16 @@ class UpgradePreflight(unittest.TestCase):
             return observed
 
         self.enterContext(patch.object(Path, 'lstat', lstat))
+        real_read_text = Path.read_text
+
+        def read_text(path, *args, **kwargs):
+            if path == Path('/proc/self/cgroup'):
+                return '0::' + process_cgroup + '\n'
+            return real_read_text(path, *args, **kwargs)
+
+        self.enterContext(patch.object(Path, 'read_text', read_text))
+        self.enterContext(patch.object(os, 'getppid', side_effect=lambda: parent))
+        self.enterContext(patch.object(os, 'getpid', return_value=42))
         plan = PREFLIGHT('uif-idle', STAGE, sealed_stage=True)
         target = TOOL['sealed_selection'](plan)
         admission = TOOL['ApplyAdmission'](
@@ -291,6 +314,7 @@ class UpgradePreflight(unittest.TestCase):
         self.assertEqual(len(list(receipts.iterdir())), 3)
         self.assertFalse((stage / TOOL['MARKER']).exists())
         marker = stage / TOOL['MARKER']
+        effective_restart = 'no'
         with patch.object(TOOL['pwd'], 'getpwnam') as lookup_service_account:
             lookup_service_account.return_value = SimpleNamespace(pw_uid=1001)
             with self.assertRaises(FileNotFoundError):
@@ -304,14 +328,25 @@ class UpgradePreflight(unittest.TestCase):
                     TOOL['serve_idle_stage']()
                 refused_exec.assert_not_called()
         marker.unlink()
+        effective_restart = 'on-failure'
         (self.stage / 'start-quiescence.json').write_bytes(
             (self.stage / 'quiescence.json').read_bytes(),
         )
 
         real_run = subprocess.run
         dispatches = []
+        consumed_path = receipts / (admission.operation_id + '.start-consumed.json')
+
+        def exec_with_lock(*_):
+            self.assertTrue(consumed_path.is_file())
+            with lock.open('rb') as competing:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if interrupted:
+                raise OSError('simulated interruption after consumption')
 
         def dispatch(argv, **kwargs):
+            nonlocal parent, process_cgroup
             if argv[0] == keygen:
                 return real_run(argv, **kwargs)
             self.assertEqual(argv, [TOOL['SYSTEMCTL'], '--no-pager', '--job-mode=fail', 'start', UNIT])
@@ -320,6 +355,20 @@ class UpgradePreflight(unittest.TestCase):
                 fcntl.flock(unlocked, fcntl.LOCK_SH | fcntl.LOCK_NB)
             self.assertTrue((receipts / (admission.operation_id + '.start-intent.json')).is_file())
             self.assertTrue((stage / TOOL['MARKER']).is_file())
+            parent = 10
+            with self.assertRaisesRegex(ValueError, 'must be launched by the system manager'):
+                TOOL['serve_idle_stage']()
+            parent = 1
+            process_cgroup = '/system.slice/not-stokowski.service'
+            with self.assertRaisesRegex(ValueError, 'did not attest'):
+                TOOL['serve_idle_stage']()
+            process_cgroup = manager_cgroup
+            with lock.open('rb') as contender:
+                fcntl.flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with self.assertRaises(BlockingIOError):
+                    TOOL['serve_idle_stage']()
+            self.assertFalse(consumed_path.exists())
+            TOOL['serve_idle_stage']()
 
         with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
                 TOOL['os'], 'geteuid', return_value=0):
@@ -339,26 +388,25 @@ class UpgradePreflight(unittest.TestCase):
             self.assertFalse(marker.exists())
             self.assertFalse((receipts / (admission.operation_id + '.start-intent.json')).exists())
             effective_restart = 'no'
-            with patch.object(subprocess, 'run', side_effect=dispatch):
-                receipt = check(admission.operation_id, start=True)
-                self.assertEqual(receipt['main_pid'], 42)
-                with self.assertRaises(ValueError):
-                    check(admission.operation_id, start=True)
+            with patch.object(subprocess, 'run', side_effect=dispatch), patch.dict(
+                    TOOL, {'drop_idle_privileges': lambda: None}):
+                with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
+                    if interrupted:
+                        with self.assertRaisesRegex(OSError, 'interruption after consumption'):
+                            check(admission.operation_id, start=True)
+                        self.assertFalse((receipts / (admission.operation_id + '.started.json')).exists())
+                    else:
+                        receipt = check(admission.operation_id, start=True)
+                        self.assertEqual(receipt['main_pid'], 42)
+                        self.assertEqual(receipt['invocation_id'], 'a' * 32)
+                    executable = str(stage / TOOL['INTERPRETER'])
+                    execute.assert_called_once_with(
+                        executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
+                    )
+                    with self.assertRaisesRegex(ValueError, 'already consumed'):
+                        TOOL['serve_idle_stage']()
+                    execute.assert_called_once()
             self.assertEqual(len(dispatches), 1)
-        with patch.object(TOOL['pwd'], 'getpwnam') as lookup_service_account:
-            lookup_service_account.return_value = SimpleNamespace(pw_uid=1001)
-
-            def exec_with_lock(*_):
-                with lock.open('rb') as competing:
-                    with self.assertRaises(BlockingIOError):
-                        fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-            with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
-                TOOL['serve_idle_stage']()
-                executable = str(stage / TOOL['INTERPRETER'])
-                execute.assert_called_once_with(
-                    executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
-                )
             original_marker = marker.read_bytes()
             marker_data = json.loads(original_marker)
             marker_data['selection_sha256'] = 'f' * 64
@@ -376,6 +424,30 @@ class UpgradePreflight(unittest.TestCase):
         dropin = SOURCE.with_name('60-uif1313-idle-selector.conf')
         self.assertEqual(dropin.read_bytes(), runpy.run_path(str(SOURCE))['selector_dropin']())
         self.assertIn(b'\nRestart=no\n', dropin.read_bytes())
+
+    def test_privileged_edge_must_drop_to_the_service_ids_without_capabilities(self):
+        account = SimpleNamespace(pw_uid=1001, pw_gid=1001, pw_name='user',
+                                  pw_dir='/home/user', pw_shell='/bin/sh')
+        self.enterContext(patch.object(TOOL['pwd'], 'getpwnam', return_value=account))
+        self.enterContext(patch.object(TOOL['grp'], 'getgrnam', return_value=SimpleNamespace(gr_gid=1001)))
+        self.enterContext(patch.object(os, 'getgrouplist', return_value=[1001, 1002]))
+        self.enterContext(patch.object(os, 'getgroups', return_value=[1001, 1002]))
+        self.enterContext(patch.object(os, 'getresuid', return_value=(1001, 1001, 1001)))
+        self.enterContext(patch.object(os, 'getresgid', return_value=(1001, 1001, 1001)))
+        self.enterContext(patch.dict(os.environ))
+        credentials = Mock()
+        for name in ('initgroups', 'setresgid', 'setresuid'):
+            self.enterContext(patch.object(os, name, getattr(credentials, name)))
+        status = 'NoNewPrivs: 1\nCapPrm: 0\nCapEff: 0\nCapAmb: 0\n'
+        with patch.object(Path, 'read_text', return_value=status):
+            TOOL['drop_idle_privileges']()
+        self.assertEqual(credentials.mock_calls, [
+            call.initgroups('user', 1001), call.setresgid(1001, 1001, 1001),
+            call.setresuid(1001, 1001, 1001),
+        ])
+        with patch.object(Path, 'read_text', return_value=status.replace('CapEff: 0', 'CapEff: 1')):
+            with self.assertRaisesRegex(ValueError, 'privileges did not drop'):
+                TOOL['drop_idle_privileges']()
 
     def test_activation_confirmation_requires_the_exact_enrolled_signer_and_operation(self):
         plan = {'operation_id': 'e' * 64, 'selection_sha256': PIN}
