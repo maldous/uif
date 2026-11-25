@@ -53,3 +53,55 @@ class BootstrapTests(unittest.TestCase):
     def test_real_entrypoint_is_not_a_fallback(self):
         with self.assertRaisesRegex(RuntimeError, "RELEASE_UNQUALIFIED"):
             bootstrap.main()
+
+    def test_atomic_noreplace_preserves_existing_final(self):
+        import os
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as temp:
+            anchor = os.open(temp, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                bootstrap.publish_noreplace(anchor, "original.intent", b"exact")
+                with self.assertRaises(FileExistsError):
+                    bootstrap.publish_noreplace(anchor, "original.intent", b"other")
+                self.assertEqual(b"exact", Path(temp, "original.intent").read_bytes())
+                self.assertEqual(["original.intent"], sorted(os.listdir(temp)))
+            finally:
+                os.close(anchor)
+
+    def test_failed_file_sync_exposes_no_final_at_intent_or_receipt(self):
+        import os
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        for role in ("original.intent", "original.receipt"):
+            with self.subTest(role=role), TemporaryDirectory() as temp:
+                anchor = os.open(temp, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    with patch.object(bootstrap.os, "fsync", side_effect=OSError("interrupted")):
+                        with self.assertRaisesRegex(OSError, "interrupted"):
+                            bootstrap.publish_noreplace(anchor, role, b"exact")
+                    self.assertEqual([], os.listdir(temp))
+                    bootstrap.publish_noreplace(anchor, role, b"exact")
+                    self.assertEqual(b"exact", Path(temp, role).read_bytes())
+                finally:
+                    os.close(anchor)
+
+    def test_failed_directory_sync_leaves_only_a_complete_final(self):
+        import os
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        with TemporaryDirectory() as temp:
+            anchor = os.open(temp, os.O_RDONLY | os.O_DIRECTORY)
+            fsync = os.fsync
+            def interrupted(fd):
+                if fd == anchor:
+                    raise OSError("directory sync interrupted")
+                fsync(fd)
+            try:
+                with patch.object(bootstrap.os, "fsync", side_effect=interrupted):
+                    with self.assertRaisesRegex(OSError, "directory sync interrupted"):
+                        bootstrap.publish_noreplace(anchor, "original.receipt", b"complete")
+                fsync(anchor)
+                self.assertEqual(b"complete", Path(temp, "original.receipt").read_bytes())
+                self.assertEqual(["original.receipt"], os.listdir(temp))
+            finally:
+                os.close(anchor)

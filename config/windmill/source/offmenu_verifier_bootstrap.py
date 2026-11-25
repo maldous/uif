@@ -5,11 +5,13 @@ pin before this module can be enabled. It neither executes the verifier nor
 grants the normal transport permission to do so.
 """
 
+import ctypes
 import fcntl
 import hashlib
 import os
 from pathlib import Path
 import re
+import secrets
 import stat
 import time
 
@@ -64,6 +66,33 @@ def transition(read, create, operation, digest):
     return "verified"
 
 
+def publish_noreplace(anchor, name, raw):
+    """Make a fully synced file visible without ever replacing a final name."""
+    # This receiver is Linux-only. Do not emulate no-replace with check/rename.
+    libc = ctypes.CDLL(None, use_errno=True)
+    rename = libc.renameat2
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                       ctypes.c_char_p, ctypes.c_uint]
+    rename.restype = ctypes.c_int
+    temp = ".pending-" + secrets.token_hex(16)
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                 0o400, dir_fd=anchor)
+    published = False
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if rename(anchor, os.fsencode(temp), anchor, os.fsencode(name), 1) != 0:
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error), name)
+        published = True
+        os.fsync(anchor)
+    finally:
+        if not published:
+            os.unlink(temp, dir_fd=anchor)
+
+
 def main():
     if APPROVED is None:
         raise RuntimeError("BOOTSTRAP_RELEASE_UNQUALIFIED")
@@ -84,6 +113,9 @@ def main():
             if info.st_uid != 0 or info.st_mode & 0o022:
                 raise PermissionError("UNPROTECTED_BOOTSTRAP_DIRECTORY")
         fcntl.flock(anchor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Harden any fully published final record left by a prior process that
+        # died after the atomic rename but before its directory sync.
+        os.fsync(anchor)
 
         def read(role):
             try:
@@ -106,13 +138,7 @@ def main():
             now = time.time()
             if type(expires_at) is not int or not now < expires_at <= now + 300:
                 raise PermissionError("BOOTSTRAP_AUTHORIZATION_NOT_FRESH")
-            fd = os.open(names[role], os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                         0o400, dir_fd=anchor)
-            with os.fdopen(fd, "wb") as stream:
-                stream.write(raw)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.fsync(anchor)
+            publish_noreplace(anchor, names[role], raw)
 
         return transition(read, create, operation, digest)
     finally:
