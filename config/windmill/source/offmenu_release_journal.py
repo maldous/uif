@@ -41,7 +41,7 @@ def _run_with_packet(packet, job, pins, dispatch_original, observe_original):
         fd = os.open(INTENT, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=packet)
     except FileNotFoundError:
         # An existing canonical effect without our handoff is never replayed.
-        if observe_original(pins.operation_id) != "not_started":
+        if observe_original(pins.operation_id, job) != "not_started":
             raise RuntimeError("ORIGINAL_EFFECT_ALREADY_EXISTS_OR_UNKNOWN")
         publish_noreplace(packet, INTENT, record)
         dispatch_original(pins.operation_id, job)
@@ -52,7 +52,7 @@ def _run_with_packet(packet, job, pins, dispatch_original, observe_original):
                     info.st_uid != os.fstat(packet).st_uid or info.st_mode & 0o022 or
                     stream.read(len(record) + 1) != record):
                 raise RuntimeError("ORIGINAL_HANDOFF_MISMATCH")
-    status = observe_original(pins.operation_id)
+    status = observe_original(pins.operation_id, job)
     # No effect receipt or equivocal observation means manual original readback,
     # never another dispatch, even with a different Windmill-generated run ID.
     if status != "installed":

@@ -24,7 +24,7 @@ class ReleaseJournalTest(unittest.TestCase):
 
     def adapter(self, dispatch):
         return journal.bind_offmenu_original(
-            dispatch, lambda _original: "installed" if self.effect.exists() else "not_started")
+            dispatch, lambda _original, _job: "installed" if self.effect.exists() else "not_started")
 
     def invoke(self, adapter, job, pins=None):
         pins = pins or self.pins
