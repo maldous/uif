@@ -1285,3 +1285,44 @@ test('disabled Gemma preparation reserves one exact original before fake upstrea
   await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native), /gemma_window_exhausted|original_already_recorded/);
   assert.equal(x.calls.length, 1);
 });
+
+test('disabled included Responses pins free grant and reserves once on the shared journal', async () => {
+  const x = fixture();
+  await x.resume();
+  const lease = (await x.call('native', 'claim', await x.addGrant())).lease;
+  const organization = 'fixture-linked-org', project = 'fixture-project', credentialEpoch = hex('6');
+  const input = 'synthetic test', deadline = start + 60, attempt = 'attempt', maximumMicrousd = 100;
+  const model = 'gpt-6.2-sol', intent = 'new', credential = 'fixture-nonsecret';
+  const payload = canonical({ model, input, max_output_tokens: 256, store: false });
+  const binding = await digest({ schema: 'uif.included-responses-prepared/1', organization, project,
+    credentialEpoch, attempt, deadline, maximumMicrousd, intent, payload });
+  const operation = { fence: lease.fence, original_id: hex('7'), payload_sha256: binding };
+  const proof = { binding, organization, project, credentialEpoch, model, includedOnly: true,
+    hardNoOverage: true, purchasedCreditsAbsent: true, autoRechargeDisabled: true, completeBinding: true,
+    observedAt: start, coveredThrough: start, validUntil: start + 100, expiresAt: start + 200,
+    totalMicrousd: 1000, balanceLowerMicrousd: 500, requestUpperMicrousd: 100, unsettledUpperMicrousd: 0 };
+  const args = { operation, organization, project, credentialEpoch, attempt, deadline, maximumMicrousd,
+    input, optIn: true, intent, credential, readGrant: () => proof };
+  const call = (changes = {}) => x.a.dispatchIncludedResponsesPrepared({ ...args, ...changes }, x.peers.native);
+  for (const altered of [null, { ...proof, purchasedCreditsAbsent: false },
+    { ...proof, autoRechargeDisabled: false }, { ...proof, project: 'wrong' }]) {
+    await assert.rejects(call({ readGrant: () => altered }), /responses_authenticated_grant_unavailable/);
+  }
+  await assert.rejects(call({ optIn: false }), /responses_preparation_unbound/);
+  await assert.rejects(call({ input: 'changed request' }), /responses_payload_changed/);
+  await assert.rejects(call({ readGrant: () => ({ ...proof, balanceLowerMicrousd: 250 }) }), /responses_included_cutoff/);
+  assert.equal(x.calls.length, 0);
+  const account = 'openai-responses-org:' + await digest({ organization });
+  x.respond = async () => {
+    assert.equal(x.a.accountReservationDebt(account, start), 100);
+    const req = x.calls[0];
+    assert.equal(req.url, 'https://api.openai.com/v1/responses');
+    assert.equal(req.headers.get('OpenAI-Organization'), organization);
+    assert.deepEqual(await req.json(), JSON.parse(payload));
+    throw new Error('synthetic uncertain reply');
+  };
+  await assert.rejects(call(), /original_external_effect_unknown/);
+  assert.equal(x.restart().accountReservationDebt(account, start + 86400), 100);
+  await assert.rejects(call(), /original_already_recorded/);
+  assert.equal(x.calls.length, 1);
+});
