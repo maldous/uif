@@ -28,7 +28,12 @@ The verifier's only configured dependencies are:
 
 Absent dependencies, absent/oversize bytes, a pin mismatch, tamper, a stale
 window, or an unverified proof refuse the observation. Successful responses
-are not cached and include only the existing authority result shape. The
+are not cached and include only the existing authority result shape. One
+three-second deadline covers the full lookup and verification, not just response
+headers. A timed-out operation returns a refusal immediately but continues to
+occupy one of four in-flight slots per isolate until the original call and any
+cancellation settle. Saturation returns a refusal without adding a store call;
+a permanently stuck upstream can intentionally leave the isolate closed. The
 authority still enforces the request maximum and its retained liabilities.
 
 ## Exact next account-owner action

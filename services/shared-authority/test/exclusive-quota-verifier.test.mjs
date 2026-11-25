@@ -59,10 +59,10 @@ async function fixture(modify = (proof) => proof, handler = (blob) => new Respon
       },
     },
   };
-  const submit = (body = lookup, endpoint = url, additional = {}) => resolveObservation(
+  const submit = (body = lookup, endpoint = url, additional = {}, deadlineMs) => resolveObservation(
     new Request(endpoint, { method: 'POST', headers: {
       'content-type': 'application/json', 'authorization': 'external-ignored',
-    }, body: JSON.stringify(body), ...additional }), env, () => epoch + 60,
+    }, body: JSON.stringify(body), ...additional }), env, () => epoch + 60, deadlineMs,
   );
   return { env, lookup, calls, submit };
 }
@@ -135,4 +135,56 @@ test('tampered bytes and a digest-matched changed original without the independe
   const result = await forged.submit();
   assert.equal(result.status, 403);
   assert.deepEqual(await result.json(), { error: 'original_unverified' });
+});
+
+test('a hanging streaming body and blocked cancellation refuse by deadline and retain the original slots',
+  { timeout: 1000 }, async () => {
+    const cancelResolvers = [];
+    let pulsed = 0;
+    const f = await fixture(undefined, () => new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array([0x7b])); },
+      pull() { pulsed++; return new Promise(() => {}); },
+      cancel() { return new Promise((resolve) => cancelResolvers.push(resolve)); },
+    }), { headers: { 'content-type': 'application/octet-stream' } }));
+    try {
+      const results = await Promise.all(Array.from({ length: 4 }, () => f.submit(f.lookup, url, {}, 40)));
+      for (const r of results) {
+        assert.equal(r.status, 503);
+        assert.deepEqual(await r.json(), { error: 'observation_deadline' });
+      }
+      assert.equal(pulsed, 4, 'all four calls genuinely stalled during body reads');
+      assert.equal(cancelResolvers.length, 4);
+      assert.equal(f.calls.length, 4);
+      assert.ok(f.calls.every((request) => request.signal.aborted));
+      assert.deepEqual(await (await f.submit()).json(), { error: 'verifier_saturated' });
+      assert.equal(f.calls.length, 4, 'no additional private store call while originals are unresolved');
+    } finally {
+      for (const release of cancelResolvers) release();
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal((await (await fixture()).submit()).status, 200);
+  });
+
+test('a private binding that ignores header-phase abort stays bounded, then cancels its late body',
+  { timeout: 1000 }, async () => {
+    let finish;
+    let cancelled = false;
+    const f = await fixture(undefined, () => new Promise((resolve) => { finish = resolve; }));
+    const result = await f.submit(f.lookup, url, {}, 30);
+    assert.deepEqual(await result.json(), { error: 'observation_deadline' });
+    assert.equal(f.calls.length, 1);
+    assert.equal(f.calls[0].signal.aborted, true);
+    finish(new Response(new ReadableStream({
+      cancel() { cancelled = true; },
+    }), { headers: { 'content-type': 'application/octet-stream' } }));
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(cancelled, true);
+  });
+
+test('a stalled lookup body never dispatches to the private evidence store', { timeout: 1000 }, async () => {
+  const f = await fixture();
+  const body = new ReadableStream({ pull() { return new Promise(() => {}); } });
+  const r = await f.submit(f.lookup, url, { body, duplex: 'half' }, 25);
+  assert.deepEqual(await r.json(), { error: 'observation_deadline' });
+  assert.equal(f.calls.length, 0);
 });
