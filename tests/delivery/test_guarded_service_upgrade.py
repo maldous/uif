@@ -3,7 +3,7 @@
 import io
 import json
 from contextlib import contextmanager
-from dataclasses import asdict, replace
+from dataclasses import replace
 import fcntl
 import os
 from pathlib import Path
@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 
 SOURCE = Path(__file__).resolve().parents[2] / 'tools/delivery/guarded_service_upgrade.py'
@@ -146,6 +146,12 @@ class UpgradePreflight(unittest.TestCase):
                 PREFLIGHT('offmenu-legacy', STAGE)
 
     def test_linux_adapter_atomically_selects_and_holds_the_same_start_lock(self):
+        self.exercise_linux_workflow(interrupted=False)
+
+    def test_interrupted_start_cannot_reuse_the_consumed_intent(self):
+        self.exercise_linux_workflow(interrupted=True)
+
+    def exercise_linux_workflow(self, *, interrupted):
         base = self.stage.parent
         stage = self.targets / STAGE
         receipts = base / 'receipts'
@@ -171,15 +177,31 @@ class UpgradePreflight(unittest.TestCase):
                 with bundle.extractfile(member) as file:
                     path.write_bytes(file.read())
                 path.chmod(member.mode)
-        admission_path = self.stage / 'admission.json'
         dropin.write_bytes(TOOL['selector_dropin']())
-        effective = dropin.read_text().split('ExecStart=\nExecStart=', 1)[1].strip()
+        effective = dropin.read_text().split('ExecStart=\nExecStart=!', 1)[1].strip()
+        effective_restart = 'on-failure'
+        manager_cgroup = '/system.slice/' + UNIT
+        process_cgroup = manager_cgroup
+        parent = 1
+        edge_uids = (0, 0, 0)
 
         def systemctl(argv, **_):
+            if argv[0] == TOOL['JOURNALCTL']:
+                self.assertIn('_PID=42', argv)
+                self.assertIn('_SYSTEMD_INVOCATION_ID=' + 'a' * 32, argv)
+                return 'Stokowski idle: free_route_unavailable; admissions and effects closed\n'
             if 'cat' in argv:
                 return bootstrapped
             if '--property=ExecStart' in argv:
                 return f'ExecStart={{ argv[]={effective} ; }}'
+            if '--property=Restart' in argv:
+                return f'Restart={effective_restart}\n'
+            if '--property=ActiveState,SubState,MainPID,InvocationID' in argv:
+                return 'ActiveState=active\nSubState=running\nMainPID=42\nInvocationID=' + 'a' * 32
+            if any(arg.startswith('--property=Id,') for arg in argv):
+                return (f'Id={UNIT}\nUser=user\nGroup=user\nSupplementaryGroups=\nType=simple\n'
+                        f'Restart={effective_restart}\nNoNewPrivileges=yes\nMainPID=42\n'
+                        f'InvocationID={"a" * 32}\nControlGroup={manager_cgroup}\nActiveState=active\n')
             return '\n'.join(f'{k}={v}' for k, v in TOOL['STOPPED'].items())
 
         self.enterContext(patch.object(TOOL['subprocess'], 'check_output', side_effect=systemctl))
@@ -188,10 +210,22 @@ class UpgradePreflight(unittest.TestCase):
         def lstat(path):
             observed = original_lstat(path)
             if path in (stage, stage / TOOL['MARKER']):
-                return SimpleNamespace(st_uid=0, st_mode=observed.st_mode, st_nlink=observed.st_nlink)
+                return SimpleNamespace(st_uid=0, st_mode=observed.st_mode, st_nlink=observed.st_nlink,
+                                       st_size=observed.st_size)
             return observed
 
         self.enterContext(patch.object(Path, 'lstat', lstat))
+        real_read_text = Path.read_text
+
+        def read_text(path, *args, **kwargs):
+            if path == Path('/proc/self/cgroup'):
+                return '0::' + process_cgroup + '\n'
+            return real_read_text(path, *args, **kwargs)
+
+        self.enterContext(patch.object(Path, 'read_text', read_text))
+        self.enterContext(patch.object(os, 'getppid', side_effect=lambda: parent))
+        self.enterContext(patch.object(os, 'getresuid', side_effect=lambda: edge_uids))
+        self.enterContext(patch.object(os, 'getpid', return_value=42))
         plan = PREFLIGHT('uif-idle', STAGE, sealed_stage=True)
         target = TOOL['sealed_selection'](plan)
         admission = TOOL['ApplyAdmission'](
@@ -199,14 +233,47 @@ class UpgradePreflight(unittest.TestCase):
             TOOL['plan_digest'](TOOL['lock_identity'](lock.lstat())),
             TOOL['digest'](old), TOOL['digest'](target), 990, 1080,
         )
-        (self.stage / 'linux-apply.json').write_bytes(encoded({
-            'schema': 'uif.foo-idle-apply/1', 'admission': asdict(admission),
-            'operator_admission_sha256': TOOL['digest'](admission_path.read_bytes()),
-            'bootstrap_prior_sha256': TOOL['BOOTSTRAP_PRIOR'],
-            'bootstrapped_unit_sha256': self.review['parked_unit_sha256'],
-        }))
+        issued_packet = self.stage / 'linux-apply.json'
+        key = base / 'synthetic-workflow-key'
+        keygen = TOOL['SSH_KEYGEN']
+        subprocess.run([keygen, '-q', '-t', 'ed25519', '-N', '', '-f', str(key)],
+                       check=True, capture_output=True)
+        signers = base / 'fixture-signers'
+        signers.write_bytes(b'fixture-operator ' + key.with_suffix('.pub').read_bytes())
+        self.enterContext(patch.dict(TOOL, {'ACTIVATION_SIGNERS': signers}))
+
+        def sign(plan, name, schema, action, namespace):
+            path = self.stage / (name + '.json')
+            path.with_suffix('.json.sig').unlink(missing_ok=True)
+            path.write_bytes(encoded({'schema': schema, 'action': action,
+                                      'operation_id': plan['operation_id'],
+                                      'preflight_sha256': TOOL['plan_digest'](plan),
+                                      'issued_at': 990, 'expires_at': 1080}))
+            subprocess.run([keygen, '-Y', 'sign', '-f', str(key), '-n', namespace, str(path)],
+                           check=True, capture_output=True)
+
         with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
                 TOOL['os'], 'geteuid', return_value=0):
+            prepare_apply = TOOL['prepare_apply']
+            preview = prepare_apply(admission.operation_id)
+            self.assertFalse(issued_packet.exists())
+            with self.assertRaises(FileNotFoundError):
+                prepare_apply(admission.operation_id, issue=True)
+            def sign_apply(plan):
+                sign(plan, 'apply-confirmation', 'uif.foo-idle-apply-confirmation/1',
+                     'issue_linux_apply', TOOL['APPLY_NAMESPACE'])
+
+            sign_apply(preview['preflight'])
+            issued = prepare_apply(admission.operation_id, issue=True)
+            self.assertEqual(issued['preflight'], preview['preflight'])
+            self.assertEqual(issued, prepare_apply(admission.operation_id, issue=True))
+            self.assertEqual(selector.read_bytes(), old)
+            sign_apply(prepare_apply('f' * 64)['preflight'])
+            with self.assertRaisesRegex(ValueError, 'original apply packet'):
+                prepare_apply('f' * 64, issue=True)
+            sign_apply(preview['preflight'])
+            admission = TOOL['LinuxIdleHost']().load_admission()
+            self.assertEqual(admission.expires_at, plan['valid_until'])
             with lock.open('rb') as running:
                 fcntl.flock(running, fcntl.LOCK_SH | fcntl.LOCK_NB)
                 with self.assertRaises(BlockingIOError):
@@ -248,26 +315,145 @@ class UpgradePreflight(unittest.TestCase):
         self.assertEqual(selector.read_bytes(), target)
         self.assertEqual(len(list(receipts.iterdir())), 3)
         self.assertFalse((stage / TOOL['MARKER']).exists())
+        marker = stage / TOOL['MARKER']
+        effective_restart = 'no'
         with patch.object(TOOL['pwd'], 'getpwnam') as lookup_service_account:
             lookup_service_account.return_value = SimpleNamespace(pw_uid=1001)
             with self.assertRaises(FileNotFoundError):
                 TOOL['serve_idle_stage']()
-            (stage / TOOL['MARKER']).touch()  # Synthetic owner marker only.
-            def exec_with_lock(*_):
-                with lock.open('rb') as competing:
-                    with self.assertRaises(BlockingIOError):
-                        fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with patch.object(os, 'execv') as refused_exec:
+                marker.touch()
+                with self.assertRaisesRegex(ValueError, 'signed start intent is missing'):
+                    TOOL['serve_idle_stage']()
+                marker.write_bytes(b'{}')
+                with self.assertRaisesRegex(ValueError, 'unexpected record fields'):
+                    TOOL['serve_idle_stage']()
+                refused_exec.assert_not_called()
+        marker.unlink()
+        effective_restart = 'on-failure'
+        (self.stage / 'start-quiescence.json').write_bytes(
+            (self.stage / 'quiescence.json').read_bytes(),
+        )
 
-            with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
+        real_run = subprocess.run
+        dispatches = []
+        consumed_path = receipts / (admission.operation_id + '.start-consumed.json')
+
+        def exec_with_lock(*_):
+            self.assertTrue(consumed_path.is_file())
+            with lock.open('rb') as competing:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if interrupted:
+                raise OSError('simulated interruption after consumption')
+
+        def dispatch(argv, **kwargs):
+            nonlocal parent, process_cgroup, edge_uids
+            if argv[0] == keygen:
+                return real_run(argv, **kwargs)
+            self.assertEqual(argv, [TOOL['SYSTEMCTL'], '--no-pager', '--job-mode=fail', 'start', UNIT])
+            dispatches.append(argv)
+            with lock.open('rb') as unlocked:
+                fcntl.flock(unlocked, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            self.assertTrue((receipts / (admission.operation_id + '.start-intent.json')).is_file())
+            self.assertTrue((stage / TOOL['MARKER']).is_file())
+            edge_uids = (0, 0, 1001)
+            with self.assertRaisesRegex(ValueError, 'must be launched by the system manager'):
                 TOOL['serve_idle_stage']()
-                executable = str(stage / TOOL['INTERPRETER'])
-                execute.assert_called_once_with(
-                    executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
-                )
+            edge_uids = (0, 0, 0)
+            parent = 10
+            with self.assertRaisesRegex(ValueError, 'must be launched by the system manager'):
+                TOOL['serve_idle_stage']()
+            parent = 1
+            process_cgroup = '/system.slice/not-stokowski.service'
+            with self.assertRaisesRegex(ValueError, 'did not attest'):
+                TOOL['serve_idle_stage']()
+            process_cgroup = manager_cgroup
+            with lock.open('rb') as contender:
+                fcntl.flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with self.assertRaises(BlockingIOError):
+                    TOOL['serve_idle_stage']()
+            self.assertFalse(consumed_path.exists())
+            TOOL['serve_idle_stage']()
+
+        with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
+                TOOL['os'], 'geteuid', return_value=0):
+            check = TOOL['activation_preflight']
+            start_plan = check(admission.operation_id, prepare_start=True)
+            self.assertIn('start_quiescence_sha256', start_plan)
+            with self.assertRaises(FileNotFoundError):
+                check(admission.operation_id, start=True)
+            sign(start_plan, 'activation-confirmation', 'uif.foo-idle-activation-confirmation/1',
+                 'authorize_idle_marker', TOOL['ACTIVATION_NAMESPACE'])
+            with self.assertRaisesRegex(ValueError, 'current operation'):
+                check(admission.operation_id, start=True)
+            sign(start_plan, 'activation-confirmation', 'uif.foo-idle-activation-confirmation/1',
+                 'authorize_idle_marker_and_start', TOOL['ACTIVATION_NAMESPACE'])
+            with self.assertRaisesRegex(ValueError, 'one-start policy'):
+                check(admission.operation_id, start=True)
+            self.assertFalse(marker.exists())
+            self.assertFalse((receipts / (admission.operation_id + '.start-intent.json')).exists())
+            effective_restart = 'no'
+            with patch.object(subprocess, 'run', side_effect=dispatch), patch.dict(
+                    TOOL, {'drop_idle_privileges': lambda: None}):
+                with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
+                    if interrupted:
+                        with self.assertRaisesRegex(OSError, 'interruption after consumption'):
+                            check(admission.operation_id, start=True)
+                        self.assertFalse((receipts / (admission.operation_id + '.started.json')).exists())
+                    else:
+                        receipt = check(admission.operation_id, start=True)
+                        self.assertEqual(receipt['main_pid'], 42)
+                        self.assertEqual(receipt['invocation_id'], 'a' * 32)
+                    executable = str(stage / TOOL['INTERPRETER'])
+                    execute.assert_called_once_with(
+                        executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
+                    )
+                    with self.assertRaisesRegex(ValueError, 'already consumed'):
+                        TOOL['serve_idle_stage']()
+                    execute.assert_called_once()
+            self.assertEqual(len(dispatches), 1)
+            original_marker = marker.read_bytes()
+            marker_data = json.loads(original_marker)
+            marker_data['selection_sha256'] = 'f' * 64
+            marker.write_bytes(TOOL['encode'](marker_data))
+            with patch.object(os, 'execv') as refused_exec:
+                with self.assertRaisesRegex(ValueError, 'no longer binds the selected stage'):
+                    TOOL['serve_idle_stage']()
+                refused_exec.assert_not_called()
+            marker.write_bytes(original_marker)
+            with patch.object(TOOL['time'], 'time', return_value=1050):
+                with self.assertRaisesRegex(ValueError, 'marker expired'):
+                    TOOL['serve_idle_stage']()
 
     def test_reviewed_dropin_matches_fixed_start_contract(self):
         dropin = SOURCE.with_name('60-uif1313-idle-selector.conf')
         self.assertEqual(dropin.read_bytes(), runpy.run_path(str(SOURCE))['selector_dropin']())
+        self.assertIn(b'\nRestart=no\n', dropin.read_bytes())
+
+    def test_privileged_edge_must_drop_to_the_service_ids_without_capabilities(self):
+        account = SimpleNamespace(pw_uid=1001, pw_gid=1001, pw_name='user',
+                                  pw_dir='/home/user', pw_shell='/bin/sh')
+        self.enterContext(patch.object(TOOL['pwd'], 'getpwnam', return_value=account))
+        self.enterContext(patch.object(TOOL['grp'], 'getgrnam', return_value=SimpleNamespace(gr_gid=1001)))
+        self.enterContext(patch.object(os, 'getgrouplist', return_value=[1001, 1002]))
+        self.enterContext(patch.object(os, 'getgroups', return_value=[1001, 1002]))
+        self.enterContext(patch.object(os, 'getresuid', return_value=(1001, 1001, 1001)))
+        self.enterContext(patch.object(os, 'getresgid', return_value=(1001, 1001, 1001)))
+        self.enterContext(patch.dict(os.environ))
+        credentials = Mock()
+        for name in ('initgroups', 'setresgid', 'setresuid'):
+            self.enterContext(patch.object(os, name, getattr(credentials, name)))
+        status = 'NoNewPrivs: 1\nCapPrm: 0\nCapEff: 0\nCapAmb: 0\n'
+        with patch.object(Path, 'read_text', return_value=status):
+            TOOL['drop_idle_privileges']()
+        self.assertEqual(credentials.mock_calls, [
+            call.initgroups('user', 1001), call.setresgid(1001, 1001, 1001),
+            call.setresuid(1001, 1001, 1001),
+        ])
+        with patch.object(Path, 'read_text', return_value=status.replace('CapEff: 0', 'CapEff: 1')):
+            with self.assertRaisesRegex(ValueError, 'privileges did not drop'):
+                TOOL['drop_idle_privileges']()
 
     def test_activation_confirmation_requires_the_exact_enrolled_signer_and_operation(self):
         plan = {'operation_id': 'e' * 64, 'selection_sha256': PIN}

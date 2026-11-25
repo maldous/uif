@@ -5,6 +5,7 @@ import argparse
 from dataclasses import asdict, dataclass
 from contextlib import contextmanager
 import fcntl
+import grp
 import hashlib
 import json
 import os
@@ -64,9 +65,11 @@ LOCK = ROOT / 'selector.lock'
 RECEIPTS = ROOT / 'receipts'
 DROPIN = Path('/etc/systemd/system/stokowski-foo.service.d/60-uif1313-idle-selector.conf')
 SYSTEMCTL = '/usr/bin/systemctl'
+JOURNALCTL = '/usr/bin/journalctl'
 SSH_KEYGEN = '/usr/bin/ssh-keygen'
 ACTIVATION_SIGNERS = Path('/etc/uif-stokowski/activation_allowed_signers')
 ACTIVATION_NAMESPACE = 'uif-foo-stokowski-idle-activation'
+APPLY_NAMESPACE = 'uif-foo-stokowski-idle-apply'
 INTERPRETER = 'venv/bin/python3.12'
 BOOTSTRAP_PRIOR = '96c56b11f328c4d97df40e5d5ab705d4c85c6cd31c96cbacaca699ca05873502'
 MARKER = 'ACTIVATION_AUTHORIZED'
@@ -78,8 +81,8 @@ def selector_dropin():
     marker = STAGES / FIXED_STAGE / MARKER
     return ('[Unit]\nConditionPathExists=\n'
             f'ConditionPathExists={marker}\n\n'
-            '[Service]\nExecStart=\n'
-            f'ExecStart=/usr/bin/python3 -I -S -B {TOOL_PATH} --profile uif-idle'
+            '[Service]\nRestart=no\nNoNewPrivileges=yes\nExecStart=\n'
+            f'ExecStart=!/usr/bin/python3 -I -S -B {TOOL_PATH} --profile uif-idle'
             f' --stage {FIXED_STAGE} --action serve\n').encode()
 
 
@@ -354,13 +357,13 @@ def lock_identity(info):
     return [info.st_dev, info.st_ino, info.st_uid, info.st_gid, info.st_mode, info.st_nlink]
 
 
-def publish(path, data, *, replace=False, deadline=None):
+def publish(path, data, *, replace=False, deadline=None, mode=None):
     """Publish complete bytes on one filesystem and preserve existing receipts."""
     protected_parents(path)
     fd, temporary = tempfile.mkstemp(prefix='.uif-idle-', dir=path.parent)
     try:
         with os.fdopen(fd, 'wb') as stream:
-            os.fchmod(stream.fileno(), 0o644 if replace else 0o600)
+            os.fchmod(stream.fileno(), mode if mode is not None else (0o644 if replace else 0o600))
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
@@ -389,7 +392,7 @@ def no_marker(stage):
     return not marker.exists() and not marker.is_symlink()
 
 
-def sealed_selection(plan):
+def sealed_selection(plan, *, allow_start_marker=False):
     """Bind an already materialized root-controlled directory to the reviewed tar."""
     stage = STAGES / FIXED_STAGE
     protected_parents(stage / 'launch.py')
@@ -419,6 +422,8 @@ def sealed_selection(plan):
         root = Path(parent)
         for name in (*dirs, *files):
             path = root / name
+            if allow_start_marker and path == stage / MARKER and name in files:
+                continue
             actual.add(str(path.relative_to(stage)))
             require(not path.is_symlink() and len(actual) <= 50_000, 'unexpected sealed stage member')
     require(actual == directories | pins.keys() and INTERPRETER in pins
@@ -485,7 +490,7 @@ class LinuxIdleHost:
         return value
 
     def verify_inactive_bootstrap(self, unit, unit_pin):
-        command = selector_dropin().decode().split('ExecStart=\nExecStart=', 1)[1].strip()
+        command = selector_dropin().decode().split('ExecStart=\nExecStart=!', 1)[1].strip()
         effective = subprocess.check_output(
             [SYSTEMCTL, '--no-pager', 'show', '--property=ExecStart', unit],
             stderr=subprocess.DEVNULL, timeout=4, text=True,
@@ -526,26 +531,25 @@ class LinuxIdleHost:
         publish(RECEIPTS / (operation + '.selected.json'), encode(result))
 
 
-def verify_activation_confirmation(root, plan, owner):
+def verify_owner_confirmation(root, plan, owner, *, name, schema, action, namespace):
     require(re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,63}', owner) is not None,
             'unsupported enrolled host-owner principal')
-    raw = read_record(root, 'activation-confirmation.json')
+    raw = read_record(root, name + '.json')
     confirmation = record(raw, ('schema', 'action', 'operation_id', 'preflight_sha256',
                                 'issued_at', 'expires_at'))
     issued, expires = confirmation['issued_at'], confirmation['expires_at']
     require((confirmation['schema'], confirmation['action'], confirmation['operation_id'],
              confirmation['preflight_sha256']) ==
-            ('uif.foo-idle-activation-confirmation/1', 'authorize_idle_marker',
-             plan['operation_id'], plan_digest(plan))
+            (schema, action, plan['operation_id'], plan_digest(plan))
             and type(issued) is int and type(expires) is int
             and issued <= time.time() < expires <= issued + 300,
-            'activation confirmation does not bind the current operation and window')
+            'owner confirmation does not bind the current operation and window')
     try:
         trusted_signers = protected_open(ACTIVATION_SIGNERS, MAX_RECORD)
     except FileNotFoundError as exc:
         raise Held('Foo host owner has not enrolled an activation signer') from exc
     with trusted_signers as signers, protected_open(
-            root / 'activation-confirmation.json.sig', MAX_RECORD) as signature:
+            root / (name + '.json.sig'), MAX_RECORD) as signature:
         signer_bytes = signers.read(MAX_RECORD + 1)
         signer_line = signer_bytes.strip().splitlines()
         require(len(signer_line) == 1 and len(signer_bytes) <= MAX_RECORD,
@@ -558,18 +562,105 @@ def verify_activation_confirmation(root, plan, owner):
         fds = (signers.fileno(), signature.fileno())
         verified = subprocess.run(
             [SSH_KEYGEN, '-Y', 'verify', '-f', f'/proc/self/fd/{fds[0]}',
-             '-I', owner, '-n', ACTIVATION_NAMESPACE, '-s', f'/proc/self/fd/{fds[1]}'],
+             '-I', owner, '-n', namespace, '-s', f'/proc/self/fd/{fds[1]}'],
             input=raw, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             pass_fds=fds, timeout=4, check=False,
         )
         require(verified.returncode == 0 and time.time() < expires,
-                'activation signature or confirmation expiry refused')
+                'owner signature or confirmation expiry refused')
         return {'confirmation_sha256': digest(raw),
                 'signers_sha256': digest(signer_bytes),
-                'expires_at': expires}
+                'issued_at': issued, 'expires_at': expires}
 
 
-def activation_preflight(operation_id, *, verify_confirmation=False):
+def verify_activation_confirmation(root, plan, owner, *, start=False):
+    return verify_owner_confirmation(
+        root, plan, owner, name='activation-confirmation',
+        schema='uif.foo-idle-activation-confirmation/1',
+        action='authorize_idle_marker_and_start' if start else 'authorize_idle_marker',
+        namespace=ACTIVATION_NAMESPACE,
+    )
+
+
+def prepare_apply(operation_id, *, issue=False):
+    """Prepare or issue the exact signed apply packet without changing the selector."""
+    require(os.getuid() == os.geteuid() == 0 and hash_pin(operation_id),
+            'expected protected transport and exact apply operation')
+    profile = PROFILES[PROFILE_NAME]
+    host = LinuxIdleHost()
+    path = host.packet / 'linux-apply.json'
+    with selector_lock(shared=False) as stream:
+        custody = plan_digest(lock_identity(os.fstat(stream.fileno())))
+        host.fd, host.custody = stream.fileno(), custody
+        raw = read_record(host.packet, 'admission.json')
+        operator = record(raw, ADMISSION_FIELDS)
+        plan = preflight(PROFILE_NAME, FIXED_STAGE, sealed_stage=True,
+                         approved_operator_uid=operator['owner_uid'])
+        host.unit_pin = plan['parked_unit_sha256']
+        require(host.unit_pin != BOOTSTRAP_PRIOR and bytes_pin(DROPIN) == digest(selector_dropin()),
+                'reviewed host bootstrap is not installed')
+        host.verify_inactive_bootstrap(profile.unit, host.unit_pin)
+        prior = plan_digest({'mode': 'parked', 'stage': PARKED_STAGE})
+        idle = digest(sealed_selection(plan))
+        require(prior != idle and host.selection_sha256() == prior and host.verify_custody()
+                and read_record(host.packet, 'admission.json') == raw
+                and host.receipts(operation_id, prior) == (None, None, None),
+                'parked selection, original receipts, or host custody changed')
+        request = {'schema': 'uif.foo-idle-apply-preflight/1', 'operation_id': operation_id,
+                   'signer_principal': operator['owner'], 'owner_uid': operator['owner_uid'],
+                   'installer_preflight_sha256': plan_digest(plan), 'bundle_sha256': plan['bundle_sha256'],
+                   'operator_admission_sha256': digest(raw), 'bootstrap_prior_sha256': BOOTSTRAP_PRIOR,
+                   'bootstrapped_unit_sha256': host.unit_pin, 'lock_custody_sha256': custody,
+                   'parked_selection_sha256': prior, 'idle_selection_sha256': idle,
+                   'unit': profile.unit, 'stage': FIXED_STAGE, 'valid_until': plan['valid_until']}
+        result = {'preflight': request, 'preflight_sha256': plan_digest(request)}
+        if not issue:
+            return result
+        signed = verify_owner_confirmation(
+            host.packet, request, operator['owner'], name='apply-confirmation',
+            schema='uif.foo-idle-apply-confirmation/1', action='issue_linux_apply', namespace=APPLY_NAMESPACE,
+        )
+        deadline = min(plan['valid_until'], signed['expires_at'])
+        issued = ApplyAdmission(PROFILE_NAME, profile.unit, FIXED_STAGE, operation_id,
+                                plan_digest(plan), custody, prior, idle, signed['issued_at'], deadline)
+        output = encode({'schema': 'uif.foo-idle-apply/1', 'admission': asdict(issued),
+                         'operator_admission_sha256': digest(raw), 'bootstrap_prior_sha256': BOOTSTRAP_PRIOR,
+                         'bootstrapped_unit_sha256': host.unit_pin})
+        require(stopped_unit_sha(profile.unit) == host.unit_pin
+                and host.selection_sha256() == prior and host.verify_custody()
+                and read_record(host.packet, 'admission.json') == raw
+                and preflight(PROFILE_NAME, FIXED_STAGE, sealed_stage=True,
+                              approved_operator_uid=operator['owner_uid']) == plan
+                and digest(sealed_selection(plan)) == idle
+                and signed['issued_at'] <= time.time() < deadline,
+                'signed apply issuance lost current quiescence or custody')
+        host.verify_inactive_bootstrap(profile.unit, host.unit_pin)
+        try:
+            original = read_record(host.packet, path.name)
+        except FileNotFoundError:
+            publish(path, output, deadline=deadline)
+        else:
+            require(original == output, 'an original apply packet already exists')
+        require(read_record(host.packet, path.name) == output, 'issued apply packet needs reconciliation')
+        return {**result, 'operation_id': operation_id, 'apply_packet_sha256': digest(output),
+                'confirmation_sha256': signed['confirmation_sha256']}
+
+
+def start_quiescence(root, unit, unit_pin):
+    raw = read_record(root, 'start-quiescence.json')
+    witness = record(raw, ('schema', 'unit', 'parked_unit_sha256', 'observed_at',
+                           'inflight', 'children_gone', 'unresolved_operation_ids'))
+    when = witness['observed_at']
+    require((witness['schema'], witness['unit'], witness['parked_unit_sha256']) ==
+            ('uif.guarded-upgrade-quiescence/1', unit, unit_pin)
+            and type(when) is int and when <= time.time() < when + 60
+            and type(witness['inflight']) is int and witness['inflight'] == 0
+            and witness['children_gone'] is True and witness['unresolved_operation_ids'] == [],
+            'independent fresh start quiescence is required')
+    return digest(raw), when + 60
+
+
+def activation_preflight(operation_id, *, verify_confirmation=False, start=False, prepare_start=False):
     """Describe one completed idle selection for a separate host-owner decision."""
     require(hash_pin(operation_id), 'expected exact original apply operation')
     profile = PROFILES[PROFILE_NAME]
@@ -617,23 +708,139 @@ def activation_preflight(operation_id, *, verify_confirmation=False):
                 'selected_receipt_sha256': plan_digest(selected),
                 'selection_sha256': admission.idle_selection_sha256,
                 'lock_custody_sha256': admission.lock_custody_sha256}
-        if verify_confirmation:
-            result = verify_activation_confirmation(host.packet, plan, operator['owner'])
+        if start or prepare_start:
+            witness_pin, witness_deadline = start_quiescence(host.packet, profile.unit, unit_pin)
+            plan = {**plan, 'start_quiescence_sha256': witness_pin}
+        if verify_confirmation or start:
+            result = verify_activation_confirmation(host.packet, plan, operator['owner'], start=start)
             require(host.verify_custody() and host.selection_sha256() == admission.idle_selection_sha256
                     and stopped_unit_sha(profile.unit) == unit_pin,
                     'selected idle readback changed during confirmation verification')
             host.verify_inactive_bootstrap(profile.unit, unit_pin)
             require(time.time() < result['expires_at'], 'activation confirmation expired')
-            return {'preflight': plan, 'preflight_sha256': plan_digest(plan),
-                    'verified_confirmation': result}
-        return plan
+            if not start:
+                return {'preflight': plan, 'preflight_sha256': plan_digest(plan),
+                        'verified_confirmation': result}
+            deadline = min(result['expires_at'], witness_deadline)
+            require(start_quiescence(host.packet, profile.unit, unit_pin) == (witness_pin, witness_deadline),
+                    'start quiescence witness changed')
+            restart = subprocess.check_output([SYSTEMCTL, '--no-pager', 'show', '--property=Restart',
+                                               profile.unit], timeout=4, text=True)
+            require(restart.strip() == 'Restart=no' and time.time() < deadline,
+                    'one-start policy or activation deadline refused')
+            intent_path = RECEIPTS / (operation_id + '.start-intent.json')
+            marker = STAGES / FIXED_STAGE / MARKER
+            start_intent = {'schema': 'uif.foo-idle-start-intent/1', 'operation_id': operation_id,
+                            'preflight_sha256': plan_digest(plan), 'preflight': plan, 'confirmation': result,
+                            'selection_sha256': admission.idle_selection_sha256, 'launch_before': deadline}
+            publish(intent_path, encode(start_intent), deadline=deadline)
+            publish(marker, encode(start_intent), deadline=deadline, mode=0o644)
+            require(bytes_pin(marker) == plan_digest(start_intent) and host.verify_custody(),
+                    'activation marker needs reconciliation')
+        else:
+            return plan
+
+    # ExecStart consumes the intent under its own exclusive lock.
+    require(time.time() < deadline, 'start window expired after marker; reconcile original intent')
+    subprocess.run([SYSTEMCTL, '--no-pager', '--job-mode=fail', 'start', profile.unit],
+                   timeout=15, check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    pid, invocation = verify_started_idle(profile.unit)
+    consumed = start_consumption(start_intent, pid, invocation)
+    require(read_record(RECEIPTS, operation_id + '.start-consumed.json') == encode(consumed),
+            'running process does not match the original start consumption')
+    receipt = {'schema': 'uif.foo-idle-start-observation/1', 'operation_id': operation_id,
+               'intent_sha256': plan_digest(start_intent), 'main_pid': pid, 'invocation_id': invocation}
+    publish(RECEIPTS / (operation_id + '.started.json'), encode(receipt))
+    return receipt
+
+
+def verify_started_idle(unit):
+    def state():
+        current = subprocess.check_output([SYSTEMCTL, '--no-pager', 'show',
+                                          '--property=ActiveState,SubState,MainPID,InvocationID', unit],
+                                         timeout=4, text=True)
+        return dict(line.split('=', 1) for line in current.splitlines())
+
+    original = state()
+    pid = int(original.get('MainPID', '0'))
+    invocation = original.get('InvocationID', '')
+    require(original.get('ActiveState') == 'active' and original.get('SubState') == 'running' and pid > 0
+            and re.fullmatch('[0-9a-f]{32}', invocation) is not None,
+            'original start has unverified process readback')
+    idle_messages = {
+        'Stokowski idle: free_route_unavailable; admissions and effects closed',
+        'Stokowski idle: free_quota_unavailable; admissions and effects closed',
+    }
+    deadline = time.monotonic() + 12
+    while time.monotonic() < deadline:
+        journal = subprocess.check_output(
+            [JOURNALCTL, '--no-pager', '--output=cat', '--lines=16', f'_SYSTEMD_UNIT={unit}',
+             f'_SYSTEMD_INVOCATION_ID={invocation}', f'_PID={pid}'],
+            timeout=4, text=True, stderr=subprocess.DEVNULL,
+        )
+        require(state() == original, 'original idle process changed during readback')
+        if idle_messages.intersection(journal.splitlines()):
+            return pid, invocation
+        time.sleep(0.25)
+    raise Held('original start did not prove the guarded idle hold')
+
+
+def trusted_start_process():
+    """Read the system manager and kernel, without accepting an invocation from the caller."""
+    require(os.getresuid() == (0, 0, 0) and os.getppid() == 1,
+            'idle start edge must be launched by the system manager')
+    unit = PROFILES[PROFILE_NAME].unit
+    properties = ('Id,User,Group,SupplementaryGroups,Type,Restart,NoNewPrivileges,'
+                  'MainPID,InvocationID,ControlGroup,ActiveState')
+    output = subprocess.check_output(
+        [SYSTEMCTL, '--system', '--no-pager', 'show', '--property=' + properties, unit],
+        env={'LC_ALL': 'C'}, timeout=4, text=True,
+    )
+    observed = dict(line.split('=', 1) for line in output.splitlines())
+    pid = os.getpid()
+    invocation, cgroup = observed['InvocationID'], observed['ControlGroup']
+    require((observed['Id'], observed['User'], observed['Group'], observed['SupplementaryGroups'],
+             observed['Type'], observed['Restart'], observed['NoNewPrivileges'], observed['MainPID'])
+            == (unit, 'user', 'user', '', 'simple', 'no', 'yes', str(pid))
+            and observed['ActiveState'] in ('activating', 'active')
+            and re.fullmatch('[0-9a-f]{32}', invocation) is not None
+            and invocation != '0' * 32 and cgroup.startswith('/') and cgroup != '/'
+            and Path('/proc/self/cgroup').read_text().splitlines() == ['0::' + cgroup],
+            'system manager and kernel did not attest this idle invocation')
+    return pid, invocation
+
+
+def start_consumption(intent, pid, invocation):
+    return {'schema': 'uif.foo-idle-start-consumption/1', 'operation_id': intent['operation_id'],
+            'intent_sha256': plan_digest(intent), 'main_pid': pid, 'invocation_id': invocation}
+
+
+def drop_idle_privileges():
+    account = pwd.getpwnam('user')
+    uid, gid = account.pw_uid, account.pw_gid
+    require(uid > 0 and gid > 0 and gid == grp.getgrnam('user').gr_gid,
+            'unexpected service account')
+    groups = set(os.getgrouplist(account.pw_name, gid))
+    os.initgroups(account.pw_name, gid)
+    os.setresgid(gid, gid, gid)
+    os.setresuid(uid, uid, uid)
+    status = dict(line.split(':', 1) for line in Path('/proc/self/status').read_text().splitlines())
+    require(os.getresuid() == (uid, uid, uid) and os.getresgid() == (gid, gid, gid)
+            and set(os.getgroups()) == groups and status['NoNewPrivs'].strip() == '1'
+            and all(int(status[name], 16) == 0 for name in ('CapPrm', 'CapEff', 'CapAmb')),
+            'service privileges did not drop')
+    os.environ.update(HOME=account.pw_dir, USER=account.pw_name,
+                      LOGNAME=account.pw_name, SHELL=account.pw_shell)
 
 
 def serve_idle_stage():
-    """systemd's one guarded ExecStart. Its shared lock survives exec and stop."""
-    require(os.getuid() == os.geteuid() == pwd.getpwnam('user').pw_uid != 0, 'unexpected service user')
-    with selector_lock(shared=True) as stream:
-        selected = record(read_record(ROOT, 'selection.json'),
+    """Consume one signed start at the privileged systemd edge, then exec unprivileged."""
+    pid, invocation = trusted_start_process()
+    with selector_lock(shared=False) as stream:
+        custody = lock_identity(os.fstat(stream.fileno()))
+        selection = read_record(ROOT, 'selection.json')
+        selected = record(selection,
                           ('mode', 'stage', 'launcher_sha256', 'config_sha256', 'interpreter_sha256'))
         require((selected['mode'], selected['stage']) == ('idle', FIXED_STAGE), 'unit is parked')
         stage = STAGES / FIXED_STAGE
@@ -644,10 +851,82 @@ def serve_idle_stage():
         marker = (stage / MARKER).lstat()
         require(stat.S_ISREG(marker.st_mode) and marker.st_uid == 0 and marker.st_nlink == 1
                 and not marker.st_mode & 0o022, 'protected activation marker unavailable')
-        require(lock_identity(os.fstat(stream.fileno())) == lock_identity(LOCK.lstat()),
-                'selector lock was replaced')
+        require(marker.st_size > 0, 'signed start intent is missing')
+        raw = read_record(stage, MARKER)
+        approval = record(raw, ('schema', 'operation_id', 'preflight_sha256', 'preflight', 'confirmation',
+                                'selection_sha256', 'launch_before'))
+        confirmation = approval['confirmation']
+        plan = approval['preflight']
+        require(type(confirmation) is dict
+                and confirmation.keys() == {'confirmation_sha256', 'signers_sha256', 'issued_at', 'expires_at'}
+                and all(hash_pin(confirmation[key]) for key in ('confirmation_sha256', 'signers_sha256'))
+                and all(hash_pin(approval[key]) for key in ('operation_id', 'preflight_sha256'))
+                and type(plan) is dict and plan_digest(plan) == approval['preflight_sha256']
+                and raw == encode(approval),
+                'invalid signed start intent')
+        issued, expires, launch_before = (confirmation['issued_at'], confirmation['expires_at'],
+                                          approval['launch_before'])
+        require(approval['schema'] == 'uif.foo-idle-start-intent/1'
+                and approval['selection_sha256'] == digest(selection)
+                and all(type(value) is int for value in (issued, expires, launch_before))
+                and issued <= time.time() < launch_before <= expires <= issued + 300,
+                'signed start marker expired or no longer binds the selected stage')
+        operation = approval['operation_id']
+        unit = PROFILES[PROFILE_NAME].unit
+        host = LinuxIdleHost()
+        admission = host.load_admission()
+        operator_bytes = read_record(host.packet, 'admission.json')
+        operator = record(operator_bytes, ADMISSION_FIELDS)
+        principal, uid = operator['owner'], operator['owner_uid']
+        require((admission.operation_id, admission.unit, admission.stage, admission.idle_selection_sha256,
+                 admission.lock_custody_sha256) ==
+                (operation, unit, FIXED_STAGE, digest(selection), plan_digest(custody))
+                and (plan['operation_id'], plan['unit'], plan['stage'], plan['selection_sha256'],
+                     plan['lock_custody_sha256'], plan['unit_sha256']) ==
+                (operation, unit, FIXED_STAGE, digest(selection), plan_digest(custody), host.unit_pin)
+                and (plan['signer_principal'], plan['original_owner_uid'], plan['original_admission_sha256'])
+                == (principal, uid, digest(operator_bytes))
+                and type(uid) is int and uid > 0 and uid == host.uid and pwd.getpwuid(uid).pw_name == principal
+                and read_record(RECEIPTS, operation + '.start-intent.json') == raw,
+                'original signed intent or installed apply binding changed')
+        require(host.verify_admission(admission), 'installed bootstrap changed')
+        original_intent, selected_receipt = apply_records(admission)
+        require(host.receipts(operation, admission.prior_selection_sha256) ==
+                (original_intent, selected_receipt, operation)
+                and plan['selected_receipt_sha256'] == plan_digest(selected_receipt),
+                'original apply completion changed')
+        unit_bytes = subprocess.check_output([SYSTEMCTL, '--system', '--no-pager', 'cat', unit],
+                                            env={'LC_ALL': 'C'}, timeout=4)
+        review = accepted_review(host.packet, PROFILES[PROFILE_NAME], FIXED_STAGE, operator['review_sha256'])
+        require(digest(unit_bytes) == host.unit_pin == review['parked_unit_sha256']
+                and review['bundle_sha256'] == plan['bundle_sha256']
+                and operator['review_sha256'] == plan['review_sha256']
+                and sealed_selection(review, allow_start_marker=True) == selection,
+                'reviewed unit or sealed bundle changed before start')
+        witness_pin, witness_deadline = start_quiescence(host.packet, unit, host.unit_pin)
+        require(witness_pin == plan['start_quiescence_sha256']
+                and launch_before == min(expires, witness_deadline)
+                and verify_activation_confirmation(host.packet, plan, principal, start=True) == confirmation
+                and trusted_start_process() == (pid, invocation)
+                and lock_identity(LOCK.lstat()) == custody,
+                'start authorization, invocation or lock changed')
+        consumed = start_consumption(approval, pid, invocation)
+        consumed_path = RECEIPTS / (operation + '.start-consumed.json')
+        try:
+            publish(consumed_path, encode(consumed), deadline=launch_before)
+        except FileExistsError as exc:
+            raise Held('original start already consumed; reconcile its receipt') from exc
+        require(read_record(RECEIPTS, consumed_path.name) == encode(consumed),
+                'original start consumption needs reconciliation')
+        # Keep the live-service fence, and verify custody after lock conversion.
+        fcntl.flock(stream.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
+        require(lock_identity(LOCK.lstat()) == custody and read_record(ROOT, 'selection.json') == selection
+                and read_record(stage, MARKER) == raw and time.time() < launch_before,
+                'start state changed after consumption; reconcile the original receipt')
         os.set_inheritable(stream.fileno(), True)
         executable = str(stage / INTERPRETER)
+        drop_idle_privileges()
+        require(time.time() < launch_before, 'start expired after consumption')
         os.execv(executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')])
 
 
@@ -656,14 +935,17 @@ def main():
     parser.add_argument('--profile', required=True, choices=PROFILES)
     parser.add_argument('--stage', required=True)
     parser.add_argument('--action', choices=('preflight', 'sealed-preflight', 'apply',
-                                             'activation-preflight', 'verify-activation-confirmation', 'serve'),
+                                             'prepare-apply', 'issue-apply', 'activation-preflight',
+                                             'verify-activation-confirmation', 'prepare-start', 'start-idle', 'serve'),
                         default='preflight')
     parser.add_argument('--operation-id')
     args = parser.parse_args()
     try:
-        activation_checks = ('activation-preflight', 'verify-activation-confirmation')
-        require((args.operation_id is not None) == (args.action in activation_checks),
-                'operation id is required only for activation checks')
+        activation_checks = ('activation-preflight', 'verify-activation-confirmation',
+                             'prepare-start', 'start-idle')
+        apply_checks = ('prepare-apply', 'issue-apply')
+        require((args.operation_id is not None) == (args.action in (*activation_checks, *apply_checks)),
+                'operation id is required only for signed workflow actions')
         if args.action == 'preflight':
             result = preflight(args.profile, args.stage)
         else:
@@ -671,11 +953,14 @@ def main():
             if args.action == 'serve':
                 serve_idle_stage()
                 return 1
-            if args.action in activation_checks:
+            if args.action in apply_checks:
+                result = prepare_apply(args.operation_id, issue=args.action == 'issue-apply')
+            elif args.action in activation_checks:
                 result = activation_preflight(
                     args.operation_id, verify_confirmation=args.action == 'verify-activation-confirmation',
+                    start=args.action == 'start-idle', prepare_start=args.action == 'prepare-start',
                 )
-                if args.action == 'activation-preflight':
+                if args.action in ('activation-preflight', 'prepare-start'):
                     result = {'preflight': result, 'preflight_sha256': plan_digest(result)}
             elif args.action == 'sealed-preflight':
                 with selector_lock(shared=True) as stream:
@@ -689,7 +974,7 @@ def main():
                 result = apply(args.profile, args.stage, admission=host.load_admission(), host=host)
     except Held as exc:
         print(f'Guarded upgrade held: {exc}.', file=sys.stderr)
-        if args.action == 'apply':
+        if args.action in ('apply', 'issue-apply', 'start-idle'):
             print('Reconcile the original receipts and selector before retrying.', file=sys.stderr)
         return 1
     except (OSError, KeyError, TypeError, ValueError, tarfile.TarError, subprocess.SubprocessError):
