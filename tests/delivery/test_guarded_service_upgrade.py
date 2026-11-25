@@ -173,6 +173,7 @@ class UpgradePreflight(unittest.TestCase):
                 path.chmod(member.mode)
         dropin.write_bytes(TOOL['selector_dropin']())
         effective = dropin.read_text().split('ExecStart=\nExecStart=', 1)[1].strip()
+        effective_restart = 'on-failure'
 
         def systemctl(argv, **_):
             if argv[0] == TOOL['JOURNALCTL']:
@@ -184,7 +185,7 @@ class UpgradePreflight(unittest.TestCase):
             if '--property=ExecStart' in argv:
                 return f'ExecStart={{ argv[]={effective} ; }}'
             if '--property=Restart' in argv:
-                return 'Restart=no\n'
+                return f'Restart={effective_restart}\n'
             if '--property=ActiveState,SubState,MainPID,InvocationID' in argv:
                 return 'ActiveState=active\nSubState=running\nMainPID=42\nInvocationID=' + 'a' * 32
             return '\n'.join(f'{k}={v}' for k, v in TOOL['STOPPED'].items())
@@ -289,23 +290,20 @@ class UpgradePreflight(unittest.TestCase):
         self.assertEqual(selector.read_bytes(), target)
         self.assertEqual(len(list(receipts.iterdir())), 3)
         self.assertFalse((stage / TOOL['MARKER']).exists())
+        marker = stage / TOOL['MARKER']
         with patch.object(TOOL['pwd'], 'getpwnam') as lookup_service_account:
             lookup_service_account.return_value = SimpleNamespace(pw_uid=1001)
             with self.assertRaises(FileNotFoundError):
                 TOOL['serve_idle_stage']()
-            (stage / TOOL['MARKER']).touch()  # Synthetic owner marker only.
-            def exec_with_lock(*_):
-                with lock.open('rb') as competing:
-                    with self.assertRaises(BlockingIOError):
-                        fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-            with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
-                TOOL['serve_idle_stage']()
-                executable = str(stage / TOOL['INTERPRETER'])
-                execute.assert_called_once_with(
-                    executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
-                )
-        (stage / TOOL['MARKER']).unlink()
+            with patch.object(os, 'execv') as refused_exec:
+                marker.touch()
+                with self.assertRaisesRegex(ValueError, 'signed start intent is missing'):
+                    TOOL['serve_idle_stage']()
+                marker.write_bytes(b'{}')
+                with self.assertRaisesRegex(ValueError, 'unexpected record fields'):
+                    TOOL['serve_idle_stage']()
+                refused_exec.assert_not_called()
+        marker.unlink()
         (self.stage / 'start-quiescence.json').write_bytes(
             (self.stage / 'quiescence.json').read_bytes(),
         )
@@ -336,6 +334,11 @@ class UpgradePreflight(unittest.TestCase):
                 check(admission.operation_id, start=True)
             sign(start_plan, 'activation-confirmation', 'uif.foo-idle-activation-confirmation/1',
                  'authorize_idle_marker_and_start', TOOL['ACTIVATION_NAMESPACE'])
+            with self.assertRaisesRegex(ValueError, 'one-start policy'):
+                check(admission.operation_id, start=True)
+            self.assertFalse(marker.exists())
+            self.assertFalse((receipts / (admission.operation_id + '.start-intent.json')).exists())
+            effective_restart = 'no'
             with patch.object(subprocess, 'run', side_effect=dispatch):
                 receipt = check(admission.operation_id, start=True)
                 self.assertEqual(receipt['main_pid'], 42)
@@ -344,6 +347,27 @@ class UpgradePreflight(unittest.TestCase):
             self.assertEqual(len(dispatches), 1)
         with patch.object(TOOL['pwd'], 'getpwnam') as lookup_service_account:
             lookup_service_account.return_value = SimpleNamespace(pw_uid=1001)
+
+            def exec_with_lock(*_):
+                with lock.open('rb') as competing:
+                    with self.assertRaises(BlockingIOError):
+                        fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
+                TOOL['serve_idle_stage']()
+                executable = str(stage / TOOL['INTERPRETER'])
+                execute.assert_called_once_with(
+                    executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
+                )
+            original_marker = marker.read_bytes()
+            marker_data = json.loads(original_marker)
+            marker_data['selection_sha256'] = 'f' * 64
+            marker.write_bytes(TOOL['encode'](marker_data))
+            with patch.object(os, 'execv') as refused_exec:
+                with self.assertRaisesRegex(ValueError, 'no longer binds the selected stage'):
+                    TOOL['serve_idle_stage']()
+                refused_exec.assert_not_called()
+            marker.write_bytes(original_marker)
             with patch.object(TOOL['time'], 'time', return_value=1050):
                 with self.assertRaisesRegex(ValueError, 'marker expired'):
                     TOOL['serve_idle_stage']()
@@ -351,6 +375,7 @@ class UpgradePreflight(unittest.TestCase):
     def test_reviewed_dropin_matches_fixed_start_contract(self):
         dropin = SOURCE.with_name('60-uif1313-idle-selector.conf')
         self.assertEqual(dropin.read_bytes(), runpy.run_path(str(SOURCE))['selector_dropin']())
+        self.assertIn(b'\nRestart=no\n', dropin.read_bytes())
 
     def test_activation_confirmation_requires_the_exact_enrolled_signer_and_operation(self):
         plan = {'operation_id': 'e' * 64, 'selection_sha256': PIN}

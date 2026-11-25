@@ -80,7 +80,7 @@ def selector_dropin():
     marker = STAGES / FIXED_STAGE / MARKER
     return ('[Unit]\nConditionPathExists=\n'
             f'ConditionPathExists={marker}\n\n'
-            '[Service]\nExecStart=\n'
+            '[Service]\nRestart=no\nExecStart=\n'
             f'ExecStart=/usr/bin/python3 -I -S -B {TOOL_PATH} --profile uif-idle'
             f' --stage {FIXED_STAGE} --action serve\n').encode()
 
@@ -796,15 +796,24 @@ def serve_idle_stage():
         marker = (stage / MARKER).lstat()
         require(stat.S_ISREG(marker.st_mode) and marker.st_uid == 0 and marker.st_nlink == 1
                 and not marker.st_mode & 0o022, 'protected activation marker unavailable')
-        if marker.st_size:
-            approval = record(read_record(stage, MARKER),
-                              ('schema', 'operation_id', 'preflight_sha256', 'confirmation',
-                               'selection_sha256', 'launch_before'))
-            require(approval['schema'] == 'uif.foo-idle-start-intent/1'
-                    and approval['selection_sha256'] == digest(selection)
-                    and type(approval['launch_before']) is int
-                    and time.time() < approval['launch_before'],
-                    'signed start marker expired or no longer binds the selected stage')
+        require(marker.st_size > 0, 'signed start intent is missing')
+        raw = read_record(stage, MARKER)
+        approval = record(raw, ('schema', 'operation_id', 'preflight_sha256', 'confirmation',
+                                'selection_sha256', 'launch_before'))
+        confirmation = approval['confirmation']
+        require(type(confirmation) is dict
+                and confirmation.keys() == {'confirmation_sha256', 'signers_sha256', 'issued_at', 'expires_at'}
+                and all(hash_pin(confirmation[key]) for key in ('confirmation_sha256', 'signers_sha256'))
+                and all(hash_pin(approval[key]) for key in ('operation_id', 'preflight_sha256'))
+                and raw == encode(approval),
+                'invalid signed start intent')
+        issued, expires, launch_before = (confirmation['issued_at'], confirmation['expires_at'],
+                                          approval['launch_before'])
+        require(approval['schema'] == 'uif.foo-idle-start-intent/1'
+                and approval['selection_sha256'] == digest(selection)
+                and all(type(value) is int for value in (issued, expires, launch_before))
+                and issued <= time.time() < launch_before <= expires <= issued + 300,
+                'signed start marker expired or no longer binds the selected stage')
         require(lock_identity(os.fstat(stream.fileno())) == lock_identity(LOCK.lstat()),
                 'selector lock was replaced')
         os.set_inheritable(stream.fileno(), True)
