@@ -242,15 +242,63 @@ class UpgradePreflight(unittest.TestCase):
         signers.write_bytes(b'fixture-operator ' + key.with_suffix('.pub').read_bytes())
         self.enterContext(patch.dict(TOOL, {'ACTIVATION_SIGNERS': signers}))
 
-        def sign(plan, name, schema, action, namespace):
+        def sign_file(raw, name, namespace):
             path = self.stage / (name + '.json')
             path.with_suffix('.json.sig').unlink(missing_ok=True)
-            path.write_bytes(encoded({'schema': schema, 'action': action,
-                                      'operation_id': plan['operation_id'],
-                                      'preflight_sha256': TOOL['plan_digest'](plan),
-                                      'issued_at': 990, 'expires_at': 1080}))
+            path.write_bytes(raw)
             subprocess.run([keygen, '-Y', 'sign', '-f', str(key), '-n', namespace, str(path)],
                            check=True, capture_output=True)
+
+        def sign(plan, name, schema, action, namespace):
+            sign_file(encoded({'schema': schema, 'action': action, 'operation_id': plan['operation_id'],
+                               'preflight_sha256': TOOL['plan_digest'](plan),
+                               'issued_at': 990, 'expires_at': 1080}), name, namespace)
+
+        # Replace the generic preflight fixture with output from the actual installer issuer.
+        confirmation_path = self.stage / 'confirmation.json'
+        admission_path = self.stage / 'admission.json'
+        confirmation_path.unlink()
+        admission_path.unlink()
+        installer = runpy.run_path(str(SOURCE.with_name('issue_foo_idle_installer.py')))['ceremony']
+        loader = base / SOURCE.name
+        loader.write_bytes(SOURCE.read_bytes())
+        fixture_pwd = SimpleNamespace(getpwnam=lambda name: SimpleNamespace(pw_name=name, pw_uid=1001))
+        self.enterContext(patch.dict(installer.__globals__, {
+            'SIGNERS': signers, 'LOADER': loader, 'pwd': fixture_pwd,
+        }))
+        loader_pin = TOOL['bytes_pin'](loader)
+        installed = SimpleNamespace(**TOOL)
+        crossed = TOOL['encode'](installer(installed, loader_pin, 'f' * 64, issue=False))
+        sign_file(crossed, 'installer-request', installer.__globals__['NAMESPACE'])
+        alternate = installer(installed, loader_pin, 'f' * 64, issue=True)
+        self.assertEqual(alternate['confirmation_sha256'], TOOL['digest'](crossed))
+        # Separate synthetic installer run in the same disposable fixture.
+        confirmation_path.unlink()
+        admission_path.unlink()
+        original = TOOL['encode'](installer(installed, loader_pin, admission.operation_id, issue=False))
+        sign_file(original, 'installer-request', installer.__globals__['NAMESPACE'])
+        installer_receipt = installer(installed, loader_pin, admission.operation_id, issue=True)
+        self.assertEqual(installer_receipt['confirmation_sha256'], TOOL['digest'](original))
+        self.assertEqual(installer_receipt['admission_sha256'], TOOL['bytes_pin'](admission_path))
+        self.assertEqual(selector.read_bytes(), old)
+
+        @contextmanager
+        def crossed_installer():
+            paths = (confirmation_path, admission_path, issued_packet)
+            previous = [path.read_bytes() for path in paths]
+            operator = json.loads(previous[1])
+            operator['confirmation_sha256'] = TOOL['digest'](crossed)
+            packet = json.loads(previous[2])
+            operator_bytes = TOOL['encode'](operator)
+            packet['operator_admission_sha256'] = TOOL['digest'](operator_bytes)
+            confirmation_path.write_bytes(crossed)
+            admission_path.write_bytes(operator_bytes)
+            issued_packet.write_bytes(TOOL['encode'](packet))
+            try:
+                yield
+            finally:
+                for path, saved in zip(paths, previous):
+                    path.write_bytes(saved)
 
         with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
                 TOOL['os'], 'geteuid', return_value=0):
@@ -268,12 +316,13 @@ class UpgradePreflight(unittest.TestCase):
             self.assertEqual(issued['preflight'], preview['preflight'])
             self.assertEqual(issued, prepare_apply(admission.operation_id, issue=True))
             self.assertEqual(selector.read_bytes(), old)
-            sign_apply(prepare_apply('f' * 64)['preflight'])
-            with self.assertRaisesRegex(ValueError, 'original apply packet'):
-                prepare_apply('f' * 64, issue=True)
-            sign_apply(preview['preflight'])
+            with self.assertRaisesRegex(ValueError, 'original installer operation'):
+                prepare_apply('f' * 64)
             admission = TOOL['LinuxIdleHost']().load_admission()
             self.assertEqual(admission.expires_at, plan['valid_until'])
+            with crossed_installer(), self.assertRaisesRegex(ValueError, 'original installer operation'):
+                APPLY('uif-idle', STAGE, admission=admission, host=TOOL['LinuxIdleHost']())
+            self.assertEqual(list(receipts.iterdir()), [])
             with lock.open('rb') as running:
                 fcntl.flock(running, fcntl.LOCK_SH | fcntl.LOCK_NB)
                 with self.assertRaises(BlockingIOError):
@@ -374,6 +423,9 @@ class UpgradePreflight(unittest.TestCase):
                 with self.assertRaises(BlockingIOError):
                     TOOL['serve_idle_stage']()
             self.assertFalse(consumed_path.exists())
+            with crossed_installer(), self.assertRaisesRegex(ValueError, 'original signed intent'):
+                TOOL['serve_idle_stage']()
+            self.assertFalse(consumed_path.exists())
             TOOL['serve_idle_stage']()
 
         with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
@@ -389,6 +441,8 @@ class UpgradePreflight(unittest.TestCase):
                 check(admission.operation_id, start=True)
             sign(start_plan, 'activation-confirmation', 'uif.foo-idle-activation-confirmation/1',
                  'authorize_idle_marker_and_start', TOOL['ACTIVATION_NAMESPACE'])
+            with crossed_installer(), self.assertRaisesRegex(ValueError, 'original installer operation'):
+                check(admission.operation_id, start=True)
             with self.assertRaisesRegex(ValueError, 'one-start policy'):
                 check(admission.operation_id, start=True)
             self.assertFalse(marker.exists())

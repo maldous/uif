@@ -70,7 +70,7 @@ class FooInstallerCeremony(unittest.TestCase):
         self.enterContext(patch.object(OWNER['time'], 'time', return_value=1000))
         self.enterContext(patch.object(OWNER['pwd'], 'getpwnam',
                                        return_value=SimpleNamespace(pw_name='fixture-owner', pw_uid=1001)))
-        command = LOADER['selector_dropin']().decode().split('ExecStart=\nExecStart=', 1)[1].strip()
+        command = LOADER['selector_dropin']().decode().split('ExecStart=\nExecStart=', 1)[1].strip().removeprefix('!')
         self.enterContext(patch.object(subprocess, 'check_output', return_value=f'ExecStart={{ argv[]={command} ; }}'))
         self.key = self.root / 'disposable-test-key'
         self.keygen('-q', '-t', 'ed25519', '-N', '', '-f', str(self.key))
