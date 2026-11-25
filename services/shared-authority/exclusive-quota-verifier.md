@@ -16,25 +16,49 @@ The verifier's only configured dependencies are:
   pinned Free route, topology digest and two independent producer public keys.
   Qualify the deployed verifier and store against that binding digest before
   setting the authority's existing `quota_verification_sha256`.
-- `QUOTA_EVIDENCE`, a private capability for a separately qualified immutable
-  original store. The only read is
-  `GET https://quota-evidence.internal/v1/original/<sha256>`, with no forwarded
-  caller headers or redirect following. The store returns the canonical
-  signed bytes as exactly `application/octet-stream` (up to 16 KiB), or refuses.
+- `EXCLUSIVE_QUOTA_OPENING_SHA256`, the independently qualified digest of
+  the canonical opening record. The opening binds the same account/route
+  trust digest and the exact outside carryover upper bound. An absent pin
+  holds before requesting evidence.
+- `QUOTA_EVIDENCE`, a private capability for the immutable original store
+  and its current checkpoint. The verifier reads both
+  `GET https://quota-evidence.internal/v1/original/<sha256>` and
+  `GET https://quota-evidence.internal/v1/checkpoint/current/<account_id>`.
+  The current lookup is keyed by the configured account, independently of
+  the caller's digest. Neither request forwards caller headers or follows
+  redirects. Both return canonical `application/octet-stream` bytes
+  (up to 16 KiB each), or refuse.
   The adapter checks the digest and both signatures; an overwritten or wrong
   object does not become a new original. No producer or storage deployment is
   supplied here. A store remains unqualified until custody, append-only
   behavior, separate writer/read authority and rollback/revocation are proven.
 
+The store must return its durable current head, with the ledger signer's
+signature, the exact original and ledger-chain digests, and the opening
+bytes. The verifier checks the opening bytes against the configured pin and
+the signed original, verifies the checkpoint signature, and checks
+contiguous half-open windows from UTC midnight to the signed ledger
+watermark. The sum of their usage and the unresolved bound must match the
+signed original. Serving an old original alongside a different current
+checkpoint refuses. The store still needs external qualification for
+durable advancement, rollback protection, and access control.
+
 Absent dependencies, absent/oversize bytes, a pin mismatch, tamper, a stale
-window, or an unverified proof refuse the observation. Successful responses
-are not cached and include only the existing authority result shape. One
+window, or an unverified proof refuse the observation. Successful internal
+responses carry private checkpoint pins and liabilities. One
 three-second deadline covers the full lookup and verification, not just response
 headers. A timed-out operation returns a refusal immediately but continues to
 occupy one of four in-flight slots per isolate until the original call and any
 cancellation settle. Saturation returns a refusal without adding a store call;
 a permanently stuck upstream can intentionally leave the isolate closed. The
-authority still enforces the request maximum and its retained liabilities.
+authority commits the checkpoint evidence atomically with the existing
+usage receipt. It continues to use the original reservation ledger and
+count unknown effects and carryovers. An uncheckpointed legacy usage
+projection cannot authorize a send. Exact prior request receipts remain
+readable without fetching a new checkpoint or granting new admission.
+Opening amounts cannot change and unresolved external liabilities cannot
+decrease through a usage refresh. A verified reconciliation operation for
+releasing those liabilities would need separate qualification.
 
 ## Exact next account-owner action
 

@@ -96,6 +96,8 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
             projection,
             coverage: 'entire-account-all-routes-from-utc-midnight',
             gap_evidence_sha256: '9'.repeat(64),
+            checkpoint: { sha256: '3'.repeat(64), opening_sha256: '4'.repeat(64),
+              unresolved_upper: 0, opening_upper: 0 },
           });
         },
       },

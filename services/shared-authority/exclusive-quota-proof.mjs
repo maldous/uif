@@ -130,3 +130,59 @@ export async function verifyExclusiveQuotaOriginal({ binding, request, original,
     },
   };
 }
+
+// The retained store supplies its account's current head, independently of
+// the requested original. The head can prove completeness, never erase debt.
+export async function verifyExclusiveQuotaCurrent({ binding, request, original, head, openingSHA, now }) {
+  need(sha(openingSHA) && head instanceof Uint8Array && head.byteLength > 0 &&
+    head.byteLength <= originalLimit, 'quota_checkpoint_unavailable', 503);
+  need(original instanceof Uint8Array && original.byteLength <= originalLimit, 'quota_original_unavailable', 503);
+  original = new Uint8Array(original);
+  binding = structuredClone(binding);
+  const headBytes = new Uint8Array(head);
+  const observation = await verifyExclusiveQuotaOriginal({ binding, request, original, now });
+  const serialized = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(headBytes);
+  const current = JSON.parse(serialized);
+  need(canonical(current) === serialized, 'quota_checkpoint_not_canonical');
+  fields(current, 'checkpoint', 'signature', 'opening');
+  const c = current.checkpoint;
+  const opening = current.opening;
+  fields(opening, 'schema', 'binding_sha256', 'outside_carryover_upper');
+  fields(c, 'schema', 'binding_sha256', 'opening_sha256', 'source_receipt_sha256',
+    'ledger_chain_sha256', 'utc_day', 'valid_until', 'windows', 'outside_unresolved_upper');
+  const { closure, ledger } = JSON.parse(new TextDecoder().decode(original));
+  need(c.schema === 'uif.exclusive-quota.current-checkpoint/1' &&
+    c.binding_sha256 === observation.binding_sha256 &&
+    c.opening_sha256 === openingSHA && closure.carryover_sha256 === openingSHA &&
+    opening.schema === 'uif.exclusive-quota.opening/1' &&
+    opening.binding_sha256 === observation.binding_sha256 &&
+    opening.outside_carryover_upper === closure.outside_carryover_upper &&
+    await digest(opening) === openingSHA &&
+    c.source_receipt_sha256 === observation.source_receipt_sha256 &&
+    c.ledger_chain_sha256 === ledger.chain_sha256 && c.utc_day === closure.utc_day &&
+    c.valid_until === ledger.valid_until && now < c.valid_until &&
+    c.outside_unresolved_upper === ledger.outside_unresolved_upper &&
+    Array.isArray(c.windows) && c.windows.length > 0 && c.windows.length <= 240,
+    'quota_checkpoint_binding_unverified', 403);
+  await signed(c, current.signature, binding.ledger_public_key);
+  let end = closure.covered_from;
+  let usage = 0;
+  for (const window of c.windows) {
+    fields(window, 'from', 'through', 'usage_upper');
+    need(window.from === end && timestamp(window.through) && window.through > end &&
+      window.through <= ledger.covered_through && withinLimit(window.usage_upper),
+      'quota_checkpoint_window_incomplete', 403);
+    end = window.through;
+    usage += window.usage_upper;
+    need(withinLimit(usage), 'quota_checkpoint_usage_invalid', 403);
+  }
+  need(end === ledger.covered_through && usage === ledger.account_usage_upper,
+    'quota_checkpoint_window_incomplete', 403);
+  return {
+    ...observation,
+    checkpoint: {
+      sha256: await digestBytes(headBytes), opening_sha256: openingSHA,
+      unresolved_upper: c.outside_unresolved_upper, opening_upper: closure.outside_carryover_upper,
+    },
+  };
+}

@@ -1,9 +1,10 @@
 // Binding-only quota verifier entry point. No public route or provider traffic.
-import { verifyExclusiveQuotaOriginal } from './exclusive-quota-proof.mjs';
+import { verifyExclusiveQuotaCurrent } from './exclusive-quota-proof.mjs';
 import { bytes64, equal, fields, routeOK, sha } from './protocol.mjs';
 
 const observationURL = 'https://quota.internal/v1/observation/read';
 const originalPrefix = 'https://quota-evidence.internal/v1/original/';
+const checkpointPrefix = 'https://quota-evidence.internal/v1/checkpoint/current/';
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 const maximumConcurrent = 4;
 const maximumDeadlineMs = 3000;
@@ -93,12 +94,13 @@ export async function resolveObservation(
 
 async function resolveBounded(request, env, clock, signal, cleanups) {
   let binding;
+  const openingSHA = env.EXCLUSIVE_QUOTA_OPENING_SHA256;
   try {
     binding = JSON.parse(env.EXCLUSIVE_QUOTA_BINDING);
     fields(binding, 'route', 'topology_sha256', 'closure_public_key', 'ledger_public_key');
     routeOK(binding.route);
     if (
-      !sha(binding.topology_sha256) ||
+      !sha(binding.topology_sha256) || !sha(openingSHA) ||
       bytes64(binding.closure_public_key, 32).length !== 32 ||
       bytes64(binding.ledger_public_key, 32).length !== 32 ||
       binding.closure_public_key === binding.ledger_public_key ||
@@ -121,11 +123,10 @@ async function resolveBounded(request, env, clock, signal, cleanups) {
   }
   if (!equal(query.route, binding.route)) return denied(403, 'route_unbound');
 
-  let original;
-  try {
+  async function retained(url) {
     signal.throwIfAborted();
     const response = await env.QUOTA_EVIDENCE.fetch(
-      new Request(originalPrefix + query.source_receipt_sha256, {
+      new Request(url, {
         method: 'GET',
         redirect: 'error',
         signal,
@@ -136,16 +137,28 @@ async function resolveBounded(request, env, clock, signal, cleanups) {
     if (signal.aborted || response.status !== 200 || response.redirected ||
         response.headers.get('content-type') !== 'application/octet-stream') {
       if (response.body) trackCancel(() => response.body.cancel(), cleanups);
-      return denied(503, 'original_unavailable');
+      throw new Error('retained bytes unavailable');
     }
-    original = await boundedRead(response.body, 16384, signal, cleanups);
+    return boundedRead(response.body, 16384, signal, cleanups);
+  }
+  let original;
+  try {
+    original = await retained(originalPrefix + query.source_receipt_sha256);
   } catch {
     return denied(503, 'original_unavailable');
+  }
+  let head;
+  try {
+    head = await retained(checkpointPrefix + binding.route.account_id);
+  } catch {
+    return denied(503, 'checkpoint_unavailable');
   }
 
   try {
     signal.throwIfAborted();
-    const out = await verifyExclusiveQuotaOriginal({ binding, request: query, original, now: clock() });
+    const out = await verifyExclusiveQuotaCurrent({
+      binding, request: query, original, head, openingSHA, now: clock(),
+    });
     signal.throwIfAborted();
     return reply(200, out);
   } catch {

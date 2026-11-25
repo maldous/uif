@@ -151,6 +151,8 @@ function fixture() {
       projection,
       coverage: 'entire-account-all-routes-from-utc-midnight',
       gap_evidence_sha256: hex('f'),
+      checkpoint: { sha256: hex('3'), opening_sha256: hex('4'), unresolved_upper: 0, opening_upper: 0,
+        ...ctx.checkpointFixture },
     };
     return ctx.call('quota', 'usage/write', {
       request_id: 'usage-' + time + '-' + route.account_id,
@@ -435,6 +437,35 @@ test('quota submitter cannot replace original telemetry, roll back a same-day up
   await assert.rejects(f.call('quota', 'usage/write', body), /projection_unverified/);
   f.a.quotaVerifier = undefined;
   await assert.rejects(f.call('native', 'send', await f.request(lease, q)), /usage_receipt_not_current/);
+  assert.equal(f.calls.length, 0);
+});
+
+test('checkpoint survives reconstruction, preserves opening and unknown debt, and does not rewrite an original', async () => {
+  const f = fixture();
+  const lease = await admitted(f);
+  f.checkpointFixture = { unresolved_upper: 100, opening_upper: 50 };
+  const result = await f.quota(500);
+  const original = {
+    request_id: 'usage-' + start + '-' + route.account_id, projection: f.observation.projection,
+    source_receipt_sha256: f.observation.source_receipt_sha256,
+  };
+  f.a = f.restart();
+  assert.equal((await f.call('native', 'usage/read', { route })).receipt_sha256, result.receipt_sha256);
+  const verifier = f.a.quotaVerifier;
+  f.a.quotaVerifier = undefined;
+  assert.deepEqual(await f.call('quota', 'usage/write', original), result);
+  await assert.rejects(f.call('quota', 'usage/write', {
+    ...original, source_receipt_sha256: hex('a'),
+  }), /original_request_changed/);
+  f.a.quotaVerifier = verifier;
+  f.setTime(start + 1);
+  f.checkpointFixture = { opening_sha256: hex('d'), unresolved_upper: 100, opening_upper: 50 };
+  await assert.rejects(f.quota(900), /quota_checkpoint_opening_changed/);
+  f.checkpointFixture = { unresolved_upper: 99, opening_upper: 50 };
+  await assert.rejects(f.quota(900), /quota_checkpoint_unresolved_liability_reduced/);
+  f.a.put('DELETE FROM usage_checkpoints WHERE account=?', route.account_id);
+  await assert.rejects(f.call('native', 'usage/read', { route }), /usage_unavailable/);
+  await assert.rejects(f.call('native', 'send', await f.request(lease, result)), /usage_receipt_not_current/);
   assert.equal(f.calls.length, 0);
 });
 
