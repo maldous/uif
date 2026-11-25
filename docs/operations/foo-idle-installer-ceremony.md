@@ -62,3 +62,7 @@ left by an interruption or read back the original completed pair. Preserve
 conflicting or expired material for the Foo owner to reconcile. The
 ceremony leaves the parked selection and unit intact and never issues an
 apply packet or activation marker.
+
+Use the same installer operation ID for apply preparation, apply and the
+separately signed start. The guarded workflow checks that ID against the
+protected original confirmation before accepting any of those actions.

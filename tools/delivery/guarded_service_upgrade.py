@@ -75,6 +75,11 @@ BOOTSTRAP_PRIOR = '96c56b11f328c4d97df40e5d5ab705d4c85c6cd31c96cbacaca699ca05873
 MARKER = 'ACTIVATION_AUTHORIZED'
 ADMISSION_FIELDS = ('schema', 'profile', 'unit', 'stage', 'owner', 'owner_uid', 'review_sha256',
                     'confirmation_sha256', 'quiescence_sha256', 'issued_at', 'expires_at')
+INSTALLER_FIELDS = ('schema', 'action', 'operation_id', 'profile', 'unit', 'stage', 'owner',
+                    'owner_uid', 'signers_sha256', 'installer_review_sha256', 'quiescence_sha256',
+                    'bundle_sha256', 'bootstrapped_unit_sha256', 'parked_unit_preimage_sha256',
+                    'loader_sha256', 'lock_custody_sha256', 'parked_selection_sha256',
+                    'idle_selection_sha256', 'issued_at', 'expires_at')
 
 
 def selector_dropin():
@@ -203,6 +208,20 @@ def pinned_record(root, name, pin):
     raw = read_record(root, name + '.json')
     require(hash_pin(pin) and digest(raw) == pin, name + ' witness pin mismatch')
     return raw
+
+
+def verify_installer_operation(packet, operator, operation):
+    original = record(pinned_record(packet, 'confirmation', operator['confirmation_sha256']),
+                      INSTALLER_FIELDS)
+    require(hash_pin(operation) and (original['schema'], original['action'], original['operation_id']) ==
+            ('uif.foo-idle-installer-request/1', 'issue_installer_admission', operation),
+            'original installer operation does not match apply or start')
+    fields = ('profile', 'unit', 'stage', 'owner', 'owner_uid', 'quiescence_sha256',
+              'issued_at', 'expires_at')
+    require(all(original[key] == operator[key] and type(original[key]) is type(operator[key])
+                for key in fields)
+            and original['installer_review_sha256'] == operator['review_sha256'],
+            'original installer confirmation does not match its admission')
 
 
 def accepted_review(root, profile, stage, pin):
@@ -473,6 +492,9 @@ class LinuxIdleHost:
 
     def verify_admission(self, admission):
         verified = self.load_admission() == admission and bytes_pin(DROPIN) == digest(selector_dropin())
+        if verified:
+            operator = record(read_record(self.packet, 'admission.json'), ADMISSION_FIELDS)
+            verify_installer_operation(self.packet, operator, admission.operation_id)
         self.admission = admission if verified else None
         return verified
 
@@ -594,6 +616,7 @@ def prepare_apply(operation_id, *, issue=False):
         host.fd, host.custody = stream.fileno(), custody
         raw = read_record(host.packet, 'admission.json')
         operator = record(raw, ADMISSION_FIELDS)
+        verify_installer_operation(host.packet, operator, operation_id)
         plan = preflight(PROFILE_NAME, FIXED_STAGE, sealed_stage=True,
                          approved_operator_uid=operator['owner_uid'])
         host.unit_pin = plan['parked_unit_sha256']
