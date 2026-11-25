@@ -2,11 +2,33 @@
 
 Evidence snapshot: 24 November 2026 UTC. Scope and acceptance: [UIF-1313](https://linear.app/maldous/issue/UIF-1313). A documented client, installed executable, account login, or passing fixture is not live spend or dispatch approval. Keep every unqualified route disabled and preserve the current stop/hold state.
 
+## Current status: 26 November 2026 AEDT
+
+The reviewed guarded-idle deployment ([UIF #130](https://github.com/maldous/uif/pull/130))
+was observed running with `free_route_unavailable` and zero restarts. That is
+an idle health snapshot, not inference, publication, or delivery acceptance.
+
+Cloudflare is one candidate, not a prerequisite. Assess all permitted
+zero-added-cost routes and select the first that qualifies under the existing
+admission controls. The advisory pool selector is not installed dynamic
+dispatch. No live inference route was qualified in this snapshot.
+
+- Cloudflare Workers AI: Free plan verified; safe route and quota enforcement
+  are not yet qualified for inference.
+- Existing OpenRouter and Groq access paths each returned HTTP 401. This is
+  not a general finding about either provider or its free tier.
+- Native Antigravity is present but unqualified. Other free routes assessed
+  remain unqualified. Local Codex calls and paid, prepaid, or fallback routes
+  were outside this assessment.
+
+Provider tiers, access and runtime health can change. Catalogue availability,
+third-party funding or possible future credits are not current authority to run.
+
 ## Requested routes
 
 | Route | Verified or supported | What must pass before any live use |
 | --- | --- | --- |
-| **Cloudflare Workers AI, OffMenu Free** | First known-route validation. Foo has the corrected parked selector; no live inference is qualified by it. The bound model is `@cf/zai-org/glm-4.7-flash`; previous readback on the named Gateway was Standard, not Unified Billing. [Free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/) is 10,000 neurons per UTC day; UIF's stricter limit is **projected below 7,500**, not a provider setting. [Adaptive GraphQL](https://developers.cloudflare.com/analytics/graphql-api/sampling/) is not an account-wide hard bound. | Read the approved account, exact gateway/model/no-fallback, cutoff window and receipt completeness without inference. Establish authenticated unsampled account-wide upper bound, or exclusively fenced and reconciled all-producer accounting. Include gaps, unresolved reservations and worst-case physical call. No personal Paid substitution or unapproved activation. |
+| **Cloudflare Workers AI, OffMenu Free** | Optional zero-added-cost candidate; the observed guarded-idle service does not qualify live inference. The bound model is `@cf/zai-org/glm-4.7-flash`; previous readback on the named Gateway was Standard, not Unified Billing. [Free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/) is 10,000 neurons per UTC day; UIF's stricter limit is **projected below 7,500**, not a provider setting. [Adaptive GraphQL](https://developers.cloudflare.com/analytics/graphql-api/sampling/) is not an account-wide hard bound. | Read the approved account, exact gateway/model/no-fallback, cutoff window and receipt completeness without inference. Establish authenticated unsampled account-wide upper bound, or exclusively fenced and reconciled all-producer accounting. Include gaps, unresolved reservations and worst-case physical call. No personal Paid substitution or unapproved activation. |
 | **Codex, included signed-in plan** | Distinct from API-key billing or a generic Chat endpoint. UIF-1313 specifies stop new issues at **15% remaining**, stop all calls at **10%**. No current quota or worker authorization is inferred from historical readiness. | Verify active client/config/model in a no-inference readback and fresh account limits across all applicable windows. Prove the sender reserves for every physical request; refuse unresolved refresh, retry or concurrent ownership. Keep API-key and alternative provider fallback excluded. |
 | **OpenAI Responses, existing promotional account** | Approved separate qualification path, not Codex API-key mode. Existing no-inference model-list readback and offline wire checks do not prove Responses grant eligibility or billable-path exclusion. [OpenAI spend limits](https://developers.openai.com/api/docs/guides/spend-limits) are a backstop, not an exact grant meter. | Read actual grant balance and expiry from the approved account, prove model/project eligibility and no purchased credits or auto-recharge fallback. Apply the 15%/10% grant rules on trusted fresh balances and bounded next attempts. |
 | **OpenCode → Groq Free** | Separate client/provider binding. OpenCode v2.3.2 was seen on Foo, not proof of active auth, included quota, configured model or safe dispatch. [Groq limits](https://console.groq.com/docs/rate-limits), [OpenCode CLI](https://opencode.ai/docs/cli/commands). | Confirm Free org/project and exact installed client/provider/model supports the required tool protocol. Prove org-level counters/reset, no paid route, no unmetered subagents and no internal retry outside the sender fence. |
