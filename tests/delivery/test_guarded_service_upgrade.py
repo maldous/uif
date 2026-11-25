@@ -201,6 +201,7 @@ class UpgradePreflight(unittest.TestCase):
             if any(arg.startswith('--property=Id,') for arg in argv):
                 return (f'Id={UNIT}\nUser=user\nGroup=user\nSupplementaryGroups=\nType=simple\n'
                         f'Restart={effective_restart}\nNoNewPrivileges=yes\nMainPID=42\n'
+                        'CapabilityBoundingSet=cap_setgid cap_setuid cap_setpcap\nAmbientCapabilities=\n'
                         f'InvocationID={"a" * 32}\nControlGroup={manager_cgroup}\nActiveState=active\n')
             return '\n'.join(f'{k}={v}' for k, v in TOOL['STOPPED'].items())
 
@@ -484,6 +485,8 @@ class UpgradePreflight(unittest.TestCase):
         dropin = SOURCE.with_name('60-uif1313-idle-selector.conf')
         self.assertEqual(dropin.read_bytes(), runpy.run_path(str(SOURCE))['selector_dropin']())
         self.assertIn(b'\nRestart=no\n', dropin.read_bytes())
+        self.assertIn(b'\nCapabilityBoundingSet=\nCapabilityBoundingSet=CAP_SETGID CAP_SETUID CAP_SETPCAP\n',
+                      dropin.read_bytes())
 
     def test_privileged_edge_must_drop_to_the_service_ids_without_capabilities(self):
         account = SimpleNamespace(pw_uid=1001, pw_gid=1001, pw_name='user',
@@ -498,16 +501,19 @@ class UpgradePreflight(unittest.TestCase):
         credentials = Mock()
         for name in ('initgroups', 'setresgid', 'setresuid'):
             self.enterContext(patch.object(os, name, getattr(credentials, name)))
-        status = 'NoNewPrivs: 1\nCapPrm: 0\nCapEff: 0\nCapAmb: 0\n'
+        self.enterContext(patch.dict(TOOL, {'drop_prelude_bound': credentials.drop_prelude_bound}))
+        status = 'NoNewPrivs: 1\nCapBnd: 0\nCapPrm: 0\nCapEff: 0\nCapAmb: 0\nCapInh: 0\n'
         with patch.object(Path, 'read_text', return_value=status):
             TOOL['drop_idle_privileges']()
         self.assertEqual(credentials.mock_calls, [
-            call.initgroups('user', 1001), call.setresgid(1001, 1001, 1001),
+            call.drop_prelude_bound(), call.initgroups('user', 1001), call.setresgid(1001, 1001, 1001),
             call.setresuid(1001, 1001, 1001),
         ])
-        with patch.object(Path, 'read_text', return_value=status.replace('CapEff: 0', 'CapEff: 1')):
-            with self.assertRaisesRegex(ValueError, 'privileges did not drop'):
-                TOOL['drop_idle_privileges']()
+        for name in ('CapBnd', 'CapPrm', 'CapEff', 'CapAmb', 'CapInh'):
+            with self.subTest(name=name), patch.object(Path, 'read_text',
+                                                       return_value=status.replace(f'{name}: 0', f'{name}: 1')):
+                with self.assertRaisesRegex(ValueError, 'privileges did not drop'):
+                    TOOL['drop_idle_privileges']()
 
     def test_activation_confirmation_requires_the_exact_enrolled_signer_and_operation(self):
         plan = {'operation_id': 'e' * 64, 'selection_sha256': PIN}
