@@ -386,3 +386,46 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('workerd private quota lookup refuses a redirect without following it', async () => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const route = { account_id: 'a'.repeat(32), model: '@cf/zai-org/glm-4.7-flash',
+    gateway_id: 'fixture', credential_epoch_sha256: 'b'.repeat(64) };
+  const originalSHA = '1'.repeat(64);
+  const privateLookups = [];
+  let unexpectedOutbound = 0;
+  const instance = new Miniflare({
+    modules: true,
+    scriptPath: join(root, 'exclusive-quota-verifier.mjs'),
+    modulesRoot: root,
+    compatibilityDate: '2026-07-30',
+    bindings: {
+      EXCLUSIVE_QUOTA_OPENING_SHA256: '2'.repeat(64),
+      EXCLUSIVE_QUOTA_BINDING: JSON.stringify({ route, topology_sha256: '3'.repeat(64),
+        closure_public_key: Buffer.alloc(32, 1).toString('base64'),
+        ledger_public_key: Buffer.alloc(32, 2).toString('base64') }),
+    },
+    serviceBindings: {
+      QUOTA_EVIDENCE: async (request) => {
+        privateLookups.push(request.url);
+        return new Response(null, { status: 302, headers: { location: 'https://unbound.invalid/' } });
+      },
+    },
+    outboundService: async () => {
+      unexpectedOutbound++;
+      return new Response(null, { status: 500 });
+    },
+  });
+  try {
+    const response = await instance.dispatchFetch('https://quota.internal/v1/observation/read', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ source_receipt_sha256: originalSHA, route }),
+    });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'original_unavailable' });
+    assert.deepEqual(privateLookups, ['https://quota-evidence.internal/v1/original/' + originalSHA]);
+    assert.equal(unexpectedOutbound, 0);
+  } finally {
+    await instance.dispose();
+  }
+});

@@ -128,7 +128,9 @@ async function resolveBounded(request, env, clock, signal, cleanups) {
     const response = await env.QUOTA_EVIDENCE.fetch(
       new Request(url, {
         method: 'GET',
-        redirect: 'error',
+        // Workerd supports manual redirects here; the response gate below
+        // rejects redirects before reading any evidence bytes.
+        redirect: 'manual',
         signal,
       }),
     );
