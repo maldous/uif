@@ -73,3 +73,21 @@ Start an independently retained ledger at a verified 00:00 UTC (11:00 AEDT)
 opening, preserving unknown prior liabilities. If that proof can't cover this
 opening, do not backfill an assumed zero. Use the next proven opening or
 qualify an independently complete account meter and gap ceiling.
+
+### Preparing checkpoint bytes
+
+The private producer can call `prepareExclusiveQuotaCheckpoint` in
+`exclusive-quota-proof.mjs` with the configured trust binding, exact signed
+original and lookup, pinned opening digest and bytes decoded as an object,
+externally evidenced windows, and trusted UTC verification time. It checks the
+original signatures, coverage, opening pin and window totals before passing
+canonical checkpoint bytes to the external ledger signer. It verifies the
+returned signature against the configured ledger public key and returns the
+exact canonical head bytes and digest. The producer does not require or handle
+the private key.
+
+The custody adapter must qualify the original coverage and windows, and
+atomically publish the exact original and current head under its existing
+account-specific store control. It must reject stale or superseded originals
+at publication. The function only prepares evidence bytes. It neither signs
+for the account owner nor changes the current pointer or reserves quota.

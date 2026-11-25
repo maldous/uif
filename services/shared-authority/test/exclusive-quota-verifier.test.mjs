@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createPrivateKey, createPublicKey, sign } from 'node:crypto';
 import test from 'node:test';
+import { prepareExclusiveQuotaCheckpoint, verifyExclusiveQuotaCurrent } from '../exclusive-quota-proof.mjs';
 import { resolveObservation } from '../exclusive-quota-verifier.mjs';
 import { canonical, digest, digestBytes } from '../protocol.mjs';
 
@@ -86,7 +87,7 @@ async function fixture(modify = (proof) => proof, handler = (blob) => new Respon
       'content-type': 'application/json', 'authorization': 'external-ignored',
     }, body: JSON.stringify(body), ...additional }), env, () => epoch + 60, deadlineMs,
   );
-  return { env, lookup, calls, submit };
+  return { env, lookup, calls, submit, original, opening, checkpoint, head };
 }
 
 test('exact request joins independent original bytes to the private account current head', async () => {
@@ -140,6 +141,46 @@ test('rejects forged, historical, stale, wrong-opening, missing-window, and redu
   const wrongPin = await fixture();
   wrongPin.env.EXCLUSIVE_QUOTA_OPENING_SHA256 = h('0');
   assert.equal((await wrongPin.submit()).status, 403);
+});
+
+test('producer returns exact deterministic bytes that the private verifier accepts', async () => {
+  const f = await fixture();
+  const inputs = {
+    binding, request: f.lookup, original: f.original, opening: f.opening,
+    openingSHA: f.checkpoint.opening_sha256, windows: f.checkpoint.windows, now: epoch + 60,
+  };
+  const signature = (body) => signLedger(JSON.parse(new TextDecoder().decode(body)));
+  const result = await prepareExclusiveQuotaCheckpoint({ ...inputs, signCheckpoint: signature });
+  assert.deepEqual(result.head, f.head);
+  assert.equal(result.head_sha256, await digestBytes(f.head));
+  const observation = await verifyExclusiveQuotaCurrent({ ...inputs, head: result.head });
+  assert.equal(observation.checkpoint.unresolved_upper, 300);
+  assert.equal(observation.checkpoint.opening_upper, 150);
+  assert.deepEqual(await prepareExclusiveQuotaCheckpoint({ ...inputs, signCheckpoint: signature }), result);
+});
+
+test('producer rejects invalid evidence before signing and rejects an untrusted signer', async () => {
+  const f = await fixture();
+  const inputs = {
+    binding, request: f.lookup, original: f.original, opening: f.opening,
+    openingSHA: f.checkpoint.opening_sha256, windows: f.checkpoint.windows, now: epoch + 60,
+  };
+  let calls = 0;
+  const signCheckpoint = () => { calls += 1; return ''; };
+  for (const [changed, code] of [
+    [{ request: { ...f.lookup, source_receipt_sha256: h('0') } }, 'quota_original_digest_mismatch'],
+    [{ now: epoch + 120 }, 'quota_proof_coverage_unverified'],
+    [{ opening: { ...f.opening, outside_carryover_upper: 0 } }, 'quota_checkpoint_binding_unverified'],
+    [{ windows: [{ from: epoch + 1, through: epoch + 50, usage_upper: 1200 }] }, 'quota_checkpoint_window_incomplete'],
+    [{ windows: [{ from: epoch, through: epoch + 50, usage_upper: 1199 }] }, 'quota_checkpoint_window_incomplete'],
+  ]) {
+    await assert.rejects(prepareExclusiveQuotaCheckpoint({ ...inputs, ...changed, signCheckpoint }),
+      { message: code });
+  }
+  assert.equal(calls, 0);
+  await assert.rejects(prepareExclusiveQuotaCheckpoint({
+    ...inputs, signCheckpoint: (bytes) => signClosure(JSON.parse(new TextDecoder().decode(bytes))),
+  }), { message: 'quota_proof_signature_invalid' });
 });
 
 test('public, alternate, paid and inline input cannot resolve evidence or perform paid effects', async () => {

@@ -147,10 +147,22 @@ export async function verifyExclusiveQuotaCurrent({ binding, request, original, 
   fields(current, 'checkpoint', 'signature', 'opening');
   const c = current.checkpoint;
   const opening = current.opening;
+  const { closure, ledger } = JSON.parse(new TextDecoder().decode(original));
+  await checkCheckpoint({ c, opening, closure, ledger, observation, openingSHA, now });
+  await signed(c, current.signature, binding.ledger_public_key);
+  return {
+    ...observation,
+    checkpoint: {
+      sha256: await digestBytes(headBytes), opening_sha256: openingSHA,
+      unresolved_upper: c.outside_unresolved_upper, opening_upper: closure.outside_carryover_upper,
+    },
+  };
+}
+
+async function checkCheckpoint({ c, opening, closure, ledger, observation, openingSHA, now }) {
   fields(opening, 'schema', 'binding_sha256', 'outside_carryover_upper');
   fields(c, 'schema', 'binding_sha256', 'opening_sha256', 'source_receipt_sha256',
     'ledger_chain_sha256', 'utc_day', 'valid_until', 'windows', 'outside_unresolved_upper');
-  const { closure, ledger } = JSON.parse(new TextDecoder().decode(original));
   need(c.schema === 'uif.exclusive-quota.current-checkpoint/1' &&
     c.binding_sha256 === observation.binding_sha256 &&
     c.opening_sha256 === openingSHA && closure.carryover_sha256 === openingSHA &&
@@ -164,7 +176,6 @@ export async function verifyExclusiveQuotaCurrent({ binding, request, original, 
     c.outside_unresolved_upper === ledger.outside_unresolved_upper &&
     Array.isArray(c.windows) && c.windows.length > 0 && c.windows.length <= 240,
     'quota_checkpoint_binding_unverified', 403);
-  await signed(c, current.signature, binding.ledger_public_key);
   let end = closure.covered_from;
   let usage = 0;
   for (const window of c.windows) {
@@ -178,11 +189,45 @@ export async function verifyExclusiveQuotaCurrent({ binding, request, original, 
   }
   need(end === ledger.covered_through && usage === ledger.account_usage_upper,
     'quota_checkpoint_window_incomplete', 403);
-  return {
-    ...observation,
-    checkpoint: {
-      sha256: await digestBytes(headBytes), opening_sha256: openingSHA,
-      unresolved_upper: c.outside_unresolved_upper, opening_upper: closure.outside_carryover_upper,
-    },
+}
+
+/**
+ * Prepare exact private-store bytes from an independently signed original
+ * and externally evidenced windows. The supplied signer receives canonical
+ * checkpoint bytes and returns a base64 Ed25519 signature.
+ */
+export async function prepareExclusiveQuotaCheckpoint({
+  binding, request, original, openingSHA, opening, windows, now, signCheckpoint,
+}) {
+  need(typeof signCheckpoint === 'function' && sha(openingSHA), 'quota_checkpoint_signer_unbound', 503);
+  need(original instanceof Uint8Array && original.byteLength > 0 && original.byteLength <= originalLimit,
+    'quota_original_unavailable', 503);
+  need(Array.isArray(windows) && windows.length > 0 && windows.length <= 240,
+    'quota_checkpoint_window_incomplete', 403);
+  binding = structuredClone(binding);
+  opening = structuredClone(opening);
+  windows = structuredClone(windows);
+  const originalBytes = new Uint8Array(original);
+  const observation = await verifyExclusiveQuotaOriginal({ binding, request, original: originalBytes, now });
+  const { closure, ledger } = JSON.parse(new TextDecoder().decode(originalBytes));
+  const checkpoint = {
+    schema: 'uif.exclusive-quota.current-checkpoint/1',
+    binding_sha256: observation.binding_sha256,
+    opening_sha256: openingSHA,
+    source_receipt_sha256: observation.source_receipt_sha256,
+    ledger_chain_sha256: ledger.chain_sha256,
+    utc_day: closure.utc_day,
+    valid_until: ledger.valid_until,
+    windows,
+    outside_unresolved_upper: ledger.outside_unresolved_upper,
   };
+  await checkCheckpoint({ c: checkpoint, opening, closure, ledger, observation, openingSHA, now });
+  const serialize = (signature) => encoder.encode(canonical({ checkpoint, signature, opening }));
+  // Reserve the exact serialized size of a base64 Ed25519 signature before
+  // asking the external signer to act.
+  need(serialize('A'.repeat(88)).byteLength <= originalLimit, 'quota_checkpoint_too_large', 403);
+  const signature = await signCheckpoint(encoder.encode(canonical(checkpoint)));
+  await signed(checkpoint, signature, binding.ledger_public_key);
+  const head = serialize(signature);
+  return { head, head_sha256: await digestBytes(head) };
 }
