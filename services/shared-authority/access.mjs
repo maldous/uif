@@ -8,6 +8,15 @@ function segment(part) {
     throw new Refusal('access_assertion_invalid', 401);
   }
 }
+
+function hasAudience(audience, expected) {
+  if (typeof expected !== 'string' || expected.length === 0) return false;
+  if (typeof audience === 'string') return audience === expected;
+  return Array.isArray(audience) &&
+    audience.every((value) => typeof value === 'string') &&
+    audience.includes(expected);
+}
+
 // Trust only signer keys at the installed team origin. Never follow a JWT URL.
 export function accessVerifier(fetchKeys = fetch, clock = now) {
   let cached;
@@ -63,8 +72,7 @@ export function accessVerifier(fetchKeys = fetch, clock = now) {
     const t = clock();
     need(
       claims?.iss === env.ACCESS_ISSUER &&
-        Array.isArray(claims.aud) &&
-        claims.aud.includes(env.ACCESS_AUD) &&
+        hasAudience(claims.aud, env.ACCESS_AUD) &&
         claims.type === 'app' &&
         claims.sub === '' &&
         Number.isSafeInteger(claims.iat) &&

@@ -155,15 +155,30 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       ).status,
       401,
     );
+    for (const audience of [aud, ['other-audience', aud]]) {
+      const response = await call(await sign('native', { aud: audience }), 'status');
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).stopped, true);
+    }
     for (const bad of [
       { sub: 'human' },
       { iss: 'https://elsewhere.test' },
+      { type: 'org' },
+      { iat: t + 10 },
+      { aud: 'wrong' },
+      { aud: aud + ' ' },
       { aud: ['wrong'] },
+      { aud: [] },
+      { aud: [aud, null] },
+      { aud: undefined },
+      { aud: { aud } },
       { exp: t - 1 },
       { nbf: t + 10 },
-      { common_name: 'unregistered.access' },
+      { aud, common_name: 'unregistered.access' },
     ]) {
-      assert.equal((await call(await sign('native', bad), 'status')).status, 403);
+      const response = await call(await sign('native', bad), 'status');
+      assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), { error: 'access_service_identity_invalid' });
     }
     const badsig = tokens.native.split('.');
     badsig[2] = (badsig[2][0] === 'A' ? 'B' : 'A') + badsig[2].slice(1);
