@@ -151,7 +151,19 @@ class UpgradePreflight(unittest.TestCase):
     def test_interrupted_start_cannot_reuse_the_consumed_intent(self):
         self.exercise_linux_workflow(interrupted=True)
 
-    def exercise_linux_workflow(self, *, interrupted):
+    def test_webhook_only_consumes_one_original_start_under_fake_systemd(self):
+        self.exercise_linux_workflow(interrupted=False, webhook=True)
+
+    def test_interrupted_webhook_reconciles_same_operation_without_replay(self):
+        self.exercise_linux_workflow(interrupted=True, webhook=True)
+
+    def test_private_webhook_selects_parked_then_starts_without_signed_packets(self):
+        self.exercise_linux_workflow(interrupted=False, webhook=True, webhook_apply=True)
+
+    def test_private_webhook_apply_and_interrupted_start_never_replay(self):
+        self.exercise_linux_workflow(interrupted=True, webhook=True, webhook_apply=True)
+
+    def exercise_linux_workflow(self, *, interrupted, webhook=False, webhook_apply=False):
         base = self.stage.parent
         stage = self.targets / STAGE
         receipts = base / 'receipts'
@@ -424,9 +436,20 @@ class UpgradePreflight(unittest.TestCase):
                 with self.assertRaises(BlockingIOError):
                     TOOL['serve_idle_stage']()
             self.assertFalse(consumed_path.exists())
-            with crossed_installer(), self.assertRaisesRegex(ValueError, 'original signed intent'):
-                TOOL['serve_idle_stage']()
+            if not webhook_apply:
+                with crossed_installer(), self.assertRaisesRegex(ValueError, 'original signed intent'):
+                    TOOL['serve_idle_stage']()
             self.assertFalse(consumed_path.exists())
+            if webhook:
+                authorization = receipts / (admission.operation_id + '.windmill-start.json')
+                original = authorization.read_bytes()
+                authorization.write_bytes(b'{}')
+                try:
+                    with self.assertRaisesRegex(ValueError, 'protected Windmill start record changed'):
+                        TOOL['serve_idle_stage']()
+                    self.assertFalse(consumed_path.exists())
+                finally:
+                    authorization.write_bytes(original)
             TOOL['serve_idle_stage']()
 
         with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
@@ -449,10 +472,52 @@ class UpgradePreflight(unittest.TestCase):
             self.assertFalse(marker.exists())
             self.assertFalse((receipts / (admission.operation_id + '.start-intent.json')).exists())
             effective_restart = 'no'
+            webhook_config = TOOL['FixedWebhookIdleStart'](
+                *(start_plan[name] for name in TOOL['WEBHOOK_PINS']))
+            webhook_run = '12345678-1234-1234-1234-123456789abc'
+            webhook_retry = '12345678-1234-1234-1234-123456789def'
+            bind = TOOL['bind_private_webhook_idle' if webhook_apply else 'bind_private_webhook_start']
+            if webhook_apply:
+                # Independent from the setup's legacy fixtures and receipts.
+                self.enterContext(patch.object(TOOL['pwd'], 'getpwnam',
+                                               return_value=SimpleNamespace(pw_uid=1001)))
+                selector.write_bytes(old)
+                for path in (*receipts.iterdir(), issued_packet, confirmation_path, admission_path):
+                    path.unlink()
+            submit = bind(webhook_config)
             with patch.object(subprocess, 'run', side_effect=dispatch), patch.dict(
                     TOOL, {'drop_idle_privileges': lambda: None}):
                 with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
-                    if interrupted:
+                    if webhook:
+                        (self.stage / "activation-confirmation.json.sig").unlink()
+                        from dataclasses import replace
+                        wrong = bind(
+                            replace(webhook_config, selection_sha256='f' * 64))
+                        with (patch.dict(TOOL, {'_private_webhook_root': lambda: True}),
+                              patch.object(TOOL['pwd'], 'getpwnam', return_value=SimpleNamespace(pw_uid=1001))):
+                            with self.assertRaisesRegex(ValueError, 'differs from original|parked and selected'):
+                                wrong(webhook_run)
+                        self.assertFalse(marker.exists())
+                        with (patch.dict(TOOL, {'_private_webhook_root': lambda: True}),
+                              patch.object(TOOL['pwd'], 'getpwnam', return_value=SimpleNamespace(pw_uid=1001))):
+                            if interrupted:
+                                with self.assertRaisesRegex(OSError, 'interruption after consumption'):
+                                    submit(webhook_run)
+                                with self.assertRaisesRegex(ValueError, 'incomplete'):
+                                    submit(webhook_retry)
+                            else:
+                                receipt = submit(webhook_run)
+                                self.assertEqual(receipt['invocation_id'], 'a' * 32)
+                                self.assertEqual(receipt, submit(webhook_run))
+                                self.assertEqual(receipt, submit(webhook_retry))
+                        self.assertEqual(json.loads(marker.read_bytes())['schema'], TOOL['WEBHOOK_START_SCHEMA'])
+                        if webhook_apply:
+                            self.assertEqual(selector.read_bytes(), target)
+                            self.assertTrue((self.stage / TOOL['WEBHOOK_PACKET']).is_file())
+                            self.assertFalse(issued_packet.exists())
+                            self.assertFalse(admission_path.exists())
+                            self.assertFalse(confirmation_path.exists())
+                    elif interrupted:
                         with self.assertRaisesRegex(OSError, 'interruption after consumption'):
                             check(admission.operation_id, start=True)
                         self.assertFalse((receipts / (admission.operation_id + '.started.json')).exists())
@@ -478,7 +543,7 @@ class UpgradePreflight(unittest.TestCase):
                 refused_exec.assert_not_called()
             marker.write_bytes(original_marker)
             with patch.object(TOOL['time'], 'time', return_value=1050):
-                with self.assertRaisesRegex(ValueError, 'marker expired'):
+                with self.assertRaisesRegex(ValueError, 'marker expired|invalid protected Windmill'):
                     TOOL['serve_idle_stage']()
 
     def test_reviewed_dropin_matches_fixed_start_contract(self):

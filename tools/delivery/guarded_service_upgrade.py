@@ -19,6 +19,7 @@ import sys
 import tarfile
 import tempfile
 import time
+from uuid import UUID
 
 
 @dataclass(frozen=True)
@@ -246,6 +247,12 @@ def accepted_review(root, profile, stage, pin):
 
 
 def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=None):
+    return _preflight(profile_name, stage, sealed_stage=sealed_stage,
+                      approved_operator_uid=approved_operator_uid)
+
+
+def _preflight(profile_name, stage, *, sealed_stage, approved_operator_uid,
+               webhook_admission=None):
     profile = PROFILES[profile_name]
     require(profile.reviewed_head is not None, 'legacy OffMenu retains its existing owner-only upgrade route')
     require(re.fullmatch('uif1313-idle-[a-z0-9][a-z0-9.-]{0,60}', stage) is not None,
@@ -253,11 +260,13 @@ def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=
     root = PACKETS / stage
     target = STAGES / stage
     before = time.time()
-    admission = record(read_record(root, 'admission.json'), ADMISSION_FIELDS)
+    admission = (record(read_record(root, 'admission.json'), ADMISSION_FIELDS)
+                 if webhook_admission is None else webhook_admission)
     uid = os.getuid() if approved_operator_uid is None else approved_operator_uid
     caller_ok = (os.getuid() == os.geteuid() == uid if approved_operator_uid is None
                  else os.getuid() == os.geteuid() == 0)
-    require(admission['schema'] == 'uif.guarded-upgrade-admission/1'
+    require(admission['schema'] == ('uif.guarded-upgrade-admission/1' if webhook_admission is None
+                                     else WEBHOOK_APPLY_AUTH_SCHEMA)
             and (admission['profile'], admission['unit'], admission['stage']) ==
             (profile_name, profile.unit, stage)
             and caller_ok and type(uid) is int and uid > 0 and type(admission['owner_uid']) is int
@@ -267,7 +276,8 @@ def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=
             'operator, target or admission window mismatch')
 
     review = accepted_review(root, profile, stage, admission['review_sha256'])
-    pinned_record(root, 'confirmation', admission['confirmation_sha256'])
+    if webhook_admission is None:
+        pinned_record(root, 'confirmation', admission['confirmation_sha256'])
     witness = record(pinned_record(root, 'quiescence', admission['quiescence_sha256']),
                      ('schema', 'unit', 'parked_unit_sha256', 'observed_at', 'inflight',
                       'children_gone', 'unresolved_operation_ids'))
@@ -689,11 +699,222 @@ def start_quiescence(root, unit, unit_pin):
     return digest(raw), when + 60
 
 
-def activation_preflight(operation_id, *, verify_confirmation=False, start=False, prepare_start=False):
+@dataclass(frozen=True)
+class FixedWebhookIdleStart:
+    """Protected mounted controller configuration; no CLI or request loader."""
+    operation_id: str
+    source_head: str
+    review_sha256: str
+    bundle_sha256: str
+    selection_sha256: str
+
+
+WEBHOOK_APPLY_AUTH_SCHEMA = 'uif.foo-idle-private-windmill-apply-authorization/1'
+WEBHOOK_APPLY_PACKET_SCHEMA = 'uif.foo-idle-private-windmill-apply/1'
+WEBHOOK_PACKET = 'windmill-apply.json'
+WEBHOOK_START_SCHEMA = 'uif.foo-idle-webhook-start-intent/1'
+WEBHOOK_AUTH_SCHEMA = 'uif.foo-idle-private-windmill-authorization/1'
+WEBHOOK_PINS = ('operation_id', 'source_head', 'review_sha256', 'bundle_sha256',
+                'selection_sha256')
+
+
+class WindmillIdleHost(LinuxIdleHost):
+    """Protected only; never loads a signature-shaped record from Windmill."""
+
+    def load_admission(self):
+        require(_private_webhook_root(), 'private webhook requires protected root controller')
+        raw = read_record(self.packet, WEBHOOK_PACKET)
+        packet = record(raw, ('schema', 'authorization', 'admission', 'unit_sha256'))
+        authorization = packet['authorization']
+        claim = ApplyAdmission(**packet['admission'])
+        review = accepted_review(self.packet, PROFILES[PROFILE_NAME], FIXED_STAGE,
+                                 authorization['review_sha256'])
+        require(packet['schema'] == WEBHOOK_APPLY_PACKET_SCHEMA
+                and authorization['schema'] == WEBHOOK_APPLY_AUTH_SCHEMA
+                and authorization['operation_id'] == claim.operation_id
+                and authorization['owner_uid'] > 0
+                and authorization["owner_uid"] == pwd.getpwnam("user").pw_uid
+                and pwd.getpwuid(authorization['owner_uid']).pw_name == authorization['owner']
+                and authorization['confirmation_sha256'] == plan_digest(
+                    {key: value for key, value in authorization.items() if key != 'confirmation_sha256'})
+                and authorization['bundle_sha256'] == review['bundle_sha256']
+                and packet['unit_sha256'] == review['parked_unit_sha256']
+                and packet['unit_sha256'] != BOOTSTRAP_PRIOR
+                and claim.issued_at == authorization['issued_at']
+                and claim.expires_at <= authorization['expires_at']
+                and claim.idle_selection_sha256 == authorization['selection_sha256']
+                and (claim.profile, claim.unit, claim.stage) ==
+                    (PROFILE_NAME, PROFILES[PROFILE_NAME].unit, FIXED_STAGE)
+                and raw == encode(packet),
+                'original private webhook apply packet changed')
+        _webhook_job(authorization['job_id'])
+        self.uid = authorization['owner_uid']
+        self.unit_pin = packet['unit_sha256']
+        self.operator_bytes = encode(authorization)
+        self.operator = authorization
+        return claim
+
+    def verify_admission(self, admission):
+        verified = self.load_admission() == admission and bytes_pin(DROPIN) == digest(selector_dropin())
+        self.admission = admission if verified else None
+        return verified
+
+    def preflight(self, profile, stage):
+        require(self.admission is not None and self.load_admission() == self.admission,
+                'protected Windmill apply admission changed')
+        plan = _preflight(profile, stage, sealed_stage=True, approved_operator_uid=self.uid,
+                          webhook_admission=self.operator)
+        self.verify_inactive_bootstrap(PROFILES[profile].unit, plan['parked_unit_sha256'])
+        return plan
+
+
+def _apply_private_windmill(config, job_id):
+    """Issue typed private admission then call the exact existing one-use apply."""
+    require(type(config) is FixedWebhookIdleStart and _private_webhook_root(),
+            'private webhook requires protected root controller')
+    _webhook_job(job_id)
+    host = WindmillIdleHost()
+    profile = PROFILES[PROFILE_NAME]
+    with selector_lock(shared=False) as stream:
+        try:
+            original = host.load_admission()
+        except FileNotFoundError:
+            original = None
+        if original is not None:
+            require(all(host.operator[key] == getattr(config, key) for key in WEBHOOK_PINS),
+                    'mounted approval differs from original Windmill apply')
+            claim = original
+        else:
+            review = accepted_review(host.packet, profile, FIXED_STAGE, config.review_sha256)
+            unit_pin = stopped_unit_sha(profile.unit)
+            require((review['head'], review['bundle_sha256'], review['parked_unit_sha256']) ==
+                    (config.source_head, config.bundle_sha256, unit_pin)
+                    and unit_pin != BOOTSTRAP_PRIOR and bytes_pin(DROPIN) == digest(selector_dropin()),
+                    'reviewed bootstrap and exact Windmill review required')
+            witness_raw = read_record(host.packet, 'quiescence.json')
+            witness = json.loads(witness_raw)
+            require(type(witness.get('observed_at')) is int, 'fresh exact quiescence is required')
+            uid = pwd.getpwnam('user').pw_uid
+            issued = int(time.time())
+            deadline = witness['observed_at'] + 60
+            require(uid > 0 and issued < deadline <= issued + 60, 'original Windmill apply witness expired')
+            auth = {'schema': WEBHOOK_APPLY_AUTH_SCHEMA, 'job_id': job_id, **asdict(config),
+                    'profile': PROFILE_NAME, 'unit': profile.unit, 'stage': FIXED_STAGE,
+                    'owner': pwd.getpwuid(uid).pw_name, 'owner_uid': uid,
+                    'quiescence_sha256': digest(witness_raw), 'issued_at': issued, 'expires_at': deadline}
+            auth['confirmation_sha256'] = plan_digest(auth)
+            host.unit_pin = unit_pin
+            host.verify_inactive_bootstrap(profile.unit, unit_pin)
+            plan = _preflight(PROFILE_NAME, FIXED_STAGE, sealed_stage=True, approved_operator_uid=uid,
+                              webhook_admission=auth)
+            prior = plan_digest({'mode': 'parked', 'stage': PARKED_STAGE})
+            require(host.selection_sha256() == prior
+                    and digest(sealed_selection(plan)) == config.selection_sha256,
+                    'exact parked and selected Windmill state required')
+            lock_pin = plan_digest(lock_identity(os.fstat(stream.fileno())))
+            claim = ApplyAdmission(PROFILE_NAME, profile.unit, FIXED_STAGE, config.operation_id,
+                                   plan_digest(plan), lock_pin, prior, config.selection_sha256,
+                                   issued, plan['valid_until'])
+            publish(host.packet / WEBHOOK_PACKET, encode({'schema': WEBHOOK_APPLY_PACKET_SCHEMA,
+                    'authorization': auth, 'admission': asdict(claim), 'unit_sha256': unit_pin}),
+                    deadline=claim.expires_at)
+    return apply(PROFILE_NAME, FIXED_STAGE, admission=claim, host=host)
+
+
+def _webhook_job(job_id):
+    try:
+        parsed = UUID(job_id) if type(job_id) is str and len(job_id) == 36 else None
+    except ValueError:
+        parsed = None
+    require(parsed is not None and parsed.int and str(parsed) == job_id,
+            'expected current private Windmill run ID')
+    return job_id
+
+
+def _private_webhook_root():
+    return os.getresuid() == (0, 0, 0)
+
+
+def _webhook_authorization(config, job_id, plan, expires_at):
+    require(type(config) is FixedWebhookIdleStart and _private_webhook_root()
+            and all(getattr(config, key) == plan[key] for key in WEBHOOK_PINS),
+            'protected webhook configuration differs from original idle selection')
+    issued = int(time.time())
+    require(type(expires_at) is int and issued < expires_at <= issued + 60,
+            'existing start witness expired or out of bounds')
+    return {'schema': WEBHOOK_AUTH_SCHEMA, 'job_id': _webhook_job(job_id),
+            'preflight_sha256': plan_digest(plan), 'issued_at': issued,
+            'expires_at': expires_at, **asdict(config)}
+
+
+def _verify_webhook_authorization(plan, approval):
+    operation = plan['operation_id']
+    require(hash_pin(operation) and type(approval) is dict and
+            set(approval) == {'schema', 'job_id', 'preflight_sha256', 'issued_at',
+                              'expires_at', *WEBHOOK_PINS, *({'apply_authority'} if
+                                  approval.get('apply_authority') == 'windmill' else set())}
+            and approval['schema'] == WEBHOOK_AUTH_SCHEMA
+            and approval['preflight_sha256'] == plan_digest(plan)
+            and all(approval[key] == plan[key] for key in WEBHOOK_PINS)
+            and type(approval['issued_at']) is type(approval['expires_at']) is int
+            and approval['issued_at'] <= time.time() < approval['expires_at'] <= approval['issued_at'] + 60,
+            'invalid protected Windmill idle authorization')
+    _webhook_job(approval['job_id'])
+    require(read_record(RECEIPTS, operation + '.windmill-start.json') == encode(approval),
+            'protected Windmill start record changed')
+    return approval
+
+
+def bind_private_webhook_start(config, *, apply_first=False):
+    """Mount solely behind the authenticated fixed Windmill action and private channel."""
+    require(type(config) is FixedWebhookIdleStart and hash_pin(config.operation_id),
+            'protected webhook controller not configured')
+    def submit(job_id):
+        _webhook_job(job_id)
+        require(_private_webhook_root(), 'private webhook requires protected root controller')
+        with selector_lock(shared=True):
+            try:
+                prior = read_record(RECEIPTS, config.operation_id + '.windmill-start.json')
+            except FileNotFoundError:
+                pass
+            else:
+                original = json.loads(prior)
+                require(type(original) is dict and original.get('schema') == WEBHOOK_AUTH_SCHEMA
+                        and all(original.get(key) == getattr(config, key) for key in WEBHOOK_PINS),
+                        'original webhook decision does not match this mounted controller')
+                try:
+                    intent = json.loads(read_record(RECEIPTS, config.operation_id + '.start-intent.json'))
+                    observed = record(read_record(RECEIPTS, config.operation_id + '.started.json'),
+                                      ('schema', 'operation_id', 'intent_sha256', 'main_pid', 'invocation_id'))
+                    consumed = read_record(RECEIPTS, config.operation_id + '.start-consumed.json')
+                except FileNotFoundError as exc:
+                    raise Held('original webhook start incomplete; reconcile without replay') from exc
+                require(intent.get('schema') == WEBHOOK_START_SCHEMA and intent.get('confirmation') == original
+                        and observed['schema'] == 'uif.foo-idle-start-observation/1'
+                        and observed.get('operation_id') == config.operation_id
+                        and observed.get('intent_sha256') == plan_digest(intent)
+                        and consumed == encode(start_consumption(
+                            intent, observed['main_pid'], observed['invocation_id'])),
+                        'original webhook start observation disagrees with its consumed invocation')
+                return observed
+        if apply_first:
+            _apply_private_windmill(config, job_id)
+        return activation_preflight(config.operation_id, start=True,
+                                    _webhook=(config, job_id), _webhook_applied=apply_first)
+    return submit
+
+
+def bind_private_webhook_idle(config):
+    """Fixed mount behind authenticated Windmill; no caller operation or scope."""
+    return bind_private_webhook_start(config, apply_first=True)
+
+
+def activation_preflight(operation_id, *, verify_confirmation=False, start=False,
+                         prepare_start=False, _webhook=None, _webhook_applied=False):
     """Describe one completed idle selection for a separate host-owner decision."""
     require(hash_pin(operation_id), 'expected exact original apply operation')
     profile = PROFILES[PROFILE_NAME]
-    host = LinuxIdleHost()
+    host = WindmillIdleHost() if _webhook_applied else LinuxIdleHost()
     admission = host.load_admission()
     require((admission.profile, admission.unit, admission.stage, admission.operation_id) ==
             (PROFILE_NAME, profile.unit, FIXED_STAGE, operation_id)
@@ -704,16 +925,22 @@ def activation_preflight(operation_id, *, verify_confirmation=False, start=False
     with host.lock(profile.unit, admission.lock_custody_sha256):
         require(host.verify_admission(admission) and host.verify_custody(),
                 'original host packet or selector lock changed')
-        packet = read_record(host.packet, 'admission.json')
-        operator = record(packet, ADMISSION_FIELDS)
+        if _webhook_applied:
+            require(_webhook is not None, 'private Windmill activation only')
+            operator, packet = host.operator, host.operator_bytes
+        else:
+            packet = read_record(host.packet, 'admission.json')
+            operator = record(packet, ADMISSION_FIELDS)
         uid = operator['owner_uid']
         require((operator['schema'], operator['profile'], operator['unit'], operator['stage']) ==
-                ('uif.guarded-upgrade-admission/1', PROFILE_NAME, profile.unit, FIXED_STAGE)
+                (WEBHOOK_APPLY_AUTH_SCHEMA if _webhook_applied else 'uif.guarded-upgrade-admission/1',
+                 PROFILE_NAME, profile.unit, FIXED_STAGE)
                 and type(uid) is int and uid == host.uid and uid > 0
                 and operator['owner'] == pwd.getpwuid(uid).pw_name,
                 'original operator binding changed')
         review = accepted_review(host.packet, profile, FIXED_STAGE, operator['review_sha256'])
-        pinned_record(host.packet, 'confirmation', operator['confirmation_sha256'])
+        if not _webhook_applied:
+            pinned_record(host.packet, 'confirmation', operator['confirmation_sha256'])
         pinned_record(host.packet, 'quiescence', operator['quiescence_sha256'])
         intent, selected = apply_records(admission)
         require(host.receipts(operation_id, admission.prior_selection_sha256) ==
@@ -725,7 +952,8 @@ def activation_preflight(operation_id, *, verify_confirmation=False, start=False
                 and host.selection_sha256() == admission.idle_selection_sha256
                 and stopped_unit_sha(profile.unit) == unit_pin
                 and host.verify_admission(admission) and host.verify_custody()
-                and read_record(host.packet, 'admission.json') == packet,
+                and (host.operator_bytes if _webhook_applied
+                         else read_record(host.packet, 'admission.json')) == packet,
                 'selected idle readback changed')
         host.verify_inactive_bootstrap(profile.unit, unit_pin)
         plan = {'schema': 'uif.foo-idle-activation-preflight/1', 'mode': 'read_only',
@@ -741,7 +969,12 @@ def activation_preflight(operation_id, *, verify_confirmation=False, start=False
             witness_pin, witness_deadline = start_quiescence(host.packet, profile.unit, unit_pin)
             plan = {**plan, 'start_quiescence_sha256': witness_pin}
         if verify_confirmation or start:
-            result = verify_activation_confirmation(host.packet, plan, operator['owner'], start=start)
+            if _webhook is None:
+                result = verify_activation_confirmation(host.packet, plan, operator['owner'], start=start)
+            else:
+                require(start and not verify_confirmation and not prepare_start,
+                        'private webhook confined to one guarded idle start')
+                result = _webhook_authorization(*_webhook, plan, witness_deadline)
             require(host.verify_custody() and host.selection_sha256() == admission.idle_selection_sha256
                     and stopped_unit_sha(profile.unit) == unit_pin,
                     'selected idle readback changed during confirmation verification')
@@ -750,6 +983,8 @@ def activation_preflight(operation_id, *, verify_confirmation=False, start=False
             if not start:
                 return {'preflight': plan, 'preflight_sha256': plan_digest(plan),
                         'verified_confirmation': result}
+            if _webhook_applied:
+                result = {**result, 'apply_authority': 'windmill'}
             deadline = min(result['expires_at'], witness_deadline)
             require(start_quiescence(host.packet, profile.unit, unit_pin) == (witness_pin, witness_deadline),
                     'start quiescence witness changed')
@@ -759,9 +994,13 @@ def activation_preflight(operation_id, *, verify_confirmation=False, start=False
                     'one-start policy or activation deadline refused')
             intent_path = RECEIPTS / (operation_id + '.start-intent.json')
             marker = STAGES / FIXED_STAGE / MARKER
-            start_intent = {'schema': 'uif.foo-idle-start-intent/1', 'operation_id': operation_id,
+            start_intent = {'schema': WEBHOOK_START_SCHEMA if _webhook else 'uif.foo-idle-start-intent/1',
+                            'operation_id': operation_id,
                             'preflight_sha256': plan_digest(plan), 'preflight': plan, 'confirmation': result,
                             'selection_sha256': admission.idle_selection_sha256, 'launch_before': deadline}
+            if _webhook is not None:
+                publish(RECEIPTS / (operation_id + '.windmill-start.json'), encode(result),
+                        deadline=deadline)
             publish(intent_path, encode(start_intent), deadline=deadline)
             publish(marker, encode(start_intent), deadline=deadline, mode=0o644)
             require(bytes_pin(marker) == plan_digest(start_intent) and host.verify_custody(),
@@ -911,26 +1150,34 @@ def serve_idle_stage():
                                 'selection_sha256', 'launch_before'))
         confirmation = approval['confirmation']
         plan = approval['preflight']
-        require(type(confirmation) is dict
-                and confirmation.keys() == {'confirmation_sha256', 'signers_sha256', 'issued_at', 'expires_at'}
-                and all(hash_pin(confirmation[key]) for key in ('confirmation_sha256', 'signers_sha256'))
-                and all(hash_pin(approval[key]) for key in ('operation_id', 'preflight_sha256'))
+        webhook = approval['schema'] == WEBHOOK_START_SCHEMA
+        require(all(hash_pin(approval[key]) for key in ('operation_id', 'preflight_sha256'))
                 and type(plan) is dict and plan_digest(plan) == approval['preflight_sha256']
-                and raw == encode(approval),
-                'invalid signed start intent')
+                and raw == encode(approval), 'invalid start intent')
+        if webhook:
+            _verify_webhook_authorization(plan, confirmation)
+        else:
+            require(type(confirmation) is dict
+                    and confirmation.keys() == {'confirmation_sha256', 'signers_sha256', 'issued_at', 'expires_at'}
+                    and all(hash_pin(confirmation[key]) for key in ('confirmation_sha256', 'signers_sha256')),
+                    'invalid signed start intent')
         issued, expires, launch_before = (confirmation['issued_at'], confirmation['expires_at'],
                                           approval['launch_before'])
-        require(approval['schema'] == 'uif.foo-idle-start-intent/1'
+        require((webhook or approval['schema'] == 'uif.foo-idle-start-intent/1')
                 and approval['selection_sha256'] == digest(selection)
                 and all(type(value) is int for value in (issued, expires, launch_before))
                 and issued <= time.time() < launch_before <= expires <= issued + 300,
                 'signed start marker expired or no longer binds the selected stage')
         operation = approval['operation_id']
         unit = PROFILES[PROFILE_NAME].unit
-        host = LinuxIdleHost()
+        webhook_applied = webhook and confirmation.get('apply_authority') == 'windmill'
+        host = WindmillIdleHost() if webhook_applied else LinuxIdleHost()
         admission = host.load_admission()
-        operator_bytes = read_record(host.packet, 'admission.json')
-        operator = record(operator_bytes, ADMISSION_FIELDS)
+        if webhook_applied:
+            operator, operator_bytes = host.operator, host.operator_bytes
+        else:
+            operator_bytes = read_record(host.packet, 'admission.json')
+            operator = record(operator_bytes, ADMISSION_FIELDS)
         principal, uid = operator['owner'], operator['owner_uid']
         require((admission.operation_id, admission.unit, admission.stage, admission.idle_selection_sha256,
                  admission.lock_custody_sha256) ==
@@ -960,7 +1207,8 @@ def serve_idle_stage():
         witness_pin, witness_deadline = start_quiescence(host.packet, unit, host.unit_pin)
         require(witness_pin == plan['start_quiescence_sha256']
                 and launch_before == min(expires, witness_deadline)
-                and verify_activation_confirmation(host.packet, plan, principal, start=True) == confirmation
+                and (_verify_webhook_authorization(plan, confirmation) if webhook
+                     else verify_activation_confirmation(host.packet, plan, principal, start=True)) == confirmation
                 and trusted_start_process() == (pid, invocation)
                 and lock_identity(LOCK.lstat()) == custody,
                 'start authorization, invocation or lock changed')
