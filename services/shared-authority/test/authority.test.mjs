@@ -1326,3 +1326,36 @@ test('disabled included Responses pins free grant and reserves once on the share
   await assert.rejects(call(), /original_already_recorded/);
   assert.equal(x.calls.length, 1);
 });
+
+test('Responses exact original settles through authenticated, scope-bound receipt only', async () => {
+  const x = fixture();
+  await x.resume();
+  const lease = (await x.call('native', 'claim', await x.addGrant())).lease;
+  const organization = 'fixture-org', project = 'fixture-project', credentialEpoch = hex('6');
+  const input = 'synthetic fixture', deadline = start + 60, attempt = 'attempt', maximumMicrousd = 100;
+  const model = 'gpt-6.2-sol', intent = 'new', credential = 'fixture-only';
+  const payload = canonical({ model, input, max_output_tokens: 256, store: false });
+  const binding = await digest({ schema: 'uif.included-responses-prepared/1', organization, project,
+    credentialEpoch, attempt, deadline, maximumMicrousd, intent, payload });
+  const operation = { fence: lease.fence, original_id: hex('7'), payload_sha256: binding };
+  const proof = { binding, organization, project, credentialEpoch, model, includedOnly: true,
+    hardNoOverage: true, purchasedCreditsAbsent: true, autoRechargeDisabled: true, completeBinding: true,
+    observedAt: start, coveredThrough: start, validUntil: start + 100, expiresAt: start + 200,
+    totalMicrousd: 1000, balanceLowerMicrousd: 500, requestUpperMicrousd: 100, unsettledUpperMicrousd: 0 };
+  const args = { operation, organization, project, credentialEpoch, attempt, deadline, maximumMicrousd,
+    input, optIn: true, intent, credential, readGrant: () => proof };
+  const account = 'openai-responses-org:' + await digest({ organization });
+  x.respond = async () => Response.json({ id: 'resp_exact', model, status: 'completed' },
+    { headers: {'x-request-id':'req_exact'} });
+  const res = await x.a.dispatchIncludedResponsesPrepared({ ...args, verifySettlement: async (subject) => {
+    assert.equal(subject.project, project);
+    assert.equal(subject.providerRequestId, 'req_exact');
+    assert.equal(x.a.accountReservationDebt(account, start), 100);
+    return { statementHash: await digest(subject), receiptSha256: hex('8'), actualMicrousd: 47 };
+  } }, x.peers.native);
+  assert.equal((await res.json()).id, 'resp_exact');
+  assert.equal(x.a.accountReservationDebt(account, start), 47);
+  assert.equal(x.restart().accountReservationDebt(account, start + 1), 0);
+  await assert.rejects(x.a.dispatchIncludedResponsesPrepared(args, x.peers.native), /original_already_recorded/);
+  assert.equal(x.calls.length, 1);
+});
