@@ -1792,7 +1792,7 @@ export class Authority {
   // The owner-supplied quote adapter must authenticate the linked grant and
   // whole-org liabilities. Request JSON cannot supply that adapter.
   async dispatchIncludedResponsesPrepared({ operation, attempt, organization, project,
-    credentialEpoch, credential, input, deadline, maximumMicrousd, optIn, intent, readGrant }, peer) {
+    credentialEpoch, credential, input, deadline, maximumMicrousd, optIn, intent, readGrant, verifySettlement }, peer) {
     operationShape(this.c, operation);
     const identifier = (s) => typeof s === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/.test(s);
     need(token(attempt) && identifier(organization) && identifier(project) &&
@@ -1828,6 +1828,8 @@ export class Authority {
         deadline <= proof.validUntil && deadline < proof.expiresAt &&
         proof.totalMicrousd > 0 && proof.balanceLowerMicrousd <= proof.totalMicrousd &&
         maximumMicrousd === proof.requestUpperMicrousd, 'responses_authenticated_grant_unavailable');
+      need(!this.row('SELECT original FROM budget_breaches WHERE account=?', account),
+        'account_reservation_maximum_breached');
       const outstanding = this.accountReservationDebt(
         account, proof.coveredThrough, reserved ? operation.original_id : '',
       );
@@ -1843,11 +1845,58 @@ export class Authority {
         'OpenAI-Organization': organization, 'OpenAI-Project': project },
       signal: AbortSignal.timeout(Math.min(60000, Math.max(1, (deadline - this.clock()) * 1000))),
     });
+    const retention = this.grant(operation.fence.scope, operation.fence.source, peer).result_retention;
     const response = await this.physical(operation, attempt, account, maximumMicrousd, qualify, outgoing);
-    await response.body?.cancel();
-    // Result/settlement ownership is not wired. Retain the entire original
-    // reservation until authenticated settlement rather than guessing usage.
-    throw new Refusal('responses_original_requires_verified_settlement', 502);
+    if (typeof verifySettlement !== 'function' || !retention ||
+        !retention.readers.includes(peer.session_id) || response.status !== 200) {
+      await response.body?.cancel();
+      throw new Refusal('responses_original_requires_verified_settlement', 502);
+    }
+    const bytes = await readBytes(response.body, retention.max_response_bytes);
+    const result = json(bytes);
+    const providerRequestId = response.headers.get('x-request-id');
+    need(typeof providerRequestId === 'string' && /^[A-Za-z0-9_-]{1,192}$/.test(providerRequestId) &&
+      typeof result.id === 'string' && /^resp_[A-Za-z0-9_-]{1,192}$/.test(result.id) &&
+      result.model === model && result.status === 'completed', 'responses_original_result_unbound', 502);
+    const bodySHA = await digestBytes(bytes);
+    // This is a trusted, installed verifier callback, not evidence obtained
+    // from a caller, a dashboard screenshot, a model GET, or HTTP 200 alone.
+    // It authenticates the actual linked project/credential and charge for
+    // the recorded response, independent of the supplied prompt/result.
+    const subject = { fingerprint, organization, project, credentialEpoch, model,
+      operation_id: operation.original_id, providerRequestId, responseId: result.id, bodySHA };
+    const statementHash = await digest(subject);
+    const proof = await verifySettlement(subject);
+    need(proof && proof.statementHash === statementHash && sha(proof.receiptSha256) &&
+      Number.isSafeInteger(proof.actualMicrousd) && proof.actualMicrousd >= 0,
+      'responses_original_requires_verified_settlement', 502);
+    const hash = await digest({ operation, provider_receipt: proof.receiptSha256,
+      response_sha256: bodySHA, actual_microusd: proof.actualMicrousd });
+    const match = this.row('SELECT body FROM grants WHERE issue=?', issueKey(operation.fence.scope));
+    const current = match && JSON.parse(match.body);
+    const consent = this.commissioned() && this.authorized('grant', issueKey(operation.fence.scope)) &&
+      current && equal(current.source, operation.fence.source) && current.valid_until > this.clock() &&
+      current.result_retention && equal(current.result_retention, retention);
+    this.store.transactionSync(() => {
+      const stored = this.row('SELECT op,state,amount FROM effects WHERE id=?', operation.original_id);
+      need(stored?.state === 'sending' && stored.op === canonical(operation) &&
+        stored.amount === maximumMicrousd, 'responses_original_record_changed', 409);
+      if (proof.actualMicrousd > maximumMicrousd) {
+        this.put('INSERT OR IGNORE INTO budget_breaches VALUES (?,?,?)',
+          account, operation.original_id, proof.actualMicrousd);
+        this.put('UPDATE effects SET amount=? WHERE id=?', proof.actualMicrousd, operation.original_id);
+        return;
+      }
+      this.put("UPDATE effects SET state='verified',amount=?,settled_at=?,receipt=? WHERE id=?",
+        proof.actualMicrousd, this.clock(), hash, operation.original_id);
+      if (consent)
+        this.put('INSERT INTO provider_results VALUES (?,?,?,?,?,?,NULL)', operation.original_id,
+          bytes.buffer, null, issueKey(operation.fence.scope), canonical(retention), bodySHA);
+    });
+    need(proof.actualMicrousd <= maximumMicrousd, 'account_reservation_maximum_breached', 502);
+    need(consent, 'private_result_grant_changed', 403);
+    this.bodyReader(peer, operation, retention);
+    return this.providerResponse(bytes, null, hash);
   }
 
   async send(body, peer) {
