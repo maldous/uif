@@ -276,7 +276,10 @@ the expiring, selection-bound marker under the same lock, then releases the
 lock so the fixed systemd ExecStart can take it exclusively. The idle
 drop-in uses systemd's `!` credential override for that one entry point and
 sets `NoNewPrivileges=yes`. It preserves the unit sandbox and the service
-account. Bootstrap must qualify the effective systemd unit, its cgroup v2
+account. The prelude's capability bound contains exactly `CAP_SETGID`,
+`CAP_SETUID` and `CAP_SETPCAP`. The systemd and kernel checks require that
+exact bound and an empty ambient set. Bootstrap must qualify the effective
+systemd unit, its cgroup v2
 membership, and protected receipt writes under the existing sandbox.
 
 ExecStart checks its parent, system-manager MainPID and invocation ID, and
@@ -285,10 +288,10 @@ lock, it revalidates the exact protected intent, original owner signature,
 reviewed bundle and selection, and writes a create-only
 `<operation_id>.start-consumed.json` under the existing protected receipts
 directory. That receipt binds the one invocation and PID. It preserves the
-intent and marker, downgrades to the shared runtime lock, drops to the
-configured `user:user` account, verifies empty permitted, effective and
-ambient capability sets,
-and execs the pinned idle launcher. Invalid, expired or reused proof refuses
+intent and marker, downgrades to the shared runtime lock, drops the
+capability bounding set, switches to the configured `user:user` account and
+requires all five kernel capability sets to be empty with
+`NoNewPrivileges` still enabled before exec. Invalid, expired or reused proof refuses
 before exec.
 
 A successful readback requires the live PID and the closed-admission idle

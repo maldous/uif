@@ -2,6 +2,7 @@
 """Read-only operator preflight for a reviewed, fixed service upgrade."""
 
 import argparse
+import ctypes
 from dataclasses import asdict, dataclass
 from contextlib import contextmanager
 import fcntl
@@ -73,6 +74,9 @@ APPLY_NAMESPACE = 'uif-foo-stokowski-idle-apply'
 INTERPRETER = 'venv/bin/python3.12'
 BOOTSTRAP_PRIOR = '96c56b11f328c4d97df40e5d5ab705d4c85c6cd31c96cbacaca699ca05873502'
 MARKER = 'ACTIVATION_AUTHORIZED'
+PRELUDE_CAPABILITIES = {'cap_setgid': 6, 'cap_setuid': 7, 'cap_setpcap': 8}
+PRELUDE_MASK = sum(1 << bit for bit in PRELUDE_CAPABILITIES.values())
+PR_CAPBSET_DROP = 24
 ADMISSION_FIELDS = ('schema', 'profile', 'unit', 'stage', 'owner', 'owner_uid', 'review_sha256',
                     'confirmation_sha256', 'quiescence_sha256', 'issued_at', 'expires_at')
 INSTALLER_FIELDS = ('schema', 'action', 'operation_id', 'profile', 'unit', 'stage', 'owner',
@@ -86,7 +90,9 @@ def selector_dropin():
     marker = STAGES / FIXED_STAGE / MARKER
     return ('[Unit]\nConditionPathExists=\n'
             f'ConditionPathExists={marker}\n\n'
-            '[Service]\nRestart=no\nNoNewPrivileges=yes\nExecStart=\n'
+            '[Service]\nRestart=no\nNoNewPrivileges=yes\n'
+            'CapabilityBoundingSet=\nCapabilityBoundingSet=CAP_SETGID CAP_SETUID CAP_SETPCAP\n'
+            'ExecStart=\n'
             f'ExecStart=!/usr/bin/python3 -I -S -B {TOOL_PATH} --profile uif-idle'
             f' --stage {FIXED_STAGE} --action serve\n').encode()
 
@@ -815,6 +821,7 @@ def trusted_start_process():
             'idle start edge must be launched by the system manager')
     unit = PROFILES[PROFILE_NAME].unit
     properties = ('Id,User,Group,SupplementaryGroups,Type,Restart,NoNewPrivileges,'
+                  'CapabilityBoundingSet,AmbientCapabilities,'
                   'MainPID,InvocationID,ControlGroup,ActiveState')
     output = subprocess.check_output(
         [SYSTEMCTL, '--system', '--no-pager', 'show', '--property=' + properties, unit],
@@ -826,6 +833,8 @@ def trusted_start_process():
     require((observed['Id'], observed['User'], observed['Group'], observed['SupplementaryGroups'],
              observed['Type'], observed['Restart'], observed['NoNewPrivileges'], observed['MainPID'])
             == (unit, 'user', 'user', '', 'simple', 'no', 'yes', str(pid))
+            and set(observed['CapabilityBoundingSet'].lower().split()) == PRELUDE_CAPABILITIES.keys()
+            and not observed['AmbientCapabilities'].strip()
             and observed['ActiveState'] in ('activating', 'active')
             and re.fullmatch('[0-9a-f]{32}', invocation) is not None
             and invocation != '0' * 32 and cgroup.startswith('/') and cgroup != '/'
@@ -839,19 +848,41 @@ def start_consumption(intent, pid, invocation):
             'intent_sha256': plan_digest(intent), 'main_pid': pid, 'invocation_id': invocation}
 
 
+def kernel_security_status():
+    return dict(line.split(':', 1) for line in Path('/proc/self/status').read_text().splitlines())
+
+
+def drop_prelude_bound():
+    status = kernel_security_status()
+    require(status['NoNewPrivs'].strip() == '1'
+            and all(int(status[name], 16) == PRELUDE_MASK for name in ('CapBnd', 'CapPrm', 'CapEff'))
+            and all(int(status[name], 16) == 0 for name in ('CapInh', 'CapAmb')),
+            'idle prelude does not have the exact capability set')
+    prctl = ctypes.CDLL(None, use_errno=True).prctl
+    prctl.argtypes = (ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong)
+    prctl.restype = ctypes.c_int
+    for capability in PRELUDE_CAPABILITIES.values():
+        if prctl(PR_CAPBSET_DROP, capability, 0, 0, 0) != 0:
+            error = ctypes.get_errno()
+            raise OSError(error, 'idle prelude could not drop the capability bound')
+    require(int(kernel_security_status()['CapBnd'], 16) == 0, 'idle prelude capability bound remains')
+
+
 def drop_idle_privileges():
     account = pwd.getpwnam('user')
     uid, gid = account.pw_uid, account.pw_gid
     require(uid > 0 and gid > 0 and gid == grp.getgrnam('user').gr_gid,
             'unexpected service account')
     groups = set(os.getgrouplist(account.pw_name, gid))
+    drop_prelude_bound()
     os.initgroups(account.pw_name, gid)
     os.setresgid(gid, gid, gid)
     os.setresuid(uid, uid, uid)
-    status = dict(line.split(':', 1) for line in Path('/proc/self/status').read_text().splitlines())
+    status = kernel_security_status()
     require(os.getresuid() == (uid, uid, uid) and os.getresgid() == (gid, gid, gid)
             and set(os.getgroups()) == groups and status['NoNewPrivs'].strip() == '1'
-            and all(int(status[name], 16) == 0 for name in ('CapPrm', 'CapEff', 'CapAmb')),
+            and all(int(status[name], 16) == 0
+                    for name in ('CapBnd', 'CapPrm', 'CapEff', 'CapAmb', 'CapInh')),
             'service privileges did not drop')
     os.environ.update(HOME=account.pw_dir, USER=account.pw_name,
                       LOGNAME=account.pw_name, SHELL=account.pw_shell)
