@@ -7,6 +7,10 @@ from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 import json
+import os
+import socket
+import subprocess
+import sys
 import tempfile
 import time
 from types import SimpleNamespace
@@ -21,7 +25,8 @@ from uif.quota_handoff import LinearKey
 from uif.stokowski_cloudflare.account_admission import FreeRoute
 from uif.stokowski_cloudflare.client import GLM_MODEL
 from uif.stokowski_cloudflare.native_composition import (NativeComposition, _COMMENT_SLOTS, _LinearClient,
-                                                       install_sinks, workspace_recovery_digest)
+                                                       install_sinks, load_guarded_startup,
+                                                       workspace_recovery_digest)
 from uif.stokowski_cloudflare.remote_authority import AccessTransport, NativeAssignment, RemoteAuthority, _origin
 from uif.stokowski_cloudflare.shared_admission import NativeClaim
 
@@ -161,6 +166,81 @@ class NativeRemoteTest(unittest.TestCase):
         self.assertTrue(w.calls[-1][1]['nonce'])
         with self.assertRaisesRegex(Hold,'start_challenge'):
             args['startup_verifier']((req[0],req[1],0))
+
+    def test_idle_start_uses_only_authenticated_stopped_status_for_the_exact_installation(self):
+        unit, stage = 'stokowski-foo.service', 'staged-idle'
+        config = dict(schema='uif.stokowski-remote-idle/1', unit=unit, stage=stage,
+                      origin='https://authority.example.test',
+                      access_credential='/etc/fixture-access.json', native_identity=asdict(OWNER),
+                      coordinator_epoch=1, hold_reason='free_quota_unavailable')
+        target = '/protected/remote-authority.json'
+        module = 'uif.stokowski_cloudflare.native_composition'
+        with (
+            patch(module + '.protected_record', return_value=config) as local,
+            patch(module + '.AccessTransport') as make_transport,
+            patch(module + '.load_composition') as normal,
+        ):
+            transport = make_transport.return_value
+            readback = dict(asdict(OWNER), role='native', stopped=True, coordinator_epoch=1)
+            transport.request.return_value = readback
+            composition, args = load_guarded_startup(target, unit, stage)
+            self.assertIsNone(composition)
+            self.assertEqual(args['idle_reason'], config['hold_reason'])
+            verify = args['startup_verifier']
+            deadline = time.monotonic_ns() + 5_000_000_000
+            req = ('uif.stokowski.native-start/1', args['startup_binding'], deadline)
+            receipt = verify(req)
+            self.assertIs(receipt[0], req)
+            self.assertEqual(receipt[1:], (args['startup_binding'], 'stopped_idle', deadline))
+            transport.request.assert_called_once_with('/v1/status', timeout=4)
+            normal.assert_not_called()
+            for drift in ({'stopped': False}, {'role': 'morgan'}, {'coordinator_epoch': 2},
+                          {'policy_sha256': 'e'*64}):
+                transport.request.return_value = readback | drift
+                with self.assertRaisesRegex(Hold, 'idle_status_binding'):
+                    verify(req)
+            transport.request.reset_mock()
+            with self.assertRaisesRegex(Hold, 'idle_challenge'):
+                verify((req[0], req[1], 0))
+            local.return_value = config | {'hold_reason': 'free_route_unavailable'}
+            with self.assertRaisesRegex(Hold, 'idle_challenge'):
+                verify(req)
+            transport.request.assert_not_called()
+            with self.assertRaisesRegex(Hold, 'idle_installation'):
+                load_guarded_startup(target, unit, 'wrong-stage')
+            local.return_value = {'schema': 'uif.stokowski-remote-authority/1'}
+            composition, args = load_guarded_startup(target, unit, stage)
+            normal.assert_called_once_with(target)
+            self.assertIs(composition, normal.return_value)
+            self.assertIs(args, composition.startup_arguments.return_value)
+
+    def test_managed_idle_reports_hold_to_supervisor_and_stops_on_sigterm(self):
+        with tempfile.TemporaryDirectory() as directory, socket.socket(
+                socket.AF_UNIX, socket.SOCK_DGRAM) as notify:
+            address = str(Path(directory) / 'notify')
+            notify.bind(address)
+            notify.settimeout(5)
+            env = os.environ | {'NOTIFY_SOCKET': address,
+                                'PYTHONPATH': str(Path(__file__).resolve().parents[2] / 'src')}
+            command = [sys.executable, '-c',
+                       'from uif.stokowski_cloudflare.launcher import serve_supervised_idle; '
+                       'serve_supervised_idle("free_route_unavailable")']
+            with subprocess.Popen(command, env=env, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, text=True) as process:
+                try:
+                    ready = notify.recv(512).decode()
+                    self.assertEqual(ready, 'READY=1\nSTATUS=Stokowski idle: free_route_unavailable; '
+                                            'admissions and effects closed')
+                    self.assertIsNone(process.poll())
+                    process.terminate()
+                    self.assertEqual(notify.recv(512).decode(),
+                                     'STOPPING=1\nSTATUS=Stokowski idle shutdown')
+                    out, err = process.communicate(timeout=5)
+                    self.assertEqual(process.returncode, 0, err)
+                    self.assertIn('Stokowski idle shutdown', out)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
 
     def test_linear_reuses_verified_original_and_conflicting_content_holds(self):
         w,r=make()

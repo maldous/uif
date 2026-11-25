@@ -24,3 +24,24 @@ Evidence snapshot: 24 November 2026 UTC. Scope and acceptance: [UIF-1313](https:
 ## Admission proof
 
 Use existing no-inference seams, not a new scheduler: pin sanitized client/model/route metadata and test only synthetic wire plus offline refusal paths (wrong identity, quota stale or missing, 402/429, amount at cutoff, fallback attempted and lost receipt). Independent shared account/issue fencing must own the actual send; a CLI wrapper, a local budget reservation or a green fixture alone cannot do that. Hold unknown originals and their reservations. Verify release/ownership separately; a reset never starts the service or replays work. Record original operation, child cleanup and exact installed versus offline scope without credential values.
+
+## Supervised idle startup
+
+The existing Foo operator must authorize and install the exact reviewed
+launcher stage through the protected installation process for
+`stokowski-foo.service`. The unit's existing activation condition and the
+protected `ACTIVATION_AUTHORIZED` marker still apply. Idle selection comes
+from the root-controlled `selector-v1/remote-authority.json` of that stage.
+Its schema is `uif.stokowski-remote-idle/1` with only `unit`, `stage`, `origin`,
+`access_credential`, `native_identity`, `coordinator_epoch` and `hold_reason`
+alongside `schema`. The reason is `free_route_unavailable` or
+`free_quota_unavailable`. Bind the same native identity, authority and policy
+pins to the installed stage. Never put credential bytes in this record.
+
+The guarded process authenticates a fresh stopped status at that exact
+epoch and reports its hold in systemd status and the journal. It runs no
+scheduler, HTTP server, issue admission, provider calls or publication, and
+exits on the normal service stop signal. Idle cannot promote itself.
+Normal startup still requires its existing exact route and authenticated
+startup receipt. Authorize that mode separately through the existing
+installation process once the route and quota qualify.
