@@ -216,7 +216,8 @@ class UpgradePreflight(unittest.TestCase):
         self.assertEqual(selector.read_bytes(), target)
         self.assertEqual(len(list(receipts.iterdir())), 3)
         self.assertFalse((stage / TOOL['MARKER']).exists())
-        with patch.object(TOOL['pwd'], 'getpwnam', return_value=SimpleNamespace(pw_uid=1001)):
+        fixture_user = SimpleNamespace(pw_uid=1001)
+        with patch.object(TOOL['pwd'], 'getpwnam', return_value=fixture_user):
             with self.assertRaises(FileNotFoundError):
                 TOOL['serve_idle_stage']()
             (stage / TOOL['MARKER']).touch()  # Synthetic owner marker only.
