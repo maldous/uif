@@ -1248,3 +1248,40 @@ test('existing atomic journal reserves a synthetic vendor original before fake e
     /original_already_recorded/);
   assert.equal(x.calls.length, 1);
 });
+
+test('disabled Gemma preparation reserves one exact original before fake upstream', async () => {
+  const x = fixture();
+  await x.resume();
+  const lease = (await x.call('native', 'claim', await x.addGrant())).lease;
+  const project = hex('6'), attempt = 'attempt', deadline = start + 60;
+  const prompt = 'synthetic fixture', credential = 'fixture-nonsecret';
+  const model = 'gemma-4-31b-it';
+  const payload = canonical({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 256, candidateCount: 1 },
+  });
+  const operation = { fence: lease.fence, original_id: hex('7'), payload_sha256: await digest({
+    schema: 'uif.gemma-prepared-public-call/1', project, model, attempt, deadline, payload,
+  }) };
+  const evidence = { publicDataOnly: true, noPaidRoute: true, coveredThrough: start,
+    validUntil: start + 100, upperUsed: 1, limit: 2 };
+  const params = { operation, attempt, project, deadline, prompt, credential,
+    readQuote: () => evidence };
+  await assert.rejects(x.a.dispatchGemmaPrepared({ ...params, readQuote: () => null }, x.peers.native),
+    /gemma_owner_quote_unavailable/);
+  await assert.rejects(x.a.dispatchGemmaPrepared({ ...params, prompt: 'different' }, x.peers.native),
+    /gemma_payload_changed/);
+  assert.equal(x.calls.length, 0);
+  x.respond = async (req) => {
+    assert.equal(x.a.accountReservationDebt('gemma-project:' + project, start), 1);
+    assert.equal(x.calls[0].url,
+      'https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent');
+    assert.deepEqual(await x.calls[0].json(), JSON.parse(payload));
+    throw new Error('synthetic upstream uncertainty');
+  };
+  await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native),
+    /original_external_effect_unknown/);
+  assert.equal(x.restart().accountReservationDebt('gemma-project:' + project, start + 86400), 1);
+  await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native), /gemma_window_exhausted|original_already_recorded/);
+  assert.equal(x.calls.length, 1);
+});

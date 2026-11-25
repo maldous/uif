@@ -1729,6 +1729,65 @@ export class Authority {
       intent.maximum_millineurons,
     );
   }
+  // Disabled preparation seam: handle() deliberately does not expose this.
+  // readQuote is an installed, owner-qualified vendor adapter, not request
+  // JSON. It authenticates exact project/window/operation and certifies the
+  // limit and its coverage. No such issuer or private-data grant is installed.
+  async dispatchGemmaPrepared({ operation, attempt, project, prompt, deadline, credential,
+    readQuote }, peer) {
+    operationShape(this.c, operation);
+    need(
+      token(attempt) && sha(project) && typeof prompt === 'string' &&
+      new TextEncoder().encode(prompt).byteLength <= 4096 && prompt.length > 0 &&
+      boundedRequest(deadline) && typeof readQuote === 'function' &&
+      typeof credential === 'string' && /^[!-~]+$/.test(credential),
+      'gemma_preparation_unbound',
+    );
+    const model = 'gemma-4-31b-it',
+      url = 'https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent',
+      account = 'gemma-project:' + project,
+      payload = canonical({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 256, candidateCount: 1 },
+      });
+    const payloadSHA = await digest({
+      schema: 'uif.gemma-prepared-public-call/1', project, model, attempt, deadline, payload,
+    });
+    need(payloadSHA === operation.payload_sha256, 'gemma_payload_changed');
+    const qualify = (reserved) => {
+      const { row, lease } = this.owner(peer, operation.fence);
+      const g = this.grant(operation.fence.scope, operation.fence.source, peer);
+      need(g.allow_provider && row.attempt === attempt && g.attempt_ids.includes(attempt) &&
+        deadline <= lease.expires_at && this.clock() < deadline,
+      'gemma_attempt_not_current');
+      const evidence = readQuote(operation, { project, model, deadline, payloadSHA });
+      // Exact authenticated request-count window is only a preparation dimension;
+      // the installed quote adapter must also account for all other applicable
+      // quota windows and classify externally permitted public/synthetic input.
+      need(evidence && evidence.publicDataOnly === true && evidence.noPaidRoute === true &&
+        Number.isSafeInteger(evidence.coveredThrough) && evidence.coveredThrough <= this.clock() &&
+        Number.isSafeInteger(evidence.validUntil) && deadline <= evidence.validUntil &&
+        Number.isSafeInteger(evidence.upperUsed) && evidence.upperUsed >= 0 &&
+        Number.isSafeInteger(evidence.limit) && evidence.limit > 0,
+      'gemma_owner_quote_unavailable');
+      const debt = this.accountReservationDebt(
+        account, evidence.coveredThrough, reserved ? operation.original_id : '',
+      );
+      need(evidence.upperUsed + debt + 1 <= evidence.limit, 'gemma_window_exhausted');
+    };
+    const outgoing = new Request(url, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': credential },
+      body: payload,
+      signal: AbortSignal.timeout(Math.min(60000, Math.max(1, (deadline - this.clock()) * 1000))),
+    });
+    // No result-settlement adapter is installed. Keep this original charged
+    // across ambiguity/restart; the caller cannot send again under a fallback.
+    const response = await this.physical(operation, attempt, account, 1, qualify, outgoing);
+    await response.body?.cancel();
+    throw new Refusal('gemma_original_requires_verified_settlement', 502);
+  }
+
   async send(body, peer) {
     fields(body, 'intent', 'body_base64');
     const i = body.intent;
