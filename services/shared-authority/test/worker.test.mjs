@@ -5,7 +5,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Miniflare } from 'miniflare';
+import { accessDiagnosticActive } from '../access.mjs';
 import { canonical, digest, digestBytes, wire, models, day } from '../protocol.mjs';
+
+test('the diagnostic expires at the exact cutoff and fails closed without a cutoff', () => {
+  const expiresAtMs = 2000;
+  const pin = { expiresAtMs };
+  assert.equal(accessDiagnosticActive(pin, expiresAtMs - 1), true);
+  assert.equal(accessDiagnosticActive(pin, expiresAtMs), false);
+  assert.equal(accessDiagnosticActive(pin, expiresAtMs + 1), false);
+  assert.equal(accessDiagnosticActive({}, expiresAtMs - 1), false);
+  assert.equal(accessDiagnosticActive(null, expiresAtMs - 1), false);
+});
 
 // Real local workerd + SQLite DO. JWKS, quota and physical provider routing use isolated fixtures. All
 // network egress is intercepted; no provider, Access or production calls occur.
@@ -89,6 +100,7 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     publicKeySpkiBase64: Buffer.from(await crypto.subtle.exportKey('spki', recipient.publicKey))
       .toString('base64'),
     challengeSha256: await digestBytes(Buffer.from(challenge, 'utf8')),
+    expiresAtMs: Date.now() + 300_000,
   };
   await writeFile(join(syntheticRoot, 'access-diagnostic-pin.mjs'),
     'export const accessDiagnosticPin = ' + JSON.stringify(pin) + ';\n');

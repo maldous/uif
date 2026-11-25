@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Authority } from './authority.mjs';
-import { accessVerifier } from './access.mjs';
+import { accessDiagnosticActive, accessVerifier } from './access.mjs';
 import { accessDiagnosticPin } from './access-diagnostic-pin.mjs';
 import { bytes64, config, json, readBytes, need, Refusal, sha } from './protocol.mjs';
 
@@ -40,7 +40,7 @@ export default {
         if (request.headers.has(name)) headers.set(name, request.headers.get(name));
       }
       need(headers.has('cf-access-jwt-assertion'), 'access_assertion_required', 401);
-      if (accessDiagnosticPin && isStatusGet(request.method, url.pathname)) {
+      if (accessDiagnosticActive(accessDiagnosticPin) && isStatusGet(request.method, url.pathname)) {
         const challenge = request.headers.get(ACCESS_CHALLENGE);
         if (sha(challenge)) headers.set(ACCESS_CHALLENGE, challenge);
       }
@@ -87,6 +87,7 @@ export class SharedAuthority extends DurableObject {
     });
   }
   async encryptAccessFailureOnce(challenge, failures) {
+    if (!accessDiagnosticActive(accessDiagnosticPin)) return;
     const { publicKeySpkiBase64, challengeSha256 } = accessDiagnosticPin;
     if (!sha(challenge) || !sha(challengeSha256)) return;
     const encoder = new TextEncoder();
@@ -106,13 +107,16 @@ export class SharedAuthority extends DurableObject {
     const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, reasons));
     const storage = this.ctx.storage;
     const reserved = storage.transactionSync(() => {
-      if (storage.kv.get(ACCESS_DIAGNOSTIC_SLOT)) return false;
+      if (!accessDiagnosticActive(accessDiagnosticPin) || storage.kv.get(ACCESS_DIAGNOSTIC_SLOT)) {
+        return false;
+      }
       storage.kv.put(ACCESS_DIAGNOSTIC_SLOT, true);
       return true;
     });
     if (!reserved) return;
     // Commit the one-shot reservation before emitting anything, including across restarts.
     await storage.sync();
+    if (!accessDiagnosticActive(accessDiagnosticPin)) return;
     return btoa(String.fromCharCode(...encrypted));
   }
   async fetch(request) {
@@ -125,7 +129,7 @@ export class SharedAuthority extends DurableObject {
       );
       const path = new URL(request.url).pathname;
       const diagnose =
-        accessDiagnosticPin && isStatusGet(request.method, path)
+        accessDiagnosticActive(accessDiagnosticPin) && isStatusGet(request.method, path)
           ? async (failures) => {
               diagnostic = await this.encryptAccessFailureOnce(
                 request.headers.get(ACCESS_CHALLENGE),

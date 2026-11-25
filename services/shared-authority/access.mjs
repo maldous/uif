@@ -1,5 +1,9 @@
 import { Refusal, need, now, readBytes, json } from './protocol.mjs';
 
+export function accessDiagnosticActive(pin, nowMs = Date.now()) {
+  return Number.isSafeInteger(pin?.expiresAtMs) && nowMs < pin.expiresAtMs;
+}
+
 function segment(part) {
   need(typeof part === 'string' && /^[A-Za-z0-9_-]+$/.test(part), 'access_assertion_invalid', 401);
   try {

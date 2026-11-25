@@ -1,3 +1,7 @@
-// Release pin: null, or { publicKeySpkiBase64, challengeSha256 } after separate review.
 // challengeSha256 hashes the exact 64-character lowercase hex challenge as UTF-8.
-export const accessDiagnosticPin = null;
+export const accessDiagnosticPin = Object.freeze({
+  publicKeySpkiBase64:
+    'MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAt+hNZy9rETouDIDHpsklnnRb+MH3w5NAovpRaYWkavSb3U5OzEkRkTmUwQVtISrLX2X7rbrFw3BA1L0I+ozzBJRxyUZgYtKLLl98M3SSRmkxadmxwEsVezUvZSuG19uQnM88toiFIUG8+jMKWRAK1zKgvGg4iVKfBB9Pa8B5arhwsOhQcLBx7F1SamMkKaYQvXSQB8Cf5guFWKDS3IVXmZysHTDtvpj7h88e9lA/tK+PURTiiUA4bUOoNkdsZLkV7F5Y5FhLhZ0feVCAXSLMOhIwyCxAsUW9znITjmKUrsJwNGupPcwqha+IBmcNBwECcRy1/BINTbHbVV/vM4So7gE9R3ZDILSknQ0oG5v6+1VZl7WD/j4f1PLYU80IOyRkEY0rTtQ/VEZzFwTsSg7gl2WNT694D4IksPlB1QmVs6NBadxVbCHq6yMU7/GBVwS6aOVd2BVTa2Oy6uiDpjoEhVEuLXAsB5kG9Z/xiXrM8ASAOXwNm1e+6rtfrckwfNVHAgMBAAE=',
+  challengeSha256: 'ac577decdd6b6023e4964cfce48ef4001561d2c753804eaee3d5daea83b3913a',
+  expiresAtMs: Date.parse('2026-11-25T00:45:00Z'),
+});
