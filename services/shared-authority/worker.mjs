@@ -102,7 +102,7 @@ export class SharedAuthority extends DurableObject {
       ['encrypt'],
     );
     const reasons = encoder.encode(failures.join(','));
-    if (key.algorithm.modulusLength !== 2048 || reasons.length > 128) return;
+    if (key.algorithm.modulusLength !== 3072 || reasons.length > 128) return;
     const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, key, reasons));
     const storage = this.ctx.storage;
     const reserved = storage.transactionSync(() => {

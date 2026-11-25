@@ -78,7 +78,7 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     if (name.endsWith('.mjs')) await copyFile(join(root, name), join(syntheticRoot, name));
   }
   const makeKey = () => crypto.subtle.generateKey(
-    { name: 'RSA-OAEP', hash: 'SHA-256', modulusLength: 2048,
+    { name: 'RSA-OAEP', hash: 'SHA-256', modulusLength: 3072,
       publicExponent: new Uint8Array([1, 0, 1]) },
     true,
     ['encrypt', 'decrypt'],
@@ -208,7 +208,7 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     const ciphertexts = (await Promise.all(repeated.map(refusal))).filter(Boolean);
     assert.equal(ciphertexts.length, 1);
     const ciphertext = Buffer.from(ciphertexts[0], 'base64');
-    assert.equal(ciphertext.length, 256);
+    assert.equal(ciphertext.length, 384);
     const decrypt = (key) => crypto.subtle.decrypt({ name: 'RSA-OAEP' }, key, ciphertext);
     assert.equal(Buffer.from(await decrypt(recipient.privateKey)).toString(), 'empty_subject');
     await assert.rejects(decrypt(unrelated.privateKey), { name: 'OperationError' });
