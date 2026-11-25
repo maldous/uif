@@ -45,3 +45,46 @@ exits on the normal service stop signal. Idle cannot promote itself.
 Normal startup still requires its existing exact route and authenticated
 startup receipt. Authorize that mode separately through the existing
 installation process once the route and quota qualify.
+
+### Detached operator preflight
+
+After source review, the trusted Foo operator must provision the reviewed
+preflight tool and a root-controlled packet for the exact admitted stage.
+The following command uses the proposed stage for PR #114. The profile fixes
+the target to `stokowski-foo.service`. Run as the named non-root operator in
+the admission, including when the approved Foo runner is used as transport.
+
+```sh
+/usr/bin/python3 -I -S -B /var/lib/uif-stokowski/idle-upgrade/guarded_service_upgrade.py \
+  --profile uif-idle --stage uif1313-idle-a22fbb2
+```
+
+The operator's protected loader supplies the following under
+`/var/lib/uif-stokowski/idle-upgrade/uif1313-idle-a22fbb2/`.
+
+- `admission.json` (`uif.guarded-upgrade-admission/1`) binds the exact profile,
+  unit, stage, operator name and UID, and SHA-256 of each witness below.
+  Set `issued_at` and `expires_at` in UTC epoch seconds, at most five minutes apart.
+- `review.json` (`uif.guarded-upgrade-review/1`) records the actual
+  author-distinct acceptance of the exact head, stage, bundle, launcher,
+  idle config and current parked unit. The parked-unit pin is the SHA-256
+  of the exact `systemctl --no-pager cat stokowski-foo.service` bytes.
+- `confirmation.json` is the original trusted host-owner confirmation.
+  The admission binds its complete byte hash. The preflight does not
+  originate this confirmation or interpret a caller statement as approval.
+- `quiescence.json` (`uif.guarded-upgrade-quiescence/1`) binds the unit and
+  parked-unit pin to a fresh operator observation of zero inflight work,
+  stopped children and no unresolved operations.
+- `bundle.tar` is an uncompressed, independently reviewed idle-stage bundle
+  with `launch.py` and `selector-v1/remote-authority.json` at their fixed
+  relative paths. Use regular files and directories without link entries,
+  credentials or an activation marker.
+
+The command only reads and emits an advisory JSON plan. Its output cannot
+authorize a later write. Repeating it cannot replace an existing stage.
+The allowlisted legacy OffMenu profile remains with its existing owner-only
+loader. This candidate supplies no apply action. A separately qualified Foo
+loader must authenticate the external witnesses, hold the existing custody
+locks and recheck those inputs while selecting the new stage, with an
+accepted restore operation for the prior unit. The preflight alone does not
+establish that host trust or authorize activation.
