@@ -77,3 +77,21 @@ class ShelfProvisionTest(unittest.TestCase):
         self.assertNotIn("offmenu_verifier_bootstrap", (SOURCE / "verifier_shelf_provision.py").read_text())
         self.assertEqual(64, subprocess.run(
             ["/usr/bin/bash", str(launcher), "not-an-original"], check=False).returncode)
+
+    def test_canonical_flat_release_identity_is_not_descriptive_candidate_digest(self):
+        actual = provisioner.PROFILES["offmenu"]
+        # Independently read on Foo for all 176 exact protected release members.
+        self.assertEqual("c292384551558da7766d6a107dfc2c00dfd589bfa01e622b5c326e2cf26a9f1a",
+                         actual.release)
+        self.assertEqual("170f0d65ddc957f3704b0ecfb1438b8d814e870ceca7734e4a6b0d74087596b4",
+                         actual.manifest_sha256)
+        descriptive = "8fbd507239d4c81ac1e2aa4223856ff521f28ebd93d820266a13c331ad55a08f"
+        raw = provisioner.encode({"schema": "offmenu-detached-verifier-candidate-v1",
+                                  "candidate_release_sha256": descriptive,
+                                  "files": {self.profile.ingress: {
+                                      "sha256": digest(self.path.read_bytes()), "stage_mode": "0444"}}})
+        profile = self.profile._replace(manifest_sha256=digest(raw))
+        self.assertEqual({profile.ingress: digest(self.path.read_bytes())},
+                         provisioner.manifest_files(raw, profile))
+        with self.assertRaisesRegex(RuntimeError, "REVIEWED_SHELF_MANIFEST_MISMATCH"):
+            provisioner.manifest_files(raw, profile._replace(release=descriptive))

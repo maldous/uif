@@ -33,7 +33,7 @@ PROFILES = {
     "offmenu": Profile(
         Path("/home/user/src/offmenu-publisher-preparation-20261125-a1/ingress-release-4676f2d-verifier-a1"),
         Path("/usr/local/lib"), "offmenu-native-upgrade",
-        "8fbd507239d4c81ac1e2aa4223856ff521f28ebd93d820266a13c331ad55a08f",
+        "c292384551558da7766d6a107dfc2c00dfd589bfa01e622b5c326e2cf26a9f1a",
         "170f0d65ddc957f3704b0ecfb1438b8d814e870ceca7734e4a6b0d74087596b4",
         "tools/delivery/offmenu_native_upgrade_ingress.py"),
 }
@@ -94,6 +94,17 @@ def planned_files(raw, expected):
                 or type(digest) is not str or not HEX.fullmatch(digest)):
             raise RuntimeError("INVALID_SHELF_MANIFEST_ENTRY")
     return manifest
+
+
+def manifest_files(raw, profile):
+    """Project exact detached metadata onto the canonical native release-id map."""
+    if hashlib.sha256(raw).hexdigest() != profile.manifest_sha256:
+        raise RuntimeError("DETACHED_SHELF_MANIFEST_MISMATCH")
+    metadata = json.loads(raw)
+    if metadata.get("schema") != "offmenu-detached-verifier-candidate-v1":
+        raise RuntimeError("DETACHED_SHELF_MANIFEST_SCHEMA")
+    flat = {path: file["sha256"] for path, file in metadata["files"].items()}
+    return planned_files(encode(flat), profile.release)
 
 
 def rename_directory(source, anchor, src, dst):
@@ -193,14 +204,7 @@ def provision(profile, operation, anchor):
         stage = protected_directory(profile.stage, False)
         try:
             raw = read_at(stage, ("release-manifest.json",), LIMIT // 4)
-            if hashlib.sha256(raw).hexdigest() != profile.manifest_sha256:
-                raise RuntimeError("DETACHED_SHELF_MANIFEST_MISMATCH")
-            metadata = json.loads(raw)
-            if metadata.get("schema") != "offmenu-detached-verifier-candidate-v1":
-                raise RuntimeError("DETACHED_SHELF_MANIFEST_SCHEMA")
-            manifest = planned_files(encode({path: file["sha256"]
-                                             for path, file in metadata["files"].items()}),
-                                     profile.release)
+            manifest = manifest_files(raw, profile)
             if profile.ingress not in manifest:
                 raise RuntimeError("REVIEWED_INGRESS_MISSING")
             if old is None:
