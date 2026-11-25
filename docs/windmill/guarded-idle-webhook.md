@@ -69,3 +69,26 @@ unique invocation. It never makes legacy signed records. Verify original
 apply/start/consume receipts, active unit's exact PID/invocation and idle
 health status. A new Windmill delivery reads or reconciles the original
 effect instead of replaying it. Unknown results remain reconciliation only.
+
+### Existing owner-only carrier
+
+For the protected no-argument Windmill action, compose
+`bind_webhook(bind_foo_transport(wmill.Windmill()))` using Windmill's in-job
+authenticated SDK. The only supported bridge is the existing owner-only
+`u/admin/foo_root_jobs`, called asynchronously with one fixed isolated Python
+command; the sole variable is its validated internal audit UUID. The receipt
+contains the bridge job IDs and says **submitted**, never active. Inspect those
+same original identities after interruption or lost acknowledgement. The
+canonical root-side operation is the one already pinned in private config,
+not the variable Windmill ID.
+
+Maintenance must install and verify exact reviewed receiver bytes as a
+root-owned regular single-link, non-group-writable file at the fixed
+`/var/lib/uif-stokowski/idle-upgrade/private_windmill_idle_receiver.py` path,
+and place `private-windmill-idle-pins.json` in the same custody. Its fixed
+fields are original operation ID, reviewed source head, review/bundle hashes,
+and selected-stage hash; no approval or command is accepted from the caller.
+The receiver hashes its protected controller before compiling its same exact
+bytes, and calls only the private guarded idle controller. Never put a
+different actor in the bridge ACL; this transport does not isolate against
+the same trusted administrator intentionally invoking root directly.

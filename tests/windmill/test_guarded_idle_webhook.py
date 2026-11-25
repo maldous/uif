@@ -43,3 +43,21 @@ class WebhookTest(unittest.TestCase):
         self.assertEqual(0, subprocess.run(["/usr/bin/bash", "-n", str(launcher)], check=False).returncode)
         self.assertEqual(64, subprocess.run(
             ["/usr/bin/bash", str(launcher), "caller-value"], check=False).returncode)
+
+    def test_real_sdk_composition_uses_only_fixed_runner_and_internal_audit_value(self):
+        client = Mock()
+        client.run_script_by_path_async.return_value = "child job"
+        current = "12345678-1234-1234-1234-123456789abc"
+        fixed = webhook.bind_webhook(webhook.bind_foo_transport(client))
+        with patch.dict(webhook.os.environ, {"WM_WORKSPACE": "foo", "WM_JOB_ID": current}):
+            result = fixed()
+        client.run_script_by_path_async.assert_called_once_with("u/admin/foo_root_jobs", args={
+            "action": "run", "job_id": "uif-idle-webhook-" + current,
+            "command": "/usr/bin/python3.12 -I -S -B /var/lib/uif-stokowski/idle-upgrade/private_windmill_idle_receiver.py " + current,
+            "cwd": "/", "timeout_seconds": 60,
+        })
+        self.assertEqual("submitted", result["state"])
+        self.assertEqual("child job", result["runner_run_id"])
+        with self.assertRaises((ValueError, PermissionError)):
+            webhook.bind_foo_transport(client)("; arbitrary fixture")
+        client.run_script_by_path_async.assert_called_once()
