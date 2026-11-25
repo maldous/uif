@@ -1788,6 +1788,68 @@ export class Authority {
     throw new Refusal('gemma_original_requires_verified_settlement', 502);
   }
 
+  // Source preparation only: no HTTP route, runtime default or Codex fallback.
+  // The owner-supplied quote adapter must authenticate the linked grant and
+  // whole-org liabilities. Request JSON cannot supply that adapter.
+  async dispatchIncludedResponsesPrepared({ operation, attempt, organization, project,
+    credentialEpoch, credential, input, deadline, maximumMicrousd, optIn, intent, readGrant }, peer) {
+    operationShape(this.c, operation);
+    const identifier = (s) => typeof s === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/.test(s);
+    need(token(attempt) && identifier(organization) && identifier(project) &&
+      sha(credentialEpoch) && typeof input === 'string' && input.length > 0 &&
+      new TextEncoder().encode(input).byteLength <= 4096 && boundedRequest(deadline) &&
+      Number.isSafeInteger(maximumMicrousd) && maximumMicrousd > 0 &&
+      optIn === true && ['new', 'continuation', 'retry'].includes(intent) &&
+      typeof credential === 'string' && /^[!-~]+$/.test(credential) && typeof readGrant === 'function',
+      'responses_preparation_unbound');
+    const model = 'gpt-6.2-sol',
+      account = 'openai-responses-org:' + await digest({ organization }),
+      payload = canonical({ model, input, max_output_tokens: 256, store: false }),
+      binding = { schema: 'uif.included-responses-prepared/1', organization, project, credentialEpoch,
+        attempt, deadline, maximumMicrousd, intent, payload };
+    const fingerprint = await digest(binding);
+    need(fingerprint === operation.payload_sha256, 'responses_payload_changed');
+    const qualify = (reserved) => {
+      const { row, lease } = this.owner(peer, operation.fence);
+      const g = this.grant(operation.fence.scope, operation.fence.source, peer);
+      const now = this.clock();
+      need(g.allow_provider && row.attempt === attempt && g.attempt_ids.includes(attempt) &&
+        deadline <= lease.expires_at && now < deadline, 'responses_attempt_not_current');
+      // The existing advisory opt-in does not authenticate these billing facts.
+      const proof = readGrant(operation, fingerprint);
+      const natural = (n) => Number.isSafeInteger(n) && n >= 0;
+      need(proof && proof.binding === fingerprint && proof.organization === organization &&
+        proof.project === project && proof.credentialEpoch === credentialEpoch && proof.model === model &&
+        proof.includedOnly === true && proof.hardNoOverage === true && proof.purchasedCreditsAbsent === true &&
+        proof.autoRechargeDisabled === true && proof.completeBinding === true &&
+        [proof.observedAt, proof.validUntil, proof.expiresAt, proof.coveredThrough, proof.totalMicrousd,
+          proof.balanceLowerMicrousd, proof.requestUpperMicrousd, proof.unsettledUpperMicrousd].every(natural) &&
+        now - 90 <= proof.observedAt && proof.observedAt <= now && proof.coveredThrough <= proof.observedAt &&
+        deadline <= proof.validUntil && deadline < proof.expiresAt &&
+        proof.totalMicrousd > 0 && proof.balanceLowerMicrousd <= proof.totalMicrousd &&
+        maximumMicrousd === proof.requestUpperMicrousd, 'responses_authenticated_grant_unavailable');
+      const outstanding = this.accountReservationDebt(
+        account, proof.coveredThrough, reserved ? operation.original_id : '',
+      );
+      need(natural(outstanding), 'responses_reservation_bound_overflow');
+      const balance = BigInt(proof.balanceLowerMicrousd) - BigInt(proof.unsettledUpperMicrousd) -
+        BigInt(outstanding) - BigInt(maximumMicrousd);
+      need(100n * balance > BigInt(intent === 'new' ? 15 : 10) * BigInt(proof.totalMicrousd),
+        'responses_included_cutoff');
+    };
+    const outgoing = new Request('https://api.openai.com/v1/responses', {
+      method: 'POST', redirect: 'manual', body: payload,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + credential,
+        'OpenAI-Organization': organization, 'OpenAI-Project': project },
+      signal: AbortSignal.timeout(Math.min(60000, Math.max(1, (deadline - this.clock()) * 1000))),
+    });
+    const response = await this.physical(operation, attempt, account, maximumMicrousd, qualify, outgoing);
+    await response.body?.cancel();
+    // Result/settlement ownership is not wired. Retain the entire original
+    // reservation until authenticated settlement rather than guessing usage.
+    throw new Refusal('responses_original_requires_verified_settlement', 502);
+  }
+
   async send(body, peer) {
     fields(body, 'intent', 'body_base64');
     const i = body.intent;
