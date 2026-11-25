@@ -183,6 +183,7 @@ class UpgradePreflight(unittest.TestCase):
         manager_cgroup = '/system.slice/' + UNIT
         process_cgroup = manager_cgroup
         parent = 1
+        edge_uids = (0, 0, 0)
 
         def systemctl(argv, **_):
             if argv[0] == TOOL['JOURNALCTL']:
@@ -223,6 +224,7 @@ class UpgradePreflight(unittest.TestCase):
 
         self.enterContext(patch.object(Path, 'read_text', read_text))
         self.enterContext(patch.object(os, 'getppid', side_effect=lambda: parent))
+        self.enterContext(patch.object(os, 'getresuid', side_effect=lambda: edge_uids))
         self.enterContext(patch.object(os, 'getpid', return_value=42))
         plan = PREFLIGHT('uif-idle', STAGE, sealed_stage=True)
         target = TOOL['sealed_selection'](plan)
@@ -346,7 +348,7 @@ class UpgradePreflight(unittest.TestCase):
                 raise OSError('simulated interruption after consumption')
 
         def dispatch(argv, **kwargs):
-            nonlocal parent, process_cgroup
+            nonlocal parent, process_cgroup, edge_uids
             if argv[0] == keygen:
                 return real_run(argv, **kwargs)
             self.assertEqual(argv, [TOOL['SYSTEMCTL'], '--no-pager', '--job-mode=fail', 'start', UNIT])
@@ -355,6 +357,10 @@ class UpgradePreflight(unittest.TestCase):
                 fcntl.flock(unlocked, fcntl.LOCK_SH | fcntl.LOCK_NB)
             self.assertTrue((receipts / (admission.operation_id + '.start-intent.json')).is_file())
             self.assertTrue((stage / TOOL['MARKER']).is_file())
+            edge_uids = (0, 0, 1001)
+            with self.assertRaisesRegex(ValueError, 'must be launched by the system manager'):
+                TOOL['serve_idle_stage']()
+            edge_uids = (0, 0, 0)
             parent = 10
             with self.assertRaisesRegex(ValueError, 'must be launched by the system manager'):
                 TOOL['serve_idle_stage']()

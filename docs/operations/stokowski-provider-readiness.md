@@ -286,7 +286,8 @@ reviewed bundle and selection, and writes a create-only
 `<operation_id>.start-consumed.json` under the existing protected receipts
 directory. That receipt binds the one invocation and PID. It preserves the
 intent and marker, downgrades to the shared runtime lock, drops to the
-configured `user:user` account with no effective or retained capabilities,
+configured `user:user` account, verifies empty permitted, effective and
+ambient capability sets,
 and execs the pinned idle launcher. Invalid, expired or reused proof refuses
 before exec.
 
