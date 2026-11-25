@@ -1652,6 +1652,21 @@ export class Authority {
       );
     }
   }
+  // Reuse the same journal for every qualified account namespace.
+  accountReservationDebt(account, coveredThrough, excludeOriginal = '') {
+    const { debt } = this.row(
+      `SELECT COALESCE(SUM(amount),0) AS debt FROM effects WHERE account=?
+      AND (state='sending' OR settled_at>=?) AND id!=?`,
+      account,
+      coveredThrough,
+      excludeOriginal,
+    );
+    const { opening } = this.row(
+      'SELECT COALESCE(SUM(amount),0) AS opening FROM carryovers WHERE account=?',
+      account,
+    );
+    return debt + opening;
+  }
   qualifySend(peer, intent, promptSHA, includeThis = false) {
     const op = intent.operation,
       { row, lease } = this.owner(peer, op.fence),
@@ -1702,23 +1717,15 @@ export class Authority {
     const p = receipt.projection;
     // Unknown effects count across midnight and process restarts. A later complete
     // account observation may cover a verified terminal charge, never an unknown one.
-    const { debt } = this.row(
-      `SELECT COALESCE(SUM(amount),0) AS debt FROM effects WHERE account=?
-      AND (state='sending' OR settled_at>=?) AND id!=?`,
-      intent.route.account_id,
-      p.covered_through,
-      includeThis ? op.original_id : '',
-    );
-    const { opening } = this.row(
-      'SELECT COALESCE(SUM(amount),0) AS opening FROM carryovers WHERE account=?',
-      intent.route.account_id,
+    const outstanding = this.accountReservationDebt(
+      intent.route.account_id, p.covered_through, includeThis ? op.original_id : '',
     );
     projectionOK(
       p,
       intent.route,
       this.clock(),
       intent.request_not_after,
-      debt + opening,
+      outstanding,
       intent.maximum_millineurons,
     );
   }
