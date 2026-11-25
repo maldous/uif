@@ -43,6 +43,41 @@ third-party funding or possible future credits are not current authority to run.
 | **GitHub Copilot CLI** | [CLI supports all plans](https://docs.github.com/en/copilot/get-started/cli-quickstart), but [Free and Student are auto-model-only](https://docs.github.com/en/copilot/get-started/plans) and do not satisfy the fixed-model rule. Do not treat this as retired GitHub Models or add a subscription. |
 | **Other free catalogues** | [OpenCode Console](https://opencode.ai/docs/console/models/), [Kilo](https://kilo.ai/docs/gateway/usage-and-billing), and [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/pricing) are assessment-only. Recheck the exact model and account, supported client, trial expiry, data-use rules and included-only billing with public metadata before considering fixtures. A changing list, an available model or a promotional balance does not grant live use. |
 
+## Interface crosswalk
+
+These are evidence states, not a new allowlist. A public catalogue or a model
+list proves discovery; an authenticated no-inference readback can establish
+account access and only the limits it actually reports. Neither grants
+dispatch authority. Existing route admission governs live use.
+
+| Interface | Access and current evidence |
+| --- | --- |
+| **Native Codex App Server / Codex SDK** | Signed-in ChatGPT account; the UIF App Server observer reads `account/rateLimits/read` without inference. This is the included Codex entitlement, not an OpenAI API grant. Existing native access is not a current Stokowski route qualification. |
+| **OpenAI Platform Responses / Agents API** | Separate API organization/project and scoped API credentials. The [ChatGPT API credits program](https://developers.openai.com/api/docs/guides/chatgpt-api-credits) distinguishes linked API credits from Codex API-key usage. UIF has a disabled Responses admission/settlement seam ([#137](https://github.com/maldous/uif/pull/137)); no live grant proof or mounted [hosted Agents API](https://developers.openai.com/api/docs/guides/agents-api/overview) route established. |
+| **OpenAI-compatible Chat Completions** | OpenCode is a client, not an entitlement. Existing OpenRouter and Groq bindings returned 401. Public free-model/tool support does not qualify an exact provider endpoint or rule out automatic retries, alternate models, or auxiliary sends by the installed client. |
+| **Cloudflare Workers AI native API** | The Free plan readback and model catalogue are confirmed evidence of plan and discovery only. Neither proves the complete account-wide usage bound required by the existing route. |
+| **Gemini Developer API / Vertex AI / Antigravity** | Gemini offers [native and OpenAI-compatible](https://ai.google.dev/gemini-api/docs/openai) APIs with a Gemini key and project quota; the existing reference is disabled. Antigravity direct CLI is present but unqualified. Its [Python SDK](https://antigravity.google/docs/install/#programmatic-authentication) documents Gemini key, Vertex/ADC or offline local auth, not consumer IDE OAuth as SDK auth; [direct CLI/CI is distinct from consumer wrapping](https://antigravity.google/docs/faq). No verified Vertex route here. |
+| **Anthropic Messages / Claude Code** | Messages uses Anthropic API credentials and billing; signed-in headless Claude Code has separate entitlement. No current eligible binding or included-only allowance established for either. |
+| **Other typed candidates / local runtimes** | Legacy metadata-only tooling checks catalogues for Hugging Face and Nous, account state for Fireworks, and balance for DeepSeek; none is an inference receipt. Cerebras, Cohere, Mistral, NVIDIA, SambaNova, Together and Z.ai are disabled references, not usable routes. Codebuff/Ollama drafts do not establish a qualified relay or local daemon. GitHub Models is [retired](https://docs.github.com/en/github-models), not the Copilot CLI. |
+
+### Reusable offline protocol fixtures from ANQR
+
+[ANQR #217](https://github.com/maldous/anqr/issues/217) records the archived
+LiteLLM alias returning Chat Completions but 404 on Responses; preserve that
+distinction rather than treating an OpenAI-compatible model list as a protocol
+test. [#1158](https://github.com/maldous/anqr/issues/1158) distinguishes the AI
+SDK bridge from the historical Codebuff SSE relay. Reuse those patterns with
+synthetic streaming, cancellation and tool-call round trips, not old URLs or
+credentials. [#200](https://github.com/maldous/anqr/issues/200),
+[#202](https://github.com/maldous/anqr/issues/202) and
+[#212](https://github.com/maldous/anqr/issues/212) document catalogue/cooldown
+separation, attempt caps and all-routes-exhausted behavior;
+[#1074](https://github.com/maldous/anqr/issues/1074) and
+[#759](https://github.com/maldous/anqr/issues/759) capture integration and
+deterministic fixture patterns. These are historical source references, not
+current bindings. [UIF-289](https://linear.app/maldous/issue/UIF-289) explicitly
+separates the selected V3 path from revival of the archived harness.
+
 ## Admission proof
 
 Use existing no-inference seams, not a new scheduler: pin sanitized client/model/route metadata and test only synthetic wire plus offline refusal paths (wrong identity, quota stale or missing, 402/429, amount at cutoff, fallback attempted and lost receipt). Independent shared account/issue fencing must own the actual send; a CLI wrapper, a local budget reservation or a green fixture alone cannot do that. Hold unknown originals and their reservations. Verify release/ownership separately; a reset never starts the service or replays work. Record original operation, child cleanup and exact installed versus offline scope without credential values.

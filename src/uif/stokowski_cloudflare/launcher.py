@@ -97,15 +97,23 @@ async def _start_with_shutdown(owner, start):
         return await startup
     finally:
         request.cancel()
-        await asyncio.gather(request, return_exceptions=True)
+        if not startup.done():
+            startup.cancel()
+        await asyncio.gather(request, startup, return_exceptions=True)
         for sig in signals:
             loop.remove_signal_handler(sig)
 
 
+from ..provider_discovery import NormalProviderDiscovery
+
+
 def configure(runner, orchestration, publication, *, policy: Path, database: Path,
               read_account_recovery=None, read_account_usage=None,
-              open_fenced_connection=None, allows_native_dispatch=None, authority_lifecycle=None):
+              open_fenced_connection=None, allows_native_dispatch=None, authority_lifecycle=None,
+              provider_discovery=None):
     """Bind native custody and an optional trusted, cached account evidence reader."""
+    if provider_discovery is not None and type(provider_discovery) is not NormalProviderDiscovery:
+        raise ValueError('Expected installed normal provider discovery')
     if read_account_recovery is not None and not callable(read_account_recovery):
         raise ValueError('Expected a Workers AI account recovery reader')
     config = _protected_json(policy)
@@ -689,6 +697,19 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     orchestration.Orchestrator._run_worker = worker
 
     async def start(owner):
-        return await _start_with_shutdown(owner, original_start)
+        if provider_discovery is None:
+            return await _start_with_shutdown(owner, original_start)
+        # The advisory hook exists only in this configured service lifecycle.
+        selection_hook = staticmethod(provider_discovery.select)
+        runtime = orchestration.MultiOrchestrator
+        if 'uif_select_provider' in vars(runtime):
+            raise RuntimeError('Provider discovery launcher already installed')
+        runtime.uif_select_provider = selection_hook
+        try:
+            return await _start_with_shutdown(
+                owner, lambda _: provider_discovery.run(lambda: original_start(owner)))
+        finally:
+            if vars(runtime).get('uif_select_provider') is selection_hook:
+                del runtime.uif_select_provider
 
     orchestration.MultiOrchestrator.start = start
