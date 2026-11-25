@@ -92,3 +92,21 @@ The receiver hashes its protected controller before compiling its same exact
 bytes, and calls only the private guarded idle controller. Never put a
 different actor in the bridge ACL; this transport does not isolate against
 the same trusted administrator intentionally invoking root directly.
+
+### Mount the Windmill SDK at module scope
+
+Build the deployed Python body by keeping the exact reviewed
+`config/windmill/source/guarded_idle_webhook.py` first and appending
+`config/windmill/source/guarded_idle_webhook_mount.py` as the module-level
+mount fragment. The fragment is not a standalone runnable. Its module-level
+`import wmill` enables dependency discovery before running the no-argument
+`main()`. Do not move the import inside `main`: Foo's first mount failed with
+`ModuleNotFoundError` before submitting any host job. The corrected owner-only,
+no-argument mount retained the same fixed carrier and successfully submitted
+its original guarded idle operation. This is a dependency-loading correction,
+not a change to the webhook ACL, runtime approval, or start semantics.
+
+On an import failure, confirm no child/host submission for that original
+before treating the failure as pre-effect. In every other uncertainty, inspect
+the same original Windmill/host receipts rather than creating another
+operation. A submitted receipt is not a verified idle result.

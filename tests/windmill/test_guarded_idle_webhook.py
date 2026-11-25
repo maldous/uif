@@ -61,3 +61,26 @@ class WebhookTest(unittest.TestCase):
         with self.assertRaises((ValueError, PermissionError)):
             webhook.bind_foo_transport(client)("; arbitrary fixture")
         client.run_script_by_path_async.assert_called_once()
+
+    def test_deployed_mount_resolves_sdk_at_module_scope_and_keeps_fixed_main(self):
+        import ast
+        from types import SimpleNamespace
+
+        path = SOURCE / "guarded_idle_webhook.py"
+        mounted = path.read_text() + "\n\n" + (SOURCE / "guarded_idle_webhook_mount.py").read_text()
+        tree = ast.parse(mounted)
+        self.assertTrue(any(isinstance(node, ast.Import)
+                            and any(alias.name == "wmill" for alias in node.names)
+                            for node in tree.body))
+        client = Mock()
+        client.run_script_by_path_async.return_value = "original-bridge-fixture"
+        current = "12345678-1234-1234-1234-123456789abc"
+        module = SimpleNamespace(Windmill=Mock(return_value=client))
+        namespace = {}
+        with (patch.dict(sys.modules, {"wmill": module}),
+              patch.dict(webhook.os.environ, {"WM_WORKSPACE": "foo", "WM_JOB_ID": current})):
+            exec(compile(tree, str(path), "exec"), namespace)
+            self.assertEqual("original-bridge-fixture", namespace["main"]()["runner_run_id"])
+            with self.assertRaises(TypeError):
+                namespace["main"]("caller value")
+        client.run_script_by_path_async.assert_called_once()
