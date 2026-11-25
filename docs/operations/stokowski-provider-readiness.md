@@ -83,8 +83,37 @@ The operator's protected loader supplies the following under
 The command only reads and emits an advisory JSON plan. Its output cannot
 authorize a later write. Repeating it cannot replace an existing stage.
 The allowlisted legacy OffMenu profile remains with its existing owner-only
-loader. This candidate supplies no apply action. A separately qualified Foo
-loader must authenticate the external witnesses, hold the existing custody
-locks and recheck those inputs while selecting the new stage, with an
-accepted restore operation for the prior unit. The preflight alone does not
-establish that host trust or authorize activation.
+loader.
+
+### Detached apply transaction
+
+`guarded_service_upgrade.apply("uif-idle", stage, admission=admission, host=host)`
+is an in-process entry point for the separately qualified Foo loader. The
+installed loader, not a CLI caller, must authenticate `ApplyAdmission` using
+the host-owned approval and exact preflight bytes. The admission also pins
+the actual lock custody, operation ID, prior selection and exact idle
+selection. The preflight command remains read-only.
+
+The required host adapter must hold the protected selector lock for
+`stokowski-foo.service`, including proof that all permitted selector writers
+and unit start paths honor that custody. Under that lock it must:
+
+- Authenticate the admission, rerun the actual quiescence and preflight
+  checks, and verify the sealed idle stage and current selector by hash.
+- Durably create a write-once intent fenced by both operation ID and prior
+  selection. Expose both fences and completion for exact retry readback.
+- Compare and select only the verified idle stage, rechecking the passed
+  deadline at the write boundary. Preserve the prior stage and the existing
+  activation condition, with a separately accepted restore procedure.
+- Read back the effective selected stage and record completion durably.
+  An intent without an exact completion requires the host owner to reconcile
+  the original effect before another attempt.
+
+No production adapter or custody lock is provisioned by this source.
+The existing OffMenu lock binds its publisher and repository target, and the
+UIF quota lock binds its quota records. Neither serializes this unit's stage
+selection. When the qualified Foo operator has installed and accepted the
+exact adapter, the existing `u/admin/foo_root_jobs` in workspace `foo` can
+transport its one scoped invocation. The transport itself supplies neither
+admission nor a selector lock. The detached transaction performs no service
+start, marker write or provider call.

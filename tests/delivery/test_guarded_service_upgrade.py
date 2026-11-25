@@ -2,6 +2,8 @@
 
 import io
 import json
+from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 import runpy
 import tarfile
@@ -14,6 +16,7 @@ from unittest.mock import patch
 SOURCE = Path(__file__).resolve().parents[2] / 'tools/delivery/guarded_service_upgrade.py'
 PREFLIGHT = runpy.run_path(str(SOURCE))['preflight']
 TOOL = PREFLIGHT.__globals__
+APPLY = TOOL['apply']
 UNIT = 'stokowski-foo.service'
 STAGE = 'uif1313-idle-a22fbb2'
 PIN = 'a' * 64
@@ -135,3 +138,131 @@ class UpgradePreflight(unittest.TestCase):
                 PREFLIGHT('uif-idle', STAGE)
             with self.assertRaisesRegex(ValueError, 'existing owner-only'):
                 PREFLIGHT('offmenu-legacy', STAGE)
+
+
+class DetachedHost:
+    """One test adapter for the protected host contract, never an installer."""
+
+    def __init__(self):
+        self.plan = {'schema': 'uif.guarded-upgrade-preflight/1', 'mode': 'read_only',
+                     'profile': 'uif-idle', 'unit': UNIT, 'stage': STAGE,
+                     'head': TOOL['PROFILES']['uif-idle'].reviewed_head, 'valid_until': 1040}
+        self.admission = TOOL['ApplyAdmission'](
+            'uif-idle', UNIT, STAGE, 'e'*64, TOOL['plan_digest'](self.plan),
+            'b'*64, PIN, 'c'*64, 990, 1080,
+        )
+        self.selected = PIN
+        self.intent = self.completion = self.fence = None
+        self.locked = False
+        self.events = []
+        self.after_intent = lambda: None
+
+    @contextmanager
+    def lock(self, unit, custody):
+        assert (unit, custody) == (UNIT, 'b'*64) and not self.locked
+        self.locked = True
+        try:
+            yield self
+        finally:
+            self.locked = False
+
+    def verify_admission(self, admission):
+        assert self.locked
+        return admission == self.admission
+
+    def verify_custody(self):
+        return self.locked
+
+    def receipts(self, operation, prior):
+        assert self.locked and prior == PIN
+        return (self.intent if operation == self.fence else None,
+                self.completion if operation == self.fence else None, self.fence)
+
+    def preflight(self, profile, stage):
+        assert self.locked and (profile, stage) == ('uif-idle', STAGE)
+        self.events.append('preflight')
+        return self.plan
+
+    def selection_sha256(self):
+        assert self.locked
+        return self.selected
+
+    def verify_idle_stage(self, plan, target):
+        return self.locked and plan == self.plan and target == 'c'*64
+
+    def create_intent(self, operation, prior, intent):
+        assert self.locked and prior == PIN and self.intent is None and self.fence is None
+        self.events.append('intent')
+        self.fence, self.intent = operation, intent
+        self.after_intent()
+
+    def select_idle(self, stage, prior, target, deadline):
+        assert self.locked and (stage, prior, target, deadline) == (STAGE, self.selected, 'c'*64, 1040)
+        self.events.append('select')
+        self.selected = target
+
+    def create_completion(self, operation, result):
+        assert self.locked and operation == self.fence and self.completion is None
+        self.events.append('completion')
+        self.completion = result
+
+
+class UpgradeApply(unittest.TestCase):
+    def setUp(self):
+        self.host = DetachedHost()
+        self.clock = self.enterContext(patch.object(TOOL['time'], 'time', return_value=1000))
+
+    def execute(self):
+        return APPLY('uif-idle', STAGE, admission=self.host.admission, host=self.host)
+
+    def test_selected_once_under_lock_and_retry_reads_the_original_receipt(self):
+        result = self.execute()
+        self.assertEqual(self.host.events, ['preflight', 'intent', 'preflight', 'select', 'completion'])
+        self.clock.return_value = 1200
+        self.assertEqual(self.execute(), result)
+        self.assertEqual(self.host.events.count('select'), 1)
+        self.host.selected = PIN
+        with self.assertRaisesRegex(ValueError, 'reconciliation'):
+            self.execute()
+
+    def test_admission_expiry_or_quiescence_drift_after_intent_holds(self):
+        self.host.after_intent = lambda: setattr(self.clock, 'return_value', 1040)
+        with self.assertRaisesRegex(ValueError, 'quiescence expired under lock'):
+            self.execute()
+        self.assertEqual(self.host.events, ['preflight', 'intent', 'preflight'])
+        self.clock.return_value = 1000
+        with self.assertRaisesRegex(ValueError, 'reconciliation'):
+            self.execute()
+        self.host = DetachedHost()
+        self.host.after_intent = lambda: self.host.plan.update(valid_until=1050)
+        with self.assertRaisesRegex(ValueError, 'preflight differs'):
+            self.execute()
+        self.assertNotIn('select', self.host.events)
+
+    def test_unknown_effect_cannot_replay_under_same_or_new_id(self):
+        def interrupted(*args):
+            self.host.selected = 'c'*64
+            raise OSError('fixture lost acknowledgement')
+
+        self.host.select_idle = interrupted
+        with self.assertRaises(OSError):
+            self.execute()
+        with self.assertRaisesRegex(ValueError, 'reconciliation'):
+            self.execute()
+        self.host.admission = replace(self.host.admission, operation_id='f'*64)
+        with self.assertRaisesRegex(ValueError, 'reconciliation'):
+            self.execute()
+        self.assertIsNone(self.host.completion)
+
+    def test_missing_admission_or_lock_and_legacy_profile_never_mutate(self):
+        with patch.object(self.host, 'verify_admission', return_value=False):
+            with self.assertRaisesRegex(ValueError, 'trusted host admission'):
+                self.execute()
+        with patch.object(self.host, 'verify_custody', return_value=False):
+            with self.assertRaisesRegex(ValueError, 'selector lock'):
+                self.execute()
+        with patch.object(self.host, 'lock') as lock:
+            with self.assertRaisesRegex(ValueError, 'existing owner-only'):
+                APPLY('offmenu-legacy', STAGE, admission=self.host.admission, host=self.host)
+            lock.assert_not_called()
+        self.assertEqual(self.host.events, [])
