@@ -99,7 +99,7 @@ test('exact request joins independent original bytes to the private account curr
   const [request, head] = f.calls;
   assert.equal(request.url, 'https://quota-evidence.internal/v1/original/' + f.lookup.source_receipt_sha256);
   assert.equal(request.method, 'GET');
-  assert.equal(request.redirect, 'error');
+  assert.equal(request.redirect, 'manual');
   assert.equal(request.headers.has('authorization'), false);
   assert.equal(head.url, 'https://quota-evidence.internal/v1/checkpoint/current/' + route.account_id);
   assert.equal(head.headers.has('authorization'), false);
@@ -200,7 +200,11 @@ test('public, alternate, paid and inline input cannot resolve evidence or perfor
 test('missing evidence, wrong media type, redirects, and unbound dependencies are held', async () => {
   for (const handler of [
     () => new Response(null, { status: 404 }),
-    () => Response.redirect('https://public.example/', 302),
+    ...[300, 301, 302, 303, 304, 307, 308, 399].map((status) =>
+      () => new Response(null, { status, headers: { location: 'https://public.example/' } })),
+    () => Object.defineProperty(new Response(new Uint8Array(1), {
+      headers: { 'content-type': 'application/octet-stream' },
+    }), 'redirected', { value: true }),
     () => new Response('not proof'),
     () => new Response(new Uint8Array(17000), { headers: { 'content-type': 'application/octet-stream' } }),
     () => { throw new Error('private store not reachable'); },
