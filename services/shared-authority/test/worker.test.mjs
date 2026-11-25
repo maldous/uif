@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,11 +72,31 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     quota_verification_sha256: 'd'.repeat(64),
     lease_seconds: 300,
   };
-  const make = () =>
+  const syntheticRoot = join(dir, 'synthetic');
+  await mkdir(syntheticRoot);
+  for (const name of await readdir(root)) {
+    if (name.endsWith('.mjs')) await copyFile(join(root, name), join(syntheticRoot, name));
+  }
+  const makeKey = () => crypto.subtle.generateKey(
+    { name: 'RSA-OAEP', hash: 'SHA-256', modulusLength: 3072,
+      publicExponent: new Uint8Array([1, 0, 1]) },
+    true,
+    ['encrypt', 'decrypt'],
+  );
+  const [recipient, unrelated] = await Promise.all([makeKey(), makeKey()]);
+  const challenge = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
+  const pin = {
+    publicKeySpkiBase64: Buffer.from(await crypto.subtle.exportKey('spki', recipient.publicKey))
+      .toString('base64'),
+    challengeSha256: await digestBytes(Buffer.from(challenge, 'utf8')),
+  };
+  await writeFile(join(syntheticRoot, 'access-diagnostic-pin.mjs'),
+    'export const accessDiagnosticPin = ' + JSON.stringify(pin) + ';\n');
+  const make = (moduleRoot = root) =>
     new Miniflare({
       modules: true,
-      scriptPath: join(root, 'worker.mjs'),
-      modulesRoot: root,
+      scriptPath: join(moduleRoot, 'worker.mjs'),
+      modulesRoot: moduleRoot,
       compatibilityDate: '2026-07-30',
       durableObjects: { AUTHORITY: { className: 'SharedAuthority', useSQLite: true } },
       durableObjectsPersist: dir,
@@ -141,10 +161,13 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       );
     };
     const tokens = Object.fromEntries(await Promise.all(roles.map(async (r) => [r, await sign(r)])));
-    const call = (jwt, path, body) =>
+    const call = (jwt, path, body, probe) =>
       instance.dispatchFetch('https://fixture.test/v1/' + path, {
         method: body ? 'POST' : 'GET',
-        headers: { 'CF-Access-Jwt-Assertion': jwt, 'content-type': 'application/json' },
+        headers: {
+          'CF-Access-Jwt-Assertion': jwt, 'content-type': 'application/json',
+          ...(probe === undefined ? {} : { 'uif-access-diagnostic-challenge': probe }),
+        },
         body: body && JSON.stringify(body),
       });
     assert.equal(
@@ -155,6 +178,40 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       ).status,
       401,
     );
+    const badsig = tokens.native.split('.');
+    badsig[2] = (badsig[2][0] === 'A' ? 'B' : 'A') + badsig[2].slice(1);
+    const signedInvalid = await sign('native', { sub: 'human' });
+    const header = 'uif-access-diagnostic';
+    const refusal = async (response) => {
+      assert.equal(response.status, 403);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.deepEqual(await response.json(), { error: 'access_service_identity_invalid' });
+      return response.headers.get(header);
+    };
+    assert.equal(await refusal(await call(signedInvalid, 'status', undefined, challenge)), null);
+    await instance.dispose();
+    instance = make(syntheticRoot);
+    const invalidSignature = await call(badsig.join('.'), 'status', undefined, challenge);
+    assert.equal(invalidSignature.status, 401);
+    assert.equal(invalidSignature.headers.get(header), null);
+    const accepted = await call(tokens.native, 'status', undefined, challenge);
+    assert.equal(accepted.status, 200);
+    assert.equal(accepted.headers.get(header), null);
+    assert.equal(await refusal(await call(signedInvalid, 'status')), null);
+    const wrongChallenge = (challenge[0] === 'a' ? 'b' : 'a') + challenge.slice(1);
+    assert.equal(await refusal(await call(signedInvalid, 'status', undefined, wrongChallenge)), null);
+    assert.equal(await refusal(await call(signedInvalid, 'status', {}, challenge)), null);
+    assert.equal(await refusal(await call(signedInvalid, 'control', undefined, challenge)), null);
+    const repeated = await Promise.all(
+      Array.from({ length: 5 }, () => call(signedInvalid, 'status', undefined, challenge)),
+    );
+    const ciphertexts = (await Promise.all(repeated.map(refusal))).filter(Boolean);
+    assert.equal(ciphertexts.length, 1);
+    const ciphertext = Buffer.from(ciphertexts[0], 'base64');
+    assert.equal(ciphertext.length, 384);
+    const decrypt = (key) => crypto.subtle.decrypt({ name: 'RSA-OAEP' }, key, ciphertext);
+    assert.equal(Buffer.from(await decrypt(recipient.privateKey)).toString(), 'empty_subject');
+    await assert.rejects(decrypt(unrelated.privateKey), { name: 'OperationError' });
     for (const bad of [
       { sub: 'human' },
       { iss: 'https://elsewhere.test' },
@@ -165,9 +222,6 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     ]) {
       assert.equal((await call(await sign('native', bad), 'status')).status, 403);
     }
-    const badsig = tokens.native.split('.');
-    badsig[2] = (badsig[2][0] === 'A' ? 'B' : 'A') + badsig[2].slice(1);
-    assert.equal((await call(badsig.join('.'), 'status')).status, 401);
     assert.equal(
       (await call(await sign('native', {}, { alg: 'none', kid: jwk.kid, typ: 'JWT' }), 'status')).status,
       401,
@@ -337,7 +391,8 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       200,
     );
     await instance.dispose();
-    instance = make();
+    instance = make(syntheticRoot);
+    assert.equal(await refusal(await call(signedInvalid, 'status', undefined, challenge)), null);
     assert.equal((await (await call(jwt, 'status')).json()).stopped, true);
     const read = {
       fence: original.lease.fence,
