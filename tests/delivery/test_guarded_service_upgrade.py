@@ -3,7 +3,9 @@
 import io
 import json
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import asdict, replace
+import fcntl
+import os
 from pathlib import Path
 import runpy
 import tarfile
@@ -17,6 +19,7 @@ SOURCE = Path(__file__).resolve().parents[2] / 'tools/delivery/guarded_service_u
 PREFLIGHT = runpy.run_path(str(SOURCE))['preflight']
 TOOL = PREFLIGHT.__globals__
 APPLY = TOOL['apply']
+REAL_STOPPED = TOOL['stopped_unit_sha']
 UNIT = 'stokowski-foo.service'
 STAGE = 'uif1313-idle-a22fbb2'
 PIN = 'a' * 64
@@ -67,6 +70,8 @@ class UpgradePreflight(unittest.TestCase):
             for name, data in parts.items():
                 meta = tarfile.TarInfo(name)
                 meta.size = len(data)
+                if name == TOOL['INTERPRETER']:
+                    meta.mode = 0o755
                 archive.addfile(meta, io.BytesIO(data))
         pin = TOOL['digest']
         self.review.update(bundle_sha256=pin((self.stage / 'bundle.tar').read_bytes()),
@@ -138,6 +143,98 @@ class UpgradePreflight(unittest.TestCase):
                 PREFLIGHT('uif-idle', STAGE)
             with self.assertRaisesRegex(ValueError, 'existing owner-only'):
                 PREFLIGHT('offmenu-legacy', STAGE)
+
+    def test_linux_adapter_atomically_selects_and_holds_the_same_start_lock(self):
+        base = self.stage.parent
+        stage = self.targets / STAGE
+        receipts = base / 'receipts'
+        receipts.mkdir()
+        lock = base / 'selector.lock'
+        lock.write_text('root qualified lock\n')
+        lock.chmod(0o644)
+        selector = base / 'selection.json'
+        old = TOOL['encode']({'mode': 'parked', 'stage': TOOL['PARKED_STAGE']})
+        selector.write_bytes(old)
+        dropin = base / 'dropin.conf'
+        self.enterContext(patch.dict(TOOL, {'ROOT': base, 'LOCK': lock, 'SELECTOR': selector,
+                                          'RECEIPTS': receipts, 'DROPIN': dropin,
+                                          'stopped_unit_sha': REAL_STOPPED}))
+        bootstrapped = b'detached effective unit bytes'
+        self.review['parked_unit_sha256'] = TOOL['digest'](bootstrapped)
+        self.quiescence['parked_unit_sha256'] = self.review['parked_unit_sha256']
+        self.qualify({TOOL['INTERPRETER']: b'fixture interpreter'})
+        with tarfile.open(self.stage / 'bundle.tar', 'r:') as bundle:
+            for member in bundle:
+                path = stage / member.name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with bundle.extractfile(member) as file:
+                    path.write_bytes(file.read())
+                path.chmod(member.mode)
+        admission_path = self.stage / 'admission.json'
+        dropin.write_bytes(TOOL['selector_dropin']())
+        effective = dropin.read_text().split('ExecStart=\nExecStart=', 1)[1].strip()
+
+        def systemctl(argv, **_):
+            if 'cat' in argv:
+                return bootstrapped
+            if '--property=ExecStart' in argv:
+                return f'ExecStart={{ argv[]={effective} ; }}'
+            return '\n'.join(f'{k}={v}' for k, v in TOOL['STOPPED'].items())
+
+        self.enterContext(patch.object(TOOL['subprocess'], 'check_output', side_effect=systemctl))
+        original_lstat = Path.lstat
+
+        def lstat(path):
+            observed = original_lstat(path)
+            if path in (stage, stage / TOOL['MARKER']):
+                return SimpleNamespace(st_uid=0, st_mode=observed.st_mode, st_nlink=observed.st_nlink)
+            return observed
+
+        self.enterContext(patch.object(Path, 'lstat', lstat))
+        plan = PREFLIGHT('uif-idle', STAGE, sealed_stage=True)
+        target = TOOL['sealed_selection'](plan)
+        admission = TOOL['ApplyAdmission'](
+            'uif-idle', UNIT, STAGE, 'e'*64, TOOL['plan_digest'](plan),
+            TOOL['plan_digest'](TOOL['lock_identity'](lock.lstat())),
+            TOOL['digest'](old), TOOL['digest'](target), 990, 1080,
+        )
+        (self.stage / 'linux-apply.json').write_bytes(encoded({
+            'schema': 'uif.foo-idle-apply/1', 'admission': asdict(admission),
+            'operator_admission_sha256': TOOL['digest'](admission_path.read_bytes()),
+            'bootstrap_prior_sha256': TOOL['BOOTSTRAP_PRIOR'],
+            'bootstrapped_unit_sha256': self.review['parked_unit_sha256'],
+        }))
+        with patch.object(TOOL['os'], 'getuid', return_value=0), patch.object(
+                TOOL['os'], 'geteuid', return_value=0):
+            with lock.open('rb') as running:
+                fcntl.flock(running, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                with self.assertRaises(BlockingIOError):
+                    APPLY('uif-idle', STAGE, admission=admission, host=TOOL['LinuxIdleHost']())
+            result = APPLY('uif-idle', STAGE, admission=admission, host=TOOL['LinuxIdleHost']())
+            self.assertEqual(APPLY('uif-idle', STAGE, admission=admission,
+                                   host=TOOL['LinuxIdleHost']()), result)
+        self.assertEqual(selector.read_bytes(), target)
+        self.assertEqual(len(list(receipts.iterdir())), 3)
+        self.assertFalse((stage / TOOL['MARKER']).exists())
+        with patch.object(TOOL['pwd'], 'getpwnam', return_value=SimpleNamespace(pw_uid=1001)):
+            with self.assertRaises(FileNotFoundError):
+                TOOL['serve_idle_stage']()
+            (stage / TOOL['MARKER']).touch()  # Synthetic owner marker only.
+            def exec_with_lock(*_):
+                with lock.open('rb') as competing:
+                    with self.assertRaises(BlockingIOError):
+                        fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            with patch.object(os, 'execv', side_effect=exec_with_lock) as execute:
+                TOOL['serve_idle_stage']()
+                executable = str(stage / TOOL['INTERPRETER'])
+                execute.assert_called_once_with(
+                    executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')],
+                )
+
+    def test_reviewed_dropin_matches_fixed_start_contract(self):
+        dropin = SOURCE.with_name('60-uif1313-idle-selector.conf')
+        self.assertEqual(dropin.read_bytes(), runpy.run_path(str(SOURCE))['selector_dropin']())
 
 
 class DetachedHost:

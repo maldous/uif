@@ -3,6 +3,8 @@
 
 import argparse
 from dataclasses import asdict, dataclass
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
@@ -13,6 +15,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 
 
@@ -52,6 +55,27 @@ HOST = 'https://uif-shared-authority.uif-black-brook-8df3.workers.dev'
 ACCESS_FILE = '/etc/uif-stokowski-native/access.json'
 STOPPED = {'LoadState': 'loaded', 'ActiveState': 'inactive', 'SubState': 'dead',
            'MainPID': '0', 'ControlPID': '0', 'Job': '', 'NeedDaemonReload': 'no'}
+FIXED_STAGE = 'uif1313-idle-a22fbb2'
+PARKED_STAGE = 'uif1313-guarded-1f45bd56'
+ROOT = PACKETS
+TOOL_PATH = ROOT / 'guarded_service_upgrade.py'
+SELECTOR = ROOT / 'selection.json'
+LOCK = ROOT / 'selector.lock'
+RECEIPTS = ROOT / 'receipts'
+DROPIN = Path('/etc/systemd/system/stokowski-foo.service.d/60-uif1313-idle-selector.conf')
+SYSTEMCTL = '/usr/bin/systemctl'
+INTERPRETER = 'venv/bin/python3.12'
+BOOTSTRAP_PRIOR = '96c56b11f328c4d97df40e5d5ab705d4c85c6cd31c96cbacaca699ca05873502'
+MARKER = 'ACTIVATION_AUTHORIZED'
+
+
+def selector_dropin():
+    marker = STAGES / FIXED_STAGE / MARKER
+    return ('[Unit]\nConditionPathExists=\n'
+            f'ConditionPathExists={marker}\n\n'
+            '[Service]\nExecStart=\n'
+            f'ExecStart=/usr/bin/python3 -I -S -B {TOOL_PATH} --profile uif-idle'
+            f' --stage {FIXED_STAGE} --action serve\n').encode()
 
 
 class Held(ValueError):
@@ -68,7 +92,11 @@ def digest(data):
 
 
 def plan_digest(plan):
-    return digest(json.dumps(plan, sort_keys=True, separators=(',', ':'), allow_nan=False).encode())
+    return digest(encode(plan))
+
+
+def encode(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
 
 
 def record(raw, fields):
@@ -115,7 +143,7 @@ def read_record(root, name):
 
 
 def stopped_unit_sha(unit):
-    base = ['/usr/bin/systemctl', '--no-pager']
+    base = [SYSTEMCTL, '--no-pager']
     config = subprocess.check_output([*base, 'cat', unit], stderr=subprocess.DEVNULL, timeout=4)
     status = subprocess.check_output([*base, 'show', '--property=' + ','.join(STOPPED), unit],
                                      stderr=subprocess.DEVNULL, timeout=4, text=True)
@@ -163,7 +191,7 @@ def verify_bundle(stream, review, unit, stage):
                     for k in ('authority_id', 'session_id')), 'invalid native identity shape')
 
 
-def preflight(profile_name, stage):
+def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=None):
     profile = PROFILES[profile_name]
     require(profile.reviewed_head is not None, 'legacy OffMenu retains its existing owner-only upgrade route')
     require(re.fullmatch('uif1313-idle-[a-z0-9][a-z0-9.-]{0,60}', stage) is not None,
@@ -174,11 +202,13 @@ def preflight(profile_name, stage):
     admission = record(read_record(root, 'admission.json'),
                        ('schema', 'profile', 'unit', 'stage', 'owner', 'owner_uid', 'review_sha256',
                         'confirmation_sha256', 'quiescence_sha256', 'issued_at', 'expires_at'))
-    uid = os.getuid()
+    uid = os.getuid() if approved_operator_uid is None else approved_operator_uid
+    caller_ok = (os.getuid() == os.geteuid() == uid if approved_operator_uid is None
+                 else os.getuid() == os.geteuid() == 0)
     require(admission['schema'] == 'uif.guarded-upgrade-admission/1'
             and (admission['profile'], admission['unit'], admission['stage']) ==
             (profile_name, profile.unit, stage)
-            and 0 < uid == os.geteuid() and type(admission['owner_uid']) is int
+            and caller_ok and type(uid) is int and uid > 0 and type(admission['owner_uid']) is int
             and admission['owner_uid'] == uid and admission['owner'] == pwd.getpwuid(uid).pw_name
             and type(admission['issued_at']) is int and type(admission['expires_at']) is int
             and admission['issued_at'] <= before < admission['expires_at'] <= admission['issued_at'] + 300,
@@ -215,7 +245,12 @@ def preflight(profile_name, stage):
         verify_bundle(stream, review, profile.unit, stage)
     require(stopped_unit_sha(profile.unit) == review['parked_unit_sha256'], 'parked unit changed')
     protected_parents(target)
-    require(not target.exists() and not target.is_symlink(), 'target stage already exists')
+    if sealed_stage:
+        info = target.lstat()
+        require(stat.S_ISDIR(info.st_mode) and info.st_uid == 0 and not info.st_mode & 0o022,
+                'sealed stage is not protected')
+    else:
+        require(not target.exists() and not target.is_symlink(), 'target stage already exists')
     after = time.time()
     require(before <= after < min(admission['expires_at'], witness['observed_at'] + 60),
             'admission or quiescence expired during preflight')
@@ -293,18 +328,241 @@ def apply(profile_name, stage, *, admission, host):
         return result
 
 
+@contextmanager
+def selector_lock(*, shared):
+    with protected_open(LOCK, MAX_RECORD) as stream:
+        require(stat.S_IMODE(os.fstat(stream.fileno()).st_mode) == 0o644, 'unexpected selector lock mode')
+        fcntl.flock(stream, (fcntl.LOCK_SH if shared else fcntl.LOCK_EX) | fcntl.LOCK_NB)
+        yield stream
+
+
+def lock_identity(info):
+    return [info.st_dev, info.st_ino, info.st_uid, info.st_gid, info.st_mode, info.st_nlink]
+
+
+def publish(path, data, *, replace=False, deadline=None):
+    """Publish complete bytes on one filesystem and preserve existing receipts."""
+    protected_parents(path)
+    fd, temporary = tempfile.mkstemp(prefix='.uif-idle-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            os.fchmod(stream.fileno(), 0o644 if replace else 0o600)
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if deadline is not None:
+            require(time.time() < deadline, 'selection expired before atomic replacement')
+        if replace:
+            os.replace(temporary, path)
+        else:
+            os.link(temporary, path)
+        fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+def bytes_pin(path, maximum=MAX_RECORD):
+    with protected_open(path, maximum) as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def no_marker(stage):
+    marker = STAGES / stage / MARKER
+    return not marker.exists() and not marker.is_symlink()
+
+
+def sealed_selection(plan):
+    """Bind an already materialized root-controlled directory to the reviewed tar."""
+    stage = STAGES / FIXED_STAGE
+    protected_parents(stage / 'launch.py')
+    pins = {}
+    directories = set()
+    with protected_open(PACKETS / FIXED_STAGE / 'bundle.tar', MAX_BUNDLE) as bundle:
+        verify_bundle(bundle, plan, PROFILES['uif-idle'].unit, FIXED_STAGE)
+        bundle.seek(0)
+        with tarfile.open(fileobj=bundle, mode='r:') as archive:
+            for item in archive:
+                path = stage / item.name
+                if item.isdir():
+                    directories.add(item.name)
+                    protected_parents(path / 'member')
+                    require(stat.S_IMODE(path.lstat().st_mode) == item.mode & 0o777,
+                            'sealed stage directory mode changed')
+                else:
+                    with archive.extractfile(item) as member:
+                        pin = hashlib.file_digest(member, 'sha256').hexdigest()
+                    require(bytes_pin(path, MAX_BUNDLE) == pin
+                            and stat.S_IMODE(path.lstat().st_mode) == item.mode & 0o777,
+                            'sealed stage bytes or mode changed')
+                    pins[item.name] = pin
+                directories.update(str(p) for p in PurePosixPath(item.name).parents if str(p) != '.')
+    actual = set()
+    for parent, dirs, files in os.walk(stage, followlinks=False):
+        root = Path(parent)
+        for name in (*dirs, *files):
+            path = root / name
+            actual.add(str(path.relative_to(stage)))
+            require(not path.is_symlink() and len(actual) <= 50_000, 'unexpected sealed stage member')
+    require(actual == directories | pins.keys() and INTERPRETER in pins
+            and bool((stage / INTERPRETER).lstat().st_mode & 0o111),
+            'sealed stage is incomplete or contains extra members')
+    return encode({'mode': 'idle', 'stage': FIXED_STAGE,
+                   'launcher_sha256': pins['launch.py'], 'config_sha256': pins[IDLE_CONFIG],
+                   'interpreter_sha256': pins[INTERPRETER]})
+
+
+class LinuxIdleHost:
+    """Fixed systemd service adapter. Its root-owned input is issued externally."""
+
+    def __init__(self):
+        self.packet = PACKETS / FIXED_STAGE
+        self.fd = None
+        self.candidate = None
+        self.custody = None
+        self.uid = None
+        self.unit_pin = None
+        self.admission = None
+
+    @contextmanager
+    def lock(self, unit, custody):
+        require(unit == PROFILES['uif-idle'].unit, 'unexpected service target')
+        with selector_lock(shared=False) as stream:
+            self.fd, self.custody = stream.fileno(), custody
+            try:
+                yield self
+            finally:
+                self.fd = None
+
+    def load_admission(self):
+        require(os.getuid() == os.geteuid() == 0, 'protected loader requires root transport')
+        packet = record(read_record(self.packet, 'linux-apply.json'),
+                        ('schema', 'admission', 'operator_admission_sha256',
+                         'bootstrap_prior_sha256', 'bootstrapped_unit_sha256'))
+        require(packet['schema'] == 'uif.foo-idle-apply/1'
+                and packet['bootstrap_prior_sha256'] == BOOTSTRAP_PRIOR
+                and hash_pin(packet['bootstrapped_unit_sha256'])
+                and packet['bootstrapped_unit_sha256'] != BOOTSTRAP_PRIOR, 'expected reviewed host bootstrap')
+        operator = read_record(self.packet, 'admission.json')
+        require(digest(operator) == packet['operator_admission_sha256'], 'operator admission drift')
+        self.uid = json.loads(operator)['owner_uid']
+        self.unit_pin = packet['bootstrapped_unit_sha256']
+        return ApplyAdmission(**packet['admission'])
+
+    def verify_admission(self, admission):
+        verified = self.load_admission() == admission and bytes_pin(DROPIN) == digest(selector_dropin())
+        self.admission = admission if verified else None
+        return verified
+
+    def verify_custody(self):
+        if self.fd is None:
+            return False
+        opened, current = os.fstat(self.fd), LOCK.lstat()
+        return lock_identity(opened) == lock_identity(current) and plan_digest(lock_identity(opened)) == self.custody
+
+    def preflight(self, profile, stage):
+        require(self.admission is not None and self.load_admission() == self.admission,
+                'protected apply admission changed')
+        value = preflight(profile, stage, sealed_stage=True, approved_operator_uid=self.uid)
+        command = selector_dropin().decode().split('ExecStart=\nExecStart=', 1)[1].strip()
+        effective = subprocess.check_output(
+            [SYSTEMCTL, '--no-pager', 'show', '--property=ExecStart', PROFILES[profile].unit],
+            stderr=subprocess.DEVNULL, timeout=4, text=True,
+        )
+        require(value['parked_unit_sha256'] == self.unit_pin
+                and f'argv[]={command} ;' in effective and effective.count('argv[]=') == 1
+                and no_marker(PARKED_STAGE) and no_marker(FIXED_STAGE),
+                'expected inactive bootstrapped unit with both markers absent')
+        return value
+
+    def selection_sha256(self):
+        return bytes_pin(SELECTOR)
+
+    def verify_idle_stage(self, plan, selection_sha256):
+        self.candidate = sealed_selection(plan)
+        return digest(self.candidate) == selection_sha256
+
+    def receipts(self, operation, prior):
+        def original(name):
+            try:
+                return json.loads(read_record(RECEIPTS, name))
+            except FileNotFoundError:
+                return None
+        return (original(operation + '.intent.json'), original(operation + '.selected.json'),
+                original(prior + '.from.json'))
+
+    def create_intent(self, operation, prior, intent):
+        publish(RECEIPTS / (prior + '.from.json'), encode(operation))
+        publish(RECEIPTS / (operation + '.intent.json'), encode(intent))
+
+    def select_idle(self, stage, prior, target, deadline):
+        parked = digest(encode({'mode': 'parked', 'stage': PARKED_STAGE}))
+        require(stage == FIXED_STAGE and self.verify_custody() and prior == parked
+                and self.selection_sha256() == prior and digest(self.candidate) == target
+                and no_marker(PARKED_STAGE) and no_marker(FIXED_STAGE), 'idle selection compare failed')
+        publish(SELECTOR, self.candidate, replace=True, deadline=deadline)
+
+    def create_completion(self, operation, result):
+        publish(RECEIPTS / (operation + '.selected.json'), encode(result))
+
+
+def serve_idle_stage():
+    """systemd's one guarded ExecStart. Its shared lock survives exec and stop."""
+    require(os.getuid() == os.geteuid() == pwd.getpwnam('user').pw_uid != 0, 'unexpected service user')
+    with selector_lock(shared=True) as stream:
+        selected = record(read_record(ROOT, 'selection.json'),
+                          ('mode', 'stage', 'launcher_sha256', 'config_sha256', 'interpreter_sha256'))
+        require((selected['mode'], selected['stage']) == ('idle', FIXED_STAGE), 'unit is parked')
+        stage = STAGES / FIXED_STAGE
+        for path, pin in (('launch.py', 'launcher_sha256'), (IDLE_CONFIG, 'config_sha256'),
+                          (INTERPRETER, 'interpreter_sha256')):
+            require(hash_pin(selected[pin]) and bytes_pin(stage / path, MAX_BUNDLE) == selected[pin],
+                    'selected stage pin drift')
+        marker = (stage / MARKER).lstat()
+        require(stat.S_ISREG(marker.st_mode) and marker.st_uid == 0 and marker.st_nlink == 1
+                and not marker.st_mode & 0o022, 'protected activation marker unavailable')
+        require(lock_identity(os.fstat(stream.fileno())) == lock_identity(LOCK.lstat()),
+                'selector lock was replaced')
+        os.set_inheritable(stream.fileno(), True)
+        executable = str(stage / INTERPRETER)
+        os.execv(executable, [executable, '-I', '-S', '-B', str(stage / 'launch.py')])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', required=True, choices=PROFILES)
     parser.add_argument('--stage', required=True)
+    parser.add_argument('--action', choices=('preflight', 'sealed-preflight', 'apply', 'serve'),
+                        default='preflight')
     args = parser.parse_args()
     try:
-        result = preflight(args.profile, args.stage)
+        if args.action == 'preflight':
+            result = preflight(args.profile, args.stage)
+        else:
+            require((args.profile, args.stage) == ('uif-idle', FIXED_STAGE), 'unexpected service target')
+            if args.action == 'serve':
+                serve_idle_stage()
+                return 1
+            if args.action == 'sealed-preflight':
+                with selector_lock(shared=True) as stream:
+                    plan = preflight(args.profile, args.stage, sealed_stage=True)
+                    result = {'preflight': plan, 'preflight_sha256': plan_digest(plan),
+                              'idle_selection_sha256': digest(sealed_selection(plan)),
+                              'prior_selection_sha256': bytes_pin(SELECTOR),
+                              'lock_custody_sha256': plan_digest(lock_identity(os.fstat(stream.fileno())))}
+            else:
+                host = LinuxIdleHost()
+                result = apply(args.profile, args.stage, admission=host.load_admission(), host=host)
     except Held as exc:
-        print(f'Guarded upgrade preflight held: {exc}. No changes made.', file=sys.stderr)
+        print(f'Guarded upgrade held: {exc}.', file=sys.stderr)
+        if args.action == 'apply':
+            print('Reconcile the original receipts and selector before retrying.', file=sys.stderr)
         return 1
     except (OSError, KeyError, TypeError, ValueError, tarfile.TarError, subprocess.SubprocessError):
-        print('Guarded upgrade preflight refused; no changes made.', file=sys.stderr)
+        print('Guarded upgrade refused. Inspect the original receipts before retrying.', file=sys.stderr)
         return 1
     print(json.dumps(result, sort_keys=True))
     return 0

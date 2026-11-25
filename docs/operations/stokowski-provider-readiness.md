@@ -109,11 +109,58 @@ and unit start paths honor that custody. Under that lock it must:
   An intent without an exact completion requires the host owner to reconcile
   the original effect before another attempt.
 
-No production adapter or custody lock is provisioned by this source.
-The existing OffMenu lock binds its publisher and repository target, and the
-UIF quota lock binds its quota records. Neither serializes this unit's stage
-selection. When the qualified Foo operator has installed and accepted the
-exact adapter, the existing `u/admin/foo_root_jobs` in workspace `foo` can
-transport its one scoped invocation. The transport itself supplies neither
-admission nor a selector lock. The detached transaction performs no service
-start, marker write or provider call.
+### Linux selector bootstrap and apply
+
+The current parked unit launches a fixed stage directly. Its effective
+`systemctl cat` pin is
+`96c56b11f328c4d97df40e5d5ab705d4c85c6cd31c96cbacaca699ca05873502`.
+The existing OffMenu and UIF quota locks cover other resources.
+
+The qualified Foo operator must independently authorize the one-time
+bootstrap before running apply. Preserve the parked unit and its sole drop-in
+`50-uif1313-stopped-guard.conf`. Confirm the exact parked-unit pin, live
+quiescence, both markers absent, and that all permitted stage-selector
+writers and activation operators use the new custody boundary. Install the
+reviewed `guarded_service_upgrade.py` at the protected path above and the
+exact `60-uif1313-idle-selector.conf` in the existing unit's drop-in directory.
+The new drop-in replaces the one parked path condition with the idle
+stage's marker condition. The selected launcher independently checks that
+marker again. Qualify this migration and any required daemon reload on the
+host, then record the new effective unit SHA-256 and retain the original
+definition and stage. Apply itself runs no daemon reload.
+
+Provision the fixed, nonempty, root-owned `selector.lock` (mode 0644) and
+root-only `receipts/` below `/var/lib/uif-stokowski/idle-upgrade`. Initialize
+`selection.json` with the exact bytes
+`{"mode":"parked","stage":"uif1313-guarded-1f45bd56"}` (no newline).
+Pre-materialize the independently accepted stage at
+`/opt/uif-stokowski/uif1313-idle-a22fbb2`, with regular root-owned files,
+the exact reviewed modes, and `venv/bin/python3.12` as the sealed executable.
+The loader verifies the actual tree against the full reviewed tar. It does
+not extract input archives or create the stage for you.
+
+The admitted non-root operator can run the documented preflight command
+with `--action sealed-preflight` to derive the exact plan, selector and lock
+pins. The trusted host admission controller supplies a protected
+`linux-apply.json` in the same packet directory. Its
+`uif.foo-idle-apply/1` record includes the `ApplyAdmission` fields, the
+operator-admission file hash, and both the original and bootstrapped unit
+pins. It must bind the independently verified host approval as already
+recorded by the operator admission. Transport access cannot issue this file.
+
+After exact review and host admission, the fixed apply command in the
+approved Foo root runner is:
+
+```sh
+/usr/bin/python3 -I -S -B /var/lib/uif-stokowski/idle-upgrade/guarded_service_upgrade.py \
+  --profile uif-idle --stage uif1313-idle-a22fbb2 --action apply
+```
+
+Use workspace `foo` and the existing `u/admin/foo_root_jobs` transport.
+The adapter locks the already-provisioned selector, creates durable original
+receipts, changes the selector atomically and reads it back. Its ExecStart
+use holds the same lock in shared mode across exec and checks the selected
+interpreter, launcher, config and activation marker. Apply performs no
+service start, marker write, provider call or legacy action. If a receipt or
+selector disagrees, preserve both and reconcile the original. The restore
+operation and any activation remain separately qualified host actions.
