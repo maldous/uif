@@ -22,6 +22,6 @@ read -r owner mode links < <(/usr/bin/stat -Lc '%u %a %h' -- "$descriptor")
 [[ $owner == 0 && $links == 1 && $mode =~ ^[0-7]{3,4}$ ]] || exit 77
 (( (8#$mode & 022) == 0 )) || exit 77
 read -r observed _ < <(/usr/bin/sha256sum "$descriptor")
-[[ $observed == e21a51e53b78ae2bcdc4c73fb0dac67119e4e1be0a0fc50a592daac8febbf838 ]] || exit 77
+[[ $observed == f6d9d341d6a6f4aaeb199b66363000cb2dffdb2cb92ca8ce7144c256577f07fe ]] || exit 77
 exec /usr/bin/env -i PATH=/usr/bin:/bin LC_ALL=C \
     /usr/bin/python3.12 -I -S -B "$descriptor" offmenu "$1"
