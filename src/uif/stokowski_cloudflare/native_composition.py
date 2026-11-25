@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict
 from functools import wraps
+from datetime import timedelta
 from hashlib import sha1, sha256
 from pathlib import Path
 from secrets import token_hex
@@ -27,9 +28,14 @@ from ..effect_authority import AuthorityIdentity, Completion, Operation, Scope, 
 from ..handoff_store import Hold, decode, digest, require, wire
 from ..shared_issue_coordinator import _lease
 from ..quota_handoff import LinearKey
+from ..provider_discovery import Adapter, NormalProviderDiscovery
+from ..provider_pool import ProviderRoute, RouteAvailability
 from .account_admission import FreeRoute
 from .budget import BudgetRefused
 from .client import FreeAdmissionWindow, GLM_MODEL
+from .account_admission import allows_request
+from .client import MODEL_RESERVATIONS
+from . import client as workers_ai_client
 from .remote_authority import AccessTransport, NativeAssignment, RemoteAuthority, protected_record
 from .remote_source import SourceTools, pinned_members, review_diff
 
@@ -129,6 +135,7 @@ class NativeComposition:
         self._private_postimages = {}
         self._receiving_after = {}
         self.remote.retain_intent = self.retain_intent
+        self._provider_discovery = None
 
     def installation(self):
         record = protected_record(self.path)
@@ -773,6 +780,74 @@ class NativeComposition:
                         'authority_renewal_unavailable')
         return claim
 
+    def _installed_provider_discovery(self):
+        if self._provider_discovery is not None:
+            return self._provider_discovery
+        # Only the already installed fixed Workers AI clients have a proven
+        # endpoint in this composition. No caller paths, creds, or URL plans.
+        build = sha256(Path(workers_ai_client.__file__).read_bytes()).hexdigest()
+        adapters = []
+        for name, exact in self.remote.routes.items():
+            route = ProviderRoute(
+                'workers-ai-' + name.lower(), 'cloudflare', 'workers-ai', exact.model,
+                build, digest({'provider': 'cloudflare', 'account_id': exact.account_id}),
+                exact.credential_epoch_sha256, digest(asdict(exact)),
+                self.remote.workspace_id, self.remote.project_id, 'maldous/offmenu',
+                frozenset({'author'} if name == 'OffMenu' else {'review'}),
+            )
+
+            async def observe(selected=exact):
+                def current():
+                    receipt = self.remote.read_usage(selected)
+                    require(self.remote.verify_usage(self.remote.quota_issuer, receipt) is True,
+                            'authority_quota_observation_not_authenticated')
+                    return receipt
+                # Task cancellation cannot interrupt a running worker thread.
+                # Shield its real completion so discovery quarantines this route
+                # until the authenticated transport has actually returned.
+                thread = asyncio.create_task(asyncio.to_thread(current))
+                try:
+                    return await asyncio.shield(thread)
+                except asyncio.CancelledError:
+                    try:
+                        await asyncio.shield(thread)
+                    except Exception:
+                        pass
+                    raise
+
+            def project(receipt, request, fixed=route, selected=exact):
+                now = self.remote.clock()
+                proof = receipt.projection
+                deadline = min(proof.valid_until, now + timedelta(seconds=90))
+                ready = allows_request(selected, proof, now=now, request_not_after=deadline,
+                    outstanding_local=0, request_maximum=MODEL_RESERVATIONS[selected.model])
+                return RouteAvailability(fixed, request, 'available' if ready else 'unknown',
+                    proof.covered_through.timestamp(), proof.valid_until.timestamp(),
+                    receipt.receipt_sha256, ready, ready, ready)
+
+            adapters.append(Adapter(route, observe, project))
+        self._provider_discovery = NormalProviderDiscovery(tuple(adapters),
+            clock=lambda: self.remote.clock().timestamp(), interval=20, timeout=8)
+        return self._provider_discovery
+
+    def _discovered_preview(self, name, timeout):
+        # Scope-free candidate capacity only. The actual admitted attempt and
+        # physical send each re-read authenticated, lease-bounded evidence.
+        if self._provider_discovery is None:
+            return None
+        receipt = self._provider_discovery.observed('workers-ai-' + name.lower())
+        if receipt is None:
+            return None
+        now = self.remote.clock()
+        proof = receipt.projection
+        route = self.remote.routes[name]
+        deadline = now.replace(microsecond=0) + timedelta(seconds=int(timeout))
+        if (not now < deadline or not allows_request(route, proof, now=now,
+                request_not_after=deadline, outstanding_local=0,
+                request_maximum=MODEL_RESERVATIONS[route.model])):
+            return None
+        return FreeAdmissionWindow(deadline, {'OffMenu': proof})
+
     def usage(self, timeout):
         # SharedFreePorts binds its request deadline to the current live lease
         # again at send. Never reserve a 600-second request on a 300-second lease.
@@ -786,7 +861,12 @@ class NativeComposition:
         windows = {}
         for name in names:
             try:
-                windows[name] = self.remote.account_ports[name].read_account_usage(timeout)
+                if pair is None and self._provider_discovery is not None and self._provider_discovery.active:
+                    preview = self._discovered_preview(name, timeout)
+                    if preview is not None:
+                        windows[name] = preview
+                else:
+                    windows[name] = self.remote.account_ports[name].read_account_usage(timeout)
             except BudgetRefused:
                 continue
         if not windows:
@@ -811,7 +891,8 @@ class NativeComposition:
 
     def options(self):
         return dict(self.remote.ports.launcher_options(), read_account_usage=self.usage,
-                    open_fenced_connection=self.open_fenced, authority_lifecycle=self)
+                    open_fenced_connection=self.open_fenced, authority_lifecycle=self,
+                    provider_discovery=self._installed_provider_discovery())
 
     def retained_linear(self, operation):
         """Keep the original fingerprint before a possibly partial network effect."""
