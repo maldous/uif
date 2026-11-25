@@ -6,10 +6,12 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import re
 import shutil
 import signal
+import socket
 import sqlite3
 import stat
 import subprocess
@@ -21,6 +23,44 @@ from .intake import READY_STATES, intake_profile, intake_stages
 from .native import NativeTurnBinding, install_native_runner
 from .review import prepare_review
 from .turn import Attempt
+
+
+def _idle_notify(message):
+    address = os.environ.get('NOTIFY_SOCKET')
+    if address:
+        if address.startswith('@'):
+            address = '\0' + address[1:]
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as notify:
+                notify.settimeout(0.1)
+                notify.sendto(message.encode(), address)
+        except OSError:
+            pass  # The same hold is also recorded in the service journal.
+
+
+def serve_supervised_idle(reason):
+    """Keep the guarded service PID alive without constructing a scheduler."""
+    if reason not in ('free_route_unavailable', 'free_quota_unavailable'):
+        raise ValueError('Unknown stopped idle reason')
+
+    async def wait_for_stop():
+        loop = asyncio.get_running_loop()
+        stopped = asyncio.Event()
+        signals = (signal.SIGTERM, signal.SIGINT)
+        for sig in signals:
+            loop.add_signal_handler(sig, stopped.set)
+        try:
+            status = f'Stokowski idle: {reason}; admissions and effects closed'
+            print(status, flush=True)
+            _idle_notify(f'READY=1\nSTATUS={status}')
+            await stopped.wait()
+            _idle_notify('STOPPING=1\nSTATUS=Stokowski idle shutdown')
+            print('Stokowski idle shutdown', flush=True)
+        finally:
+            for sig in signals:
+                loop.remove_signal_handler(sig)
+
+    asyncio.run(wait_for_stop())
 
 
 def _protected_json(path: Path):

@@ -913,6 +913,42 @@ class _LinearClient:
         return await asyncio.to_thread(self._composition.upload, filename, content_type, data)
 
 
+def load_guarded_startup(path, unit, stage):
+    """Select normal startup or the explicitly installed, status-only hold."""
+    data = protected_record(path)
+    if data.get('schema') != 'uif.stokowski-remote-idle/1':
+        composition = load_composition(path)
+        return composition, composition.startup_arguments()
+
+    require(data.keys() == {'schema', 'unit', 'stage', 'origin', 'access_credential',
+                            'native_identity', 'coordinator_epoch', 'hold_reason'}
+            and (data['unit'], data['stage']) == (unit, stage)
+            and type(data['coordinator_epoch']) is int and data['coordinator_epoch'] > 0
+            and data['hold_reason'] in ('free_route_unavailable', 'free_quota_unavailable'),
+            'authority_idle_installation')
+    identity = AuthorityIdentity(**data['native_identity'])
+    transport = AccessTransport(data['origin'], data['access_credential'])
+    binding = (unit, stage, identity.authority_id, identity.session_id, data['coordinator_epoch'],
+               identity.deployment_sha256, identity.policy_sha256)
+
+    def verifier(request):
+        schema, wanted, deadline = request
+        require(schema == 'uif.stokowski.native-start/1' and wanted == binding
+                and time.monotonic_ns() < deadline
+                and protected_record(path) == data, 'authority_idle_challenge')
+        status = transport.request('/v1/status', timeout=4)
+        require(all(status.get(k) == v for k, v in asdict(identity).items())
+                and status.get('role') == 'native' and status.get('stopped') is True
+                and type(status.get('coordinator_epoch')) is int
+                and status['coordinator_epoch'] == data['coordinator_epoch']
+                and protected_record(path) == data and time.monotonic_ns() < deadline,
+                'authority_idle_status_binding')
+        return request, binding, 'stopped_idle', deadline
+
+    return None, dict(startup_binding=binding, startup_verifier=verifier,
+                      idle_reason=data['hold_reason'])
+
+
 def load_composition(path):
     data = protected_record(path)
     identity = AuthorityIdentity(**data['native_identity'])
