@@ -64,9 +64,14 @@ LOCK = ROOT / 'selector.lock'
 RECEIPTS = ROOT / 'receipts'
 DROPIN = Path('/etc/systemd/system/stokowski-foo.service.d/60-uif1313-idle-selector.conf')
 SYSTEMCTL = '/usr/bin/systemctl'
+SSH_KEYGEN = '/usr/bin/ssh-keygen'
+ACTIVATION_SIGNERS = Path('/etc/uif-stokowski/activation_allowed_signers')
+ACTIVATION_NAMESPACE = 'uif-foo-stokowski-idle-activation'
 INTERPRETER = 'venv/bin/python3.12'
 BOOTSTRAP_PRIOR = '96c56b11f328c4d97df40e5d5ab705d4c85c6cd31c96cbacaca699ca05873502'
 MARKER = 'ACTIVATION_AUTHORIZED'
+ADMISSION_FIELDS = ('schema', 'profile', 'unit', 'stage', 'owner', 'owner_uid', 'review_sha256',
+                    'confirmation_sha256', 'quiescence_sha256', 'issued_at', 'expires_at')
 
 
 def selector_dropin():
@@ -191,6 +196,27 @@ def verify_bundle(stream, review, unit, stage):
                     for k in ('authority_id', 'session_id')), 'invalid native identity shape')
 
 
+def pinned_record(root, name, pin):
+    raw = read_record(root, name + '.json')
+    require(hash_pin(pin) and digest(raw) == pin, name + ' witness pin mismatch')
+    return raw
+
+
+def accepted_review(root, profile, stage, pin):
+    review = record(pinned_record(root, 'review', pin),
+                    ('schema', 'unit', 'stage', 'head', 'author', 'reviewer', 'verdict',
+                     'bundle_sha256', 'launcher_sha256', 'config_sha256', 'parked_unit_sha256'))
+    require(review['schema'] == 'uif.guarded-upgrade-review/1' and review['verdict'] == 'accept'
+            and (review['unit'], review['stage'], review['head']) == (profile.unit, stage, profile.reviewed_head)
+            and all(type(review[k]) is str and re.fullmatch('[A-Za-z0-9_.-]{1,128}', review[k])
+                    for k in ('author', 'reviewer'))
+            and review['author'].casefold() != review['reviewer'].casefold()
+            and all(hash_pin(review[k]) for k in ('bundle_sha256', 'launcher_sha256',
+                                                 'config_sha256', 'parked_unit_sha256')),
+            'exact independent acceptance is required')
+    return review
+
+
 def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=None):
     profile = PROFILES[profile_name]
     require(profile.reviewed_head is not None, 'legacy OffMenu retains its existing owner-only upgrade route')
@@ -199,9 +225,7 @@ def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=
     root = PACKETS / stage
     target = STAGES / stage
     before = time.time()
-    admission = record(read_record(root, 'admission.json'),
-                       ('schema', 'profile', 'unit', 'stage', 'owner', 'owner_uid', 'review_sha256',
-                        'confirmation_sha256', 'quiescence_sha256', 'issued_at', 'expires_at'))
+    admission = record(read_record(root, 'admission.json'), ADMISSION_FIELDS)
     uid = os.getuid() if approved_operator_uid is None else approved_operator_uid
     caller_ok = (os.getuid() == os.geteuid() == uid if approved_operator_uid is None
                  else os.getuid() == os.geteuid() == 0)
@@ -214,24 +238,9 @@ def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=
             and admission['issued_at'] <= before < admission['expires_at'] <= admission['issued_at'] + 300,
             'operator, target or admission window mismatch')
 
-    def pinned(name, pin):
-        raw = read_record(root, name + '.json')
-        require(hash_pin(pin) and digest(raw) == pin, name + ' witness pin mismatch')
-        return raw
-
-    review = record(pinned('review', admission['review_sha256']),
-                    ('schema', 'unit', 'stage', 'head', 'author', 'reviewer', 'verdict',
-                     'bundle_sha256', 'launcher_sha256', 'config_sha256', 'parked_unit_sha256'))
-    require(review['schema'] == 'uif.guarded-upgrade-review/1' and review['verdict'] == 'accept'
-            and (review['unit'], review['stage'], review['head']) == (profile.unit, stage, profile.reviewed_head)
-            and all(type(review[k]) is str and re.fullmatch('[A-Za-z0-9_.-]{1,128}', review[k])
-                    for k in ('author', 'reviewer'))
-            and review['author'].casefold() != review['reviewer'].casefold()
-            and all(hash_pin(review[k]) for k in ('bundle_sha256', 'launcher_sha256',
-                                                 'config_sha256', 'parked_unit_sha256')),
-            'exact independent acceptance is required')
-    pinned('confirmation', admission['confirmation_sha256'])
-    witness = record(pinned('quiescence', admission['quiescence_sha256']),
+    review = accepted_review(root, profile, stage, admission['review_sha256'])
+    pinned_record(root, 'confirmation', admission['confirmation_sha256'])
+    witness = record(pinned_record(root, 'quiescence', admission['quiescence_sha256']),
                      ('schema', 'unit', 'parked_unit_sha256', 'observed_at', 'inflight',
                       'children_gone', 'unresolved_operation_ids'))
     require(witness['schema'] == 'uif.guarded-upgrade-quiescence/1'
@@ -263,6 +272,13 @@ def preflight(profile_name, stage, *, sealed_stage=False, approved_operator_uid=
             'valid_until': min(admission['expires_at'], witness['observed_at'] + 60), 'apply_supported': False}
 
 
+def apply_records(admission):
+    intent = {'schema': 'uif.guarded-upgrade-intent/1', 'admission': asdict(admission)}
+    selected = {'schema': 'uif.guarded-upgrade-selected/1', 'operation_id': admission.operation_id,
+                'intent_sha256': plan_digest(intent), 'selection_sha256': admission.idle_selection_sha256}
+    return intent, selected
+
+
 def apply(profile_name, stage, *, admission, host):
     """Select an exact idle stage through a qualified host adapter. No default host or CLI.
 
@@ -282,9 +298,7 @@ def apply(profile_name, stage, *, admission, host):
             and type(admission.issued_at) is int and type(admission.expires_at) is int
             and 0 < admission.expires_at - admission.issued_at <= 300,
             'invalid apply admission')
-    intent = {'schema': 'uif.guarded-upgrade-intent/1', 'admission': asdict(admission)}
-    result = {'schema': 'uif.guarded-upgrade-selected/1', 'operation_id': admission.operation_id,
-              'intent_sha256': plan_digest(intent), 'selection_sha256': admission.idle_selection_sha256}
+    intent, result = apply_records(admission)
     with host.lock(profile.unit, admission.lock_custody_sha256) as locked:
         require(locked.verify_admission(admission) is True, 'trusted host admission unavailable')
         require(locked.verify_custody() is True, 'qualified selector lock unavailable')
@@ -467,16 +481,19 @@ class LinuxIdleHost:
         require(self.admission is not None and self.load_admission() == self.admission,
                 'protected apply admission changed')
         value = preflight(profile, stage, sealed_stage=True, approved_operator_uid=self.uid)
+        self.verify_inactive_bootstrap(PROFILES[profile].unit, value['parked_unit_sha256'])
+        return value
+
+    def verify_inactive_bootstrap(self, unit, unit_pin):
         command = selector_dropin().decode().split('ExecStart=\nExecStart=', 1)[1].strip()
         effective = subprocess.check_output(
-            [SYSTEMCTL, '--no-pager', 'show', '--property=ExecStart', PROFILES[profile].unit],
+            [SYSTEMCTL, '--no-pager', 'show', '--property=ExecStart', unit],
             stderr=subprocess.DEVNULL, timeout=4, text=True,
         )
-        require(value['parked_unit_sha256'] == self.unit_pin
+        require(unit_pin == self.unit_pin
                 and f'argv[]={command} ;' in effective and effective.count('argv[]=') == 1
                 and no_marker(PARKED_STAGE) and no_marker(FIXED_STAGE),
                 'expected inactive bootstrapped unit with both markers absent')
-        return value
 
     def selection_sha256(self):
         return bytes_pin(SELECTOR)
@@ -509,6 +526,109 @@ class LinuxIdleHost:
         publish(RECEIPTS / (operation + '.selected.json'), encode(result))
 
 
+def verify_activation_confirmation(root, plan, owner):
+    require(re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,63}', owner) is not None,
+            'unsupported enrolled host-owner principal')
+    raw = read_record(root, 'activation-confirmation.json')
+    confirmation = record(raw, ('schema', 'action', 'operation_id', 'preflight_sha256',
+                                'issued_at', 'expires_at'))
+    issued, expires = confirmation['issued_at'], confirmation['expires_at']
+    require((confirmation['schema'], confirmation['action'], confirmation['operation_id'],
+             confirmation['preflight_sha256']) ==
+            ('uif.foo-idle-activation-confirmation/1', 'authorize_idle_marker',
+             plan['operation_id'], plan_digest(plan))
+            and type(issued) is int and type(expires) is int
+            and issued <= time.time() < expires <= issued + 300,
+            'activation confirmation does not bind the current operation and window')
+    try:
+        trusted_signers = protected_open(ACTIVATION_SIGNERS, MAX_RECORD)
+    except FileNotFoundError as exc:
+        raise Held('Foo host owner has not enrolled an activation signer') from exc
+    with trusted_signers as signers, protected_open(
+            root / 'activation-confirmation.json.sig', MAX_RECORD) as signature:
+        signer_bytes = signers.read(MAX_RECORD + 1)
+        signer_line = signer_bytes.strip().splitlines()
+        require(len(signer_line) == 1 and len(signer_bytes) <= MAX_RECORD,
+                'expected one enrolled activation signer')
+        fields = signer_line[0].split(maxsplit=3)
+        require(len(fields) >= 3 and fields[0] == owner.encode('ascii')
+                and fields[1].startswith((b'ssh-', b'ecdsa-', b'sk-')),
+                'enrolled signer does not name the original Foo operator exactly')
+        signers.seek(0)
+        fds = (signers.fileno(), signature.fileno())
+        verified = subprocess.run(
+            [SSH_KEYGEN, '-Y', 'verify', '-f', f'/proc/self/fd/{fds[0]}',
+             '-I', owner, '-n', ACTIVATION_NAMESPACE, '-s', f'/proc/self/fd/{fds[1]}'],
+            input=raw, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            pass_fds=fds, timeout=4, check=False,
+        )
+        require(verified.returncode == 0 and time.time() < expires,
+                'activation signature or confirmation expiry refused')
+        return {'confirmation_sha256': digest(raw),
+                'signers_sha256': digest(signer_bytes),
+                'expires_at': expires}
+
+
+def activation_preflight(operation_id, *, verify_confirmation=False):
+    """Describe one completed idle selection for a separate host-owner decision."""
+    require(hash_pin(operation_id), 'expected exact original apply operation')
+    profile = PROFILES[PROFILE_NAME]
+    host = LinuxIdleHost()
+    admission = host.load_admission()
+    require((admission.profile, admission.unit, admission.stage, admission.operation_id) ==
+            (PROFILE_NAME, profile.unit, FIXED_STAGE, operation_id)
+            and all(hash_pin(pin) for pin in (admission.lock_custody_sha256,
+                                             admission.prior_selection_sha256,
+                                             admission.idle_selection_sha256)),
+            'original apply operation binding changed')
+    with host.lock(profile.unit, admission.lock_custody_sha256):
+        require(host.verify_admission(admission) and host.verify_custody(),
+                'original host packet or selector lock changed')
+        packet = read_record(host.packet, 'admission.json')
+        operator = record(packet, ADMISSION_FIELDS)
+        uid = operator['owner_uid']
+        require((operator['schema'], operator['profile'], operator['unit'], operator['stage']) ==
+                ('uif.guarded-upgrade-admission/1', PROFILE_NAME, profile.unit, FIXED_STAGE)
+                and type(uid) is int and uid == host.uid and uid > 0
+                and operator['owner'] == pwd.getpwuid(uid).pw_name,
+                'original operator binding changed')
+        review = accepted_review(host.packet, profile, FIXED_STAGE, operator['review_sha256'])
+        pinned_record(host.packet, 'confirmation', operator['confirmation_sha256'])
+        pinned_record(host.packet, 'quiescence', operator['quiescence_sha256'])
+        intent, selected = apply_records(admission)
+        require(host.receipts(operation_id, admission.prior_selection_sha256) ==
+                (intent, selected, operation_id), 'original apply receipts are incomplete or disagree')
+        unit_pin = stopped_unit_sha(profile.unit)
+        require(unit_pin == review['parked_unit_sha256'], 'effective unit changed after apply')
+        host.verify_inactive_bootstrap(profile.unit, unit_pin)
+        require(host.verify_idle_stage(review, admission.idle_selection_sha256)
+                and host.selection_sha256() == admission.idle_selection_sha256
+                and stopped_unit_sha(profile.unit) == unit_pin
+                and host.verify_admission(admission) and host.verify_custody()
+                and read_record(host.packet, 'admission.json') == packet,
+                'selected idle readback changed')
+        host.verify_inactive_bootstrap(profile.unit, unit_pin)
+        plan = {'schema': 'uif.foo-idle-activation-preflight/1', 'mode': 'read_only',
+                'operation_id': operation_id, 'unit': profile.unit, 'stage': FIXED_STAGE,
+                'original_owner_uid': uid, 'signer_principal': operator['owner'],
+                'original_admission_sha256': digest(packet),
+                'source_head': review['head'], 'review_sha256': operator['review_sha256'],
+                'bundle_sha256': review['bundle_sha256'], 'unit_sha256': unit_pin,
+                'selected_receipt_sha256': plan_digest(selected),
+                'selection_sha256': admission.idle_selection_sha256,
+                'lock_custody_sha256': admission.lock_custody_sha256}
+        if verify_confirmation:
+            result = verify_activation_confirmation(host.packet, plan, operator['owner'])
+            require(host.verify_custody() and host.selection_sha256() == admission.idle_selection_sha256
+                    and stopped_unit_sha(profile.unit) == unit_pin,
+                    'selected idle readback changed during confirmation verification')
+            host.verify_inactive_bootstrap(profile.unit, unit_pin)
+            require(time.time() < result['expires_at'], 'activation confirmation expired')
+            return {'preflight': plan, 'preflight_sha256': plan_digest(plan),
+                    'verified_confirmation': result}
+        return plan
+
+
 def serve_idle_stage():
     """systemd's one guarded ExecStart. Its shared lock survives exec and stop."""
     require(os.getuid() == os.geteuid() == pwd.getpwnam('user').pw_uid != 0, 'unexpected service user')
@@ -535,10 +655,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', required=True, choices=PROFILES)
     parser.add_argument('--stage', required=True)
-    parser.add_argument('--action', choices=('preflight', 'sealed-preflight', 'apply', 'serve'),
+    parser.add_argument('--action', choices=('preflight', 'sealed-preflight', 'apply',
+                                             'activation-preflight', 'verify-activation-confirmation', 'serve'),
                         default='preflight')
+    parser.add_argument('--operation-id')
     args = parser.parse_args()
     try:
+        activation_checks = ('activation-preflight', 'verify-activation-confirmation')
+        require((args.operation_id is not None) == (args.action in activation_checks),
+                'operation id is required only for activation checks')
         if args.action == 'preflight':
             result = preflight(args.profile, args.stage)
         else:
@@ -546,7 +671,13 @@ def main():
             if args.action == 'serve':
                 serve_idle_stage()
                 return 1
-            if args.action == 'sealed-preflight':
+            if args.action in activation_checks:
+                result = activation_preflight(
+                    args.operation_id, verify_confirmation=args.action == 'verify-activation-confirmation',
+                )
+                if args.action == 'activation-preflight':
+                    result = {'preflight': result, 'preflight_sha256': plan_digest(result)}
+            elif args.action == 'sealed-preflight':
                 with selector_lock(shared=True) as stream:
                     plan = preflight(args.profile, args.stage, sealed_stage=True)
                     result = {'preflight': plan, 'preflight_sha256': plan_digest(plan),

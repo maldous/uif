@@ -164,3 +164,56 @@ interpreter, launcher, config and activation marker. Apply performs no
 service start, marker write, provider call or legacy action. If a receipt or
 selector disagrees, preserve both and reconcile the original. The restore
 operation and any activation remain separately qualified host actions.
+
+### Post-apply verification for the Foo owner
+
+The approved operator can use the existing root runner as transport for the
+read-only receiver after the protected apply completes. Set
+`operation_id` to the original apply operation from the host receipt.
+
+```sh
+/usr/bin/python3 -I -S -B /var/lib/uif-stokowski/idle-upgrade/guarded_service_upgrade.py \
+  --profile uif-idle --stage uif1313-idle-a22fbb2 --action activation-preflight \
+  --operation-id "$operation_id"
+```
+
+The verifier holds the same exclusive selector lock as apply. It checks the
+original protected packet, operator binding, review and witness hashes, intent,
+selection receipt and prior-selection fence. It also verifies the exact sealed
+bundle against the selected bytes and rechecks the stopped effective systemd
+unit and both absent markers. It does not change the selector, service, packet
+or marker. A successful readback is a snapshot, with the lock released before
+it returns. A future issuer must recheck the bindings under the same lock and
+obtain fresh quiescence and an operation-specific decision from the actual
+authenticated Foo owner before issuing a marker.
+
+For independently signed confirmation verification, the existing Foo host
+owner must enroll the already-authorized operator's existing OpenSSH public
+signing key at `/etc/uif-stokowski/activation_allowed_signers` through the
+owner-controlled Foo administration surface. The file must be protected and
+contain one ordinary allowed-signers entry with the original admitted operator's
+exact account name as its sole principal. Wildcards, multiple principals and
+signer options are refused. The command does not enroll the key and cannot
+derive an authorized signer from chat or runner identity.
+
+The enrolled host owner signs a JSON file named `activation-confirmation.json`
+with exactly `schema` (`uif.foo-idle-activation-confirmation/1`), `action`
+(`authorize_idle_marker`), `operation_id`, the returned `preflight_sha256`,
+and integer UTC epoch seconds `issued_at` and `expires_at`. The window is
+at most 300 seconds. The owner executes the existing-key signing action in
+their own trusted environment.
+
+```sh
+ssh-keygen -Y sign -f "$existing_operator_key" \
+  -n uif-foo-stokowski-idle-activation activation-confirmation.json
+```
+
+The owner supplies only the JSON and detached signature to the protected
+packet directory. Run the same receiver with
+`--action verify-activation-confirmation` and the same original operation
+ID. It checks the explicit signature against the single enrolled principal
+under the selector lock and returns only hashes and the expiry. An absent
+enrollment or invalid, stale or mismatched confirmation is refused. The
+verification result does not issue admission, place a marker or start a
+service. Host bootstrap and those effects still require their own reviewed
+owner path.

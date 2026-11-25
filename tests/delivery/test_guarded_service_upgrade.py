@@ -8,6 +8,7 @@ import fcntl
 import os
 from pathlib import Path
 import runpy
+import subprocess
 import tarfile
 import tempfile
 from types import SimpleNamespace
@@ -213,6 +214,37 @@ class UpgradePreflight(unittest.TestCase):
             result = APPLY('uif-idle', STAGE, admission=admission, host=TOOL['LinuxIdleHost']())
             self.assertEqual(APPLY('uif-idle', STAGE, admission=admission,
                                    host=TOOL['LinuxIdleHost']()), result)
+            check_activation = TOOL['activation_preflight']
+            before = {path: path.read_bytes() for path in receipts.iterdir()}
+            plan = check_activation(admission.operation_id)
+            self.assertEqual(plan['mode'], 'read_only')
+            self.assertEqual(plan['operation_id'], admission.operation_id)
+            self.assertEqual(plan['original_owner_uid'], self.admission['owner_uid'])
+            self.assertEqual(plan['bundle_sha256'], self.review['bundle_sha256'])
+            self.assertEqual(plan['selected_receipt_sha256'], TOOL['plan_digest'](result))
+            self.assertEqual(plan['selection_sha256'], TOOL['digest'](target))
+            self.assertEqual(plan['unit_sha256'], self.review['parked_unit_sha256'])
+            self.assertEqual(before, {path: path.read_bytes() for path in receipts.iterdir()})
+            with self.assertRaisesRegex(ValueError, 'operation binding'):
+                check_activation('f' * 64)
+            with lock.open('rb') as running:
+                fcntl.flock(running, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                with self.assertRaises(BlockingIOError):
+                    check_activation(admission.operation_id)
+            completion = receipts / (admission.operation_id + '.selected.json')
+            completion.write_bytes(encoded({}))
+            with self.assertRaisesRegex(ValueError, 'receipts'):
+                check_activation(admission.operation_id)
+            completion.write_bytes(before[completion])
+            selector.write_bytes(old)
+            with self.assertRaisesRegex(ValueError, 'readback changed'):
+                check_activation(admission.operation_id)
+            selector.write_bytes(target)
+            marker = stage / TOOL['MARKER']
+            marker.touch()
+            with self.assertRaisesRegex(ValueError, 'both markers absent'):
+                check_activation(admission.operation_id)
+            marker.unlink()
         self.assertEqual(selector.read_bytes(), target)
         self.assertEqual(len(list(receipts.iterdir())), 3)
         self.assertFalse((stage / TOOL['MARKER']).exists())
@@ -236,6 +268,43 @@ class UpgradePreflight(unittest.TestCase):
     def test_reviewed_dropin_matches_fixed_start_contract(self):
         dropin = SOURCE.with_name('60-uif1313-idle-selector.conf')
         self.assertEqual(dropin.read_bytes(), runpy.run_path(str(SOURCE))['selector_dropin']())
+
+    def test_activation_confirmation_requires_the_exact_enrolled_signer_and_operation(self):
+        plan = {'operation_id': 'e' * 64, 'selection_sha256': PIN}
+        raw = encoded({
+            'schema': 'uif.foo-idle-activation-confirmation/1', 'action': 'authorize_idle_marker',
+            'operation_id': plan['operation_id'], 'preflight_sha256': TOOL['plan_digest'](plan),
+            'issued_at': 990, 'expires_at': 1040,
+        })
+        confirmation = self.stage / 'activation-confirmation.json'
+        confirmation.write_bytes(raw)
+        signers = self.stage / 'allowed_signers'
+        verify = TOOL['verify_activation_confirmation']
+        self.enterContext(patch.dict(TOOL, {'ACTIVATION_SIGNERS': signers}))
+        with self.assertRaisesRegex(ValueError, 'has not enrolled'):
+            verify(self.stage, plan, 'fixture-operator')
+        key = self.stage / 'synthetic-test-key'
+        keygen = TOOL['SSH_KEYGEN']
+        subprocess.run([keygen, '-q', '-t', 'ed25519', '-N', '', '-f', str(key)],
+                       check=True, capture_output=True)
+        public_key = key.with_suffix('.pub').read_bytes()
+        signers.write_bytes(b'fixture-operator ' + public_key)
+        subprocess.run([keygen, '-Y', 'sign', '-f', str(key), '-n',
+                        TOOL['ACTIVATION_NAMESPACE'], str(confirmation)],
+                       check=True, capture_output=True)
+        self.assertEqual(verify(self.stage, plan, 'fixture-operator')['confirmation_sha256'],
+                         TOOL['digest'](raw))
+        with self.assertRaisesRegex(ValueError, 'current operation'):
+            verify(self.stage, {**plan, 'selection_sha256': 'd' * 64}, 'fixture-operator')
+        with self.assertRaisesRegex(ValueError, 'original Foo operator'):
+            verify(self.stage, plan, 'different-fixture-operator')
+        confirmation.write_bytes(raw + b'\n')
+        with self.assertRaisesRegex(ValueError, 'signature'):
+            verify(self.stage, plan, 'fixture-operator')
+        confirmation.write_bytes(raw)
+        with patch.object(TOOL['time'], 'time', return_value=1040):
+            with self.assertRaisesRegex(ValueError, 'window'):
+                verify(self.stage, plan, 'fixture-operator')
 
 
 class DetachedHost:
