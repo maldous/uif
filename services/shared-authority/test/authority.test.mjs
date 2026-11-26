@@ -1266,7 +1266,7 @@ test('disabled Gemma preparation reserves one exact original before fake upstrea
   const evidence = { publicDataOnly: true, noPaidRoute: true, coveredThrough: start,
     validUntil: start + 100, upperUsed: 1, limit: 2 };
   const params = { operation, attempt, project, deadline, prompt, credential,
-    readQuote: () => evidence };
+    readQuote: () => evidence, verifySettlement: () => null };
   await assert.rejects(x.a.dispatchGemmaPrepared({ ...params, readQuote: () => null }, x.peers.native),
     /gemma_owner_quote_unavailable/);
   await assert.rejects(x.a.dispatchGemmaPrepared({ ...params, prompt: 'different' }, x.peers.native),
@@ -1357,5 +1357,114 @@ test('Responses exact original settles through authenticated, scope-bound receip
   assert.equal(x.a.accountReservationDebt(account, start), 47);
   assert.equal(x.restart().accountReservationDebt(account, start + 1), 0);
   await assert.rejects(x.a.dispatchIncludedResponsesPrepared(args, x.peers.native), /original_already_recorded/);
+  assert.equal(x.calls.length, 1);
+});
+
+
+async function gemmaSettlementFixture() {
+  const x = fixture();
+  await x.resume();
+  const lease = (await x.call('native', 'claim', await x.addGrant())).lease;
+  const project = hex('6'), attempt = 'attempt', deadline = start + 60;
+  const model = 'gemma-4-31b-it', prompt = 'synthetic public fixture';
+  const payload = canonical({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 256, candidateCount: 1 },
+  });
+  const operation = { fence: lease.fence, original_id: hex('7'), payload_sha256: await digest({
+    schema: 'uif.gemma-prepared-public-call/1', project, model, attempt, deadline, payload,
+  }) };
+  const response = { responseId: 'example_1', modelVersion: model, candidates: [
+    { finishReason: 'STOP', content: { role: 'model', parts: [{ text: 'synthetic output' }] } },
+  ] };
+  const account = 'gemma-project:' + project;
+  x.respond = async () => Response.json(response);
+  const verifier = async (subject) => {
+    assert.deepEqual(subject, { operation_id: operation.original_id, payloadSHA: operation.payload_sha256,
+      project, model, responseId: response.responseId,
+      bodySHA: await digestBytes(new TextEncoder().encode(JSON.stringify(response))) });
+    assert.equal(x.a.accountReservationDebt(account, start), 1);
+    return { statementHash: await digest(subject), receiptSha256: hex('8'), consumedRequests: 1 };
+  };
+  const params = { operation, attempt, project, deadline, prompt, credential: 'fixture-nonsecret',
+    readQuote: () => ({ publicDataOnly: true, noPaidRoute: true, coveredThrough: start,
+      validUntil: start + 100, upperUsed: 0, limit: 2 }), verifySettlement: verifier };
+  return { x, params, operation, response, verifier, account };
+}
+
+test('Gemma settles exact bounded original and recovers bytes without re-egress after restart', async () => {
+  const f = await gemmaSettlementFixture();
+  const { x, params, operation, response, account } = f;
+  await assert.rejects(x.a.dispatchGemmaPrepared({ ...params, verifySettlement: undefined }, x.peers.native),
+    /gemma_preparation_unbound/);
+  assert.equal(x.calls.length, 0);
+  const settled = await x.a.dispatchGemmaPrepared(params, x.peers.native);
+  const receipt = settled.headers.get('uif-receipt-sha256');
+  assert.match(receipt, /^[0-9a-f]{64}$/);
+  assert.deepEqual(await settled.json(), response);
+  assert.equal(x.a.accountReservationDebt(account, start), 1);
+  x.a = x.restart();
+  const recovered = await x.a.handle('/v1/provider/receipt', { operation }, x.peers.native);
+  assert.equal(recovered.headers.get('uif-receipt-sha256'), receipt);
+  assert.deepEqual(await recovered.json(), response);
+  assert.equal(x.a.accountReservationDebt(account, start + 1), 0);
+  await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native), /original_already_recorded/);
+  assert.equal(x.calls.length, 1);
+});
+
+test('Gemma unknown verification or invalid response never retains bytes or releases the charge', async () => {
+  for (const problem of ['unbound', 'wrong-id', 'wrong-model', 'wrong-count', 'wrong-finish', 'oversize']) {
+    const { x, params, operation, response, account } = await gemmaSettlementFixture();
+    const verify = params.verifySettlement;
+    params.verifySettlement = async (subject) => {
+      if (problem === 'unbound') throw new Error('fixture private detail');
+      if (problem === 'wrong-id')
+        return { statementHash: hex('f'), receiptSha256: hex('8'), consumedRequests: 1 };
+      if (problem === 'wrong-count')
+        return { statementHash: await digest(subject), receiptSha256: hex('8'), consumedRequests: 0 };
+      return verify(subject);
+    };
+    if (problem === 'wrong-model') response.modelVersion = 'other';
+    if (problem === 'wrong-finish') response.candidates[0].finishReason = 'SAFETY';
+    if (problem === 'oversize') response.candidates[0].content.parts[0].text = 'x'.repeat(65537);
+    await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native),
+      /gemma_original_requires_verified_settlement|gemma_original_result_unbound|body_size/);
+    assert.equal(x.a.row('SELECT id FROM provider_results'), undefined);
+    assert.equal(x.restart().accountReservationDebt(account, start + 1), 1);
+    await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native), /original_already_recorded/);
+    assert.equal(x.calls.length, 1);
+    assert.equal(x.a.row('SELECT state FROM effects WHERE id=?', operation.original_id).state, 'sending');
+  }
+});
+
+test('Gemma consent revoked during verifier preserves exact charge but discloses no body', async () => {
+  const { x, params, operation, account } = await gemmaSettlementFixture();
+  const verify = params.verifySettlement;
+  params.verifySettlement = async (subject) => {
+    await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native), /original_in_flight/);
+    const proof = await verify(subject);
+    const grant = JSON.parse(x.a.row('SELECT body FROM grants').body);
+    const changed = { ...grant };
+    delete changed.result_retention;
+    await x.call('control', 'grant', { grant: changed, previous_sha256: await digest(grant),
+      request_id: 'drop-gemma-retention' });
+    return proof;
+  };
+  await assert.rejects(x.a.dispatchGemmaPrepared(params, x.peers.native), /private_result_grant_changed/);
+  assert.equal(x.a.row('SELECT state FROM effects WHERE id=?', operation.original_id).state, 'verified');
+  assert.equal(x.a.accountReservationDebt(account, start), 1);
+  assert.equal(x.a.row('SELECT id FROM provider_results'), undefined);
+  assert.equal(x.calls.length, 1);
+});
+
+test('Gemma recovery refuses modified durable settlement fact rather than exposing a retained body', async () => {
+  const { x, params, operation } = await gemmaSettlementFixture();
+  const response = await x.a.dispatchGemmaPrepared(params, x.peers.native);
+  const receipt = response.headers.get('uif-receipt-sha256');
+  const id = 'gemma-settlement:' + receipt;
+  const fact = JSON.parse(x.a.row('SELECT body FROM facts WHERE id=?', id).body);
+  x.a.put('UPDATE facts SET body=? WHERE id=?', canonical({ ...fact, provider_receipt: hex('f') }), id);
+  await assert.rejects(x.restart().handle('/v1/provider/receipt', { operation }, x.peers.native),
+    /original_provider_result_changed/);
   assert.equal(x.calls.length, 1);
 });
