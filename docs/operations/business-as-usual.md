@@ -41,6 +41,10 @@ implementation, evidence and the applicable authorization boundaries.
 
 ## Commissioning and routine restarts
 
+The [Foo installer workflow](../windmill/foo-installer-workflow.md#commission-the-normal-stokowski-release)
+connects these requirements to the existing release, install and control
+handoffs. Rendering a normal profile alone does not perform any of them.
+
 An authorized normal release is commissioned once for the exact installed
 artifact, target service and allowed operating mode. Keep the independently
 accepted release and same-original installation receipt in existing custody.
@@ -186,7 +190,7 @@ Use the narrowest status that the evidence supports:
 | Status | What the evidence establishes |
 | --- | --- |
 | Prepared / reviewed | Exact source or detached artifact is ready; no host adoption or execution implied. |
-| Staged | The named exact revision is installed alongside or in a protected stage, but has not been verified as the selected running revision. |
+| Staged | The exact revision is verified at the named stage. Record installation separately; staging is not proof of the selected running revision. |
 | Supervised idle | The service answered as the guarded, no-dispatch mode; no normal intake, provider calls or publication implied. |
 | Normal runtime verified | The installed normal revision and authenticated role are verified in the authorized runtime; unattended delivery is not yet demonstrated. |
 | BAU verified | The acceptance checks above are demonstrated by real original receipts and destination readback, including independent publication, refill and recovery. |

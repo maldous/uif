@@ -54,6 +54,45 @@ existing boundaries; it adds no approval or runtime condition.
   maintenance carrier, create-only verifier readback, staged archive nor
   source approval supplies the independent application acceptance.
 
+## Commission the normal Stokowski release
+
+This is a different operation from a guarded-idle start, verifier maintenance,
+or replacing the OffMenu application. Use the [normal operating contract](../operations/business-as-usual.md#commissioning-and-routine-restarts).
+The [normal profile renderer](../../tools/delivery/commissioned_normal_service.py)
+in [UIF #152](https://github.com/maldous/uif/pull/152) and [#153](https://github.com/maldous/uif/pull/153)
+produces launcher and unit inputs only. It does not build the installed
+runtime closure, authorize selection, or commission the service.
+
+Use the existing release handoff, recording its current callable actions and receipts:
+
+1. **Release owner and independent acceptance.** Identify the exact accepted
+   normal Stokowski runtime closure, including the interpreter, UIF
+   wheel, native core and web dependencies. If reusing an installed dependency
+   shelf, compare its observed files with the original build and dependency
+   manifest through the existing owner and reviewer. A historical launcher
+   hash, current inventory, or verified wheel alone does not establish the
+   complete release.
+2. **Protected installer.** Identify the existing authorized installer action
+   for the normal release. Keep its exact original and terminal receipt.
+   Verify the installed stage and effective service profile, including any
+   inherited hooks, credential input, and service identity. The generic Foo
+   transport and the OffMenu verifier shelf do not qualify this action.
+3. **Shared authority control.** Identify the existing authenticated
+   `control` caller for
+   [`/v1/startup/bind`](../../services/shared-authority/README.md#wire-contract).
+   Bind the installed unit, stage, native session and epoch to the original
+   commissioning evidence and validity. Record the original receipt. An
+   Access identity in policy is not a verified callable control runtime.
+   Subsequent starts use fresh automatic native receipts, not new manual
+   authorizations or the consumed guarded-idle marker.
+4. **Read back normal operation.** Verify the installed revision, process and
+   authenticated startup result, then exercise unattended restart and the
+   separately authorized work lifecycle. A running process without authenticated startup proof is not dispatch-ready.
+
+If an owner reference, callable action, or original receipt cannot be verified,
+record the exact missing item and keep unrelated authorized work moving. This
+section links existing actions; it creates no role, approval step, or bypass.
+
 ## Forward the protected application release
 
 1. Keep one accountable, authenticated release owner on the existing
