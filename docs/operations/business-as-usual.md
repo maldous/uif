@@ -99,15 +99,47 @@ provider enablement, expenditure, or changes to existing grants and pauses.
 
 ## Release handoff and status
 
-OffMenu's procedure lives in the
-[OffMenu Foo release and operating handoff](https://github.com/maldous/offmenu/blob/develop/docs/development/native-runtime-release-runbook.md).
-Retain the reviewed exact release and source revision, project scope and original
-operation through its existing authorized installation transport. Read back the
-actual selected unit/stage, installed revision and role before describing the
-release as running normally. Publication remains a separate verified destination
-effect under the existing independent publisher; refill and recovery must
-reconcile that same original. If a result is lost, observe the existing
-original rather than creating another installation, claim or publication.
+Use this procedure across all UAF/UIF projects. Each project handoff names
+one accountable release owner, the existing active roles responsible for
+building, accepting, installing, and reading back the release, and the exact
+action and authorized references each role uses. Preserve existing role and
+artifact custody; accountability is not a transfer of claim or publish
+rights. Each project supplies its own canonical builder, inputs, acceptance
+criteria, roles, and deployment transport. The existing
+[Windmill/Foo runner](../agents/windmill-workspace.md) is shared transport,
+not a project-specific workspace or a grant to install.
+
+1. **Produce.** The producer uses the project's canonical builder and inputs
+   for the intended destination and records the exact source revision and
+   resulting artifact digests. Source review checks the change, not the
+   installed artifact or runtime.
+2. **Accept the exact output independently.** The existing independent role
+   verifies that revision, artifact and intended destination against the
+   project's acceptance criteria. Retain its receipt. Acceptance is not
+   permission to deploy; likewise an approved deployment does not substitute
+   for exact artifact acceptance or source review.
+3. **Install the same original.** The authorized active role invokes the
+   project's existing protected installation action, within the approved
+   destination and scope, against the accepted exact artifact. Carry the
+   original operation identity and allowed references through install and
+   recovery. If the outcome is unknown, reconcile that original; do not
+   install again, change custody, or request the same approval again.
+4. **Read back the destination.** Verify the actual selected installed
+   revision, destination and applicable active role, using the project's
+   existing readback. A build, passing tests, staged files, or a submitted
+   job is not runtime proof. Publication is a separate verified destination
+   effect under the existing independent publisher; reconcile its own
+   original before refill or recovery.
+
+Record only verified original/receipt references, revision, observed state,
+and the actionable outstanding dependency. If evidence or authority is
+missing, hold only the affected scope and keep independent authorized work
+moving. Do not add another inventory, approval step, gate, or secret material
+to this workflow.
+
+The [OffMenu Foo release and operating handoff](https://github.com/maldous/offmenu/blob/develop/docs/development/native-runtime-release-runbook.md)
+is one example. Its roles, inputs, and deployment target do not apply to other
+projects.
 
 Use the narrowest status that the evidence supports:
 
