@@ -15,6 +15,7 @@ import socket
 import sqlite3
 import stat
 import subprocess
+import time
 
 from .account_admission import FreeRoute
 from .budget import BudgetRefused, PAID_ACCOUNT, PROJECTS, ProjectAccountRouter
@@ -36,6 +37,20 @@ def _idle_notify(message):
                 notify.sendto(message.encode(), address)
         except OSError:
             pass  # The same hold is also recorded in the service journal.
+
+
+def wait_for_normal_authority(verify):
+    """Keep the commissioned process online; retry only its read-only challenge."""
+    reported = False
+    while verify() is not True:
+        if not reported:
+            status = 'Stokowski blocked: authority_unavailable; admissions and effects closed'
+            print(status, flush=True)
+            _idle_notify(f'STATUS={status}')
+            reported = True
+        time.sleep(5)
+    if reported:
+        _idle_notify('STATUS=Stokowski authority reachable; checking normal admission')
 
 
 def serve_supervised_idle(reason):
@@ -505,6 +520,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                         logger.warning('Workers AI retry held for reconciliation: %s', issue.identifier)
                     retry.error = 'Original Workers AI request retained for reconciliation'
             if started or not has_capacity:
+                reason = 'original_reconciliation_pending' if started else 'free_route_or_quota_unavailable'
+                _idle_notify(f'STATUS=Stokowski blocked: {reason}; no new agent claim')
                 owner._release_slot(issue.id)
                 return None
         previous = owner.running.get(issue.id)
@@ -522,6 +539,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
             if authority_lifecycle is None or owner.running.get(issue.id) is not previous:
                 raise
+            _idle_notify('STATUS=Stokowski blocked: native_admission_unavailable; no new agent claim')
             logger.warning('Native authority admission held for %s (%s)', issue.identifier, type(error).__name__)
             owner._release_slot(issue.id)
             return None

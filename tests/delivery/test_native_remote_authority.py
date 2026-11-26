@@ -214,6 +214,19 @@ class NativeRemoteTest(unittest.TestCase):
             self.assertIs(composition, normal.return_value)
             self.assertIs(args, composition.startup_arguments.return_value)
 
+    def test_commissioned_authority_hold_retries_only_read_and_reports_no_effects(self):
+        from uif.stokowski_cloudflare import launcher
+        from unittest.mock import patch
+        verify = Mock(side_effect=[False, False, True])
+        with patch.object(launcher, '_idle_notify') as notify, patch.object(launcher.time, 'sleep') as sleep:
+            launcher.wait_for_normal_authority(verify)
+        self.assertEqual(verify.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+        first, last = [call.args[0] for call in notify.call_args_list]
+        self.assertIn('authority_unavailable; admissions and effects closed', first)
+        self.assertNotIn('READY=1', first)
+        self.assertIn('checking normal admission', last)
+
     def test_managed_idle_reports_hold_to_supervisor_and_stops_on_sigterm(self):
         with tempfile.TemporaryDirectory() as directory, socket.socket(
                 socket.AF_UNIX, socket.SOCK_DGRAM) as notify:
@@ -418,6 +431,7 @@ class RealCheckoutTest(unittest.TestCase):
     def test_completed_native_callback_preserves_success_after_receiving_failure(self):
         class Native:
             async def _reconcile(self):
+                order.append('native')
                 return None
 
             async def _resume_settlement(self, issue, attempt):
@@ -449,12 +463,49 @@ class RealCheckoutTest(unittest.TestCase):
         self.c.record_settled = Mock()
         module = SimpleNamespace(Orchestrator=Native, LinearClient=object, logger=Mock())
         install_sinks(module, self.c)
+        order = []
+        async def receive(_):
+            order.append('handoff')
+        def late(_):
+            order.append('release')
+        self.c.receive_pending = receive
+        self.c.receive_late_completions = late
+        self.assertIsNone(asyncio.run(native._reconcile()))
+        self.assertEqual(order, ['handoff', 'release', 'native'])
+        order.clear()
+        async def failed_receive(_):
+            order.append('handoff')
+            raise Hold('held handoff channel')
+        self.c.receive_pending = failed_receive
+        self.assertIsNone(asyncio.run(native._reconcile()))
+        self.assertEqual(order, ['handoff', 'release', 'native'])
+        module.logger.warning.assert_called_once_with('Native shared handoff observation unavailable')
         attempt = SimpleNamespace(state_name='independent-review',
                                   settlement_record={'phase': 'original', 'target': 'publish', 'run': 1})
         self.assertIs(asyncio.run(native._resume_settlement(self.issue, attempt)), True)
         self.assertEqual(attempt.settlement_record['phase'], 'complete')
         self.c.send_handoff.assert_awaited_once()
         self.c.record_settled.assert_not_called()
+
+    def test_retained_completions_isolate_each_issues_custody_and_grant(self):
+        candidate = self.path.resolve()
+        first, second = 'earlier', 'later'
+        assignment = {'scope_sha256': 'fixture', 'workspace_binding': {'path': str(candidate)}}
+        config = {'workspace_root': str(candidate.parent), 'assignments': {
+            first: assignment, second: assignment}}
+        native = SimpleNamespace(project_name='OffMenu', running={})
+        with patch.object(self.c, 'installation', return_value=config), \
+                patch.object(self.c, 'assignment', side_effect=[Hold('held grant'), self.grant]), \
+                patch.object(self.c, 'try_release') as release:
+            self.c.receive_late_completions(native)
+            release.assert_called_once_with(self.grant, candidate)
+        config['assignments'][first] = dict(assignment, workspace_binding={
+            'path': str(candidate.parent.parent / 'foreign')})
+        with patch.object(self.c, 'installation', return_value=config), \
+                patch.object(self.c, 'assignment', return_value=self.grant), \
+                patch.object(self.c, 'try_release') as release:
+            self.c.receive_late_completions(native)
+            release.assert_called_once_with(self.grant, candidate)
 
     def test_cold_receiving_rejoins_original_and_requires_real_publisher_outcome(self):
         grant = self.grant
