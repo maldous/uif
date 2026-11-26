@@ -91,9 +91,46 @@ class CommissionedServiceTest(unittest.TestCase):
         for text in ("After=network-online.target","StartLimitIntervalSec=300s","StartLimitBurst=3",
                      "User=user","Group=user","ExecStart="+STAGE+"/venv/bin/python3.12 -I -S -B ",
                      "CapabilityBoundingSet=\nAmbientCapabilities=\n","NoNewPrivileges=yes",
-                     "Restart=on-failure","RestartPreventExitStatus=78","KillSignal=SIGTERM"):
+                     "Restart=on-failure","RestartSec=110s","RestartPreventExitStatus=78","KillSignal=SIGTERM"):
             self.assertIn(text,out)
         self.assertNotIn("ExecStart=!",out)
+    def test_restart_spacing_preserves_recovery_and_manual_burst_limit(self):
+        # Model systemd's anchored start-limit window. A refused automatic
+        # start does not leave another automatic attempt queued.
+        unit = normal.render_normal_dropin(STAGE).decode()
+        fields = dict(line.split("=", 1) for line in unit.splitlines() if "=" in line)
+        window = int(fields["StartLimitIntervalSec"].removesuffix("s"))
+        burst = int(fields["StartLimitBurst"])
+        restart = int(fields["RestartSec"].removesuffix("s"))
+        self.assertGreater(burst * restart, window)
+
+        def limiter():
+            begin, count = None, 0
+            def allowed(now):
+                nonlocal begin, count
+                if begin is None or now - begin > window:
+                    begin, count = now, 0
+                count += 1
+                return count <= burst
+            return allowed
+
+        def recover(delay, outage):
+            allowed = limiter()
+            for now in range(0, 2 * outage, delay):
+                if not allowed(now):
+                    return None
+                if now >= outage:
+                    return now
+            return None
+
+        # The previous 20-second setting latched before recovery. The revised
+        # unit still attempts automatically beyond a five-minute outage.
+        self.assertIsNone(recover(20, 350))
+        self.assertEqual(recover(restart, 350), 440)
+        manual = limiter()
+        self.assertEqual([manual(now) for now in (0, 1, 2, 3, 301)],
+                         [True, True, True, False, True])
+
     def test_compiled_subprocess_without_installed_commission_fails_permanently(self):
         raw=self.build((HEAD,TREE))
         compile(raw,"compiled","exec")
