@@ -41,9 +41,10 @@ implementation, evidence and the applicable authorization boundaries.
 
 ## Dual-orchestrator issue delivery
 
-Morgan and Stokowski are independent peers. Each can carry an eligible issue
-from claim through verified outcome and refill without the other peer, the
-initiating Dot, or a chat session. The same shared authority fences both
+Morgan and Stokowski are designed as independent peers. In normal operation,
+each must be able to carry an eligible issue from claim through verified
+outcome and refill without the other peer, the initiating Dot, or a chat
+session. The same shared authority fences both
 lanes. A peer outage does not block disjoint work with reachable authority
 and actual project dependencies; it does not transfer claims. Recover or
 transfer any existing claim through its current fence before a successor
@@ -86,8 +87,10 @@ itself settle either peer's claim. The native UIF consumer expects an exact
 publisher outcome and an authenticated completion for that original. The
 publisher-side bridge must connect its existing canonical merge receipt to
 the original UIF handoff, current claim fence and publication operation
-under the existing roles. A test-injected outcome, merged PR, staged
-bundle or provisional refill report does not prove unattended delivery.
+under the existing roles. The existing authority control role records the
+completion for that same fenced outcome; publication does not grant control
+authority. A test-injected outcome, merged PR, staged bundle or provisional
+refill report does not prove unattended delivery.
 
 ## Commissioning and routine restarts
 
