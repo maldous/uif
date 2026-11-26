@@ -36,6 +36,12 @@ PROFILES = {
         "c292384551558da7766d6a107dfc2c00dfd589bfa01e622b5c326e2cf26a9f1a",
         "170f0d65ddc957f3704b0ecfb1438b8d814e870ceca7734e4a6b0d74087596b4",
         "tools/delivery/offmenu_native_upgrade_ingress.py"),
+    "offmenu-v2": Profile(
+        Path("/home/user/src/offmenu-publisher-preparation-20261125-a1/ingress-release-fixed-v2-verifier-a1"),
+        Path("/usr/local/lib"), "offmenu-native-upgrade-v2",
+        "1208a7d41aa5b754cd4ced82ff18f5aadbb0de758202a13bb73adcd76bfccae4",
+        "e9a593ab451b3f964d0596c0b2b7d0d4a53f08ad8447cac49bc76ac6b5d9e599",
+        "tools/delivery/offmenu_native_upgrade_ingress.py"),
 }
 
 
