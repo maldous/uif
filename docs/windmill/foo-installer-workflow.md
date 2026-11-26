@@ -95,6 +95,30 @@ If an owner reference, callable action, or original receipt cannot be verified,
 record the exact missing item and keep unrelated authorized work moving. This
 section links existing actions; it creates no role, approval step, or bypass.
 
+### Retain the inputs for the next recovery
+
+Keep the complete accepted release and its canonical manifest at a stable
+locator readable by the existing installer. Record each component's exact
+source, artifact digest, and recipe or build receipt. A version-only dependency
+lock, successful CI run with no retained artifact, or upstream-only wheel will
+not reproduce a customized runtime. Retain the native patch source and locked
+web artifacts alongside the package. Keep credential material out of artifacts
+and runbooks; record only the existing protected reference and its authorized
+consumer.
+
+Keep the fixed startup caller, its deployed revision and effective identity
+with the commissioning receipt. Windmill job authentication alone does not
+supply the shared authority control identity. If an acknowledgment is lost,
+read back the same original as control before deciding what remains. Do not
+create a new operation or replay the bind to obtain a receipt.
+
+For an unattended recovery, keep the last accepted release and current
+commissioning reference available to the existing service tooling. A service
+restart should use that recorded state, not ask an agent to rediscover it.
+Record the first missing input or failed check separately from a provider
+hold. Offline interface checks and receipt tests help diagnose recovery but
+do not replace the live process and original-effect readbacks above.
+
 ## Forward the protected application release
 
 1. Keep one accountable, authenticated release owner on the existing
