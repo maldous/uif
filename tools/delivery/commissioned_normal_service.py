@@ -29,7 +29,9 @@ def render_normal_dropin(stage):
         "NotifyAccess=main\n"
         "ExecStart=\n"
         f"ExecStart={stage}/venv/bin/python3.12 -I -S -B {stage}/launch.py\n"
-        "Restart=on-failure\nRestartSec=20s\nRestartPreventExitStatus=78\n"
+        # Preserve the manual burst limit without self-latching auto-recovery:
+        # even immediate repeated failures space the fourth start past 300s.
+        "Restart=on-failure\nRestartSec=110s\nRestartPreventExitStatus=78\n"
         "KillSignal=SIGTERM\nTimeoutStopSec=90s\n"
     ).encode()
 
