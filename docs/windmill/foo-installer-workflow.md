@@ -54,6 +54,35 @@ existing boundaries; it adds no approval or runtime condition.
   maintenance carrier, create-only verifier readback, staged archive nor
   source approval supplies the independent application acceptance.
 
+## Forward the protected application release
+
+1. Keep one accountable, authenticated release owner on the existing
+   protected application route. Use the accepted source head/tree and the
+   actual owner and publisher roles; a reviewer must be independent of both
+   the owner and source author. Reuse that recognized review and existing
+   admission, not another approval of the same scope.
+2. Reserve one immutable application original to the reviewed source and
+   authenticated evidence for each input's source, role, digest and approved
+   custody. The verified owner supplies the exact preflight, current
+   quiescence, existing lock custody and recovery preimages. A tool
+   identity, staged file, source review or caller assertion cannot supply
+   these facts.
+3. Check the original and its fixed destination, then prepare the package
+   once under that original, using the existing protected owner-local or
+   split-role composition as applicable. Keep snapshots and packet bytes
+   in their approved custody. Pass only the allowed digest receipt to
+   operators outside that custody. Do not reuse a verifier provisioning
+   receipt or its operation for an application.
+4. Check the prepared receipt and bind its resulting package digest, the
+   reviewed verifier release and the exact protected request to the same
+   original through existing admission. Perform only that admitted
+   application operation. If preparation or commit is interrupted, observe
+   the same original and compare its retained intent, effects and canonical
+   completion. Preserve evidence and fix forward through the established
+   owner path; do not create a new original, redo the review, or repeat the
+   effect to manufacture a successful receipt. A canonical stopped install
+   and subsequent activated runtime are separately recorded outcomes.
+
 ## Verify safely after each actual effect
 
 Keep staged, provisioned verifier, installed application, service active and
@@ -82,3 +111,12 @@ The [original stage](https://windmill.aldous.info/run/01a21934-f7a3-4e28-38a2-f5
 and [terminal readback](https://windmill.aldous.info/run/01a21935-3b09-1367-6af1-a62813c5f56c?workspace=foo)
 establish that staged closure only. They are not an installed V2 receipt,
 application acceptance or a current release selection.
+
+Later independent [installed shelf readback](https://windmill.aldous.info/run/01a2193c-5eff-7d43-cb2b-e7a3fd9e1932?workspace=foo)
+verified both 176-member root-controlled shelves and the unchanged V1, with
+the exact V2 release digest. A separate [loader readback](https://windmill.aldous.info/run/01a2193d-ecb1-caf1-0c48-294c69b39097?workspace=foo)
+verified the expected V2 module origins and dependency resources without
+application effects. [Installed module pin readback](https://windmill.aldous.info/run/01a21942-9923-5a74-5b09-f5f9f3f33aed?workspace=foo)
+matched the selected application-preparation and upgrade modules. These are
+dated installed **verifier** and compatibility facts, not an application
+packet, acceptance, replacement receipt, or normal BAU verification.
