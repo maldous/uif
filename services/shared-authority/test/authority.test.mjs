@@ -1468,3 +1468,36 @@ test('Gemma recovery refuses modified durable settlement fact rather than exposi
     /original_provider_result_changed/);
   assert.equal(x.calls.length, 1);
 });
+
+test('normal startup bind reconciles the same authenticated original without rebinding', async () => {
+  const f = fixture();
+  const { coordinator_epoch, installation_sha256 } = await f.resume().then(() =>
+    f.call('control', 'status', {}));
+  const body = {
+    request_id: 'normal-commission-fixture',
+    unit: 'stokowski-foo.service',
+    stage: 'fixture-normal-release',
+    session_id: f.peers.native.session_id,
+    coordinator_epoch,
+    valid_until: start + 300,
+    evidence_sha256: hex('3'),
+  };
+  const read = { unit: body.unit, stage: body.stage, nonce: 'fresh-start-challenge' };
+  await assert.rejects(f.call('native', 'startup/bind', body), /peer_role_not_granted/);
+  await assert.rejects(f.call('native', 'startup/read', read), /startup_not_bound/);
+  // Discard the first response as if the caller lost its acknowledgement.
+  await f.call('control', 'startup/bind', body);
+  f.a = f.restart();
+  const original = { installation_sha256, session_id: f.peers.control.session_id,
+    request_id: body.request_id };
+  const receipt = { request_id: body.request_id, unit: body.unit, stage: body.stage };
+  await assert.rejects(f.call('native', 'transition/original', original), /original_owner_required/);
+  assert.deepEqual(await f.call('control', 'transition/original', original), receipt);
+  await assert.rejects(f.call('control', 'startup/bind',
+    { ...body, evidence_sha256: hex('4') }), /original|conflict/);
+  const reply = await f.call('native', 'startup/read', read);
+  assert.equal(reply.nonce, read.nonce);
+  assert.equal(reply.session_id, body.session_id);
+  assert.equal(reply.coordinator_epoch, coordinator_epoch);
+  assert.equal(reply.expires_at, start + 5);
+});
