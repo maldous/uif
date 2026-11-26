@@ -60,11 +60,11 @@ class NativeReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(PermissionError, "SOURCE"):
             self.bind(canonical, self.fixed._replace(tree="f"*40))
 
-    def test_fixed_343_source_pair_rejects_340_and_mixed_pairs(self):
-        head = "220a219aea0328a588d1053103ba17de5ecaff80"
-        tree = "5d7a4fbd6f6136fc15f45bb8dfcd5c417922ffd1"
-        old_head = "ce5b0943f4c8d4e9b110ac1c5f864043e4b486b7"
-        old_tree = "42abc1cbf160faf8744b2ee8ca6db0b4f555aeb1"
+    def test_fixed_344_source_pair_rejects_343_and_mixed_pairs(self):
+        head = "f40db673ac8d1c39d6b32146198210a09b6ef309"
+        tree = "1880f68de14946f5dd66fe231ae943e2abb77598"
+        old_head = "220a219aea0328a588d1053103ba17de5ecaff80"
+        old_tree = "5d7a4fbd6f6136fc15f45bb8dfcd5c417922ffd1"
         self.assertEqual((head, tree), (native.OFFMENU_SOURCE, native.OFFMENU_TREE))
         for bad_head, bad_tree in ((old_head, old_tree), (head, old_tree), (old_head, tree)):
             with self.subTest(head=bad_head, tree=bad_tree):
