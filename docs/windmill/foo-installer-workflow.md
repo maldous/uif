@@ -83,11 +83,13 @@ Use the existing release handoff, recording its current callable actions and rec
    Bind the installed unit, stage, native session and epoch to the original
    commissioning evidence and validity. Record the original receipt. An
    Access identity in policy is not a verified callable control runtime.
-   Subsequent starts use fresh automatic native receipts, not new manual
-   authorizations or the consumed guarded-idle marker.
+   While the binding is current, unexpired and not stopped, subsequent starts
+   obtain fresh native receipts without new manual authorization or reuse of
+   the consumed guarded-idle marker.
 4. **Read back normal operation.** Verify the installed revision, process and
    authenticated startup result, then exercise unattended restart and the
-   separately authorized work lifecycle. A running process without authenticated startup proof is not dispatch-ready.
+   separately authorized work lifecycle. A running process without
+   authenticated startup proof is not dispatch-ready.
 
 If an owner reference, callable action, or original receipt cannot be verified,
 record the exact missing item and keep unrelated authorized work moving. This
