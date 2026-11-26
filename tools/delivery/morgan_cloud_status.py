@@ -31,7 +31,8 @@ def _unique_pairs(pairs):
     return result
 
 
-def observe():
+def _observe_authenticated():
+    """Existing authenticated readback; trusted in-process callers only."""
     placeholders = tuple(os.environ.get(key) for key in SECRET_KEYS)
     if any(type(value) is not str or not 0 < len(value) <= 1024 or
            any(not 33 <= ord(char) <= 126 for char in value) for value in placeholders):
@@ -69,6 +70,11 @@ def observe():
             type(result.get("stopped")) is not bool or
             type(result.get("coordinator_epoch")) is not int or result["coordinator_epoch"] <= 0):
         raise StatusUnavailable("Morgan Cloud status identity or response shape not verified")
+    return result
+
+
+def observe():
+    result = _observe_authenticated()
     return {key: result[key] for key in ("role", "stopped", "coordinator_epoch")}
 
 
