@@ -39,6 +39,56 @@ implementation, evidence and the applicable authorization boundaries.
   unresolved operations and next eligible step privately in their established
   systems; do not create a second queue.
 
+## Dual-orchestrator issue delivery
+
+Morgan and Stokowski are independent peers. Each can carry an eligible issue
+from claim through verified outcome and refill without the other peer, the
+initiating Dot, or a chat session. The same shared authority fences both
+lanes. A peer outage does not block disjoint work with reachable authority
+and actual project dependencies; it does not transfer claims. Recover or
+transfer any existing claim through its current fence before a successor
+can write. Children contribute bounded subtasks under their current owner,
+not additional issue claims. This map adds no queue, approval or rights.
+
+| Step | Morgan and cloud collaborators | Stokowski and Foo workers | Shared authority and evidence |
+| --- | --- | --- | --- |
+| Own and route | Morgan claims eligible cloud work and delegates named, disjoint subtasks. | Stokowski claims eligible native work only under the selected project and currently approved free routes. | Use native Linear intake; acquire one atomic claim per workspace and immutable issue UUID. Pin project, repo, source and current owner/epoch/generation. A move or rename does not create a fresh claim. |
+| Implement and check | Cloud collaborators work in isolated paths or worktrees within the admitted scope and return their exact source and receipts to Morgan. | Native workers use their isolated worktrees and qualified account/model; deterministic Foo checks use the exact published branch when applicable. | Each writer integrates its repo's own current develop before work and verifies it is still an ancestor before committing. Reserve model use atomically; retain checkpoints and original effect IDs. |
+| Review | Route the exact cloud candidate to the existing independent reviewer. Do not accept a contributor's own work. | Route the exact native candidate to the existing independent reviewer. Stokowski coordinates, but its implementation worker does not self-accept. | Bind verdict and required checks to exact source/base/tree and intended output. A changed candidate needs the existing applicable review, not duplicate approval of unchanged work. |
+| Merge | The existing sole source-integration writer merges the exact cloud candidate if authorized for that project. | The same project integration rule applies to native candidates; a native worker or its Foo access does not acquire merge authority. | Validate the current claim at the destination, record intent, and verify the exact merged revision. Source merge is not artifact acceptance or deployment. |
+| Deploy or publish | Reach the existing release owner and authorized product publisher or installer. Use only the project's actual supported destination. | Follow the same roles and boundaries; the Windmill carrier is transport, not package acceptance or publisher identity. | When the unit requires a release, use the [exact-output handoff](#release-handoff-and-status). Bind the reviewed artifact, destination and original; read back installation and publication separately where both apply. |
+| Verify and refill | Morgan records the evidenced outcome, releases or reconciles the claim and routes the next eligible cloud issue. | Stokowski records the evidenced outcome, releases or reconciles the claim and refills native capacity. | Verify the original destination effect and durable terminal outcome before closing it. Preserve last accepted results and pending liabilities; refill only currently eligible work under existing fences and holds. |
+
+**Cross-peer acceptance:** With both peers active, demonstrate concurrent
+delivery of distinct eligible issues, including a Morgan collaborative
+subtask, and automatic refill from both lanes. Race the same workspace/issue
+UUID through both peers, including during a project move: at most one claim
+and one applicable reservation, with the losing peer denied at effect
+receivers. Then take each peer out of service in turn and show the remaining
+peer continues and refills disjoint eligible work without replaying the
+unavailable peer's originals. Use the existing detached and live scope
+limits in [UIF-1313](https://linear.app/maldous/issue/UIF-1313).
+
+**Recovery:** On exhaustion or ambiguous cost, hold only affected inference
+and checkpoint; continue independent authorized deterministic work. On a
+lost acknowledgment, verify the same original against destination readback
+and the existing recovery journal; never resubmit, merge again or close
+the issue to repair uncertainty. If Foo/MCP is unavailable, continue
+eligible cloud work through the independently reachable authority and
+actual project dependencies; use the existing sustained outage conditions
+before transferring ownership. On shared authority loss, hold affected
+claims and effects. Reconstruct the same scope and retained attempts,
+verify the successor and current epoch before a handoff, and resume
+only when fresh evidence permits. Explicit stops and project holds survive.
+
+**Current integration gap:** A verified OffMenu source merge does not by
+itself settle either peer's claim. The native UIF consumer expects an exact
+publisher outcome and an authenticated completion for that original. The
+publisher-side bridge must connect its existing canonical merge receipt to
+the original UIF handoff, current claim fence and publication operation
+under the existing roles. A test-injected outcome, merged PR, staged
+bundle or provisional refill report does not prove unattended delivery.
+
 ## Commissioning and routine restarts
 
 The [Foo installer workflow](../windmill/foo-installer-workflow.md#commission-the-normal-stokowski-release)
