@@ -50,9 +50,12 @@ logical Morgan lifecycle appoints/reconstructs failed coordinator/project
 executions through atomic epochs and effect fences. Native Linear is sole
 intake. The shared election/claim authority must remain reachable independently
 of Foo/MCP so eligible cloud work continues through actual project dependencies.
-The off-Foo authority and independent scheduling/session-control adapters are
-currently unimplemented/unqualified; local source tests are not deployment proof.
-Do not select a storage platform/provider or invent an installed endpoint here.
+Use the contract's [release handoff and status vocabulary](docs/operations/business-as-usual.md#release-handoff-and-status)
+to distinguish a prepared patch, a staged revision, supervised idle, verified
+normal runtime and verified BAU. An off-Foo authority readback is not proof that
+the durable Morgan runtime or unattended coordination is qualified. Report the
+verified original receipt and installed revision without credential detail; do
+not invent runtime bindings or infer deployment from source tests.
 
 Foo/MCP ownership-changing failover uses a configurable default 15-minute
 sustained failure grace with multiple qualified probes and healthy-probe reset.
