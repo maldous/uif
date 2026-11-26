@@ -39,6 +39,38 @@ implementation, evidence and the applicable authorization boundaries.
   unresolved operations and next eligible step privately in their established
   systems; do not create a second queue.
 
+## Commissioning and routine restarts
+
+An authorized normal release is commissioned once for the exact installed
+artifact, target service and allowed operating mode. Keep the independently
+accepted release and same-original installation receipt in existing custody.
+A bootstrap or guarded-idle start does not commission a normal release.
+
+The normal service manager starts the commissioned runtime on boot and
+retries unexpected exits with a bounded restart policy. Routine starts do
+not consume, refresh or reuse the one-shot bootstrap marker or ask an
+operator to approve the same unchanged release again. Explicit stops remain
+effective across restarts and reboots. A changed release or operating scope
+follows the existing release procedure. Restart policy must not repeatedly
+retry a refused or uncommissioned artifact.
+
+Select the normal unit profile only after the existing installer has
+verified the complete immutable release and the effective unit. In
+particular, preserve its authorized credential input and effective service
+identity; verify inherited conditions and hooks rather than assuming a
+drop-in replaces them. Ordinary process stop and durable boot disablement
+are different; use the existing durable control for the intended scope.
+An active unit before the authenticated startup challenge proves a process
+only, not an admitted scheduler.
+
+Process health is separate from permission to take work. The restarted
+runtime joins the existing shared authority with its approved identity and
+reconciles retained work and reservations against their original receipts
+before opening new intake for the affected scope. If authentication,
+coordination, prior effects or no-added-cost capacity cannot be verified,
+the runtime stays observable and holds the affected effects; it does not
+create fresh originals, take a conflicting claim or fall back to paid use.
+
 ## No paid fallback; automatic recovery
 
 Before each model dispatch, verify the exact approved provider/client/account,
@@ -92,6 +124,14 @@ Demonstrate in the authorized target, with durable original receipts and readbac
 
 OffMenu is the first rollout project. Circular Quay remains on its existing
 hold; this contract does not resume it or extend scope to other projects.
+For a commissioned restart, exercise boot and one unexpected termination
+on the exact installed release. Verify a new manager invocation, the same
+approved release and role, preserved stop state and observed reconciliation
+before new work. Repeat with shared authority or all eligible free routes
+unavailable: the process must stay observable, with no work or paid fallback
+through the affected scope. A change to the observed PID alone is not this
+proof.
+
 Documentation, passing offline tests, a merged PR, provider discovery, a
 started process, or a single successful job do not establish unattended BAU.
 This definition does not authorize activation, installation, new credentials,

@@ -318,6 +318,8 @@ class NativeComposition:
         evidence = path / '.git/uif-original-effects'
         require(not (evidence / (key + '.receiving')).exists() or (evidence / (key + '.received')).exists(),
                 'authority_original_handoff_pending')
+        require(not (evidence / (key + '.settled')).exists() or (evidence / (key + '.released')).exists(),
+                'authority_original_release_pending')
         self._first_workspace(path, grant, prior)
         claim = self.remote.acquire(grant, record['attempt'])
         self._seen_fences[issue.id] = claim.lease.fence
@@ -666,16 +668,16 @@ class NativeComposition:
         for issue_id, item in self.installation()['assignments'].items():
             if issue_id in native_owner.running or self._receiving_after.get(issue_id, 0) > time.monotonic():
                 continue
-            grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
-            path = Path(item['workspace_binding']['path'])
-            key = grant.claim(self.remote.identity).request_id
-            pending = path / '.git/uif-original-effects' / (key + '.receiving')
-            if not pending.is_file() or pending.with_suffix('.received').exists():
-                continue
-            # This is a backoff for one already-journaled original. The
-            # existing native reconciliation tick remains its sole scheduler.
-            self._receiving_after[issue_id] = time.monotonic() + 30
             try:
+                grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
+                path = Path(item['workspace_binding']['path'])
+                key = grant.claim(self.remote.identity).request_id
+                pending = path / '.git/uif-original-effects' / (key + '.receiving')
+                if not pending.is_file() or pending.with_suffix('.received').exists():
+                    continue
+                # This is a backoff for one already-journaled original. The
+                # existing native reconciliation tick remains its sole scheduler.
+                self._receiving_after[issue_id] = time.monotonic() + 30
                 require(pending == pending.resolve(strict=True), 'authority_pending_handoff_path')
                 intent = decode(pending.read_bytes(), limit=8192)
                 current = self.remote.read_claim('OffMenu', intent['attempt_id'], True)
@@ -745,13 +747,13 @@ class NativeComposition:
         for issue_id, item in config['assignments'].items():
             if issue_id in native_owner.running:
                 continue
-            grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
-            candidate = Path(item['workspace_binding']['path'])
-            require(candidate.parent == Path(config['workspace_root']) and candidate == candidate.resolve(),
-                    'authority_completion_workspace')
             try:
+                grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
+                candidate = Path(item['workspace_binding']['path'])
+                require(candidate.parent == Path(config['workspace_root']) and candidate == candidate.resolve(),
+                        'authority_completion_workspace')
                 self.try_release(grant, candidate)
-            except (OSError, Hold):
+            except (OSError, ValueError, KeyError, RuntimeError):
                 continue
 
     def current(self, issue_id):
@@ -1131,13 +1133,15 @@ def install_sinks(orchestration, composition):
 
     @wraps(original_reconcile)
     async def reconcile(native_owner, *args, **kwargs):
-        result = await original_reconcile(native_owner, *args, **kwargs)
         try:
             await composition.receive_pending(native_owner)
+        except (OSError, Hold):
+            orchestration.logger.warning('Native shared handoff observation unavailable')
+        try:
             await asyncio.to_thread(composition.receive_late_completions, native_owner)
         except (OSError, Hold):
             orchestration.logger.warning('Native shared completion observation unavailable')
-        return result
+        return await original_reconcile(native_owner, *args, **kwargs)
 
     owner._reconcile = reconcile
     slots['_publication_preflight'] = preflight

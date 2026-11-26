@@ -18,11 +18,14 @@ ORIGINAL_MAIN = '''if __name__ == "__main__":
     guarded_staged_entry()'''
 ORIGINAL_CONFIG = '''    configure(runner, orchestrator, publication,
               policy=Path('''
+EXACT_LEGACY_MARKER = '''    if not _GuardedMarker.is_file():
+        raise SystemExit("Stokowski activation is held; installed binding is parked.")'''
 ORIGINAL_GUARD = '''    if not _guarded_startup_authorized(startup_binding, startup_verifier):
         raise SystemExit("Stokowski normal startup is held; owner-scoped shared authority is unavailable.")'''
 
 
-def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_pin, native_pin, turn_pin):
+def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_pin, native_pin, turn_pin,
+            *, commissioned_source=None):
     if sha256(source).hexdigest() != PREIMAGE:
         raise ValueError('Unrecognized parked launcher bytes')
     if not re.fullmatch(r'/opt/uif-stokowski/[a-z0-9][a-z0-9.-]{1,90}', stage) or stage == OLD_STAGE:
@@ -44,7 +47,7 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
     src = src.replace(verifier, 'def _guarded_startup_authorized(binding, verify, expected_state):')
     src = src.replace(receipt_state, receipt_state.replace("'mounted'", 'expected_state'))
     src = src.replace(entry, entry.replace('startup_verifier=None', 'startup_verifier=None, idle_reason=None'))
-    src = src.replace(ORIGINAL_GUARD, '''    expected_state = 'stopped_idle' if idle_reason is not None else 'mounted'
+    legacy_guard = '''    expected_state = 'stopped_idle' if idle_reason is not None else 'mounted'
     if idle_reason is not None:
         import stat
         marker = _GuardedMarker.lstat()
@@ -55,14 +58,77 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
         raise SystemExit(f"Stokowski {mode} startup is held; owner-scoped shared authority is unavailable.")
     if idle_reason is not None:
         from uif.stokowski_cloudflare.launcher import serve_supervised_idle
-        return serve_supervised_idle(idle_reason)''')
+        return serve_supervised_idle(idle_reason)'''
+    if commissioned_source is None:
+        guard = legacy_guard
+        stage_argument = "_GuardedMarker.parent.name"
+        adapter_check = '''        if _Member.resolve() != _Member or _StartupHash.sha256(_Member.read_bytes()).hexdigest() != _Pin:
+            raise SystemExit("Installed native authority adapter differs from the reviewed pin")'''
+        entry_pins = '''    if any(arg.partition("=")[0] == _GuardedAdminFlag for arg in _GuardedArgv[1:]) or not _GuardedMarker.is_file():
+        guarded_staged_entry()
+'''
+    else:
+        from commissioned_normal_service import normal_entry_pins
+        entry_pins = normal_entry_pins(stage, *commissioned_source)
+        if src.count(EXACT_LEGACY_MARKER) != 2:
+            raise ValueError('Unrecognized guarded legacy marker sites')
+        src = src.replace(EXACT_LEGACY_MARKER, '    _VerifyCommissionedSelection()')
+        src = src.replace('# The final marker metadata read can itself block past the deadline.',
+                          '# The final commissioned selection read can itself block past the deadline.')
+        stage_argument = repr(Path(stage).name)
+        adapter_check = '''        try:
+            if _StartupHash.sha256(_CRaw(_Member, 4*1024*1024)).hexdigest() != _Pin:
+                raise ValueError("installed adapter pin")
+        except (OSError, ValueError):
+            print("Stokowski commissioned normal adapter is not verified.", file=_StartupSys.stderr)
+            raise SystemExit(78) from None'''
+        guard = '''    if idle_reason is not None:
+        raise SystemExit(78)
+    import sys
+    from uif.handoff_store import Hold
+    from uif.stokowski_cloudflare.launcher import wait_for_normal_authority
+    from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
+
+    def _commissioned_verify():
+        original_error = None
+
+        def observe(request):
+            nonlocal original_error
+            try:
+                return startup_verifier(request)
+            except Exception as error:
+                original_error = error
+                raise
+
+        try:
+            authorized = _guarded_startup_authorized(startup_binding, observe, 'mounted')
+        except Exception as error:
+            if error is not original_error:
+                raise
+            authorized = False
+        if original_error is None:
+            return authorized is True
+        if isinstance(original_error, AuthorityUnavailable):
+            return False
+        if isinstance(original_error, Hold) and len(original_error.args) == 1:
+            reason = original_error.args[0]
+            if type(reason) is str and (
+                    reason in ('authority_start_expired', 'authority_http_401', 'authority_http_403',
+                               'authority_http_408', 'authority_http_409', 'authority_http_429')
+                    or reason.startswith('authority_http_5') and len(reason) == 18
+                    and reason[-3:].isdigit()):
+                return False
+        print("Stokowski commissioned normal authority configuration is not verified.",
+              file=sys.stderr)
+        raise SystemExit(78) from None
+
+    wait_for_normal_authority(_commissioned_verify)'''
+    src = src.replace(ORIGINAL_GUARD, guard)
     # Isolated mode (-I -S -B) remains mandatory even before importing the adapter.
     # The installed package tree and interpreter are independently pinned by the
     # service installer; verify new trusted adapter members prior to import.
     return src.replace(ORIGINAL_MAIN, f'''if __name__ == "__main__":
-    if any(arg.partition("=")[0] == _GuardedAdminFlag for arg in _GuardedArgv[1:]) or not _GuardedMarker.is_file():
-        guarded_staged_entry()
-    if not (_GuardedFlags.isolated and _GuardedFlags.no_site and _GuardedFlags.dont_write_bytecode):
+{entry_pins}    if not (_GuardedFlags.isolated and _GuardedFlags.no_site and _GuardedFlags.dont_write_bytecode):
         raise SystemExit("Native authority requires the isolated installed interpreter")
     import hashlib as _StartupHash, sys as _StartupSys
     _Site = _GuardedPath({stage!r}) / "venv/lib/python3.12/site-packages"
@@ -70,13 +136,12 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
                          ("remote_source", {source_pin!r}), ("native", {native_pin!r}),
                          ("turn", {turn_pin!r}), ("launcher", {launcher_pin!r})):
         _Member = _Site / "uif/stokowski_cloudflare" / (_Name + ".py")
-        if _Member.resolve() != _Member or _StartupHash.sha256(_Member.read_bytes()).hexdigest() != _Pin:
-            raise SystemExit("Installed native authority adapter differs from the reviewed pin")
+{adapter_check}
     _StartupSys.path.insert(0, str(_Site))
     from uif.stokowski_cloudflare.native_composition import load_guarded_startup as _Load, install_sinks as _NativeSinks
     _RemoteComposition, _StartupArgs = _Load(
         _GuardedPath({stage!r}) / "selector-v1/remote-authority.json",
-        _GuardedStartUnit, _GuardedMarker.parent.name,
+        _GuardedStartUnit, {stage_argument},
     )
     guarded_staged_entry(**_StartupArgs)''').encode()
 
@@ -85,9 +150,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for arg in ('fixture', 'stage', 'launcher_pin', 'composition_pin', 'transport_pin', 'source_pin', 'native_pin', 'turn_pin', 'output'):
         parser.add_argument(arg)
+    parser.add_argument('--commissioned-source', nargs=2, metavar=('HEAD', 'TREE'),
+                        help='Select the distinct, approved persistent normal release renderer')
     args = parser.parse_args()
     rendered = compose(Path(args.fixture).read_bytes(), args.stage, args.launcher_pin,
-                       args.composition_pin, args.transport_pin, args.source_pin, args.native_pin, args.turn_pin)
+                       args.composition_pin, args.transport_pin, args.source_pin, args.native_pin, args.turn_pin,
+                       commissioned_source=args.commissioned_source)
     compile(rendered, args.output, 'exec')
     with Path(args.output).open('xb') as stream:
         stream.write(rendered)
