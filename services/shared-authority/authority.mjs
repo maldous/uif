@@ -1116,12 +1116,23 @@ export class Authority {
       const retention = JSON.parse(prior.policy);
       this.bodyReader(peer, op, retention);
       const raw = new Uint8Array(prior.response);
-      const expected = await digest({
-        operation: op,
-        body_sha256: await digestBytes(raw),
-        gateway_receipt: prior.gateway,
-        status: 'verified',
-      });
+      const bodySHA = await digestBytes(raw);
+      let expected;
+      if (r.account?.startsWith('gemma-project:')) {
+        // Separate internal fact namespace: no provider ID is passed off as a
+        // Cloudflare Gateway receipt and no custody/admission fact is granted.
+        const stored = this.row('SELECT body FROM facts WHERE id=?', 'gemma-settlement:' + r.receipt);
+        const fact = stored && JSON.parse(stored.body);
+        need(fact && fact.schema === 'uif.gemma-settlement/1' &&
+          equal(fact.operation, op) && fact.body_sha256 === bodySHA &&
+          fact.status === 'verified' && fact.consumed_requests === 1 && r.amount === 1 &&
+          sha(fact.provider_receipt) && prior.gateway === null, 'original_provider_result_changed');
+        expected = await digest(fact);
+      } else {
+        expected = await digest({
+          operation: op, body_sha256: bodySHA, gateway_receipt: prior.gateway, status: 'verified',
+        });
+      }
       need(raw.length <= 256 * 1024 && expected === r.receipt, 'original_provider_result_changed');
       // Reading/hashing a large result yields. Recheck read authorization at release.
       this.bodyReader(peer, op, retention);
@@ -1734,12 +1745,13 @@ export class Authority {
   // JSON. It authenticates exact project/window/operation and certifies the
   // limit and its coverage. No such issuer or private-data grant is installed.
   async dispatchGemmaPrepared({ operation, attempt, project, prompt, deadline, credential,
-    readQuote }, peer) {
+    readQuote, verifySettlement }, peer) {
     operationShape(this.c, operation);
     need(
       token(attempt) && sha(project) && typeof prompt === 'string' &&
       new TextEncoder().encode(prompt).byteLength <= 4096 && prompt.length > 0 &&
       boundedRequest(deadline) && typeof readQuote === 'function' &&
+      typeof verifySettlement === 'function' &&
       typeof credential === 'string' && /^[!-~]+$/.test(credential),
       'gemma_preparation_unbound',
     );
@@ -1754,9 +1766,17 @@ export class Authority {
       schema: 'uif.gemma-prepared-public-call/1', project, model, attempt, deadline, payload,
     });
     need(payloadSHA === operation.payload_sha256, 'gemma_payload_changed');
+    const issue = issueKey(operation.fence.scope);
+    const retention = this.grant(operation.fence.scope, operation.fence.source, peer).result_retention;
+    const hasSpace = () =>
+      this.row('SELECT COUNT(*) AS n FROM provider_results WHERE issue=?', issue).n <
+        retention.max_retained_results;
     const qualify = (reserved) => {
       const { row, lease } = this.owner(peer, operation.fence);
       const g = this.grant(operation.fence.scope, operation.fence.source, peer);
+      need(retention && g.result_retention && equal(g.result_retention, retention) &&
+        retention.readers.includes(peer.session_id), 'private_original_retention_unbound');
+      need(hasSpace(), 'private_result_storage_bound');
       need(g.allow_provider && row.attempt === attempt && g.attempt_ids.includes(attempt) &&
         deadline <= lease.expires_at && this.clock() < deadline,
       'gemma_attempt_not_current');
@@ -1781,11 +1801,70 @@ export class Authority {
       body: payload,
       signal: AbortSignal.timeout(Math.min(60000, Math.max(1, (deadline - this.clock()) * 1000))),
     });
-    // No result-settlement adapter is installed. Keep this original charged
-    // across ambiguity/restart; the caller cannot send again under a fallback.
-    const response = await this.physical(operation, attempt, account, 1, qualify, outgoing);
-    await response.body?.cancel();
-    throw new Refusal('gemma_original_requires_verified_settlement', 502);
+    // Preparation only. The verifier is supplied by a trusted installed
+    // receiver, never a caller or the provider response on its own.
+    const id = operation.original_id;
+    need(!this.inflight.has(id), 'original_in_flight');
+    this.inflight.add(id);
+    try {
+      const response = await this.physical(operation, attempt, account, 1, qualify, outgoing);
+      if (response.status !== 200) {
+        await response.body?.cancel();
+        throw new Refusal('gemma_original_requires_verified_settlement', 502);
+      }
+      const bytes = await readBytes(response.body, retention.max_response_bytes);
+      const result = json(bytes);
+      const candidate = result?.candidates?.[0];
+      need(token(result?.responseId) && result.modelVersion === model &&
+        Array.isArray(result.candidates) && result.candidates.length === 1 &&
+        candidate?.finishReason === 'STOP' && !result.promptFeedback?.blockReason &&
+        candidate.content?.role === 'model' && Array.isArray(candidate.content.parts) &&
+        candidate.content.parts.length > 0 && candidate.content.parts.every((part) =>
+          part && Object.keys(part).length === 1 && typeof part.text === 'string' && part.text.length > 0),
+        'gemma_original_result_unbound', 502);
+      const bodySHA = await digestBytes(bytes);
+      const subject = { operation_id: operation.original_id, payloadSHA, project, model,
+        responseId: result.responseId, bodySHA };
+      const statementHash = await digest(subject);
+      let proof;
+      try {
+        proof = await verifySettlement(Object.freeze(subject));
+      } catch {
+        throw new Refusal('gemma_original_requires_verified_settlement', 502);
+      }
+      need(proof && proof.statementHash === statementHash && sha(proof.receiptSha256) &&
+        proof.consumedRequests === 1, 'gemma_original_requires_verified_settlement', 502);
+      const fact = { schema: 'uif.gemma-settlement/1', operation, body_sha256: bodySHA,
+        provider_receipt: proof.receiptSha256, status: 'verified', consumed_requests: 1 };
+      const hash = await digest(fact);
+
+      // Preserve the verified one-request charge even when retention consent
+      // changes. Retention and transition are otherwise one private commit.
+      let disposition;
+      this.store.transactionSync(() => {
+        const stored = this.row('SELECT op,state,amount,account FROM effects WHERE id=?', operation.original_id);
+        need(stored?.state === 'sending' && stored.op === canonical(operation) &&
+          stored.amount === 1 && stored.account === account, 'gemma_original_record_changed');
+        const row = this.row('SELECT body FROM grants WHERE issue=?', issue);
+        const current = row && JSON.parse(row.body);
+        const consent = this.commissioned() && this.authorized('grant', issue) &&
+          current && equal(current.source, operation.fence.source) && current.valid_until > this.clock() &&
+          current.result_retention && equal(current.result_retention, retention);
+        disposition = !consent ? 'private_result_grant_changed'
+          : !hasSpace() ? 'private_result_storage_bound' : null;
+        this.put("UPDATE effects SET state='verified',settled_at=?,receipt=? WHERE id=?",
+          this.clock(), hash, operation.original_id);
+        this.put('INSERT INTO facts VALUES (?,?)', 'gemma-settlement:' + hash, canonical(fact));
+        if (!disposition)
+          this.put('INSERT INTO provider_results VALUES (?,?,?,?,?,?,NULL)', operation.original_id,
+            bytes.buffer, null, issue, canonical(retention), bodySHA);
+      });
+      need(!disposition, disposition, disposition === 'private_result_grant_changed' ? 403 : 409);
+      this.bodyReader(peer, operation, retention);
+      return this.providerResponse(bytes, null, hash);
+    } finally {
+      this.inflight.delete(id);
+    }
   }
 
   // Source preparation only: no HTTP route, runtime default or Codex fallback.
