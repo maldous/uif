@@ -59,8 +59,9 @@ and fence a superseded owner before replacement effects.
 
 The authority tracks execution claims, not intake or backlog. Until its runtime
 integration is installed and qualified, allocations remain explicitly disjoint
-under acknowledged owner coordination. The off-Foo adapter remains unimplemented
-in current source/tests; no provider/storage platform is selected by this document.
+under acknowledged owner coordination. The shared authority and native client
+are present in source and tests; their presence does not establish both peers'
+installed, authenticated routes or unattended delivery.
 Once qualified, Foo/MCP outages leave eligible cloud intake, claims, execution,
 review, integration, publication and refill running through that independent
 authority and actual project dependencies. Hold only Foo-dependent or unresolved

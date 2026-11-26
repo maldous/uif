@@ -247,6 +247,43 @@ test('competing peers share one immutable claim and replay returns the bound ori
   );
 });
 
+test('distinct peer claims survive scoped expiry and fence a same-issue race', async () => {
+  const f = fixture();
+  await f.resume();
+  const other = () => ({ ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } });
+  const nativeReq = await f.addGrant(scope, 'native-first', start + 60),
+    morganReq = await f.addGrant(other(), 'morgan-second'),
+    raceReq = await f.addGrant(other(), 'same-issue');
+  const [native, morgan] = await Promise.all([
+    f.call('native', 'claim', nativeReq),
+    f.call('morgan', 'claim', morganReq),
+  ]);
+  assert.equal(native.lease.fence.owner_session, f.peers.native.session_id);
+  assert.equal(morgan.lease.fence.owner_session, f.peers.morgan.session_id);
+  assert.notEqual(native.lease.fence.lease_id, morgan.lease.fence.lease_id);
+  const read = (role, req) => f.call(role, 'claim/read', {
+    project: 'OffMenu', identifier: req.scope.key.issue_id, by_attempt: false,
+  });
+  assert.deepEqual((await read('native', nativeReq)).lease, native.lease);
+  assert.deepEqual((await read('morgan', morganReq)).lease, morgan.lease);
+
+  const roles = ['native', 'morgan'];
+  const competing = roles.map((role) => ({ ...raceReq, request_id: 'same-issue-' + role }));
+  const raced = await Promise.allSettled(roles.map((role, i) => f.call(role, 'claim', competing[i])));
+  assert.equal(raced.filter((r) => r.status === 'fulfilled').length, 1);
+  const winner = raced.findIndex((r) => r.status === 'fulfilled');
+  assert.deepEqual(await f.call(roles[winner], 'claim/observe', competing[winner]), raced[winner].value);
+
+  f.setTime(start + 61);
+  f.a = f.restart();
+  await assert.rejects(read('native', nativeReq), /expired|grant/);
+  assert.deepEqual(await f.call('native', 'claim/observe', nativeReq), native);
+  assert.deepEqual((await read('morgan', morganReq)).lease, morgan.lease);
+  assert.deepEqual((await read(roles[winner], raceReq)).lease, raced[winner].value.lease);
+  assert.equal((await f.call('morgan', 'status', {})).coordinator_epoch, 2);
+  assert.equal(f.calls.length, 0);
+});
+
 test('durable stop survives reconstruction, original claim is observable, no recovered permission', async () => {
   const f = fixture();
   await f.resume();
