@@ -95,3 +95,49 @@ class ShelfProvisionTest(unittest.TestCase):
                          provisioner.manifest_files(raw, profile))
         with self.assertRaisesRegex(RuntimeError, "REVIEWED_SHELF_MANIFEST_MISMATCH"):
             provisioner.manifest_files(raw, profile._replace(release=descriptive))
+
+    def test_side_by_side_profiles_keep_distinct_shelves_and_original_receipts(self):
+        import json
+        v1_operation, v2_operation = "a" * 64, "b" * 64
+        second_stage = self.profile.stage.parent / "second-stage"
+        second_ingress = second_stage / "release" / self.profile.ingress
+        second_ingress.parent.mkdir(parents=True)
+        second_ingress.write_bytes(b"reviewed successor fixture")
+        pins = {self.profile.ingress: digest(second_ingress.read_bytes())}
+        raw = provisioner.encode({"schema": "offmenu-detached-verifier-candidate-v1",
+                                 "files": {key: {"sha256": value} for key, value in pins.items()}})
+        (second_stage / "release-manifest.json").write_bytes(raw)
+        successor = self.profile._replace(stage=second_stage, shelf="test-shelf-v2",
+            release=digest(provisioner.encode(pins)), manifest_sha256=digest(raw))
+        with (patch.object(provisioner, "PROFILES", {"offmenu": self.profile, "offmenu-v2": successor}),
+              patch.object(provisioner.os, "getresuid", return_value=(0, 0, 0)),
+              patch.object(provisioner, "protected_directory", side_effect=lambda p, _:
+                           provisioner.os.open(p, provisioner.os.O_RDONLY | provisioner.os.O_DIRECTORY)),
+              patch.object(provisioner, "verify_installed")):
+            v1 = provisioner.main(["offmenu", v1_operation])
+            v2 = provisioner.main(["offmenu-v2", v2_operation])
+            self.assertEqual(v1, provisioner.main(["offmenu", v1_operation]))
+            self.assertEqual(v2, provisioner.main(["offmenu-v2", v2_operation]))
+            with self.assertRaisesRegex(RuntimeError, "RECONCILIATION"):
+                provisioner.main(["offmenu-v2", v1_operation])
+        self.assertEqual(v1_operation, json.loads((self.parent / ".test-shelf.receipt").read_bytes())["operation_id"])
+        self.assertEqual(v2_operation, json.loads((self.parent / ".test-shelf-v2.receipt").read_bytes())["operation_id"])
+        self.assertEqual(b"reviewed fixture", (self.parent / "test-shelf" / self.profile.ingress).read_bytes())
+        self.assertEqual(b"reviewed successor fixture", (self.parent / "test-shelf-v2" / successor.ingress).read_bytes())
+
+    def test_v2_launcher_uses_independent_leaf_and_live_profile_has_verified_stage_pins(self):
+        import subprocess
+        v1 = provisioner.PROFILES["offmenu"]
+        v2 = provisioner.PROFILES["offmenu-v2"]
+        self.assertEqual(v1.parent, v2.parent)
+        self.assertNotEqual(v1.shelf, v2.shelf)
+        self.assertEqual("offmenu-native-upgrade-v2", v2.shelf)
+        self.assertEqual("1208a7d41aa5b754cd4ced82ff18f5aadbb0de758202a13bb73adcd76bfccae4", v2.release)
+        self.assertEqual("e9a593ab451b3f964d0596c0b2b7d0d4a53f08ad8447cac49bc76ac6b5d9e599", v2.manifest_sha256)
+        launcher = SOURCE / "launch_verifier_shelf_v2.bash"
+        text = launcher.read_text()
+        self.assertIn(digest((SOURCE / "verifier_shelf_provision.py").read_bytes()), text)
+        self.assertIn('/uif-maintenance/verifier_shelf_provision_v2.py', text)
+        self.assertIn('"$descriptor" offmenu-v2 "$1"', text)
+        self.assertEqual(64, subprocess.run(
+            ["/usr/bin/bash", str(launcher), "not-an-original"], check=False).returncode)
