@@ -70,3 +70,75 @@ class NativeReleaseTest(unittest.TestCase):
             with self.subTest(head=bad_head, tree=bad_tree):
                 with self.assertRaisesRegex(PermissionError, "UNQUALIFIED_OFFMENU_SOURCE"):
                     self.bind(None, self.fixed._replace(head=bad_head, tree=bad_tree))
+
+
+class NativePreparationTest(unittest.TestCase):
+    def setUp(self):
+        class Owner:
+            head, tree = native.OFFMENU_SOURCE, native.OFFMENU_TREE
+        class Publisher(Owner):
+            pass
+        class Acceptance(Owner):
+            pass
+        self.owner, self.publisher, self.acceptance = Owner(), Publisher(), Acceptance()
+        self.pins = object()
+        self.original = "a"*64
+        self.receipt = dict(schema="offmenu.owner-local-package-receipt/1",
+                            head=Owner.head, tree=Owner.tree, package_sha256="b"*64,
+                            role_sha256={name: "c"*64 for name in (
+                                "owner_source", "owner_venv", "owner_config",
+                                "publisher", "publisher_config")})
+        self.calls = []
+        self.package = SimpleNamespace(
+            OwnerPackageInputs=Owner, PublisherPackageInput=Publisher,
+            PackageAcceptance=Acceptance, prepare_split_role_package=self.compose)
+
+    def compose(self, operation, **inputs):
+        self.calls.append((operation, inputs))
+        return self.receipt
+
+    def prepare(self, **overrides):
+        inputs = dict(package=self.package, operation=self.original, owner=self.owner,
+                      publisher=self.publisher, config_pins=self.pins,
+                      acceptance=self.acceptance)
+        return native.prepare_fixed_native_package(**dict(inputs, **overrides))
+
+    def test_preparation_delegates_exact_original_and_typed_inputs(self):
+        self.assertEqual(self.prepare(), self.receipt)
+        self.assertEqual(self.calls, [(self.original, dict(
+            owner=self.owner, publisher=self.publisher, config_pins=self.pins,
+            acceptance=self.acceptance))])
+
+    def test_wrong_type_original_and_source_never_compose(self):
+        for role in ("owner", "publisher", "acceptance"):
+            with self.subTest(role=role), self.assertRaises(TypeError):
+                self.prepare(**{role: {"head": native.OFFMENU_SOURCE}})
+        with self.assertRaises(ValueError):
+            self.prepare(operation="not-a-pin")
+        for item in (self.owner, self.publisher, self.acceptance):
+            item.tree = "d"*40
+            with self.assertRaisesRegex(PermissionError, "SOURCE"):
+                self.prepare()
+            item.tree = native.OFFMENU_TREE
+        self.assertEqual(self.calls, [])
+
+    def test_refuses_noncanonical_or_wrong_scope_receipt(self):
+        base = self.receipt
+        for replacement in (
+                {"secret": "not allowed"}, {"head": "d"*40}, {"package_sha256": "bad"},
+                {"role_sha256": {"publisher": "b"*64}}):
+            with self.subTest(keys=tuple(replacement)):
+                self.receipt = dict(base, **replacement)
+                count = len(self.calls)
+                with self.assertRaisesRegex(RuntimeError, "RECEIPT_MISMATCH"):
+                    self.prepare()
+                self.assertEqual(len(self.calls), count+1)
+
+    def test_original_conflict_is_not_retried_or_claimed_complete(self):
+        def already_exists(operation, **inputs):
+            self.calls.append(operation)
+            raise FileExistsError("retained original")
+        self.package.prepare_split_role_package = already_exists
+        with self.assertRaises(FileExistsError):
+            self.prepare()
+        self.assertEqual(self.calls, [self.original])
