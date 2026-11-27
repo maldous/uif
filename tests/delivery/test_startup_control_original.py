@@ -1,9 +1,10 @@
 import unittest
 from dataclasses import replace
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 from uif.handoff_store import Hold, digest
+from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
 from uif.stokowski_cloudflare.startup_control_original import (
-    STARTUP_BIND, TRANSITION_ORIGINAL, StartupBindOriginal, observe_original,
+    STARTUP_BIND, TRANSITION_ORIGINAL, StartupBindOriginal, observe_original, submit_original_attempt,
 )
 
 
@@ -48,3 +49,43 @@ class StartupControlOriginalTests(unittest.TestCase):
         with self.assertRaises(OSError):
             observe_original(self.original, **self.args)
         self.read.assert_called_once()
+
+    def _submit(self):
+        args = {k: v for k, v in self.args.items() if k != 'read'}
+        return submit_original_attempt(self.original, request=self.read, **args)
+
+    def test_submit_exact_original_once(self):
+        self.assertEqual(self._submit(), dict(
+            **self.ack, status='original_acknowledged', native_startup_verified=False))
+        self.read.assert_called_once_with(STARTUP_BIND, self.original.body())
+
+    def test_lost_response_observes_only_exact_original(self):
+        self.read.side_effect = [AuthorityUnavailable('unknown'), self.ack]
+        self.assertFalse(self._submit()['native_startup_verified'])
+        self.assertEqual(self.read.call_args_list, [
+            call(STARTUP_BIND, self.original.body()),
+            call(TRANSITION_ORIGINAL, dict(installation_sha256='a'*64,
+                                           session_id='control-session', request_id='original-bind')),
+        ])
+
+    def test_failed_observation_and_deterministic_rejection_never_resubmit(self):
+        self.read.side_effect = [AuthorityUnavailable('unknown'), None]
+        with self.assertRaisesRegex(AuthorityUnavailable, 'authority_startup_original_outcome_unknown'):
+            self._submit()
+        self.assertEqual(self.read.call_count, 2)
+        self.read.reset_mock(side_effect=True)
+        self.read.side_effect = [AuthorityUnavailable('unknown'), OSError('unavailable')]
+        with self.assertRaisesRegex(AuthorityUnavailable, 'authority_startup_original_outcome_unknown'):
+            self._submit()
+        self.assertEqual(self.read.call_count, 2)
+        self.read.reset_mock(side_effect=True)
+        self.read.side_effect = Hold('authority_http_403')
+        with self.assertRaisesRegex(Hold, 'authority_http_403'):
+            self._submit()
+        self.read.assert_called_once_with(STARTUP_BIND, self.original.body())
+
+    def test_unretained_original_not_submitted(self):
+        self.args['recorded_fingerprint'] = 'f'*64
+        with self.assertRaisesRegex(Hold, 'retained_startup_original_required'):
+            self._submit()
+        self.read.assert_not_called()

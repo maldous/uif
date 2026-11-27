@@ -788,6 +788,21 @@ class NativeComposition:
         _retain_handoff_original(directory, complete.name, wire(intent), 8192)
         return True
 
+    async def reconcile_originals(self, native_owner, logger):
+        """Resume retained UIF originals before the owner's existing reconcile tick.
+
+        The owner supplies its current running-issue view. This callback does not
+        allocate work or replace the owner's scheduler or native phase writers.
+        """
+        try:
+            await self.receive_pending(native_owner)
+        except (OSError, Hold):
+            logger.warning('Native shared handoff observation unavailable')
+        try:
+            await asyncio.to_thread(self.receive_late_completions, native_owner)
+        except (OSError, Hold):
+            logger.warning('Native shared completion observation unavailable')
+
     async def receive_pending(self, native_owner):
         if native_owner.project_name != 'OffMenu':
             return
@@ -1349,14 +1364,7 @@ def install_sinks(orchestration, composition):
 
     @wraps(original_reconcile)
     async def reconcile(native_owner, *args, **kwargs):
-        try:
-            await composition.receive_pending(native_owner)
-        except (OSError, Hold):
-            orchestration.logger.warning('Native shared handoff observation unavailable')
-        try:
-            await asyncio.to_thread(composition.receive_late_completions, native_owner)
-        except (OSError, Hold):
-            orchestration.logger.warning('Native shared completion observation unavailable')
+        await composition.reconcile_originals(native_owner, orchestration.logger)
         return await original_reconcile(native_owner, *args, **kwargs)
 
     owner._reconcile = reconcile

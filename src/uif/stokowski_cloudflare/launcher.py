@@ -100,23 +100,30 @@ async def _start_with_shutdown(owner, start):
     """Connect service signals to native stop and await its drain."""
     loop = asyncio.get_running_loop()
     stop_requested = asyncio.Event()
-    signals = (signal.SIGTERM, signal.SIGINT)
-    for sig in signals:
-        loop.add_signal_handler(sig, stop_requested.set)
-    startup = asyncio.create_task(start(owner))
-    request = asyncio.create_task(stop_requested.wait())
+    installed_signals = []
+    tasks = []
     try:
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, stop_requested.set)
+            installed_signals.append(sig)
+        startup = asyncio.create_task(start(owner))
+        tasks.append(startup)
+        request = asyncio.create_task(stop_requested.wait())
+        tasks.append(request)
         done, _ = await asyncio.wait((startup, request), return_when=asyncio.FIRST_COMPLETED)
         if request in done and not startup.done():
             await owner.stop()
         return await startup
     finally:
-        request.cancel()
-        if not startup.done():
-            startup.cancel()
-        await asyncio.gather(request, startup, return_exceptions=True)
-        for sig in signals:
-            loop.remove_signal_handler(sig)
+        try:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            for sig in reversed(installed_signals):
+                loop.remove_signal_handler(sig)
 
 
 from ..provider_discovery import NormalProviderDiscovery
