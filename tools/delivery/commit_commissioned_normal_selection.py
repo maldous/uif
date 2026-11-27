@@ -22,6 +22,8 @@ class SelectionOriginal:
     approved_normal_selector_sha256: str
     approved_normal_dropin_sha256: str
     effective_original: effective.NormalEffectiveOriginal
+    prior_guarded_conditions: tuple = ()
+    prior_guarded_asserts: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,14 @@ class GuardedEffectivePrior:
     selector_sha256: str
     before_start_monotonic: int
     before_restarts: int
+    conditions: tuple = ()
+    asserts: tuple = ()
+
+
+def _guarded_predicates(rows):
+    return (type(rows) is tuple and len(rows) <= 64
+            and all(type(row) is tuple and tuple(map(type, row)) == (str, bool, bool, str)
+                    for row in rows))
 
 
 def _pin(raw):
@@ -61,7 +71,9 @@ def commit_normal_selection(original, selector, dropin, owner):
                        or guard.hash_pin(original.prior_selector_sha256))
                   and original.prior_guarded_dropin_sha256 == guard.digest(guard.selector_dropin())
                   and original.staged.prior_dropin_sha256 == original.prior_guarded_dropin_sha256
-                  and guard.hash_pin(original.staged.prior_selection_sha256),
+                  and guard.hash_pin(original.staged.prior_selection_sha256)
+                  and _guarded_predicates(original.prior_guarded_conditions)
+                  and _guarded_predicates(original.prior_guarded_asserts),
                   'normal selection first-transition source or authority pins changed')
     stage = normal.check_normal_stage(original.effective_original.stage)
     guard.require(stage == str(guard.STAGES / original.staged.stage_leaf)
@@ -80,7 +92,7 @@ def commit_normal_selection(original, selector, dropin, owner):
                   and selected['release_sha256'] == original.staged.members_sha256,
                   'normal selector not bound to staged exact release')
     staging = guard.encode({'schema': 'uif.foo-normal-runtime-staged/1', **vars(original.staged)})
-    intent = guard.encode({'schema': 'uif.foo-normal-selection-original/1', 'original': asdict(original)})
+    intent = guard.encode({'schema': 'uif.foo-normal-selection-original/2', 'original': asdict(original)})
     receipt = guard.encode({'schema': 'uif.foo-normal-selection-disk-commit/1',
                             'operation_id': original.operation_id,
                             'intent_sha256': guard.digest(intent)})
@@ -91,7 +103,8 @@ def commit_normal_selection(original, selector, dropin, owner):
     guarded_prior = GuardedEffectivePrior(
         normal.UNIT, original.prior_guarded_dropin_sha256, original.staged.prior_selection_sha256,
         original.effective_original.before_start_monotonic,
-        original.effective_original.before_restarts)
+        original.effective_original.before_restarts,
+        original.prior_guarded_conditions, original.prior_guarded_asserts)
 
     with owner.selector_lock():
         def verify_anchors():
