@@ -103,7 +103,7 @@ def _rename_private_noreplace(fd, source, destination, *, error):
         raise OSError(number, error)
 
 
-def _publish_private_original(fd, name, raw, *, prefix):
+def _publish_private_original(fd, name, raw, *, prefix, before_publish=None):
     """Make a complete, fsynced record visible once, with no transient hardlink."""
     temp = prefix + token_hex(16)
     handle = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
@@ -114,6 +114,8 @@ def _publish_private_original(fd, name, raw, *, prefix):
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
+        if before_publish is not None:
+            before_publish()
         _rename_private_noreplace(fd, temp, name, error='authority_waiting_gate_clock_publish')
         os.fsync(fd)
     finally:
