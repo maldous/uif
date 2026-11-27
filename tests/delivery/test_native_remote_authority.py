@@ -405,7 +405,7 @@ class RealCheckoutTest(unittest.TestCase):
         accepted={'binding':{'repo':'maldous/offmenu','base':'develop','kind':'git','scope_sha256':self.grant.scope_sha256,
                          'issue_id':ISSUE,'candidate':head,'branch':'review-fixture'},
                   'accepted_review':{'original':'accepted example'}}
-        receipt=self.c.publisher_handoff(self.path,self.issue,accepted)
+        receipt=self.c.publisher_handoff(self.path,self.issue,accepted).path
         import json
         data=json.loads(receipt.read_text())
         self.assertEqual((data['parent'],data['tree']),(self.base,tree))
@@ -413,6 +413,58 @@ class RealCheckoutTest(unittest.TestCase):
         self.assertEqual(sha256(bundle.read_bytes()).hexdigest(),data['bundle_sha256'])
         self.assertIn(head,self.git('bundle','list-heads',str(bundle)))
         self.assertEqual(self.git('branch','--show-current'),'review-fixture')
+
+    def test_real_git_handoff_uses_one_bounded_digest_for_note_and_outcome(self):
+        self.git('switch', '-c', 'digest-fixture')
+        (self.path/'guide.md').write_text('reviewed candidate\n')
+        self.git('add', 'guide.md')
+        self.git('commit', '-m', 'retained candidate')
+        head = self.git('rev-parse', 'HEAD')
+        claim = NativeClaim('OffMenu', 'review',
+            Lease(replace(FENCE, source=self.grant.source), RECORD.lease.expires_at))
+        self.c.current = lambda _: claim
+        self.c._running.set((self.grant, claim))
+        accepted = {'binding': {'repo': 'maldous/offmenu', 'base': 'develop', 'kind': 'git',
+                    'scope_sha256': self.grant.scope_sha256, 'issue_id': ISSUE,
+                    'candidate': head, 'branch': 'digest-fixture'},
+                    'accepted_review': {'original': 'accepted fixture'}}
+        note = Mock(return_value=True)
+        self.c.linear = note  # Existing receipt/fence pathway tested separately.
+        result = asyncio.run(self.c.send_handoff(self.path, self.issue, accepted))
+        receipt = self.path/'.git/uif-owner-handoffs'/(head + '.json')
+        self.assertEqual(result, sha256(receipt.read_bytes()).hexdigest())
+        self.assertIn('SHA-256 ' + result, note.call_args.args[2]['body'])
+        self.assertRegex(result, '^[a-f0-9]{64}$')
+        receipt.chmod(0o644)
+        note.reset_mock()
+        with self.assertRaisesRegex(Hold, 'receipt_custody'):
+            asyncio.run(self.c.send_handoff(self.path, self.issue, accepted))
+        note.assert_not_called()
+        receipt.chmod(0o600)
+        producer = self.c.publisher_handoff
+
+        def replace_original(*args):
+            original = producer(*args)
+            alternate = receipt.with_suffix('.replacement')
+            alternate.write_bytes(b'different same-owner regular bytes')
+            alternate.chmod(0o600)
+            alternate.replace(receipt)
+            return original
+        self.c.publisher_handoff = replace_original
+        with self.assertRaisesRegex(Hold, 'handoff_bytes_changed'):
+            asyncio.run(self.c.send_handoff(self.path, self.issue, accepted))
+        note.assert_not_called()
+
+        self.c.publisher_handoff = producer
+        receipt.write_bytes(b'x' * (2 * 1024 * 1024 + 1))
+        with self.assertRaisesRegex(Hold, 'receipt_custody'):
+            asyncio.run(self.c.send_handoff(self.path, self.issue, accepted))
+        note.assert_not_called()
+
+        self.c.publisher_handoff = lambda *args: receipt
+        with self.assertRaisesRegex(Hold, 'receipt_target'):
+            asyncio.run(self.c.send_handoff(self.path, self.issue, accepted))
+        note.assert_not_called()
 
     def test_cold_original_review_settlement_uses_verified_git_child(self):
         self.git('switch', '-c', 'review-recovery')
@@ -555,7 +607,7 @@ class RealCheckoutTest(unittest.TestCase):
         native._delivery_authority = lambda name: {'role':'publish'}
         exported = self.path / '.git/owner.fixture'
         exported.write_bytes(b'exact accepted candidate fixture')
-        self.c.send_handoff = AsyncMock(side_effect=[Hold('receiver_unavailable'),exported,exported])
+        self.c.send_handoff = AsyncMock(side_effect=[Hold('receiver_unavailable'),sha256(exported.read_bytes()).hexdigest(), sha256(exported.read_bytes()).hexdigest()])
         self.c.record_settled = Mock()
         self.c.prepare_handoff(self.path, grant, claim, {'run':1}, 'publish')
         original = self.path / '.git/uif-original-effects' / (grant.claim(OWNER).request_id + '.receiving')

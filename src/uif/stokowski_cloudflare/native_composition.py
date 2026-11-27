@@ -10,7 +10,7 @@ import ctypes
 from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from functools import wraps
 from datetime import datetime, timedelta
 from hashlib import sha1, sha256
@@ -90,9 +90,13 @@ def _read_gate_clock(fd, name):
 
 
 def _publish_gate_clock(fd, name, raw):
-    """Make a complete, fsynced record visible once, with no transient hardlink."""
     require(len(raw) <= 8192, 'authority_waiting_gate_clock_custody')
-    temp = '.gate-clock-' + token_hex(16)
+    _publish_private_original(fd, name, raw, prefix='.gate-clock-')
+
+
+def _publish_private_original(fd, name, raw, *, prefix):
+    """Make a complete, fsynced record visible once, with no transient hardlink."""
+    temp = prefix + token_hex(16)
     handle = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                      0o600, dir_fd=fd)
     try:
@@ -113,6 +117,75 @@ def _publish_gate_clock(fd, name, raw):
             os.unlink(temp, dir_fd=fd)
         except FileNotFoundError:
             pass
+
+
+HANDOFF_RECEIPT_LIMIT = 2 * 1024 * 1024
+HANDOFF_BUNDLE_LIMIT = 8 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class _RetainedHandoffOriginal:
+    path: Path
+    producer_sha256: str
+
+
+@contextmanager
+def _handoff_directory(directory):
+    """Open one fixed private owner handoff directory."""
+    require(directory == directory.resolve(strict=True), 'authority_handoff_receipt_directory')
+    fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        root = os.fstat(fd)
+        require(root.st_uid == os.geteuid() and stat.S_IMODE(root.st_mode) == 0o700,
+                'authority_handoff_receipt_directory')
+        yield fd
+        require(_clock_file_identity(root)[:6] == _clock_file_identity(directory.lstat())[:6],
+                'authority_handoff_receipt_directory_changed')
+    finally:
+        os.close(fd)
+
+
+def _retained_handoff_sha(fd, name, limit):
+    """Hash one stable bounded private member without returning its contents."""
+    handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+    with os.fdopen(handle, 'rb') as stream:
+        start = os.fstat(stream.fileno())
+        require(stat.S_ISREG(start.st_mode) and start.st_uid == os.geteuid()
+                and stat.S_IMODE(start.st_mode) == 0o600 and start.st_nlink == 1
+                and 0 < start.st_size <= limit, 'authority_handoff_receipt_custody')
+        raw = stream.read(limit + 1)
+        require(len(raw) == start.st_size and _clock_file_identity(start) ==
+                _clock_file_identity(os.fstat(stream.fileno())) ==
+                _clock_file_identity(os.stat(name, dir_fd=fd, follow_symlinks=False)),
+                'authority_handoff_receipt_changed')
+    return sha256(raw).hexdigest()
+
+
+def _retain_handoff_original(directory, name, raw, limit):
+    """Private producer commitment; verify existing exact bytes on collision."""
+    require(0 < len(raw) <= limit, 'authority_handoff_receipt_custody')
+    directory.mkdir(mode=0o700, exist_ok=True)
+    pin = sha256(raw).hexdigest()
+    with _handoff_directory(directory) as fd:
+        try:
+            _publish_private_original(fd, name, raw, prefix='.owner-handoff-')
+        except FileExistsError:
+            pass  # Reconcile only exact bounded existing bytes.
+        require(_retained_handoff_sha(fd, name, limit) == pin,
+                'authority_original_handoff_bytes_changed')
+        os.fsync(fd)
+    return _RetainedHandoffOriginal(directory / name, pin)
+
+
+def _verify_producer_handoff(original, directory, candidate):
+    require(type(original) is _RetainedHandoffOriginal and type(candidate) is str
+            and re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', candidate)
+            and original.path == directory / (candidate + '.json'),
+            'authority_handoff_receipt_target')
+    with _handoff_directory(directory) as fd:
+        pin = _retained_handoff_sha(fd, original.path.name, HANDOFF_RECEIPT_LIMIT)
+        require(pin == original.producer_sha256, 'authority_original_handoff_bytes_changed')
+    return pin
 
 
 def _verify_fresh_tree(path, head):
@@ -560,7 +633,7 @@ class NativeComposition:
                    'target': spec['publisher_target'], 'issue_id': issue.id, 'candidate': artifact,
                    'candidate_sha256': expected, 'accepted_review': review, 'binding': record['binding'],
                    'review_input_binding_sha256': proof['candidate_sha256'], 'review_output': output}
-        return _preserve(directory, expected + '.json', wire(receipt))
+        return _retain_handoff_original(directory, expected + '.json', wire(receipt), HANDOFF_RECEIPT_LIMIT)
 
     def review_candidate(self, issue_id, record, final_prompt):
         grant, _ = self._running.get()
@@ -618,15 +691,15 @@ class NativeComposition:
             git('bundle', 'create', tmp.name, 'refs/heads/' + binding['branch'], '^' + parent)
             require(Path(tmp.name).stat().st_size <= 8*1024*1024, 'authority_candidate_bundle_size')
             candidate = Path(tmp.name).read_bytes()
-        bundle = _preserve(directory, head + '.bundle', candidate)
+        bundle = _retain_handoff_original(directory, head + '.bundle', candidate, HANDOFF_BUNDLE_LIMIT)
         receipt = {'schema':'uif.native-owner-candidate/1','publisher': publisher,
                    'issue_id':issue.id, 'fence':asdict(claim.lease.fence), 'binding':binding,
                    'accepted_review_sha256':digest(record['accepted_review']), 'candidate':head,
                    'tree':git('rev-parse',head+'^{tree}').decode(), 'parent':parent,
-                   'bundle':bundle.name, 'bundle_sha256':sha256(candidate).hexdigest(),
+                   'bundle':bundle.path.name, 'bundle_sha256':bundle.producer_sha256,
                    'existing_publication_intent':record.get('publication_intent'),
                    'existing_publication_receipt':record.get('publication_receipt')}
-        return _preserve(directory, head + '.json', wire(receipt))
+        return _retain_handoff_original(directory, head + '.json', wire(receipt), HANDOFF_RECEIPT_LIMIT)
 
     def requires_publisher(self, issue_id, selected):
         if selected['binding']['kind'] == 'git':
@@ -649,15 +722,17 @@ class NativeComposition:
         else:
             receipt = await asyncio.to_thread(self.publisher_handoff, path, issue, reviewed)
             candidate = reviewed['binding']['candidate']
+        directory = path / '.git/uif-owner-handoffs'
+        handoff_sha = await asyncio.to_thread(_verify_producer_handoff, receipt, directory, candidate)
         slot = self._slot.set('owner-candidate-handoff')
         try:
             body = ('Existing OffMenu publisher handoff, reviewed candidate ' + candidate
-                    + '. Private receipt at ' + str(receipt) + ', SHA-256 ' + sha256(receipt.read_bytes()).hexdigest()
+                    + '. Private receipt at ' + str(receipt.path) + ', SHA-256 ' + handoff_sha
                     + '. Publication awaits the existing publisher under its original authority.')
             await asyncio.to_thread(self.linear, 'comment', issue.id, {'body': body})
         finally:
             self._slot.reset(slot)
-        return receipt
+        return handoff_sha
 
     def prepare_handoff(self, path, grant, claim, settlement, destination):
         directory = path / '.git/uif-original-effects'
@@ -684,8 +759,7 @@ class NativeComposition:
         require(authority and authority.get('role') == 'publish', 'authority_publisher_role_changed')
         reviewed = await owner._accepted_publication(path, issue, intent['run'], authority)
         if self.requires_publisher(issue.id, reviewed):
-            receipt = await self.send_handoff(path, issue, reviewed)
-            handoff_sha = sha256(receipt.read_bytes()).hexdigest()
+            handoff_sha = await self.send_handoff(path, issue, reviewed)
             outcome = self.installation()['assignments'][issue.id].get('publisher_outcomes', {}).get(handoff_sha)
             if outcome is None:
                 return False
