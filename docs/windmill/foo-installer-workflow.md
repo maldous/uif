@@ -178,6 +178,18 @@ web artifacts alongside the package. Keep credential material out of artifacts
 and runbooks; record only the existing protected reference and its authorized
 consumer.
 
+For the previously retained native core, the read-only
+[`compare_native_shelf.py`](../../tools/delivery/compare_native_shelf.py)
+comparison uses the existing detached native file-map format and an expected
+manifest digest retained independently by the release owner. It observes only
+the fixed native and web shelves in place and returns role counts for missing,
+unexpected and changed members; no member paths or bytes leave custody. A
+missing expected map is held before observation. A matching map proves only
+member identity, not provenance, installation, or runtime acceptance.
+Without the caller's existing issued install writer exclusion, treat this as a
+bounded sequential observation, not an atomic release snapshot. This is
+an optional evidence check for reuse, not a new installer or startup condition.
+
 Keep the fixed startup caller, its deployed revision and effective identity
 with the commissioning receipt. Windmill job authentication alone does not
 supply the shared authority control identity. If an acknowledgment is lost,
