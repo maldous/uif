@@ -135,6 +135,38 @@ If an owner reference, callable action, or original receipt cannot be verified,
 record the exact missing item and keep unrelated authorized work moving. This
 section links existing actions; it creates no role, approval step, or bypass.
 
+### Fix forward when a retained release cannot be reused
+
+A missing or mismatched artifact ends the **reuse** path, not the restoration
+work. Keep the installed state and its receipts intact. The release owner
+switches to clean forward qualification from current accepted source,
+documented native interfaces and independently pinned inputs. Record which
+source or dependency must be recovered or rebuilt and verify the resulting
+complete closure through the existing independent acceptance. Do not bless
+observed bytes as their own provenance or substitute an upstream-only build
+for missing native behavior. If no valid source or dependency can be
+obtained through the existing release route, hold that package scope and
+record the exact source or artifact whose recovery will reopen it. Continue
+preparing the disjoint installer and control inputs; do not select a substitute.
+
+Advance these existing lanes in parallel where they do not share a writer:
+
+| Lane | Existing owner and next action | Evidence for handoff |
+| --- | --- | --- |
+| Runtime package | Release owner reconstructs the native and dependency closure, builds the exact package and obtains independent qualification. | Exact accepted source, dependency and artifact manifest, qualification receipt, and custody locator. |
+| Protected installer | Installation owner verifies the fixed normal install interface, prepares exact unit inputs, records the current selection and original receipts, and preserves the existing credential reference. | Exact callable and reviewed inputs ready for the same-original install; after installation, terminal receipt and effective unit readback. |
+| Authority control | Control owner verifies the existing authenticated caller, native session, epoch and original commissioning input without issuing a bind against an unverified installation. | Exact callable/identity and original request inputs; after installation, the retained binding acknowledgment and fresh native readback. |
+
+If a lane cannot advance, name its accountable owner, the exact missing input,
+the supported action the owner can take, and the evidence that reopens it.
+If ownership is not verified, record that and the exact existing owner or
+release route to resolve it; do not guess an operator or transfer ownership.
+Keep working the other lanes. A monitor can report that evidence arrived; it
+does not build, install, or bind anything. When it arrives, resume the held
+step and continue through the existing end-to-end acceptance above. Do not
+restart a held unit or replay an original to obtain a result. This is work
+coordination, not a new approval or activation condition.
+
 ### Retain the inputs for the next recovery
 
 Keep the complete accepted release and its canonical manifest at a stable
