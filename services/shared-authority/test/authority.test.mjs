@@ -1575,3 +1575,35 @@ test('peer transfer and return keep one claim; an independent hold does not stop
   assert.deepEqual((await f.call('native', 'claim/observe', heldReq)).lease, held);
   assert.equal(f.calls.length, 0);
 });
+
+test('publication completion hashes the protected outcome, not the observer receipt', async () => {
+  const f = fixture();
+  const lease = await admitted(f);
+  // Synthetic owner and destination observations only: the real control
+  // caller must obtain these independently, outside this protocol.
+  const outcome = {
+    schema: 'uif.offmenu-publisher-outcome/1',
+    publisher: 'offmenu-cloud',
+    handoff_sha256: hex('b'),
+    fence: lease.fence,
+    publication_original_id: 'same-offmenu-original',
+    repository: source.repository,
+    base: source.branch,
+    publication_receipt_sha256: hex('c'),
+  };
+  const completion = { fence: lease.fence, accepted: true, receipt_sha256: await digest(outcome) };
+  const fact = { kind: 'completion', completion };
+  await assert.rejects(f.call('native', 'attest', {request_id: 'not-control', fact}));
+  await assert.rejects(f.call('native', 'release', {request_id: 'not-attested', completion}));
+  await f.call('control', 'attest', {request_id: 'publication-control', fact});
+  assert.deepEqual(await f.call('native', 'completion/read', {current: lease}), completion);
+  for (const receipt_sha256 of [outcome.publication_receipt_sha256,
+    await digest({...outcome, publication_original_id: 'other-original'})]) {
+    await assert.rejects(f.call('native', 'release', {
+      request_id: 'wrong-' + receipt_sha256, completion: {...completion, receipt_sha256},
+    }));
+  }
+  assert.deepEqual((await f.call('native', 'release', {
+    request_id: 'bound-same-original', completion,
+  })).completion, completion);
+});

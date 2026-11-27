@@ -663,7 +663,8 @@ class NativeComposition:
                 pair[1].attempt_id == intent.attempt_id, 'authority_provider_original_context')
         item = self.installation()['assignments'][pair[0].scope.key.issue_id]
         directory = Path(item['workspace_binding']['path']) / '.git/uif-original-effects'
-        return _preserve(directory, intent.operation.original_id + '.json', wire(asdict(intent)))
+        return _retain_handoff_original(directory, intent.operation.original_id + '.json',
+                                        wire(asdict(intent)), 8192).path
 
     def publisher_handoff(self, path, issue, record):
         """Export exactly one already accepted candidate for its existing sole publisher."""
