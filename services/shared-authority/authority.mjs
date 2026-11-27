@@ -66,9 +66,7 @@ function list(a, check, max) {
     Array.isArray(a) && a.length > 0 && a.length <= max && a.every(check) && new Set(a).size === a.length
   );
 }
-function operationShape(c, op, historical = false) {
-  fields(op, 'fence', 'original_id', 'payload_sha256');
-  const f = op.fence;
+function fenceShape(c, f, historical = false) {
   fields(
     f,
     'scope',
@@ -83,9 +81,7 @@ function operationShape(c, op, historical = false) {
   );
   scopeSource(c, f.scope, f.source);
   need(
-    token(op.original_id) &&
-      sha(op.payload_sha256) &&
-      token(f.owner_session) &&
+    token(f.owner_session) &&
       token(f.lease_id) &&
       uint(f.generation) &&
       f.generation > 0 &&
@@ -98,6 +94,11 @@ function operationShape(c, op, historical = false) {
         (f.deployment_sha256 === c.deployment_sha256 && f.policy_sha256 === c.policy_sha256)),
     'operation_unbound',
   );
+}
+function operationShape(c, op, historical = false) {
+  fields(op, 'fence', 'original_id', 'payload_sha256');
+  fenceShape(c, op.fence, historical);
+  need(token(op.original_id) && sha(op.payload_sha256), 'operation_unbound');
 }
 function projectionOK(p, route, t, end, liability, maximum) {
   need(
@@ -234,9 +235,14 @@ export class Authority {
   }
   owner(peer, fence, live = true) {
     this.live(peer);
+    return this.ownerFence(peer.session_id, fence, live);
+  }
+  // Internal observation only. All callers authenticate their actual principal
+  // first; matching a configured owner session is not authentication as it.
+  ownerFence(sessionId, fence, live = true) {
     scopeSource(this.c, fence.scope, fence.source);
     const row = this.row('SELECT * FROM claims WHERE issue=?', issueKey(fence.scope));
-    need(row && row.state === 'active' && fence.owner_session === peer.session_id, 'owner_not_current');
+    need(row && row.state === 'active' && fence.owner_session === sessionId, 'owner_not_current');
     const lease = JSON.parse(row.lease);
     need(equal(lease.fence, fence), 'claim_fence_changed');
     if (live) {
@@ -247,7 +253,7 @@ export class Authority {
         'authority_pins_changed',
       );
       const ctl = this.control();
-      this.grant(fence.scope, fence.source, peer);
+      this.grant(fence.scope, fence.source, { session_id: sessionId });
       need(
         !ctl.stopped && ctl.epoch === fence.coordinator_epoch && lease.expires_at > this.clock(),
         'stopped_expired_or_superseded',
@@ -303,6 +309,27 @@ export class Authority {
   async handle(path, body, peer) {
     await this.realmReady;
     this.live(peer);
+    if (path === '/v1/publication/fence/read') {
+      only(peer, 'control');
+      need(Object.values(this.c.peers).some((x) => x.role === 'control' &&
+        x.session_id === peer.session_id), 'peer_role_not_granted', 403);
+      fields(body, 'fence', 'attempt_id');
+      const fence = body.fence;
+      fenceShape(this.c, fence, true);
+      need(token(body.attempt_id), 'invalid_lookup', 400);
+      if (!Object.values(this.c.peers).some((x) => x.role === 'native' &&
+        x.session_id === fence.owner_session)) return { current: false };
+      try {
+        const { row } = this.ownerFence(fence.owner_session, fence);
+        return { current: row.attempt === body.attempt_id };
+      } catch (error) {
+        if (error instanceof Refusal && [
+          'owner_not_current', 'claim_fence_changed', 'authority_pins_changed',
+          'issue_grant_missing', 'issue_grant_not_current', 'stopped_expired_or_superseded',
+        ].includes(error.message)) return { current: false };
+        throw error;
+      }
+    }
     this.put('INSERT OR IGNORE INTO installation VALUES (1,?,?)', this.realm, this.anchor);
     if (path === '/v1/commission') {
       only(peer, 'control');
