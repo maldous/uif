@@ -1,4 +1,5 @@
 """Fixed root-custodied native inventory comparison. Read-only; no CLI, no install."""
+from dataclasses import dataclass
 from hashlib import sha256
 import json
 import os
@@ -118,17 +119,47 @@ def expected_manifest(raw, pin):
          and (value['schema'], value['core']) == (SCHEMA, CORE)
          and encode(value) == raw, 'expected_native_manifest_format')
     for role in ROLES:
-        members = value[role]
-        need(type(members) is dict and 0 < len(members) <= MAX_ENTRIES,
-             'expected_native_role_format')
-        for key, digest in members.items():
-            parts = key.split('/')
-            need(len(key) <= 1024 and len(parts) <= MAX_DEPTH
-                 and all(p not in ('.', '..') and NAME.fullmatch(p) for p in parts)
-                 and type(digest) is str and re.fullmatch('[0-9a-f]{64}', digest)
-                 and not any('/'.join(parts[:i]) in members for i in range(1, len(parts))),
-                 'expected_native_member_format')
+        validate_role_map(value[role])
     return value
+
+
+def validate_role_map(members):
+    need(type(members) is dict and 0 < len(members) <= MAX_ENTRIES,
+         'expected_native_role_format')
+    for key, digest in members.items():
+        parts = key.split('/')
+        need(len(key) <= 1024 and len(parts) <= MAX_DEPTH
+             and all(p not in ('.', '..') and NAME.fullmatch(p) for p in parts)
+             and type(digest) is str and re.fullmatch('[0-9a-f]{64}', digest)
+             and not any('/'.join(parts[:i]) in members for i in range(1, len(parts))),
+             'expected_native_member_format')
+
+
+@dataclass(frozen=True)
+class HistoricalRoleReceipt:
+    """Exact prior projected metadata; this is not an acceptance type."""
+    role: str
+    files: int
+    sorted_pairs_sha256: str
+
+
+def compare_to_historical_role(role, candidate_raw, *, prior):
+    """Compare detached files against prior metadata without opening any shelf."""
+    need(type(prior) is HistoricalRoleReceipt and role in ROLES and prior.role == role
+         and type(prior.files) is int and 0 < prior.files <= MAX_ENTRIES
+         and type(prior.sorted_pairs_sha256) is str
+         and re.fullmatch('[0-9a-f]{64}', prior.sorted_pairs_sha256),
+         'invalid_historical_role_receipt')
+    need(type(candidate_raw) is bytes and 0 < len(candidate_raw) <= 128000,
+         'invalid_detached_role_map')
+    candidate = json.loads(candidate_raw, object_pairs_hook=_pairs)
+    validate_role_map(candidate)
+    need(candidate_raw == encode(candidate), 'invalid_detached_role_serialization')
+    compact = json.dumps(sorted(candidate.items()), separators=(',', ':'), ensure_ascii=True).encode()
+    matches = len(candidate) == prior.files and hash_bytes(compact) == prior.sorted_pairs_sha256
+    return {'role': role, 'historical_count': prior.files, 'candidate_count': len(candidate),
+            'status': 'historical_receipt_match' if matches else 'historical_receipt_differs',
+            'production_acceptance': 'not_evaluated'}
 
 
 def _revalidate_role(dirfd, identities):

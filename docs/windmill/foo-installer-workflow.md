@@ -203,6 +203,13 @@ Without the caller's existing issued install writer exclusion, treat this as a
 bounded sequential observation, not an atomic release snapshot. This is
 an optional evidence check for reuse, not a new installer or startup condition.
 
+For detached lineage qualification, the same helper can compare one candidate
+role map against the exact count and digest of a retained historical receipt.
+Compare Python and web dependencies separately. This uses the original
+compact sorted-pairs digest, not the candidate JSON file hash. A difference
+shows only that those observations are not byte-identical; the aggregate
+receipt cannot identify which files differ or establish production acceptance.
+
 Keep the fixed startup caller, its deployed revision and effective identity
 with the commissioning receipt. Windmill job authentication alone does not
 supply the shared authority control identity. If an acknowledgment is lost,
