@@ -135,6 +135,19 @@ If an owner reference, callable action, or original receipt cannot be verified,
 record the exact missing item and keep unrelated authorized work moving. This
 section links existing actions; it creates no role, approval step, or bypass.
 
+When the installer returns its verified terminal result, the installation owner
+hands the exact release, unit and stage plus the original install receipt and
+effective unit readback to the existing control owner. The
+[`render_normal_selection`](../../tools/delivery/commissioned_normal_service.py)
+output is the on-host selector input, not that receipt or a startup-bind
+request. The control owner uses the existing commissioning evidence to prepare
+the [immutable startup-bind original](../../src/uif/stokowski_cloudflare/startup_control_original.py);
+do not substitute a selector hash for that evidence. If the supported action
+and its inputs are ready, advance the handoff in the same work cycle instead
+of waiting for another status poll. If a separate owner holds the next action,
+deliver the exact evidence through the existing release handoff and track the
+same original to its terminal result. Neither step lifts an existing stop.
+
 ### Fix forward when a retained release cannot be reused
 
 A missing or mismatched artifact ends the **reuse** path, not the restoration
