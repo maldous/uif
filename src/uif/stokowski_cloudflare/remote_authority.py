@@ -34,7 +34,8 @@ class AuthorityUnavailable(Hold):
 
 
 _ABSENT = {'/v1/source/receipt': 'original_source_write_absent', '/v1/claim/read': 'claim_absent', '/v1/claim/observe': 'original_claim_not_found',
-           '/v1/reclaim/observe': 'original_reclaim_absent', '/v1/linear/receipt': 'original_absent', '/v1/completion/read': 'original_completion_absent'}
+           '/v1/reclaim/observe': 'original_reclaim_absent', '/v1/linear/receipt': 'original_absent', '/v1/completion/read': 'original_completion_absent',
+           '/v1/transition/original': 'original_transition_absent'}
 
 
 def protected_record(path, *, secret=False):
@@ -349,10 +350,30 @@ class RemoteAuthority:
         require(type(completion) is Completion and completion.fence.owner_session == self.identity.session_id,
                 'authority_release_owner')
         request = ReleaseRequest(self.identity, completion, digest({'release': asdict(completion)}))
-        raw = self.transport.request('/v1/release', _mutation_body(request))
-        require(raw['completion'] == asdict(completion), 'authority_completion_changed')
+        try:
+            raw = self.transport.request('/v1/release', _mutation_body(request))
+        except AuthorityUnavailable as uncertain:
+            # One read of the same authenticated receipt; a missing or
+            # unverified answer leaves the release outcome uncertain.
+            try:
+                status = self.status()
+                realm = status.get('installation_sha256')
+                pinned_sha(realm)
+                require(status.get('commissioned_sha256') == realm, 'authority_release_realm')
+                raw = self.transport.request('/v1/transition/original',
+                    {'installation_sha256': realm, 'session_id': self.identity.session_id,
+                     'request_id': request.request_id}, allow_absent=True)
+                return self._validated_release(request, raw)
+            except (Hold, KeyError, TypeError, ValueError):
+                raise uncertain from None
+        return self._validated_release(request, raw)
+
+    @staticmethod
+    def _validated_release(request, raw):
+        require(type(raw) is dict and raw.keys() == {'request_kind', 'request_id', 'request_sha256', 'completion'}
+                and raw['completion'] == asdict(request.completion), 'authority_completion_changed')
         return _release_reply(request, ReleaseReceipt(raw['request_kind'], raw['request_id'],
-                                                      raw['request_sha256'], completion))
+                                                      raw['request_sha256'], request.completion))
 
     def send(self, intent, body):
         # Only the receiver holding the account credential may send the physical request.
