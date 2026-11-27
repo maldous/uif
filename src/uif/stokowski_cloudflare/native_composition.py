@@ -145,8 +145,8 @@ def _handoff_directory(directory):
         os.close(fd)
 
 
-def _retained_handoff_sha(fd, name, limit):
-    """Hash one stable bounded private member without returning its contents."""
+def _retained_handoff_bytes(fd, name, limit):
+    """Read one stable bounded member of the fixed private journal."""
     handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
     with os.fdopen(handle, 'rb') as stream:
         start = os.fstat(stream.fileno())
@@ -158,7 +158,11 @@ def _retained_handoff_sha(fd, name, limit):
                 _clock_file_identity(os.fstat(stream.fileno())) ==
                 _clock_file_identity(os.stat(name, dir_fd=fd, follow_symlinks=False)),
                 'authority_handoff_receipt_changed')
-    return sha256(raw).hexdigest()
+    return raw
+
+
+def _retained_handoff_sha(fd, name, limit):
+    return sha256(_retained_handoff_bytes(fd, name, limit)).hexdigest()
 
 
 def _retain_handoff_original(directory, name, raw, limit):
@@ -780,7 +784,7 @@ class NativeComposition:
                 return False
             require(ack == asdict(Completion(claim.lease.fence, True, digest(outcome))),
                     'authority_publisher_outcome_unverified')
-        _preserve(directory, complete.name, wire(intent))
+        _retain_handoff_original(directory, complete.name, wire(intent), 8192)
         return True
 
     async def receive_pending(self, native_owner):
@@ -793,18 +797,38 @@ class NativeComposition:
                 grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
                 path = Path(item['workspace_binding']['path'])
                 key = grant.claim(self.remote.identity).request_id
-                pending = path / '.git/uif-original-effects' / (key + '.receiving')
-                if not pending.is_file() or pending.with_suffix('.received').exists():
+                directory = path / '.git/uif-original-effects'
+                pending = directory / (key + '.receiving')
+                received = pending.with_suffix('.received')
+                if not pending.is_file():
                     continue
+                if received.exists() and pending.with_suffix('.settled').exists():
+                    continue  # Existing late-release reconciler owns this milestone.
                 # This is a backoff for one already-journaled original. The
                 # existing native reconciliation tick remains its sole scheduler.
                 self._receiving_after[issue_id] = time.monotonic() + 30
-                require(pending == pending.resolve(strict=True), 'authority_pending_handoff_path')
-                intent = decode(pending.read_bytes(), limit=8192)
+                with _handoff_directory(directory) as fd:
+                    raw = _retained_handoff_bytes(fd, pending.name, 8192)
+                    try:
+                        complete = _retained_handoff_bytes(fd, received.name, 8192)
+                    except FileNotFoundError:
+                        complete = None
+                intent = decode(raw, limit=8192)
+                require(raw == wire(intent) and intent['issue_id'] == issue_id
+                        and intent['scope_sha256'] == grant.scope_sha256,
+                        'authority_original_handoff_changed')
                 current = self.remote.read_claim('OffMenu', intent['attempt_id'], True)
                 require(current is not None and intent['fence'] == asdict(current.lease.fence)
                         and self.remote.original_lease(grant).fence == current.lease.fence,
                         'authority_handoff_no_longer_current')
+                if complete is not None:
+                    # Both records use the existing canonical intent bytes.
+                    # Publication already verified; do not re-present it to
+                    # the publisher or fetch a replacement review on restart.
+                    require(complete == raw and workspace_recovery_digest(path) == intent['workspace_sha256'],
+                            'authority_received_handoff_changed')
+                    await asyncio.to_thread(self.record_settled, grant, current, path)
+                    continue
                 issue = await native_owner._ensure_linear_client().fetch_issue(issue_id, native_owner.cfg.tracker.project_slug)
                 require(issue is not None and issue.id == issue_id, 'authority_handoff_issue_identity')
                 author = item.get('review_of', {}).get(current.attempt_id)
