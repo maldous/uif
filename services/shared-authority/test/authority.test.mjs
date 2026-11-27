@@ -1636,3 +1636,23 @@ test('publication fence observation uses existing control role and no writes', a
   });
   assert.deepEqual(await f.call('control', path, query), { current: false });
 });
+
+test('new assessment claim cannot advance across restart without its original terminal proof', async () => {
+  const f = fixture();
+  await f.resume();
+  const assess = await f.addGrant(scope, 'assess');
+  const current = (await f.call('native', 'claim', assess)).lease;
+  const transition = {
+    request_id: 'assess-successor', current,
+    expected_attempt_id: assess.attempt_id, attempt_id: assess.attempt_id + '-next',
+  };
+  await assert.rejects(f.call('native', 'claim/attempt', transition),
+    /prior_attempt_terminal_unverified/);
+  f.a = f.restart();
+  await assert.rejects(f.call('native', 'claim/attempt', transition),
+    /prior_attempt_terminal_unverified/);
+  assert.deepEqual(await f.call('native', 'claim/read', {
+    identifier: scope.key.issue_id, by_attempt: false, project: 'OffMenu',
+  }), { project: 'OffMenu', attempt_id: assess.attempt_id, lease: current });
+  assert.deepEqual((await f.call('native', 'claim/observe', assess)).lease, current);
+});
