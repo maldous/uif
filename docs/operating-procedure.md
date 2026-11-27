@@ -140,6 +140,17 @@ to repair failed status metadata. Preserve typed milestone/outcome contracts onl
 for actual native records using them; never fabricate a native execution receipt
 for cloud work.
 
+For new bridged UIF → OffMenu publication requests, retain the authenticated
+UIF handoff digest, full claim fence and admitted attempt with the original
+before publishing. The existing protected control role can POST the exact
+`{fence, attempt_id}` to `/v1/publication/fence/read`, which returns only
+`{current: boolean}`. Check it at the existing protected consume boundary
+before the publication action; a native producer snapshot alone is not the
+recipient's current observation. After lost acknowledgement observe that
+same original without replay. Keep legacy originals readable and unchanged.
+A source implementation does not mount the protected caller or install the
+publication bridge.
+
 Route durable issue decisions, owner changes, source, material checks/review,
 blockers and next action to the existing native Linear record. Keep detailed
 private receipts/checkpoints in their existing custody. Follow
