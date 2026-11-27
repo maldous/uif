@@ -330,6 +330,23 @@ export class Authority {
         throw error;
       }
     }
+    if (path === '/v1/attempt/attest/original') {
+      only(peer, 'control');
+      need(Object.values(this.c.peers).some((x) => x.role === 'control' &&
+        x.session_id === peer.session_id), 'peer_role_not_granted', 403);
+      fields(body, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
+      fenceShape(this.c, body.fence, true);
+      need(token(body.request_id) && token(body.previous) && token(body.successor) &&
+        body.previous !== body.successor && sha(body.terminal_receipt_sha256),
+      'invalid_stage_transition', 400);
+      const expected = await digest({ path: '/v1/attempt/attest', body });
+      this.live(peer);
+      if (!this.commissioned()) return { matches: false };
+      const row = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+        this.peerKey(peer), body.request_id);
+      return { matches: row?.fingerprint === expected &&
+        equal(JSON.parse(row.result), { terminal_receipt_sha256: body.terminal_receipt_sha256 }) };
+    }
     this.put('INSERT OR IGNORE INTO installation VALUES (1,?,?)', this.realm, this.anchor);
     if (path === '/v1/commission') {
       only(peer, 'control');
