@@ -448,7 +448,25 @@ class RealCheckoutTest(unittest.TestCase):
         accepted={'binding':{'repo':'maldous/offmenu','base':'develop','kind':'git','scope_sha256':self.grant.scope_sha256,
                          'issue_id':ISSUE,'candidate':head,'branch':'review-fixture'},
                   'accepted_review':{'original':'accepted example'}}
-        receipt=self.c.publisher_handoff(self.path,self.issue,accepted).path
+        self.c.assignment = lambda *args: self.grant
+        self.worker.claim = claim
+        original = self.c.publisher_handoff(self.path, self.issue, accepted)
+        receipt = original.path
+        observed = self.c.observe_owner_candidate(self.path, self.issue, head, original)
+        self.assertEqual(observed.raw, receipt.read_bytes())
+        self.assertFalse(observed.raw.endswith(b'\n'))
+        self.assertEqual(observed.handoff_sha256, sha256(observed.raw).hexdigest())
+        self.assertEqual(observed.fence, claim.lease.fence)
+        self.assertEqual([path for path, _, _ in self.worker.calls], ['/v1/status', '/v1/claim/read'])
+        self.worker.claim = replace(claim, lease=replace(claim.lease,
+            fence=replace(claim.lease.fence, generation=2)))
+        with self.assertRaisesRegex(Hold, 'original_lease_changed'):
+            self.c.observe_owner_candidate(self.path, self.issue, head, original)
+        self.worker.claim = claim
+        receipt.write_bytes(observed.raw + b' ')
+        with self.assertRaisesRegex(Hold, 'receipt_bytes_changed'):
+            self.c.observe_owner_candidate(self.path, self.issue, head, original)
+        receipt.write_bytes(observed.raw)
         import json
         data=json.loads(receipt.read_text())
         self.assertEqual((data['parent'],data['tree']),(self.base,tree))
