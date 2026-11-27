@@ -1607,3 +1607,32 @@ test('publication completion hashes the protected outcome, not the observer rece
     request_id: 'bound-same-original', completion,
   })).completion, completion);
 });
+
+test('publication fence observation uses existing control role and no writes', async () => {
+  const f = fixture();
+  await f.resume();
+  const request = await f.addGrant();
+  const { lease } = await f.call('native', 'claim', request);
+  const query = { fence: lease.fence, attempt_id: request.attempt_id };
+  const path = 'publication/fence/read';
+  const mutations = [];
+  const put = f.a.put.bind(f.a);
+  f.a.put = (...args) => { mutations.push(args[0]); return put(...args); };
+  assert.deepEqual(await f.call('control', path, query), { current: true });
+  assert.deepEqual(await f.call('control', path, { ...query, attempt_id: 'other' }), { current: false });
+  assert.deepEqual(await f.call('control', path, {
+    ...query, fence: { ...lease.fence, generation: 2 },
+  }), { current: false });
+  for (const role of ['native', 'morgan', 'quota']) {
+    await assert.rejects(f.call(role, path, query), { message: 'peer_role_not_granted' });
+  }
+  await assert.rejects(f.a.handle('/v1/' + path, query, {
+    ...f.peers.control, session_id: 'unknown',
+  }), { message: 'peer_role_not_granted' });
+  await assert.rejects(f.call('control', path, { ...query, extra: false }), { message: 'invalid_fields' });
+  assert.deepEqual(mutations, []);
+  await f.call('control', 'control', {
+    request_id: 'stop-publication-fixture', expected_coordinator_epoch: 2, stopped: true,
+  });
+  assert.deepEqual(await f.call('control', path, query), { current: false });
+});
