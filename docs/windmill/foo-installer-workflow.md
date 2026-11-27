@@ -75,6 +75,25 @@ reviewed recovery release; do not search for an alternative command that
 can bypass the current selector. For a routine restart, use the normal
 commissioning path below, not the one-shot bootstrap.
 
+## Stage recovery beside a previously selected guarded-idle release
+
+The parked bootstrap and the old fixed start action are not staging actions.
+For an already selected stage, the recovery staging receiver takes **no
+caller arguments**. It belongs only in the existing protected maintenance
+release, with the reviewed controller and installer siblings that it
+checks against fixed source digests. Its protected deployment configuration
+identifies the stage-only original, exact current drop-in and selector
+digests, and the five reviewed package member digests. The release owner
+supplies those inputs through existing custody, never via generic job
+arguments. Source presence does not mean this receiver is installed on Foo.
+
+Read back the same original on an uncertain response. A verified
+`staged_not_activated` result means the sibling package is complete and
+durable; the selected release and effective unit are unchanged. Staging
+does not supply the separate recovery host adapter, startup evidence, or
+release authority. Do not reuse the old activation original to stage or
+start the new release.
+
 ## Commission the normal Stokowski release
 
 This is a different operation from a guarded-idle start, verifier maintenance,
