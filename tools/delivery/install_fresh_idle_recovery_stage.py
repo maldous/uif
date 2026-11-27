@@ -83,7 +83,6 @@ def stage(approved):
                     if not STAGE.exists() and not STAGE.is_symlink():
                         raise
                     verify_complete(STAGE)
-                    _sync_parent(STAGE)
                 verify_complete(STAGE)
             finally:
                 # On successful rename, the old name no longer exists.
@@ -91,5 +90,9 @@ def stage(approved):
                     for name in expected:
                         (temporary / name).unlink(missing_ok=True)
                     temporary.rmdir()
+        # A prior process may have renamed the fully synced stage but died
+        # before syncing this parent. A matching readback alone cannot confirm
+        # the directory entry is durable.
+        _sync_parent(STAGE)
         return {'status': 'staged_not_activated', 'intent_sha256': guard.digest(intent),
                 'receipt_sha256': guard.digest(receipt)}

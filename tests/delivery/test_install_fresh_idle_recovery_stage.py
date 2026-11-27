@@ -93,3 +93,28 @@ class RecoveryStage(unittest.TestCase):
         with self.assertRaisesRegex(guard.Held, 'published recovery closure differs'):
             install.stage(self.approval)
         self.assertFalse((self.stage / install.MEMBERS[0]).exists())
+
+
+    def test_reentry_after_interrupted_rename_syncs_parent_before_success(self):
+        class ProcessInterrupted(BaseException):
+            pass
+
+        actual = install._rename_noreplace
+
+        def interrupt(source, target):
+            if target == self.stage:
+                self.assertFalse(target.exists())
+                source.rename(target)  # Deliberately no parent sync.
+                raise ProcessInterrupted()
+            return actual(source, target)
+
+        with patch.object(install, '_rename_noreplace', side_effect=interrupt):
+            with self.assertRaises(ProcessInterrupted):
+                install.stage(self.approval)
+        inodes = {p.name: p.stat().st_ino for p in self.stage.iterdir()}
+        with patch.object(install, '_sync_parent', wraps=install._sync_parent) as sync, \
+             patch.object(install, '_rename_noreplace', side_effect=AssertionError('must not republish')):
+            self.assertEqual(install.stage(self.approval)['status'], 'staged_not_activated')
+            sync.assert_called_once_with(self.stage)
+        self.assertEqual(inodes, {p.name: p.stat().st_ino for p in self.stage.iterdir()})
+        self.assertEqual((self.old.read_bytes(), self.selection.read_bytes()), (b'old', b'selected'))
