@@ -1,6 +1,7 @@
 """Detached clean checkout preparation; never publish a protected assignment."""
 import hashlib
 import os
+import re
 from pathlib import Path
 import stat
 import subprocess
@@ -85,3 +86,57 @@ def prepare_detached_workspace(root: Path, bundle: Path, bundle_sha256: str, sou
     _git(stage, 'reset', '--hard', source.head)
     observation = observe_clean_assignment_workspace(stage, source, config_sha)
     return stage, observation
+
+
+def place_prepared_workspace(root: Path, stage: Path, issue_identifier: str,
+                             source: SourcePin, prepared: dict):
+    """Detached placement mechanics, not a custodian grant or commissioned action.
+
+    Requires the already-authorized caller's exclusive root and exact prepared
+    observation. On uncertainty preserve both names for owner reconciliation;
+    never replay, recover, overwrite, or synthesize an assignment.
+    """
+    from .native_composition import _rename_private_noreplace
+
+    require(type(source) is SourcePin and root.is_absolute()
+            and root.resolve(strict=True) == root and stage.parent == root
+            and re.fullmatch(r'\.uif-workspace-[a-z0-9_]{8}', stage.name)
+            and type(issue_identifier) is str
+            and re.fullmatch(r'[A-Z][A-Z0-9]*-[0-9]+', issue_identifier),
+            'authority_detached_workspace_target')
+    require(type(prepared) is dict and prepared.keys() ==
+            {'path', 'device', 'inode', 'git_config_sha256', 'prepared_tree_sha256'},
+            'authority_detached_workspace_observation')
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        parent = os.fstat(fd)
+        require(parent.st_uid == os.geteuid() and stat.S_IMODE(parent.st_mode) == 0o700,
+                'authority_detached_workspace_root')
+        observed = observe_clean_assignment_workspace(stage, source, prepared['git_config_sha256'])
+        require(observed == prepared, 'authority_detached_workspace_observation')
+        source_fd = os.open(stage.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+        try:
+            info = os.fstat(source_fd)
+            identity = (info.st_dev, info.st_ino)
+            require(identity == (observed['device'], observed['inode'])
+                    and info.st_uid == os.geteuid(), 'authority_detached_workspace_observation')
+            named = os.stat(stage.name, dir_fd=fd, follow_symlinks=False)
+            require((named.st_dev, named.st_ino) == identity,
+                    'authority_detached_workspace_observation')
+            _rename_private_noreplace(fd, stage.name, issue_identifier,
+                                      error='authority_detached_workspace_place')
+            os.fsync(fd)
+            target = root / issue_identifier
+            placed = os.stat(issue_identifier, dir_fd=fd, follow_symlinks=False)
+            current = root.lstat()
+            require((parent.st_dev, parent.st_ino) == (current.st_dev, current.st_ino)
+                    and (placed.st_dev, placed.st_ino) == identity,
+                    'authority_detached_workspace_placement_uncertain')
+            result = observe_clean_assignment_workspace(target, source, prepared['git_config_sha256'])
+            require(result == (prepared | {'path': str(target)}),
+                    'authority_detached_workspace_placement_uncertain')
+            return result
+        finally:
+            os.close(source_fd)
+    finally:
+        os.close(fd)
