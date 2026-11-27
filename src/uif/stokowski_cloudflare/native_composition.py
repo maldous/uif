@@ -192,9 +192,9 @@ def _verify_producer_handoff(original, directory, candidate):
     return pin
 
 
-def _verify_fresh_tree(path, head):
+def _verify_fresh_tree(path, head, *, git_env=None):
     tree = subprocess.check_output(['git', '--no-optional-locks', '-C', str(path), 'ls-tree',
-                '-r', '-z', '--full-tree', head], timeout=15, stderr=subprocess.DEVNULL)
+                '-r', '-z', '--full-tree', head], timeout=15, stderr=subprocess.DEVNULL, env=git_env)
     for entry in tree.rstrip(b'\0').split(b'\0') if tree else ():
         fields, name = entry.split(b'\t', 1)
         mode, kind, oid = fields.split(b' ')
@@ -216,6 +216,81 @@ def _verify_fresh_tree(path, head):
                     blob.update(chunk)
             actual = blob.hexdigest()
         require(actual.encode() == oid, 'authority_source_tree_bytes')
+
+
+def _verify_source_checkout(path, source, git_config_sha256, review_postimage=None, *, git_env=None):
+    # Check bytes BEFORE Git interprets repository-local settings. A shared
+    # clone, a changed filter/credential helper or an executable hook is
+    # not a source pin. The installer qualifies the specific config bytes.
+    git_dir = path / '.git'
+    cfg = git_dir / 'config'
+    require(git_dir.is_dir() and git_dir.resolve() == git_dir and cfg.is_file()
+            and cfg.resolve() == cfg and cfg.stat().st_nlink == 1
+            and sha256(cfg.read_bytes()).hexdigest() == git_config_sha256
+            and not (git_dir / 'commondir').exists()
+            and not (git_dir / 'objects/info/alternates').exists()
+            and not (git_dir / 'info/grafts').exists()
+            and not (git_dir / 'refs/replace').exists(), 'authority_private_git_config')
+    hooks = git_dir / 'hooks'
+    require(not hooks.exists() or hooks.resolve() == hooks and all(
+        f.is_file() and not f.is_symlink() and f.name.endswith('.sample')
+        for f in hooks.iterdir()), 'authority_private_git_hooks')
+    def git(*args):
+        return subprocess.check_output(['git', '--no-optional-locks', '-C', str(path), *args],
+                    timeout=3, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True, env=git_env).strip()
+    origins = {f'https://github.com/{source.repository}.git', f'https://github.com/{source.repository}',
+               f'git@github.com:{source.repository}.git'}
+    require(git('rev-parse','--absolute-git-dir') == str(path / '.git')
+            and git('rev-parse','--path-format=absolute','--git-common-dir') == str(path / '.git')
+            and git('remote','get-url','origin') in origins
+            and git('merge-base', source.base, source.head) == source.base, 'authority_source_changed')
+    observed = (git('rev-parse','HEAD'), git('rev-parse','HEAD^{tree}'), git('branch','--show-current'))
+    if observed != (source.head, source.tree, source.branch):
+        require(review_postimage is not None and observed == review_postimage
+                and git('show','-s','--format=%P','HEAD') == source.head,
+                'authority_source_changed')
+    return path
+
+def observe_clean_assignment_workspace(path: Path, source: SourcePin, git_config_sha256: str):
+    """Sequential, non-atomic checkout observation under exclusive trusted custody.
+
+    Caller must already control the quiescent checkout and verified Git config.
+    This does not create a lock, assignment, authority or atomic snapshot.
+    """
+    pinned_sha(git_config_sha256)
+    require(path.is_absolute() and path.resolve(strict=True) == path and path.is_dir(),
+            'authority_workspace_identity')
+    info = path.stat()
+    require(not info.st_mode & 0o077, 'authority_isolated_claim_workspace')
+
+    # Ignore ambient Git config, object directories and SSH/git overrides.
+    # The local config itself is still the caller's independently reviewed pin.
+    env = {'PATH': os.defpath, 'LC_ALL': 'C', 'GIT_CONFIG_NOSYSTEM': '1',
+           'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_NO_REPLACE_OBJECTS': '1',
+           'GIT_NO_LAZY_FETCH': '1', 'GIT_ALLOW_PROTOCOL': '', 'GIT_TERMINAL_PROMPT': '0'}
+
+    def observe():
+        _verify_source_checkout(path, source, git_config_sha256, git_env=env)
+        state = subprocess.check_output(['git', '--no-optional-locks', '-c', 'core.fsmonitor=false',
+                      '-C', str(path), 'status', '--porcelain=v1', '-z', '--ignored',
+                      '--untracked-files=all'], timeout=10, stdin=subprocess.DEVNULL,
+                      stderr=subprocess.DEVNULL, env=env)
+        require(not state and not (path / '.stokowski').exists(),
+                'authority_dirty_workspace_needs_original_reconstruction')
+        _verify_fresh_tree(path, source.head, git_env=env)
+
+    # Qualify before walking any contents, then bracket a repeated validation
+    # with matching inventories plus a recheck of checkout directory identity.
+    observe()
+    prepared = workspace_recovery_digest(path)
+    observe()
+    final_prepared = workspace_recovery_digest(path)
+    final = path.stat()
+    require(prepared == final_prepared, 'authority_private_initial_bytes_changed')
+    require((info.st_dev, info.st_ino, info.st_mode) == (final.st_dev, final.st_ino, final.st_mode)
+            and path.resolve(strict=True) == path, 'authority_isolated_claim_workspace')
+    return {'path': str(path), 'device': info.st_dev, 'inode': info.st_ino,
+            'git_config_sha256': git_config_sha256, 'prepared_tree_sha256': prepared}
 
 
 def workspace_recovery_digest(path):
@@ -342,38 +417,7 @@ class NativeComposition:
         require(item['workspace_binding'] == {'original_claim_id': claim_id, 'path': str(path),
                         'device': info.st_dev, 'inode': info.st_ino} and not info.st_mode & 0o077,
                 'authority_isolated_claim_workspace')
-        # Check bytes BEFORE Git interprets repository-local settings. A shared
-        # clone, a changed filter/credential helper or an executable hook is
-        # not a source pin. The installer qualifies the specific config bytes.
-        git_dir = path / '.git'
-        cfg = git_dir / 'config'
-        require(git_dir.is_dir() and git_dir.resolve() == git_dir and cfg.is_file()
-                and cfg.resolve() == cfg and cfg.stat().st_nlink == 1
-                and sha256(cfg.read_bytes()).hexdigest() == item['git_config_sha256']
-                and not (git_dir / 'commondir').exists()
-                and not (git_dir / 'objects/info/alternates').exists()
-                and not (git_dir / 'info/grafts').exists()
-                and not (git_dir / 'refs/replace').exists(), 'authority_private_git_config')
-        hooks = git_dir / 'hooks'
-        require(not hooks.exists() or hooks.resolve() == hooks and all(
-            f.is_file() and not f.is_symlink() and f.name.endswith('.sample')
-            for f in hooks.iterdir()), 'authority_private_git_hooks')
-        def git(*args):
-            return subprocess.check_output(['git', '--no-optional-locks', '-C', str(path), *args],
-                        timeout=3, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True).strip()
-        source = grant.source
-        origins = {f'https://github.com/{source.repository}.git', f'https://github.com/{source.repository}',
-                   f'git@github.com:{source.repository}.git'}
-        require(git('rev-parse','--absolute-git-dir') == str(path / '.git')
-                and git('rev-parse','--path-format=absolute','--git-common-dir') == str(path / '.git')
-                and git('remote','get-url','origin') in origins
-                and git('merge-base', source.base, source.head) == source.base, 'authority_source_changed')
-        observed = (git('rev-parse','HEAD'), git('rev-parse','HEAD^{tree}'), git('branch','--show-current'))
-        if observed != (source.head, source.tree, source.branch):
-            require(review_postimage is not None and observed == review_postimage
-                    and git('show','-s','--format=%P','HEAD') == source.head,
-                    'authority_source_changed')
-        return path
+        return _verify_source_checkout(path, grant.source, item['git_config_sha256'], review_postimage)
 
     def _review_postimage(self, owner, issue, grant, record):
         if not record.get('candidate_tree'):
