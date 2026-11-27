@@ -111,3 +111,13 @@ class NormalRuntimeStageTest(unittest.TestCase):
         self.assertEqual(touched, [self.leaf])
         self.assertEqual(before, {p.relative_to(self.leaf):p.stat().st_ino for p in self.leaf.rglob('*')})
         self.assertEqual((self.old.read_bytes(), self.selector.read_bytes()), (b'old drop-in', b'old selector'))
+
+
+    def test_materializes_empty_regular_marker_but_not_empty_required_record(self):
+        marker = 'venv/lib/python3.12/encodings/.empty-marker'
+        args = self.fixture(extra=[(marker,b'')])
+        first = normal.stage_normal_runtime(*args)
+        self.assertEqual((self.leaf/marker).read_bytes(), b'')
+        self.assertEqual(normal.stage_normal_runtime(*args), first)
+        with self.assertRaisesRegex(g.Held, 'incomplete'):
+            normal.stage_normal_runtime(*self.fixture(extra=[('launch.py',b'')]))
