@@ -6,6 +6,7 @@ from ..effect_authority import Lease, TerminalEffect
 from ..handoff_store import decode, require, wire
 from ..quota_handoff import token
 from .assessment_readiness import project_assessment_readiness
+from .fresh_assessment_render import render_fresh_assessment
 from .intake import intake_stages
 
 
@@ -36,9 +37,10 @@ def _build_fresh_assessment_terminal(composition, issue, run, scope_sha256, leas
     """Prepare canonical evidence, not an attestation, authorization or phase.
 
     The existing coordinator's scoped verifier (denial raises) must prove
-    fresh-only applicability, prerequisite facts and exact original binding
-    of raw report to rendered body. A model or caller-provided boolean is
-    not proof. No runtime wiring, report send, attest or phase write occurs.
+    fresh-only applicability, prerequisites and provenance of this exact raw
+    report from that execution. Deterministic rendering checks the exact
+    posted body. A model or caller-provided boolean is not proof. No runtime
+    wiring, report send, attest or phase write occurs.
     """
     require(type(lease) is Lease and type(rendered_body) is str and rendered_body,
             'assessment_terminal_input')
@@ -46,6 +48,9 @@ def _build_fresh_assessment_terminal(composition, issue, run, scope_sha256, leas
     require(readiness.readiness == 'reported-ready', 'assessment_terminal_not_ready')
     stages = intake_stages({}, 'OffMenu', issue, scope_sha256, run)
     previous, successor = stages['assess']['attempt'], stages['investigate']['attempt']
+    require(rendered_body == render_fresh_assessment(
+        raw_report, issue=issue, run=run, scope_sha256=scope_sha256, attempt_id=previous
+    ), 'assessment_terminal_render_changed')
     fence = lease.fence
     grant = _current_grant(composition, issue.id, scope_sha256, lease, previous, successor)
     require(verify_original_prerequisites(

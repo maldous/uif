@@ -5,6 +5,7 @@ import unittest
 
 from uif.effect_authority import transition_request_sha256
 from uif.handoff_store import Hold, decode, wire
+from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
 from uif.stokowski_cloudflare.fresh_assessment_terminal import observe_fresh_assessment_terminal
 from uif.stokowski_cloudflare.intake import intake_stages
 from uif.stokowski_cloudflare.native_composition import NativeComposition
@@ -29,7 +30,8 @@ class FreshAssessmentTerminalTest(unittest.TestCase):
         raw_report = wire(dict(summary='Ready', verdict='approve', routing=dict(
             issue=issue.identifier, state='assess', run=1, actionable=True, ownership_clear=True,
             deferred=False, owner_pause=False, uncertain_effects=False, missing_inputs=[])))
-        body = 'Exact rendered fixture'
+        body = render_fresh_assessment(raw_report, issue=issue, run=1,
+                                       scope_sha256=grant.scope_sha256, attempt_id=previous)
         operation = composition._linear_operation(lease.fence, previous, '_publish_run_report',
                                                    'comment', {'body': body})
         comment_id = fixture.ISSUE
@@ -82,8 +84,10 @@ class FreshAssessmentTerminalTest(unittest.TestCase):
         self.assertEqual(attestation_calls, [{'current': asdict(lease), 'original': accepted}])
         with self.assertRaisesRegex(Hold, 'original_unverified'):
             join(attestation_request_id='unaccepted-original')
-        with self.assertRaisesRegex(Hold, 'prerequisite_mismatch'):
+        with self.assertRaisesRegex(Hold, 'render_changed'):
             join(rendered_body='different')
+        with self.assertRaisesRegex(Hold, 'render_changed'):
+            join(raw_report=raw_report.replace(b'Ready', b'Different raw input'))
         with self.assertRaisesRegex(Hold, 'verifier_result'):
             join(verify_original_prerequisites=lambda *args: True)
         native_result = 1
