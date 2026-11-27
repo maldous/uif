@@ -6,12 +6,13 @@ credential. The issue owner's approved reconstruction and the server-side grant
 must independently agree before the native dispatch can consume a retry.
 """
 import asyncio
+import ctypes
 from base64 import b64encode
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict
 from functools import wraps
-from datetime import timedelta
+from datetime import datetime, timedelta
 from hashlib import sha1, sha256
 from pathlib import Path
 from secrets import token_hex
@@ -66,6 +67,52 @@ def _preserve(directory, filename, content):
     finally:
         os.close(fd)
     return destination
+
+
+def _clock_file_identity(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+            info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _read_gate_clock(fd, name):
+    """Read one exact bounded, stable original sidecar without following a link."""
+    with os.fdopen(os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd), 'rb') as stream:
+        before = os.fstat(stream.fileno())
+        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.geteuid()
+                and stat.S_IMODE(before.st_mode) == 0o600 and before.st_nlink == 1
+                and 0 < before.st_size <= 8192, 'authority_waiting_gate_clock_custody')
+        raw = stream.read(8193)
+        require(len(raw) == before.st_size and _clock_file_identity(before) ==
+                _clock_file_identity(os.fstat(stream.fileno())) ==
+                _clock_file_identity(os.stat(name, dir_fd=fd, follow_symlinks=False)),
+                'authority_waiting_gate_clock_changed')
+        return raw
+
+
+def _publish_gate_clock(fd, name, raw):
+    """Make a complete, fsynced record visible once, with no transient hardlink."""
+    require(len(raw) <= 8192, 'authority_waiting_gate_clock_custody')
+    temp = '.gate-clock-' + token_hex(16)
+    handle = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                     0o600, dir_fd=fd)
+    try:
+        with os.fdopen(handle, 'wb') as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        rename = ctypes.CDLL(None, use_errno=True).renameat2
+        rename.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+        rename.restype = ctypes.c_int
+        if rename(fd, os.fsencode(temp), fd, os.fsencode(name), 1):
+            number = ctypes.get_errno()
+            raise OSError(number, 'authority_waiting_gate_clock_publish')
+        os.fsync(fd)
+    finally:
+        try:
+            os.unlink(temp, dir_fd=fd)
+        except FileNotFoundError:
+            pass
 
 
 def _verify_fresh_tree(path, head):
@@ -896,6 +943,69 @@ class NativeComposition:
                     open_fenced_connection=self.open_fenced, authority_lifecycle=self,
                     provider_discovery=self._installed_provider_discovery())
 
+    def _waiting_gate_body(self, claim, issue_id, original_id, body):
+        """Reuse only the clock field of a byte-identical native gate comment."""
+        prefix, _, human = body.partition('\n\n')
+        match = re.fullmatch(r'<!-- stokowski:gate (.{1,4096}) -->', prefix)
+        require(match is not None and bool(human), 'authority_waiting_gate_marker')
+        marker = decode(match[1].encode(), limit=8192)
+        if marker.get('status') != 'waiting':
+            return body  # Other native effects keep exact-byte behavior.
+        require(set(marker) == {'state', 'status', 'run', 'timestamp'}
+                and type(marker['state']) is str and bool(marker['state'])
+                and type(marker['run']) is int and marker['run'] > 0,
+                'authority_waiting_gate_marker')
+        stamp = marker['timestamp']
+        pattern = r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{6})?\+00:00'
+        require(type(stamp) is str and re.fullmatch(pattern, stamp) is not None,
+                'authority_waiting_gate_clock')
+        datetime.fromisoformat(stamp)
+        field = f'"timestamp": "{stamp}"'
+        require(prefix.count(field) == 1, 'authority_waiting_gate_marker')
+        semantic = prefix.replace(field, '"timestamp": null', 1) + '\n\n' + human
+        item = self.installation()['assignments'][issue_id]
+        directory = Path(item['workspace_binding']['path']) / '.git/uif-original-effects'
+        filename = original_id + '.gate-clock'
+        directory.mkdir(mode=0o700, exist_ok=True)
+        require(directory == directory.resolve(strict=True), 'authority_private_receipt_directory')
+        fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            info = os.fstat(fd)
+            require(info.st_uid == os.geteuid() and stat.S_IMODE(info.st_mode) == 0o700,
+                    'authority_private_receipt_directory')
+            identity = {'fence': asdict(claim.lease.fence), 'original_id': original_id,
+                        'semantic_sha256': sha256(semantic.encode()).hexdigest()}
+            try:
+                raw = _read_gate_clock(fd, filename)
+            except FileNotFoundError:
+                # Existing originals retain exact-byte semantics. Never infer
+                # their original clock or migrate them to a new effect.
+                try:
+                    os.stat(original_id + '.linear', dir_fd=fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    pass
+                else:
+                    return body
+                try:
+                    _publish_gate_clock(fd, filename, wire(dict(identity, timestamp=stamp)))
+                except FileExistsError:
+                    pass  # Reopen the winner; the semantic/fence checks below still apply.
+                raw = _read_gate_clock(fd, filename)
+                os.fsync(fd)
+            linked = directory.lstat()
+            require((linked.st_dev, linked.st_ino, linked.st_mode, linked.st_uid) ==
+                    (info.st_dev, info.st_ino, info.st_mode, info.st_uid),
+                    'authority_private_receipt_directory_changed')
+        finally:
+            os.close(fd)
+        saved = decode(raw, limit=8192)
+        prior = saved.get('timestamp')
+        require(type(prior) is str and re.fullmatch(pattern, prior) is not None
+                and saved == dict(identity, timestamp=prior)
+                and raw == wire(saved), 'authority_waiting_gate_semantics_changed')
+        datetime.fromisoformat(prior)
+        return prefix.replace(field, f'"timestamp": "{prior}"', 1) + '\n\n' + human
+
     def retained_linear(self, operation):
         """Keep the original fingerprint before a possibly partial network effect."""
         issue_id = operation.fence.scope.key.issue_id
@@ -922,13 +1032,20 @@ class NativeComposition:
         claim = self.current(issue_id)
         slot = self._slot.get()
         require(slot is not None, 'authority_original_linear_slot_missing')
+        original_id = digest({'attempt': claim.attempt_id, 'slot': slot, 'kind': kind, 'issue': issue_id})
+        body = payload.get('body')
+        if (kind == 'comment' and slot == '_enter_gate' and type(body) is str
+                and body.startswith('<!-- stokowski:gate ')):
+            payload = dict(payload, body=self._waiting_gate_body(claim, issue_id, original_id, body))
+            # A stale worker cannot carry clock retention into a new fence.
+            current = self.current(issue_id)
+            require(current.lease.fence == claim.lease.fence and current.attempt_id == claim.attempt_id,
+                    'authority_waiting_gate_fence_changed')
         args = {'attempt_id': claim.attempt_id, 'issue_id': issue_id, **payload}
         sha = digest({'kind': 'uif.linear-' + kind + '/1', **args})
-        # Different bytes for the same native stage and effect slot conflict.
-        # A lost reply never becomes an unrelated mutation just because a
-        # regenerated post includes a later timestamp.
-        op = Operation(claim.lease.fence, digest({'attempt': claim.attempt_id,
-                       'slot': slot, 'kind': kind, 'issue': issue_id}), sha)
+        # Different semantic bytes for the same native stage and effect slot
+        # remain a conflict. A clock-only retry recovers the exact first bytes.
+        op = Operation(claim.lease.fence, original_id, sha)
         self.retained_linear(op)
         result = self.remote.transport.request('/v1/linear/receipt', {'operation': asdict(op)}, allow_absent=True)
         if result is None:
