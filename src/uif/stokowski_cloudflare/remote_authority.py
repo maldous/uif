@@ -262,6 +262,16 @@ class RemoteAuthority:
     def verify_usage(self, issuer, receipt):
         return issuer == self.quota_issuer and receipt is self._verified_usage.get()
 
+    def _submit_initial_claim_once(self, grant):
+        """Single old claim endpoint call for an already retained first-dispatch original."""
+        require(type(grant) is NativeAssignment and grant.previous is None and
+                (grant.scope.repository_id, grant.scope.key.workspace_id, grant.scope.key.project_id)
+                == (self.repository_id, self.workspace_id, self.project_id),
+                'authority_native_initial_scope')
+        request = grant.claim(self.identity)
+        body = dict(_mutation_body(request), attempt_id=grant.attempts[0])
+        return _lease_reply(request, _receipt(self.transport.request('/v1/claim', body))).lease
+
     def original_lease(self, grant, *, allow_acquire=False):
         request = grant.claim(self.identity)
         if grant.previous is None:
