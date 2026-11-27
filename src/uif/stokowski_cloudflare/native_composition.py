@@ -94,6 +94,15 @@ def _publish_gate_clock(fd, name, raw):
     _publish_private_original(fd, name, raw, prefix='.gate-clock-')
 
 
+def _rename_private_noreplace(fd, source, destination, *, error):
+    rename = ctypes.CDLL(None, use_errno=True).renameat2
+    rename.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+    rename.restype = ctypes.c_int
+    if rename(fd, os.fsencode(source), fd, os.fsencode(destination), 1):
+        number = ctypes.get_errno()
+        raise OSError(number, error)
+
+
 def _publish_private_original(fd, name, raw, *, prefix):
     """Make a complete, fsynced record visible once, with no transient hardlink."""
     temp = prefix + token_hex(16)
@@ -105,12 +114,7 @@ def _publish_private_original(fd, name, raw, *, prefix):
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
-        rename = ctypes.CDLL(None, use_errno=True).renameat2
-        rename.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
-        rename.restype = ctypes.c_int
-        if rename(fd, os.fsencode(temp), fd, os.fsencode(name), 1):
-            number = ctypes.get_errno()
-            raise OSError(number, 'authority_waiting_gate_clock_publish')
+        _rename_private_noreplace(fd, temp, name, error='authority_waiting_gate_clock_publish')
         os.fsync(fd)
     finally:
         try:

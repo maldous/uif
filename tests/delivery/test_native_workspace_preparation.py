@@ -8,7 +8,9 @@ from unittest.mock import patch
 
 from uif.effect_authority import SourcePin
 from uif.handoff_store import Hold
-from uif.stokowski_cloudflare.native_workspace_preparation import _copy_pinned_bundle, _git, prepare_detached_workspace
+from uif.stokowski_cloudflare.native_workspace_preparation import (
+    _copy_pinned_bundle, _git, place_prepared_workspace, prepare_detached_workspace,
+)
 
 
 class NativeWorkspacePreparationTest(unittest.TestCase):
@@ -62,6 +64,36 @@ class NativeWorkspacePreparationTest(unittest.TestCase):
             self.assertTrue(existing.is_dir())
             self.assertFalse((first / '.git/objects/info/alternates').exists())
             self.assertFalse((first / '.git/hooks').exists())
+            with self.assertRaises(OSError) as collision:
+                place_prepared_workspace(stages, first, 'UIF-1', source, observed)
+            self.assertEqual(collision.exception.errno, errno.EEXIST)
+            self.assertTrue(first.is_dir())
+            self.assertEqual(list(existing.iterdir()), [])
+            with self.assertRaisesRegex(Hold, 'observation'):
+                place_prepared_workspace(stages, first, 'UIF-2', source, observed | {'inode': other['inode']})
+            final = place_prepared_workspace(stages, first, 'UIF-2', source, observed)
+            self.assertEqual(final, observed | {'path': str(stages / 'UIF-2')})
+            self.assertFalse(first.exists())
+            self.assertTrue(second.is_dir())
+            self.assertEqual((stages / 'UIF-2/file').read_bytes(), before)
+
+            # A lost sync acknowledgement must not replay the rename or undo
+            # the exact target. In retained custody the owner can observe it.
+            with patch('uif.stokowski_cloudflare.native_workspace_preparation.os.fsync',
+                       side_effect=OSError(errno.EIO, 'uncertain sync')):
+                with self.assertRaises(OSError) as lost:
+                    place_prepared_workspace(stages, second, 'UIF-3', source, other)
+            self.assertEqual(lost.exception.errno, errno.EIO)
+            self.assertFalse(second.exists())
+            target = stages / 'UIF-3'
+            self.assertEqual((target / 'file').read_bytes(), before)
+            with self.assertRaises(FileNotFoundError):
+                place_prepared_workspace(stages, second, 'UIF-3', source, other)
+            from uif.stokowski_cloudflare.native_composition import observe_clean_assignment_workspace
+            self.assertEqual(observe_clean_assignment_workspace(target, source, other['git_config_sha256']),
+                             other | {'path': str(target)})
+
+
 
 
     def test_input_descriptor_closed_if_stream_setup_fails(self):
