@@ -1704,3 +1704,37 @@ test('control compares exact retained attempt attestation without re-attesting',
   assert.deepEqual(await f.call('control', path, original), { matches: true });
   assert.deepEqual(mutations, []);
 });
+
+test('native reads only its live exact existing control attempt original', async () => {
+  const f = fixture();
+  await f.resume();
+  const request = await f.addGrant(scope, 'assess');
+  const current = (await f.call('native', 'claim', request)).lease;
+  const original = {
+    request_id: 'native-exact-assess', fence: current.fence,
+    previous: 'assess', successor: 'assess-next', terminal_receipt_sha256: hex('b'),
+  };
+  const path = 'attempt/attest/native';
+  const read = (value = original, lease = current) => f.call('native', path, {current:lease, original:value});
+  f.a.put('INSERT INTO next_attempts VALUES (?,?,?)',
+    canonical(current.fence), original.previous, original.successor);
+  assert.deepEqual(await read(), {matches:false}, 'bare tuple is not a control receipt');
+  await f.call('control', 'attempt/attest', original);
+  const writes = [], put = f.a.put.bind(f.a);
+  f.a.put = (...args) => { writes.push(args[0]); return put(...args); };
+  assert.deepEqual(await read(), {matches:true});
+  for (const delta of [
+    {terminal_receipt_sha256:hex('c')}, {request_id:'wrong-original'}, {previous:'other'},
+    {successor:'other'}, {fence:{...current.fence,generation:2}},
+  ]) assert.deepEqual(await read({...original,...delta}), {matches:false});
+  assert.deepEqual(await read(original,{...current,expires_at:current.expires_at+1}), {matches:false});
+  for (const role of ['control','quota','morgan']) {
+    await assert.rejects(f.call(role,path,{original,current}), /peer_role_not_granted/);
+  }
+  await assert.rejects(f.a.handle('/v1/'+path,{original,current},
+    {...f.peers.native,session_id:'retired'}), /peer_role_not_granted/);
+  assert.deepEqual(writes, []);
+  await f.call('native','claim/attempt',
+    {current,expected_attempt_id:'assess',attempt_id:'assess-next',request_id:'native-successor'});
+  assert.deepEqual(await read(), {matches:false}, 'consumed attestation is historical only');
+});

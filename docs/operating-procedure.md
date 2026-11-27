@@ -159,6 +159,22 @@ verdict or effects or revive a stopped or superseded attempt. Use the
 independently verified original evidence for settlement; do not write
 completion from a model summary or a matching fingerprint alone.
 
+
+For fresh OffMenu assessments, advance from assessment to investigation only
+when all four observations agree on the same original:
+
+1. The report explicitly says the assessment is ready.
+2. The coordinator independently verifies the current claim and prerequisites.
+3. The exact rendered report is verified as posted under that assessment's
+   original operation.
+4. The existing UIF control role attests to that same attempt and the admitted
+   investigation successor.
+
+A model result or successful process exit does not replace one of these
+observations. If any is missing, held or uncertain, hold that attempt and
+reconcile its original; do not reset it, post another report or infer approval
+from an earlier attempt. Do not apply this rule retroactively to existing work.
+
 Route durable issue decisions, owner changes, source, material checks/review,
 blockers and next action to the existing native Linear record. Keep detailed
 private receipts/checkpoints in their existing custody. Follow
