@@ -54,6 +54,27 @@ existing boundaries; it adds no approval or runtime condition.
   maintenance carrier, create-only verifier readback, staged archive nor
   source approval supplies the independent application acceptance.
 
+### Reuse the route, not the original authorization
+
+Previous Foo work established three separate routes. Use their receipts to
+identify the right owner, command family and readback. Do not rediscover a
+workspace, run a different tool, or rerun a completed operation because a
+different target is unavailable.
+
+| Target | Proven route and readback | What to do next time |
+| --- | --- | --- |
+| Guarded-idle start | The fixed authenticated Windmill mount submitted the [original start](https://windmill.aldous.info/run/01a21437-ea55-94ca-37ae-8c784ee3aad2?workspace=foo); the [host original](https://windmill.aldous.info/run/01a21437-eab1-9f96-6377-3424489d2b81?workspace=foo) belongs to that same operation. Follow apply, start and consumption through the existing [guarded-idle workflow](guarded-idle-webhook.md). | Reconcile an uncertain delivery on its original. A later [failed invocation](https://windmill.aldous.info/run/01a21961-6ba7-dbdd-33f0-4e6176141b62?workspace=foo) and [readback](https://windmill.aldous.info/run/01a21964-6614-4fc3-cb59-43d65b2a686f?workspace=foo) show why a consumed or expired one-shot marker is not a restart path. Do not repeat the parked bootstrap on a selected stage. |
+| Verifier maintenance | The [V2 terminal readback](https://windmill.aldous.info/run/01a2193c-5eff-7d43-cb2b-e7a3fd9e1932?workspace=foo) verified both immutable shelves via the fixed create-only maintenance helper. | Reuse the existing maintenance route for a distinct reviewed verifier release; do not treat its receipt as permission to select or start an application. |
+| OffMenu application | The [historical installed receipt](https://windmill.aldous.info/run/01a20d73-afb5-a077-96cb-dc15cb247ef6?workspace=foo) verifies the original through the protected package preparation and upgrade flow. The [newer projection](https://windmill.aldous.info/run/01a217a4-8a35-3593-6940-734266fede54?workspace=foo) is not installed evidence. | Match the current selection to its own installed original and role digests through the existing owner-side observer. Do not rebuild or reinstall a confirmed current release solely to obtain a receipt. |
+
+When a receipt is lost, the existing owner inspects that original and its
+destination before deciding the next action. Keep this exact route and
+readback with the release. If the route no longer accepts the actual
+installed state, record the first incompatible step and identify the
+reviewed recovery release; do not search for an alternative command that
+can bypass the current selector. For a routine restart, use the normal
+commissioning path below, not the one-shot bootstrap.
+
 ## Commission the normal Stokowski release
 
 This is a different operation from a guarded-idle start, verifier maintenance,
