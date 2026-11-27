@@ -380,6 +380,49 @@ class RealCheckoutTest(unittest.TestCase):
                     'publisher':'offmenu-cloud','publisher_target':{'repository':'maldous/offmenu','base':'develop'}}
         self.c.installation=lambda:{'assignments':{ISSUE:self.item},'workspace_root':str(self.path.parent)}
 
+    def test_clean_workspace_observation_matches_runtime_without_issuing_authority(self):
+        from uif.stokowski_cloudflare.native_composition import observe_clean_assignment_workspace
+
+        path, source = self.path, self.grant.source
+        config = self.item['git_config_sha256']
+        before = workspace_recovery_digest(path)
+        observed = observe_clean_assignment_workspace(path, source, config)
+        self.assertEqual(observed, {**{k: self.item['workspace_binding'][k]
+                                      for k in ('path', 'device', 'inode')},
+            'git_config_sha256': config, 'prepared_tree_sha256': before})
+        self.assertEqual(workspace_recovery_digest(path), before)
+        self.assertEqual(self.worker.calls, [])
+        with self.assertRaisesRegex(Hold, 'private_git_config'):
+            observe_clean_assignment_workspace(path, source, 'e'*64)
+        (path / 'unexpected').write_text('unexpected')
+        with self.assertRaisesRegex(Hold, 'dirty_workspace'):
+            observe_clean_assignment_workspace(path, source, config)
+        (path / 'unexpected').unlink()
+        self.git('update-index', '--assume-unchanged', 'guide.md')
+        (path / 'guide.md').write_text('hidden mutation')
+        with self.assertRaisesRegex(Hold, 'source_tree_bytes'):
+            observe_clean_assignment_workspace(path, source, config)
+
+    def test_workspace_observation_rejects_config_drift_and_ignores_ambient_git(self):
+        from uif.stokowski_cloudflare import native_composition as module
+
+        path, source = self.path, self.grant.source
+        config = self.item['git_config_sha256']
+        with patch.dict(os.environ, {'GIT_DIR': '/nonexistent', 'GIT_WORK_TREE': '/nonexistent'}):
+            observed = module.observe_clean_assignment_workspace(path, source, config)
+        self.assertEqual(observed['git_config_sha256'], config)
+
+        real_inventory = module.workspace_recovery_digest
+        def observe_then_mutate(candidate):
+            result = real_inventory(candidate)
+            with (candidate / '.git/config').open('a') as out:
+                out.write('# changed between checks\n')
+            return result
+
+        with patch.object(module, 'workspace_recovery_digest', side_effect=observe_then_mutate):
+            with self.assertRaisesRegex(Hold, 'private_git_config'):
+                module.observe_clean_assignment_workspace(path, source, config)
+
     def test_clean_raw_tree_and_hidden_tracked_change(self):
         self.c.verify_workspace(self.owner,self.issue,self.grant)
         self.c._first_workspace(self.path,self.grant,None)
