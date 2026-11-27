@@ -330,6 +330,45 @@ export class Authority {
         throw error;
       }
     }
+    if (path === '/v1/attempt/attest/native') {
+      only(peer, 'native');
+      need(Object.values(this.c.peers).some((x) => x.role === 'native' &&
+        x.session_id === peer.session_id), 'peer_role_not_granted', 403);
+      fields(body, 'current', 'original');
+      const { current, original } = body;
+      fields(current, 'fence', 'expires_at');
+      fields(original, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
+      fenceShape(this.c, current.fence, true);
+      fenceShape(this.c, original.fence, true);
+      need(token(original.request_id) && token(original.previous) && token(original.successor) &&
+        original.previous !== original.successor && sha(original.terminal_receipt_sha256),
+      'invalid_stage_transition', 400);
+      if (!equal(current.fence, original.fence)) return { matches: false };
+      const expected = await digest({ path: '/v1/attempt/attest', body: original });
+      // No asynchronous boundary after the live owner/lease/grant recheck.
+      // The tuple alone may come from another path and cannot prove this hash.
+      this.live(peer);
+      try {
+        const { row, lease } = this.owner(peer, current.fence);
+        if (!equal(lease, current) || row.attempt !== original.previous ||
+            !this.grant(lease.fence.scope, lease.fence.source, peer).attempt_ids.includes(original.successor) ||
+            this.row('SELECT 1 FROM attempts WHERE id=?', original.successor) ||
+            !this.row('SELECT 1 FROM next_attempts WHERE fence=? AND previous=? AND successor=?',
+              canonical(lease.fence), original.previous, original.successor)) return { matches: false };
+        const control = Object.values(this.c.peers).filter((x) => x.role === 'control');
+        if (control.length !== 1) return { matches: false };
+        const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+          this.peerKey(control[0]), original.request_id);
+        return { matches: receipt?.fingerprint === expected &&
+          equal(JSON.parse(receipt.result), { terminal_receipt_sha256: original.terminal_receipt_sha256 }) };
+      } catch (error) {
+        if (error instanceof Refusal && [
+          'owner_not_current', 'claim_fence_changed', 'authority_pins_changed',
+          'issue_grant_missing', 'issue_grant_not_current', 'stopped_expired_or_superseded',
+        ].includes(error.message)) return { matches: false };
+        throw error;
+      }
+    }
     if (path === '/v1/attempt/attest/original') {
       only(peer, 'control');
       need(Object.values(this.c.peers).some((x) => x.role === 'control' &&
