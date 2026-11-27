@@ -85,3 +85,23 @@ class NativeShelfCompare(unittest.TestCase):
                     compare._revalidate_role(fd, ids)
             finally:
                 os.close(fd)
+
+    def test_detached_historical_role_uses_compact_sorted_pairs_not_manifest_encoding(self):
+        data = {'z.py': 'a'*64, 'a.py': 'b'*64}
+        raw = compare.encode(data)
+        pairs = ('[["a.py","' + 'b'*64 + '"],["z.py","' + 'a'*64 + '"]]').encode()
+        prior = compare.HistoricalRoleReceipt('python', 2, compare.hash_bytes(pairs))
+        self.assertEqual(compare.compare_to_historical_role('python', raw, prior=prior)['status'],
+                         'historical_receipt_match')
+        with self.assertRaisesRegex(ValueError, 'historical_role_receipt'):
+            compare.compare_to_historical_role('web_deps', raw, prior=prior)
+        invalid = compare.HistoricalRoleReceipt('python', 2, compare.hash_bytes(raw))
+        self.assertEqual(compare.compare_to_historical_role('python', raw, prior=invalid)['status'],
+                         'historical_receipt_differs')
+
+    def test_historical_counts_cannot_infer_member_diff(self):
+        raw = compare.encode({f'stokowski/file{i}.py': 'a'*64 for i in range(20)})
+        prior = compare.HistoricalRoleReceipt('python', 23, 'b'*64)
+        result = compare.compare_to_historical_role('python', raw, prior=prior)
+        self.assertEqual(result, dict(role='python', historical_count=23, candidate_count=20,
+                         status='historical_receipt_differs', production_acceptance='not_evaluated'))
