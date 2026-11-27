@@ -37,6 +37,19 @@ a new admission or deployment gate.
 | Completion, refill or return to health | Observe exact terminal outcome and authenticated completion through the existing effect and publisher boundaries; verify current owner, scope and admission for the next eligible Linear issue. | Let the appointed scheduler refill. Do not issue another claim for held work, take from the other healthy peer, or substitute a new publisher. Restore capacity for eligible scopes without moving an active claim back merely because its old peer returned. |
 | Explicit owner pause or stop | Resolve the scope and current durable control state before any work; treat a shared stop as global where the authority defines it so. | Honor it across recovery and reboot. Read-only status and reconciliation do not lift it; unrelated work proceeds only outside the scope of the stop. |
 
+## Keep a blocked restoration moving
+
+For a missing or mismatched release artifact, hand off directly to
+[clean forward qualification](../windmill/foo-installer-workflow.md#fix-forward-when-a-retained-release-cannot-be-reused).
+Keep package preparation, protected installation preparation and control
+reconciliation moving under their existing owners. For each held lane,
+record the exact missing input, owner action and evidence that will reopen it.
+If the owner is unknown, mark ownership unverified and identify the existing
+route that can confirm it. Do not implicitly hand off the work.
+Status checks do not advance a lane. When the evidence arrives, resume the
+existing operation and continue to end-to-end acceptance without replaying a
+lost effect, restarting a held service, or transferring a claim.
+
 Read the [BAU service contract](../operations/business-as-usual.md) for accepted
 status terms and the [white-room recovery contract](../white-room/startup-and-recovery.md)
 for original-operation recovery. Report the observed role, scope, exact original
