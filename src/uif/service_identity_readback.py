@@ -55,3 +55,33 @@ def verifies_same_role(expected, *, before, after):
             raise IdentityReadbackUnavailable("same_runtime_role_identity_unverified")
     return {"role": expected.role, "coordinator_epoch": expected.coordinator_epoch,
             "stopped": expected.stopped}
+
+
+def begin_same_role_readback(expected, *, role, observe):
+    """Pair two reads from one trusted, already scoped runtime observer.
+
+    The returned callable reads again only when the existing owner calls it
+    after independently reconciling the issuer/store original. It neither
+    performs nor proves that change, and is not called by normal startup.
+    """
+    if (type(expected) is not IdentityReadbackExpectation or expected.role != role
+            or role not in ("morgan", "native") or not callable(observe)):
+        raise IdentityReadbackUnavailable("installed_identity_expectation_unavailable")
+
+    def read_bound():
+        try:
+            result = observe()
+        except (RuntimeError, ValueError, OSError):
+            raise IdentityReadbackUnavailable("same_runtime_role_read_unavailable") from None
+        if type(result) is not dict:
+            raise IdentityReadbackUnavailable("same_runtime_role_identity_unverified")
+        snapshot = dict(result)
+        verifies_same_role(expected, before=snapshot, after=snapshot)
+        return snapshot
+
+    before = read_bound()
+
+    def verify_after():
+        return verifies_same_role(expected, before=before, after=read_bound())
+
+    return verify_after

@@ -6,8 +6,9 @@ import unittest
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
-TOOL = runpy.run_path(str(Path(__file__).resolve().parents[2] /
-                           "tools/delivery/morgan_cloud_status.py"))["observe"]
+MODULE = runpy.run_path(str(Path(__file__).resolve().parents[2] /
+                             "tools/delivery/morgan_cloud_status.py"))
+TOOL = MODULE["observe"]
 API = TOOL.__globals__
 FIXTURE = {key: "synthetic-placeholder-" + str(index) for index, key in enumerate(API["SECRET_KEYS"])}
 
@@ -36,6 +37,27 @@ class MorganCloudStatusTest(unittest.TestCase):
         proxy, deny_redirect = self.builder.call_args.args
         self.assertEqual({"https": "http://proxy.invalid:8080"}, proxy.proxies)
         self.assertIsNone(deny_redirect.redirect_request())
+
+    def test_optional_identity_pair_reuses_exact_morgan_transport(self):
+        from uif.effect_authority import AuthorityIdentity
+        from uif.service_identity_readback import IdentityReadbackExpectation, IdentityReadbackUnavailable
+
+        p = AuthorityIdentity("realm", "a"*64, "b"*64, "morgan-session")
+        expected = IdentityReadbackExpectation("morgan", p, 1, "c"*64, True)
+        status = dict(role="morgan", stopped=True, coordinator_epoch=1,
+                      authority_id=p.authority_id, session_id=p.session_id,
+                      deployment_sha256=p.deployment_sha256, policy_sha256=p.policy_sha256,
+                      installation_sha256="c"*64, commissioned_sha256="c"*64)
+        self.response.read.return_value = json.dumps(status).encode()
+        finish = MODULE["begin_identity_readback"](expected)
+        self.assertEqual(self.builder.return_value.open.call_count, 1)
+        self.assertEqual(finish(), dict(role="morgan", stopped=True, coordinator_epoch=1))
+        self.assertEqual(self.builder.return_value.open.call_count, 2)
+        self.assertTrue(all(c.args[0].full_url == API["URL"] and c.args[0].method == "GET"
+                            for c in self.builder.return_value.open.call_args_list))
+        self.response.read.return_value = json.dumps(dict(status, coordinator_epoch=2)).encode()
+        with self.assertRaisesRegex(IdentityReadbackUnavailable, "same_runtime_role_identity_unverified"):
+            finish()
 
     def test_unbound_credentials_or_bypassed_proxy_do_not_open_connection(self):
         del self.env[API["SECRET_KEYS"][0]]

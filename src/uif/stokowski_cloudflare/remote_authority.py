@@ -213,6 +213,11 @@ class RemoteAuthority:
                 'authority_status_binding')
         return status
 
+    def begin_identity_readback(self, expected):
+        """Optional in-process renewal readback using this same native transport."""
+        from ..service_identity_readback import begin_same_role_readback
+        return begin_same_role_readback(expected, role="native", observe=self.status)
+
     def read_claim(self, project, identifier, by_attempt):
         require(project == 'OffMenu' and type(by_attempt) is bool, 'authority_read_project')
         token(identifier)
