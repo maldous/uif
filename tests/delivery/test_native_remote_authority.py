@@ -663,10 +663,13 @@ class RealCheckoutTest(unittest.TestCase):
         reconstructed.installation = self.c.installation
         reconstructed.assignment = lambda *a: grant
         reconstructed.send_handoff = restarted.send_handoff
-        asyncio.run(reconstructed.receive_pending(native))
+        asyncio.run(reconstructed.reconcile_originals(native, Mock()))
         self.assertEqual(settled.read_bytes(), retained_settlement)
         reconstructed.send_handoff.assert_not_called()
-        self.r.release_verified.assert_called_once_with(claim.lease)
+        # Neither observation found a terminal release receipt; the later
+        # tick may only reconcile the same original lease, never re-export.
+        from unittest.mock import call
+        self.assertEqual(self.r.release_verified.call_args_list, [call(claim.lease)] * 2)
 
     def test_release_ack_loss_recovers_same_authenticated_original_and_keeps_exact_receipt(self):
         from uif.handoff_store import wire
@@ -714,7 +717,10 @@ class RealCheckoutTest(unittest.TestCase):
         received_before = received.read_bytes()
         reboot = NativeComposition(self.r, '/unused')
         reboot.installation = self.c.installation
-        reboot.try_release(self.grant, self.path)
+        self.item['scope_sha256'] = self.grant.scope_sha256
+        reboot.assignment = lambda project, issue, scope: self.grant
+        native = SimpleNamespace(project_name='OffMenu', running={})
+        asyncio.run(reboot.reconcile_originals(native, Mock()))
         self.assertEqual(len(history), 1)
         self.assertEqual(mutations[0], mutations[1])
         self.assertEqual(released.read_bytes(), wire(next(iter(history.values()))[1]))

@@ -1,14 +1,15 @@
 """Typed request and readback of an existing control startup-bind original.
 
-No submission, credential handling, grant, start, or retry is implemented.
-Only the existing release owner can supply the authenticated control reader
-and actual immutable original. An acknowledgement is not native readiness.
+Only the existing release owner can supply the authenticated control port
+and actual immutable original. No credential handling, grant, start or write
+retry is implemented. An acknowledgement is not native readiness.
 """
 from dataclasses import asdict, dataclass
 import re
 
-from ..handoff_store import digest, require
+from ..handoff_store import Hold, digest, require
 from ..quota_handoff import token
+from .remote_authority import AuthorityUnavailable
 
 STARTUP_BIND = '/v1/startup/bind'
 TRANSITION_ORIGINAL = '/v1/transition/original'
@@ -56,16 +57,49 @@ def observe_original(original, *, recorded_fingerprint, installation_sha256,
     request/unit/stage. The caller must preserve the protected exact input
     separately and use native startup proof to verify the current binding.
     """
-    require(type(original) is StartupBindOriginal
-            and _sha(recorded_fingerprint) and original.fingerprint() == recorded_fingerprint
-            and _sha(installation_sha256) and callable(read), 'retained_startup_original_required')
-    token(control_session_id)
-    require(control_session_id != original.session_id, 'startup_control_must_not_be_native')
+    _validate_original(original, recorded_fingerprint, installation_sha256,
+                       control_session_id, read)
     # This POST is the read-only original observation; no bind on unknown,
     # no allow-absent fallback, no automatic retries or alternative endpoint.
     reply = read(TRANSITION_ORIGINAL, {'installation_sha256': installation_sha256,
                                        'session_id': control_session_id,
                                        'request_id': original.request_id})
-    expected = {k:getattr(original,k) for k in ('request_id', 'unit', 'stage')}
+    return _acknowledged(original, reply)
+
+
+def _validate_original(original, recorded_fingerprint, installation_sha256,
+                       control_session_id, port):
+    require(type(original) is StartupBindOriginal
+            and _sha(recorded_fingerprint) and original.fingerprint() == recorded_fingerprint
+            and _sha(installation_sha256) and callable(port), 'retained_startup_original_required')
+    token(control_session_id)
+    require(control_session_id != original.session_id, 'startup_control_must_not_be_native')
+
+
+def _acknowledged(original, reply):
+    expected = {k: getattr(original, k) for k in ('request_id', 'unit', 'stage')}
     require(type(reply) is dict and reply == expected, 'startup_original_acknowledgement_unverified')
     return dict(expected, status='original_acknowledged', native_startup_verified=False)
+
+
+def submit_original_attempt(original, *, recorded_fingerprint, installation_sha256,
+                         control_session_id, request):
+    """Send one existing authorized control original, or read it on transport loss.
+
+    The caller must have already durably retained the exact original and must
+    enter through the existing authenticated installation handoff. This
+    helper does not decide whether the original has already been sent. On a
+    later invocation with uncertain history, use observe_original directly.
+    """
+    _validate_original(original, recorded_fingerprint, installation_sha256,
+                       control_session_id, request)
+    try:
+        reply = request(STARTUP_BIND, original.body())
+    except AuthorityUnavailable:
+        try:
+            return observe_original(original, recorded_fingerprint=recorded_fingerprint,
+                                    installation_sha256=installation_sha256,
+                                    control_session_id=control_session_id, read=request)
+        except (Hold, OSError):
+            raise AuthorityUnavailable('authority_startup_original_outcome_unknown') from None
+    return _acknowledged(original, reply)
