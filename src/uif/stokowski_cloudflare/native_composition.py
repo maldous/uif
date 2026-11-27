@@ -1238,24 +1238,54 @@ class NativeComposition:
                 raise Hold('authority_previous_linear_effect_verified_different_original_payload')
             raise Hold('authority_previous_linear_send_unverified_different_original_payload')
 
+    @staticmethod
+    def _linear_original_id(fence, attempt_id, slot, kind):
+        return digest({'attempt': attempt_id, 'slot': slot, 'kind': kind, 'issue': fence.scope.key.issue_id})
+
+    def _linear_operation(self, fence, attempt_id, slot, kind, payload):
+        original_id = self._linear_original_id(fence, attempt_id, slot, kind)
+        args = {'attempt_id': attempt_id, 'issue_id': fence.scope.key.issue_id, **payload}
+        return Operation(fence, original_id, digest({'kind': 'uif.linear-' + kind + '/1', **args}))
+
+    def observe_stage_report(self, fence, attempt_id, body):
+        """Read the exact original posted report; never send or settle a report.
+
+        Caller supplies the original renderer's full body, not a model verdict
+        or a report reconstructed from a prior stage. A verified effect proves
+        only posting; stage acceptance and current eligibility are separate.
+        """
+        require(type(fence) is ClaimFence and type(attempt_id) is str and 0 < len(attempt_id) <= 256
+                and type(body) is str and body != '', 'authority_stage_report_observation_input')
+        operation = self._linear_operation(fence, attempt_id, '_publish_run_report', 'comment', {'body': body})
+        result = self.remote.transport.request('/v1/linear/receipt',
+                                               {'operation': asdict(operation)}, allow_absent=True)
+        if result is None:
+            return None
+        require(type(result) is dict and result.keys() == {'id', 'receipt_sha256'},
+                'authority_stage_report_observation_result')
+        try:
+            comment_id = str(UUID(result['id']))
+        except (AttributeError, TypeError, ValueError):
+            raise Hold('authority_stage_report_observation_result') from None
+        require(comment_id == result['id'], 'authority_stage_report_observation_result')
+        return comment_id, self._verified_terminal(operation, result)
+
     def linear(self, kind, issue_id, payload):
         claim = self.current(issue_id)
         slot = self._slot.get()
         require(slot is not None, 'authority_original_linear_slot_missing')
-        original_id = digest({'attempt': claim.attempt_id, 'slot': slot, 'kind': kind, 'issue': issue_id})
         body = payload.get('body')
         if (kind == 'comment' and slot == '_enter_gate' and type(body) is str
                 and body.startswith('<!-- stokowski:gate ')):
+            original_id = self._linear_original_id(claim.lease.fence, claim.attempt_id, slot, kind)
             payload = dict(payload, body=self._waiting_gate_body(claim, issue_id, original_id, body))
             # A stale worker cannot carry clock retention into a new fence.
             current = self.current(issue_id)
             require(current.lease.fence == claim.lease.fence and current.attempt_id == claim.attempt_id,
                     'authority_waiting_gate_fence_changed')
-        args = {'attempt_id': claim.attempt_id, 'issue_id': issue_id, **payload}
-        sha = digest({'kind': 'uif.linear-' + kind + '/1', **args})
         # Different semantic bytes for the same native stage and effect slot
         # remain a conflict. A clock-only retry recovers the exact first bytes.
-        op = Operation(claim.lease.fence, original_id, sha)
+        op = self._linear_operation(claim.lease.fence, claim.attempt_id, slot, kind, payload)
         self.retained_linear(op)
         result = self.remote.transport.request('/v1/linear/receipt', {'operation': asdict(op)}, allow_absent=True)
         if result is None:
@@ -1270,6 +1300,7 @@ class NativeComposition:
         require(observed.state == 'terminal' and observed.terminal.status == 'verified'
                 and observed.terminal.receipt_sha256 == result['receipt_sha256'],
                 'authority_linear_effect_unsettled')
+        return observed.terminal
 
     def upload(self, filename, content_type, data):
         pair = self._running.get()
