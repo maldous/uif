@@ -25,7 +25,7 @@ import time
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from ..effect_authority import AuthorityIdentity, Completion, Operation, Scope, SourcePin, pinned_sha
+from ..effect_authority import AuthorityIdentity, ClaimFence, Completion, Operation, Scope, SourcePin, pinned_sha
 from ..handoff_store import Hold, decode, digest, require, wire
 from ..shared_issue_coordinator import _lease
 from ..quota_handoff import LinearKey
@@ -127,6 +127,15 @@ HANDOFF_BUNDLE_LIMIT = 8 * 1024 * 1024
 class _RetainedHandoffOriginal:
     path: Path
     producer_sha256: str
+
+
+@dataclass(frozen=True)
+class NativeOwnerCandidateEvidence:
+    """Verified producer-side observation, not an authorization or wire envelope."""
+
+    raw: bytes
+    handoff_sha256: str
+    fence: ClaimFence
 
 
 @contextmanager
@@ -749,6 +758,45 @@ class NativeComposition:
                    'existing_publication_intent':record.get('publication_intent'),
                    'existing_publication_receipt':record.get('publication_receipt')}
         return _retain_handoff_original(directory, head + '.json', wire(receipt), HANDOFF_RECEIPT_LIMIT)
+
+    def observe_owner_candidate(self, path, issue, candidate, receipt):
+        """Project exact ordinary-Git original evidence for protected owner intake.
+
+        This performs existing native status/claim observations only. It does not
+        renew, publish or authorize the recipient. The owner must independently
+        resolve its current fence before using these bytes.
+        """
+        pair = self._running.get()
+        require(pair is not None and pair[0].scope.key.issue_id == issue.id,
+                'authority_native_context')
+        grant, original = pair
+        require(self.assignment('OffMenu', issue.id, grant.scope_sha256) == grant,
+                'authority_native_grant_changed')
+        item = self.installation()['assignments'][issue.id]
+        directory = path / '.git/uif-owner-handoffs'
+        require(path == Path(item['workspace_binding']['path'])
+                and type(candidate) is str and re.fullmatch(r'[0-9a-f]{40}', candidate)
+                and type(receipt) is _RetainedHandoffOriginal
+                and receipt.path == directory / (candidate + '.json'),
+                'authority_handoff_receipt_target')
+        status = self.remote.status()
+        current = self.remote.read_claim('OffMenu', original.attempt_id, True)
+        require(not status['stopped'] and status['coordinator_epoch'] == original.lease.fence.coordinator_epoch
+                and current is not None and current.attempt_id == original.attempt_id
+                and current.lease.fence == original.lease.fence
+                and self.remote.clock().timestamp() < current.lease.expires_at,
+                'authority_original_lease_changed')
+        with _handoff_directory(directory) as fd:
+            raw = _retained_handoff_bytes(fd, receipt.path.name, HANDOFF_RECEIPT_LIMIT)
+        current_sha = sha256(raw).hexdigest()
+        require(current_sha == receipt.producer_sha256, 'authority_handoff_receipt_bytes_changed')
+        value = decode(raw, limit=HANDOFF_RECEIPT_LIMIT)
+        require(raw == wire(value) and value['schema'] == 'uif.native-owner-candidate/1'
+                and value['issue_id'] == issue.id and value['candidate'] == candidate
+                and value['fence'] == asdict(current.lease.fence)
+                and item.get('publisher') == value['publisher'] == 'offmenu-cloud',
+                'authority_native_candidate_original')
+        return NativeOwnerCandidateEvidence(raw, current_sha, current.lease.fence)
 
     def requires_publisher(self, issue_id, selected):
         if selected['binding']['kind'] == 'git':
