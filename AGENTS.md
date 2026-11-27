@@ -29,6 +29,10 @@ requires it. Zero Foo quota is not a prerequisite; Foo-local Codex is not
 required. Native pauses, execution claims and publisher authority remain intact;
 an orchestration receiving acknowledgment is not a claim transfer or fence.
 
+Use the [Morgan peer transition playbook](docs/agents/morgan-peer-transition.md)
+when Morgan handles UIF handoff, return or refill. Stokowski runs native
+transitions in code; these agent instructions do not replace that runtime.
+
 Use the [environment alignment skill](.agents/skills/uif-environment-alignment/SKILL.md)
 at startup, on demand and at quota/Morgan MCP transitions to collect real
 operation-scoped readiness evidence. It does not create a blanket project gate

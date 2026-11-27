@@ -1538,3 +1538,40 @@ test('normal startup bind reconciles the same authenticated original without reb
   assert.equal(reply.coordinator_epoch, coordinator_epoch);
   assert.equal(reply.expires_at, start + 5);
 });
+
+test('peer transfer and return keep one claim; an independent hold does not stop refill', async () => {
+  const f = fixture(), first = await admitted(f);
+  const nextScope = () => ({ ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } });
+  const heldReq = await f.addGrant(nextScope(), 'held');
+  const held = (await f.call('native', 'claim', heldReq)).lease;
+  const witness = (current, to) => ({ current, successor_session: f.peers[to].session_id,
+    expected_coordinator_epoch: 2, quiesced_sha256: hex('a'), reconstruction_sha256: hex('c') });
+  const transfer = async (from, to, current, id) => {
+    const h = witness(current, to);
+    await f.call('control', 'attest', { request_id: 'attest-' + id, fact: { kind: 'handoff', ...h } });
+    return (await f.call(from, 'handoff', { ...h, request_id: id })).lease;
+  };
+  f.setTime(start + 301);
+  f.a = f.restart();
+  await assert.rejects(f.call('native', 'handoff', { ...witness(held, 'morgan'), request_id: 'held-move' }),
+    /independent_original_evidence_missing/);
+  await assert.rejects(f.call('morgan', 'claim', { ...heldReq, request_id: 'held-duplicate' }),
+    /issue_or_attempt_already_claimed/);
+  const middle = await transfer('native', 'morgan', first, 'failover');
+  assert.equal(middle.fence.owner_session, f.peers.morgan.session_id);
+  await assert.rejects(f.call('native', 'renew', { current: first, request_id: 'first-stale' }),
+    /claim_fence_changed/);
+  const refillReq = await f.addGrant(nextScope(), 'refill');
+  const refill = await f.call('morgan', 'claim', refillReq);
+  assert.equal(refill.lease.fence.owner_session, f.peers.morgan.session_id);
+  f.a = f.restart();
+  const last = await transfer('morgan', 'native', middle, 'return');
+  assert.equal(last.fence.owner_session, f.peers.native.session_id);
+  assert.deepEqual([first, middle, last].map(x => x.fence.generation), [1, 2, 3]);
+  assert.equal(new Set([first, middle, last].map(x => x.fence.lease_id)).size, 3);
+  await assert.rejects(f.call('morgan', 'renew', { current: middle, request_id: 'middle-stale' }),
+    /claim_fence_changed/);
+  assert.deepEqual(await f.call('morgan', 'claim/observe', refillReq), refill);
+  assert.deepEqual((await f.call('native', 'claim/observe', heldReq)).lease, held);
+  assert.equal(f.calls.length, 0);
+});

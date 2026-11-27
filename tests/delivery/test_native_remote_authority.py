@@ -115,6 +115,27 @@ def make():
 
 
 class NativeRemoteTest(unittest.TestCase):
+    def test_optional_identity_pair_reuses_bound_native_status_only(self):
+        from uif.service_identity_readback import IdentityReadbackExpectation
+        from uif.service_identity_readback import IdentityReadbackUnavailable
+
+        remote = object.__new__(RemoteAuthority)
+        remote.identity, remote.quota_issuer = OWNER, QUOTA
+        remote.transport = Mock()
+        current = dict(asdict(OWNER), role="native", stopped=False, coordinator_epoch=1,
+                       lease_seconds=30, quota_issuer=asdict(QUOTA),
+                       installation_sha256="c"*64, commissioned_sha256="c"*64)
+        remote.transport.request.return_value = current
+        expected = IdentityReadbackExpectation("native", OWNER, 1, "c"*64, False)
+        finish = remote.begin_identity_readback(expected)
+        self.assertEqual(remote.transport.request.call_count, 1)
+        self.assertEqual(finish(), dict(role="native", stopped=False, coordinator_epoch=1))
+        self.assertEqual(remote.transport.request.call_count, 2)
+        self.assertTrue(all(c.args == ("/v1/status",) for c in remote.transport.request.call_args_list))
+        remote.transport.request.side_effect = Hold("redacted test sentinel")
+        with self.assertRaisesRegex(IdentityReadbackUnavailable, "^same_runtime_role_read_unavailable$"):
+            finish()
+
     def test_claim_original_fingerprint_and_attempt_cas(self):
         w,r=make()
         self.assertEqual(r.acquire(GRANT,'assess'),RECORD)

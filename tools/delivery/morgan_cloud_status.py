@@ -78,6 +78,12 @@ def observe():
     return {key: result[key] for key in ("role", "stopped", "coordinator_epoch")}
 
 
+def begin_identity_readback(expected):
+    """Optional in-process renewal readback; standalone CLI stays redacted."""
+    from uif.service_identity_readback import begin_same_role_readback
+    return begin_same_role_readback(expected, role="morgan", observe=_observe_authenticated)
+
+
 def main():
     if len(sys.argv) != 1:
         return 2
