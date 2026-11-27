@@ -164,3 +164,23 @@ class FixedNormalSelection(unittest.TestCase):
         self.original = expected
         self.run_original()
         self.assertEqual(self.selector.stat().st_ino, before)
+
+
+    def test_retained_canonical_original_restores_types_and_refuses_other_bytes(self):
+        txn = install.transaction
+        intended = replace(self.original,
+            prior_guarded_conditions=(('ConditionPathExists', False, False, '/fixed'),))
+        raw = txn.encode_selection_original(intended)
+        pin = g.digest(raw)
+        self.assertEqual(txn.decode_selection_original(raw, pin), intended)
+        self.assertEqual(txn.encode_selection_original(txn.decode_selection_original(raw, pin)), raw)
+        changed = txn.encode_selection_original(self.original)
+        with self.assertRaisesRegex(g.Held, 'byte pin differs'):
+            txn.decode_selection_original(changed, pin)
+        for alternate in (raw + b'\n', raw.replace(b'/2"', b'/1"'),
+                          raw.replace(b'"prior_guarded_asserts":[]', b'"prior_guarded_asserts":null'),
+                          raw.replace(b'"schema":', b'"schema":"duplicate","schema":')):
+            with self.assertRaises(g.Held):
+                txn.decode_selection_original(alternate, g.digest(alternate))
+        self.assertFalse(list(self.receipts.iterdir()))
+        self.assertFalse(self.selector.exists())

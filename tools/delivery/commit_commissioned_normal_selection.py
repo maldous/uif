@@ -4,7 +4,7 @@ The adapter owns the fixed leaves, selector lock, exact protected #171 stage
 readback, and same-filesystem durable compare/publish and fixed parent sync. It supplies the existing
 typed manager observation only. There is no CLI, root binding, reload or start.
 """
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 
 import commissioned_normal_service as normal
 import guarded_service_upgrade as guard
@@ -50,6 +50,51 @@ def _guarded_predicates(rows):
                     for row in rows))
 
 
+def encode_selection_original(original):
+    """Canonical bytes of the existing original wire format, not authority."""
+    guard.require(type(original) is SelectionOriginal, 'expected typed normal selection original')
+    return guard.encode({'schema': 'uif.foo-normal-selection-original/2', 'original': asdict(original)})
+
+
+def decode_selection_original(raw, expected_sha256):
+    """Restore exact bytes already pinned by the protected installation owner.
+
+    This does not find a pin, establish the owner, read paths or install. The
+    protected caller supplies the independently retained pin and bounded bytes.
+    """
+    guard.require(type(raw) is bytes and 0 < len(raw) <= guard.MAX_RECORD
+                  and guard.hash_pin(expected_sha256) and guard.digest(raw) == expected_sha256,
+                  'retained normal selection original byte pin differs')
+    wire = guard.record(raw, ('schema', 'original'))
+    guard.require(wire['schema'] == 'uif.foo-normal-selection-original/2',
+                  'unsupported retained normal selection original schema')
+
+    def values(node, cls):
+        guard.require(type(node) is dict and node.keys() == {field.name for field in fields(cls)},
+                      'unexpected retained normal selection fields')
+        return node.copy()
+
+    def predicates(rows):
+        guard.require(type(rows) is list and len(rows) <= 64 and all(type(row) is list for row in rows),
+                      'unexpected retained systemd predicate list')
+        projected = tuple(map(tuple, rows))
+        guard.require(_guarded_predicates(projected), 'unexpected retained systemd predicate shape')
+        return projected
+
+    top = values(wire['original'], SelectionOriginal)
+    top['staged'] = NormalRuntimeStageApproval(**values(top['staged'], NormalRuntimeStageApproval))
+    manager = values(top['effective_original'], effective.NormalEffectiveOriginal)
+    for key in ('conditions', 'asserts'):
+        manager[key] = predicates(manager[key])
+    top['effective_original'] = effective.NormalEffectiveOriginal(**manager)
+    for key in ('prior_guarded_conditions', 'prior_guarded_asserts'):
+        top[key] = predicates(top[key])
+    result = SelectionOriginal(**top)
+    guard.require(encode_selection_original(result) == raw,
+                  'retained normal selection original not canonical')
+    return result
+
+
 def _pin(raw):
     guard.require(raw is None or type(raw) is bytes, 'unexpected protected byte observation')
     return None if raw is None else guard.digest(raw)
@@ -92,7 +137,7 @@ def commit_normal_selection(original, selector, dropin, owner):
                   and selected['release_sha256'] == original.staged.members_sha256,
                   'normal selector not bound to staged exact release')
     staging = guard.encode({'schema': 'uif.foo-normal-runtime-staged/1', **vars(original.staged)})
-    intent = guard.encode({'schema': 'uif.foo-normal-selection-original/2', 'original': asdict(original)})
+    intent = encode_selection_original(original)
     receipt = guard.encode({'schema': 'uif.foo-normal-selection-disk-commit/1',
                             'operation_id': original.operation_id,
                             'intent_sha256': guard.digest(intent)})
