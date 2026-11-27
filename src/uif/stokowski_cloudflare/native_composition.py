@@ -880,7 +880,7 @@ class NativeComposition:
                 'authority_release_original_fence')
         receipt = self.remote.release_verified(lease)
         if receipt is not None:
-            _preserve(directory, complete.name, wire(asdict(receipt)))
+            _retain_handoff_original(directory, complete.name, wire(asdict(receipt)), 8192)
 
     def receive_late_completions(self, native_owner):
         if native_owner.project_name != 'OffMenu':

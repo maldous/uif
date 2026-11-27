@@ -668,6 +668,98 @@ class RealCheckoutTest(unittest.TestCase):
         reconstructed.send_handoff.assert_not_called()
         self.r.release_verified.assert_called_once_with(claim.lease)
 
+    def test_release_ack_loss_recovers_same_authenticated_original_and_keeps_exact_receipt(self):
+        from uif.handoff_store import wire
+        from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
+
+        claim = self.grant.claim(OWNER)
+        lease = replace(RECORD.lease, fence=replace(FENCE, source=self.grant.source))
+        self.worker.original = dict(request_id=claim.request_id, request_kind=claim.kind,
+            request_sha256=transition_request_sha256(claim), lease=asdict(lease))
+        self.worker.completion = Completion(lease.fence, True, 'a'*64)
+        journal = self.path / '.git/uif-original-effects'
+        journal.mkdir(mode=0o700)
+        original = journal / (claim.request_id + '.settled')
+        original.write_bytes(wire(asdict(lease)))
+        original.chmod(0o600)
+        released = original.with_suffix('.released')
+        self.item['source_overlays'] = {'fixture': True}
+        orig_bytes = original.read_bytes()
+        history, mutations = {}, []
+        transport = self.worker.request
+
+        def request(path, body, **kwargs):
+            if path != '/v1/release':
+                return transport(path, body, **kwargs)
+            mutations.append(body)
+            key = body['request_id']
+            if key not in history:
+                history[key] = (body, transport(path, body, **kwargs))
+                raise AuthorityUnavailable('fixture-lost-release-ack')
+            prior, reply = history[key]
+            self.assertEqual(body, prior)
+            return reply
+
+        self.worker.request = request
+        self.c.try_release(self.grant, self.path)
+        self.assertFalse(mutations)  # Source publication is still held.
+        self.c.prepare_handoff(self.path, self.grant,
+            NativeClaim('OffMenu', self.grant.attempts[0], lease), {'run':1}, 'publish')
+        received = original.with_suffix('.received')
+        received.write_bytes(original.with_suffix('.receiving').read_bytes())
+        received.chmod(0o600)
+        with self.assertRaises(AuthorityUnavailable):
+            self.c.try_release(self.grant, self.path)
+        self.assertFalse(released.exists())
+        received_before = received.read_bytes()
+        reboot = NativeComposition(self.r, '/unused')
+        reboot.installation = self.c.installation
+        reboot.try_release(self.grant, self.path)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(mutations[0], mutations[1])
+        self.assertEqual(released.read_bytes(), wire(next(iter(history.values()))[1]))
+        self.assertEqual(released.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(released.stat().st_nlink, 1)
+        reboot.try_release(self.grant, self.path)
+        self.assertEqual(len(mutations), 2)
+        self.assertEqual((original.read_bytes(), received.read_bytes()), (orig_bytes, received_before))
+
+    def test_release_receipt_collision_is_bounded_and_retains_original(self):
+        from uif.handoff_store import wire
+
+        claim = self.grant.claim(OWNER)
+        lease = replace(RECORD.lease, fence=replace(FENCE, source=self.grant.source))
+        self.worker.original = dict(request_id=claim.request_id, request_kind=claim.kind,
+            request_sha256=transition_request_sha256(claim), lease=asdict(lease))
+        self.worker.completion = Completion(lease.fence, True, 'a'*64)
+        journal = self.path / '.git/uif-original-effects'
+        journal.mkdir(mode=0o700)
+        original = journal / (claim.request_id + '.settled')
+        original.write_bytes(wire(asdict(lease)))
+        released = original.with_suffix('.released')
+        transport = self.worker.request
+        oversized = b'x'*8193
+
+        def request(path, body, **kwargs):
+            reply = transport(path, body, **kwargs)
+            if path == '/v1/release':
+                released.write_bytes(oversized)
+                released.chmod(0o600)
+            return reply
+
+        original_read = Path.read_bytes
+        def refuse_unbounded(path):
+            if path == released:
+                raise AssertionError('must not use unbounded Path.read_bytes on release collision')
+            return original_read(path)
+
+        self.worker.request = request
+        with patch.object(Path, 'read_bytes', refuse_unbounded):
+            with self.assertRaisesRegex(Hold, 'authority_handoff_receipt_custody'):
+                self.c.try_release(self.grant, self.path)
+        self.assertEqual(released.read_bytes(), oversized)
+        self.assertEqual(original.read_bytes(), wire(asdict(lease)))
+
     def test_original_provider_bytes_recovered_without_second_send(self):
         from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable, ProviderReply
         from uif.stokowski_cloudflare.shared_admission import SendIntent
