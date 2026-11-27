@@ -51,7 +51,8 @@ def _project_member_map(values):
                       'normal stage member conflicts with directory')
     projected = {k: {'bytes': len(raw), 'mode': mode, 'sha256': sha256(raw).hexdigest()}
                  for k, (raw, mode) in values.items()}
-    guard.require(REQUIRED <= set(values) and values['venv/bin/python3.12'][1] == 0o555,
+    guard.require(REQUIRED <= set(values) and all(values[name][0] for name in REQUIRED)
+                  and values['venv/bin/python3.12'][1] == 0o555,
                   'incomplete normal stage membership')
     return projected
 
@@ -65,7 +66,7 @@ def _members(archive, approved):
             name = member.name
             guard.require(_member_path_allowed(name) and name not in values and len(values) < MAX_FILES
                           and member.isreg() and not member.issparse()
-                          and member.mode in (0o444, 0o555) and 0 < member.size <= MAX_ARCHIVE,
+                          and member.mode in (0o444, 0o555) and 0 <= member.size <= MAX_ARCHIVE,
                           'unexpected normal stage archive member')
             total += member.size
             guard.require(total <= MAX_ARCHIVE, 'oversized normal stage membership')
@@ -82,6 +83,22 @@ def _members(archive, approved):
 def _identity(info):
     return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_nlink,
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _matches_stage_member(path, raw, expected):
+    if raw:
+        return guard.bytes_pin(path, len(raw)) == guard.digest(raw)
+    # The shared guard deliberately requires nonempty records. A zero-byte
+    # ordinary archive member is not a record; check its exact descriptor
+    # here without extending the shared protected record reader.
+    guard.protected_parents(path)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    try:
+        return (_identity(os.fstat(fd)) == _identity(expected)
+                and os.read(fd, 1) == b''
+                and _identity(os.fstat(fd)) == _identity(expected))
+    finally:
+        os.close(fd)
 
 
 def _verify_directory(root, expected):
@@ -112,7 +129,7 @@ def _verify_directory(root, expected):
             guard.require(stat.S_ISREG(info.st_mode) and info.st_uid == uid
                           and stat.S_IMODE(info.st_mode) == mode and info.st_nlink == 1
                           and info.st_size == len(raw)
-                          and guard.bytes_pin(child, len(raw)) == guard.digest(raw)
+                          and _matches_stage_member(child, raw, info)
                           and _identity(child.lstat()) == _identity(info), 'normal stage member differs from same original')
             names.add(relative)
     guard.require(names == set(expected) and directories == required_dirs, 'normal stage closure incomplete')

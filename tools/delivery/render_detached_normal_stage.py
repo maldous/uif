@@ -23,7 +23,7 @@ def render_detached_normal_stage(members):
         require(stage._member_path_allowed(name) and type(value) is tuple and len(value) == 2,
                 'unexpected normal stage archive member')
         raw, mode = value
-        require(type(raw) is bytes and 0 < len(raw) and type(mode) is int
+        require(type(raw) is bytes and type(mode) is int
                 and mode in (0o444, 0o555), 'expected immutable normal stage member')
         total += len(raw)
         require(total <= stage.MAX_ARCHIVE, 'oversized normal stage membership')

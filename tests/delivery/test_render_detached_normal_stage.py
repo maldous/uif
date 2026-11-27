@@ -33,3 +33,14 @@ class DetachedNormalStageRender(unittest.TestCase):
         del files['venv/bin/python3.12']
         with self.assertRaisesRegex(stage.guard.Held, 'incomplete'):
             render.render_detached_normal_stage(files)
+
+
+    def test_empty_stdlib_marker_round_trips_with_exact_digest(self):
+        files = self.inputs() | {'venv/lib/python3.12/encodings/.empty-marker': (b'', 0o444)}
+        archive, receipt = render.render_detached_normal_stage(files)
+        pins = stage.NormalRuntimeStageApproval('a'*64, 'uif1313-normal-fixture',
+            receipt['archive_sha256'], receipt['members_sha256'], 'b'*64, 'c'*64)
+        self.assertEqual(stage._members(archive, pins), files)
+        for required in ('launch.py', 'venv/bin/python3.12', 'selector-v1/remote-authority.json'):
+            with self.subTest(required=required), self.assertRaisesRegex(stage.guard.Held, 'incomplete'):
+                render.render_detached_normal_stage(files | {required:(b'', files[required][1])})
