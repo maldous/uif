@@ -873,3 +873,79 @@ class RealCheckoutTest(unittest.TestCase):
         self.assertEqual(self.r.send(intent,b'body').read(),b'result')
         self.assertEqual(calls,['/v1/send','/v1/provider/receipt','/v1/original'])
         self.assertTrue((self.path/'.git/uif-original-effects'/(op.original_id+'.json')).is_file())
+
+    def test_fresh_assessment_finisher_retains_only_original_provider_evidence(self):
+        from uif.stokowski_cloudflare.intake import intake_stages
+        from uif.stokowski_cloudflare.remote_authority import ProviderReply
+        from uif.handoff_store import decode, wire
+        record = {'scope_sha256': self.grant.scope_sha256}
+        self.issue.title, self.issue.description = 'Fixture assessment', 'Bounded fixture scope'
+        attempt = intake_stages({}, 'OffMenu', self.issue, self.grant.scope_sha256, 1)['assess']['attempt']
+        record['attempt'] = attempt
+        grant = replace(self.grant, attempts=(attempt, *self.grant.attempts[1:]))
+        fence = replace(RECORD.lease.fence, source=grant.source)
+        claim = replace(RECORD, attempt_id=attempt, lease=replace(RECORD.lease, fence=fence))
+        self.c._running.set((grant, claim))
+        self.c.assignment = lambda *args: grant
+        self.item['workspace_binding']['original_claim_id'] = grant.claim(self.r.identity).request_id
+        self.r.read_claim = Mock(return_value=claim)
+        request_id = 'provider-original'
+        directory = self.path / '.git/uif-original-effects'
+        directory.mkdir(mode=0o700)
+        operation = {'fence':asdict(fence),'original_id':request_id,'payload_sha256':'a'*64}
+        original = directory / (request_id + '.json')
+        original.write_bytes(wire({'operation':operation,'attempt_id':attempt,
+                                    'route':asdict(self.r.routes['OffMenu'])}))
+        original.chmod(0o600)
+        from uif.stokowski_cloudflare.native_composition import digest
+        evidence = directory/(digest({'assess':attempt})+'.assessment')
+        raw = wire({'summary':'private fixture','verdict':'blocked',
+                    'routing':{'issue':self.issue.identifier,'state':'assess','run':1}})
+        body = wire({'choices':[{'message':{'content':raw.decode()}}]})
+        self.r.provider_result = Mock(side_effect=lambda op: ProviderReply(body,None,'b'*64))
+        callback = self.c.retain_assessment_result(self.issue, record, 1)
+        with self.assertRaisesRegex(Hold,'provider_content'):
+            callback(request_id, 'substituted')
+        self.assertFalse(evidence.exists())
+        stale = replace(claim, lease=replace(claim.lease, fence=replace(fence,generation=fence.generation+1)))
+        self.r.read_claim.side_effect = [claim, stale]
+        with self.assertRaisesRegex(Hold,'assessment_claim_changed'):
+            callback(request_id, raw.decode())
+        self.assertFalse(evidence.exists())
+        self.r.read_claim.side_effect = None
+        binding = self.item['workspace_binding'].copy()
+        def replace_workspace_selection(op):
+            self.item['workspace_binding'] = {**binding, 'path':str(self.path.parent/'substitute')}
+            return ProviderReply(body,None,'b'*64)
+        self.r.provider_result.side_effect = replace_workspace_selection
+        with self.assertRaisesRegex(Hold,'assessment_workspace_binding'):
+            callback(request_id, raw.decode())
+        self.assertFalse(evidence.exists())
+        self.item['workspace_binding'] = binding
+        moved = directory.with_name('old-uif-original-effects')
+        def replace_journal(op):
+            directory.rename(moved)
+            directory.mkdir(mode=0o700)
+            original.write_bytes((moved/original.name).read_bytes())
+            original.chmod(0o600)
+            return ProviderReply(body,None,'b'*64)
+        self.r.provider_result.side_effect = replace_journal
+        with self.assertRaisesRegex(Hold,'assessment_provider_intent_changed'):
+            callback(request_id, raw.decode())
+        self.assertFalse(evidence.exists())
+        self.assertFalse((moved/evidence.name).exists())
+        original.unlink()
+        directory.rmdir()
+        moved.rename(directory)
+        self.r.provider_result.side_effect = lambda op: ProviderReply(body,None,'b'*64)
+        callback(request_id, raw.decode())
+        before = evidence.stat().st_ino
+        callback(request_id, raw.decode())
+        receipt = decode(evidence.read_bytes())
+        self.assertEqual(receipt['operation'], operation)
+        self.assertEqual(receipt['receipt_sha256'], 'b'*64)
+        self.assertEqual(receipt['report_sha256'],sha256(raw).hexdigest())
+        self.assertEqual(receipt['provider_body_sha256'],sha256(body).hexdigest())
+        self.assertEqual(evidence.stat().st_ino,before)
+        self.assertNotIn(raw,evidence.read_bytes())
+        self.assertEqual(self.worker.calls,[])

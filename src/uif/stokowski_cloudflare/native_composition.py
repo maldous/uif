@@ -617,6 +617,102 @@ class NativeComposition:
         require(len(prompt.encode()) <= 64_000, 'authority_source_review_prompt_size')
         return dict(record, source_candidate_sha256=value, prompt=prompt)
 
+    def retain_assessment_result(self, issue, record, run):
+        """Private proof helper only; an exact first-dispatch binding must precede any mount."""
+        from .assessment_readiness import project_assessment_readiness
+        from .intake import intake_stages
+        from ..quota_handoff import token
+
+        attempt = intake_stages({}, 'OffMenu', issue, record['scope_sha256'], run)['assess']['attempt']
+        require(record['attempt'] == attempt, 'authority_assessment_original_attempt')
+
+        def finish(request_id, content):
+            token(request_id)
+            pair = self._running.get()
+            require(pair is not None, 'authority_assessment_context')
+            grant, original = pair
+            fence = original.lease.fence
+
+            def still_current():
+                current = self.remote.read_claim('OffMenu', attempt, True)
+                require(grant.previous is None and grant.attempts[0] == attempt
+                        and original.attempt_id == attempt and grant.scope.key.issue_id == issue.id
+                        and grant.scope == fence.scope and grant.source == fence.source
+                        and grant.expected_coordinator_epoch == fence.coordinator_epoch
+                        and grant == self.assignment('OffMenu', issue.id, record['scope_sha256'])
+                        and current is not None and current.attempt_id == attempt
+                        and current.lease.fence == fence
+                        and self.remote.clock().timestamp() < current.lease.expires_at,
+                        'authority_assessment_claim_changed')
+
+            def frozen_workspace():
+                installation = self.installation()
+                item = installation['assignments'][issue.id]
+                binding = item['workspace_binding']
+                root = Path(installation['workspace_root'])
+                path = Path(binding['path'])
+                require(path == root / issue.identifier, 'authority_assessment_workspace_binding')
+                info = path.lstat()
+                require(path.resolve(strict=True) == path and stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid()
+                        and not info.st_mode & 0o077 and binding['device'] == info.st_dev
+                        and binding['inode'] == info.st_ino
+                        and binding['original_claim_id'] == grant.claim(self.remote.identity).request_id,
+                        'authority_assessment_workspace_binding')
+                cfg = item['git_config_sha256']
+                git_env = {'PATH': os.defpath, 'LC_ALL': 'C', 'GIT_CONFIG_NOSYSTEM': '1',
+                           'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_NO_REPLACE_OBJECTS': '1',
+                           'GIT_NO_LAZY_FETCH': '1', 'GIT_ALLOW_PROTOCOL': '', 'GIT_TERMINAL_PROMPT': '0'}
+                _verify_source_checkout(path, grant.source, cfg, git_env=git_env)
+                return path, wire(binding), cfg, workspace_recovery_digest(path)
+
+            still_current()
+            workspace = frozen_workspace()
+            directory = workspace[0] / '.git/uif-original-effects'
+            with _handoff_directory(directory) as fd:
+                intent_raw = _retained_handoff_bytes(fd, request_id + '.json', 8192)
+                identity = _clock_file_identity(os.fstat(fd))[:6]
+            intent = decode(intent_raw, limit=8192)
+            op = intent.get('operation')
+            require(type(op) is dict and set(op) == {'fence', 'original_id', 'payload_sha256'}
+                    and op['fence'] == asdict(fence) and op['original_id'] == request_id
+                    and intent.get('attempt_id') == attempt
+                    and intent.get('route') == asdict(self.remote.routes['OffMenu']),
+                    'authority_assessment_provider_intent')
+            response = self.remote.provider_result(Operation(fence, request_id, op['payload_sha256']))
+            raw = response.read(256 * 1024 + 1)
+            reply = decode(raw, limit=256 * 1024)
+            choices = reply.get('choices')
+            message = (choices[0].get('message') if type(choices) is list and choices
+                       and type(choices[0]) is dict else reply if not choices else None)
+            require(type(message) is dict and not message.get('tool_calls')
+                    and message.get('content', message.get('response')) == content
+                    and type(content) is str, 'authority_assessment_provider_content')
+            projection = project_assessment_readiness(content.encode(), issue=issue.identifier, run=run)
+            pinned_sha(response.receipt_sha256)
+            fact = {'schema': 'uif.native-assessment-result/1', 'issue_id': issue.id,
+                    'run': run, 'scope_sha256': record['scope_sha256'], 'attempt_id': attempt,
+                    'operation': op, 'receipt_sha256': response.receipt_sha256,
+                    'provider_body_sha256': sha256(raw).hexdigest(),
+                    'report_sha256': projection.report_sha256}
+            still_current()
+            require(frozen_workspace() == workspace, 'authority_assessment_workspace_changed')
+            name = digest({'assess': attempt}) + '.assessment'
+            body = wire(fact)
+            pin = sha256(body).hexdigest()
+            with _handoff_directory(directory) as fd:
+                require(_clock_file_identity(os.fstat(fd))[:6] == identity
+                        and _retained_handoff_bytes(fd, request_id + '.json', 8192) == intent_raw,
+                        'authority_assessment_provider_intent_changed')
+                try:
+                    _publish_private_original(fd, name, body, prefix='.owner-handoff-')
+                except FileExistsError:
+                    pass
+                require(_retained_handoff_sha(fd, name, 8192) == pin,
+                        'authority_original_handoff_bytes_changed')
+                os.fsync(fd)
+            return _RetainedHandoffOriginal(directory / name, pin)
+        return finish
+
     def retain_final_review(self, request_id, content):
         grant, original = self._running.get()
         config = self.installation()['assignments'][grant.scope.key.issue_id]
