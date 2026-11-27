@@ -35,6 +35,26 @@ class NormalRuntimeStageApproval:
     prior_selection_sha256: str
 
 
+def _member_path_allowed(name):
+    if type(name) is not str or not 0 < len(name) <= 512:
+        return False
+    leaf = PurePosixPath(name)
+    return (bool(leaf.parts) and all(re.fullmatch(r'[A-Za-z0-9_@+.-]+', p)
+            and p not in ('.', '..') for p in leaf.parts)
+            and not leaf.is_absolute() and leaf.as_posix() == name and name != RECEIPT)
+
+
+def _project_member_map(values):
+    for name in values:
+        guard.require(not any(str(parent) in values or str(parent) == RECEIPT
+                              for parent in PurePosixPath(name).parents),
+                      'normal stage member conflicts with directory')
+    projected = {k: {'bytes': len(raw), 'mode': mode, 'sha256': sha256(raw).hexdigest()}
+                 for k, (raw, mode) in values.items()}
+    guard.require(REQUIRED <= set(values) and values['venv/bin/python3.12'][1] == 0o555,
+                  'incomplete normal stage membership')
+    return projected
+
 def _members(archive, approved):
     guard.require(type(archive) is bytes and 0 < len(archive) <= MAX_ARCHIVE
                   and guard.digest(archive) == approved.archive_sha256, 'normal stage archive differs')
@@ -43,11 +63,7 @@ def _members(archive, approved):
     with tarfile.open(fileobj=BytesIO(archive), mode='r:') as source:
         for member in source:
             name = member.name
-            leaf = PurePosixPath(name)
-            guard.require(0 < len(name) <= 512 and all(re.fullmatch(r'[A-Za-z0-9_@+.-]+', p)
-                          and p not in ('.', '..') for p in leaf.parts)
-                          and not leaf.is_absolute() and leaf.as_posix() == name
-                          and name != RECEIPT and name not in values and len(values) < MAX_FILES
+            guard.require(_member_path_allowed(name) and name not in values and len(values) < MAX_FILES
                           and member.isreg() and not member.issparse()
                           and member.mode in (0o444, 0o555) and 0 < member.size <= MAX_ARCHIVE,
                           'unexpected normal stage archive member')
@@ -57,15 +73,9 @@ def _members(archive, approved):
                 raw = stream.read(member.size + 1)
             guard.require(len(raw) == member.size, 'truncated normal stage member')
             values[name] = (raw, member.mode)
-    for name in values:
-        guard.require(not any(str(parent) in values or str(parent) == RECEIPT
-                              for parent in PurePosixPath(name).parents),
-                      'normal stage member conflicts with directory')
-    projected = {k: {'bytes': len(raw), 'mode': mode, 'sha256': sha256(raw).hexdigest()}
-                 for k, (raw, mode) in values.items()}
-    guard.require(REQUIRED <= set(values) and values['venv/bin/python3.12'][1] == 0o555
-                  and guard.plan_digest(projected) == approved.members_sha256,
-                  'incomplete or different independently accepted normal stage')
+    projected = _project_member_map(values)
+    guard.require(guard.plan_digest(projected) == approved.members_sha256,
+                  'different independently accepted normal stage')
     return values
 
 

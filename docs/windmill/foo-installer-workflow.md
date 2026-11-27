@@ -140,7 +140,9 @@ hands the exact release, unit and stage plus the original install receipt and
 effective unit readback to the existing control owner. The
 [`render_normal_selection`](../../tools/delivery/commissioned_normal_service.py)
 output is the on-host selector input, not that receipt or a startup-bind
-request. The control owner uses the existing commissioning evidence to prepare
+request. The selector records the absolute stage path. The startup bind names
+the stage basename and the native runtime session, not the operator's control
+session. The control owner uses the existing commissioning evidence to prepare
 the [immutable startup-bind original](../../src/uif/stokowski_cloudflare/startup_control_original.py);
 do not substitute a selector hash for that evidence. If the supported action
 and its inputs are ready, advance the handoff in the same work cycle instead
@@ -180,6 +182,33 @@ step and continue through the existing end-to-end acceptance above. Do not
 restart a held unit or replay an original to obtain a result. This is work
 coordination, not a new approval or activation condition.
 
+### Prepare normal stage bytes without repeating a failed transfer
+
+An accepted launcher, wheel, or web dependency candidate is only a component.
+The runtime package also needs the compatible native source, interpreter,
+standard library and native extensions, dependencies, and protected
+configuration references. The current normal launcher imports the native
+composition, which needs `ctypes` and its working `_ctypes` extension. The
+[stage materializer](../../tools/delivery/stage_commissioned_normal_runtime.py)
+also uses `ctypes` for atomic no-replace publication. Do not substitute
+`os.link` or treat a loose Python executable as the runtime closure.
+
+If the retained component cannot be transferred through its supported
+custody route, use the verified distributable and its pinned build inputs to
+rebuild it. Do not repeat an unavailable transfer through another channel.
+The release owner supplies the verified component bytes in their original
+custody; the existing independent reviewer qualifies the complete package.
+The installation owner prepares the current stage preimage and staged
+readback without changing the current selector.
+
+The [detached archive renderer](../../tools/delivery/render_detached_normal_stage.py)
+produces deterministic input bytes and digest metadata for the normal stage
+materializer. It does not issue an owner approval or install a selection.
+Keep credential bytes out of the archive and preserve existing protected
+references. When a verified package and its fixed owner action are both
+available, continue that action in the same work cycle and carry its original
+receipt to the existing control handoff above.
+
 ### Retain the inputs for the next recovery
 
 Keep the complete accepted release and its canonical manifest at a stable
@@ -213,8 +242,12 @@ receipt cannot identify which files differ or establish production acceptance.
 Keep the fixed startup caller, its deployed revision and effective identity
 with the commissioning receipt. Windmill job authentication alone does not
 supply the shared authority control identity. If an acknowledgment is lost,
-read back the same original as control before deciding what remains. Do not
-create a new operation or replay the bind to obtain a receipt.
+read back the same original as control before deciding what remains. The
+lookup uses the authority's actual installation digest, the control caller's
+session from the original submission, and the original request ID, not the
+native session or an artifact or selector digest. Do not create a new
+operation or replay the bind to obtain a receipt. A matching acknowledgment
+is not the native startup readback.
 
 For an unattended recovery, keep the last accepted release and current
 commissioning reference available to the existing service tooling. A service
