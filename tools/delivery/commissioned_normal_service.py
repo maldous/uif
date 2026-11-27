@@ -1,4 +1,5 @@
 """Source-only renderer for the existing Stokowski unit's commissioned profile."""
+import json
 import re
 
 STAGE = re.compile(r"/opt/uif-stokowski/[a-z0-9][a-z0-9.-]{1,90}")
@@ -34,6 +35,23 @@ def render_normal_dropin(stage):
         "Restart=on-failure\nRestartSec=110s\nRestartPreventExitStatus=78\n"
         "KillSignal=SIGTERM\nTimeoutStopSec=90s\n"
     ).encode()
+
+
+def render_normal_selection(stage, *, source_head, source_tree, release_sha256,
+                            launcher_sha256, interpreter_sha256, authority_config_sha256):
+    """Render the existing selector record, not a release acceptance or install."""
+    stage = check_normal_stage(stage)
+    source = {"source_head": source_head, "source_tree": source_tree}
+    artifacts = {"release_sha256": release_sha256, "launcher_sha256": launcher_sha256,
+                 "interpreter_sha256": interpreter_sha256,
+                 "authority_config_sha256": authority_config_sha256}
+    if (any(type(x) is not str or not re.fullmatch(r"[a-f0-9]{40}", x) for x in source.values())
+            or any(type(x) is not str or not re.fullmatch(r"[a-f0-9]{64}", x)
+                   for x in artifacts.values())):
+        raise ValueError("Expected exact reviewed normal source and artifact digests")
+    return json.dumps({"schema": "uif.stokowski-commissioned-normal/1", "mode": "normal",
+                       "unit": UNIT, "stage": stage, **source, **artifacts},
+                      sort_keys=True, separators=(",", ":")).encode()
 
 
 def normal_entry_pins(stage, source_head, source_tree):

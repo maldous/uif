@@ -87,6 +87,21 @@ class CommissionedServiceTest(unittest.TestCase):
         for path in normal.LEGACY:
             with self.assertRaises(ValueError): self.build((HEAD,TREE),path)
         with self.assertRaises(ValueError): self.build((HEAD,"not-a-tree"))
+    def test_render_selection_exact_record_matches_existing_entrypoint(self):
+        artifacts = dict(release_sha256="1"*64, launcher_sha256="2"*64,
+                         interpreter_sha256="3"*64, authority_config_sha256="4"*64)
+        rendered = normal.render_normal_selection(STAGE, source_head=HEAD, source_tree=TREE, **artifacts)
+        self.assertEqual(json.loads(rendered), dict(schema="uif.stokowski-commissioned-normal/1",
+            mode="normal", unit=normal.UNIT, stage=STAGE, source_head=HEAD, source_tree=TREE, **artifacts))
+        self.assertEqual(rendered, normal.render_normal_selection(
+            STAGE, source_head=HEAD, source_tree=TREE, **dict(reversed(list(artifacts.items())))))
+        for invalid in normal.LEGACY:
+            with self.assertRaises(ValueError):
+                normal.render_normal_selection(invalid, source_head=HEAD, source_tree=TREE, **artifacts)
+        with self.assertRaises(ValueError):
+            normal.render_normal_selection(STAGE, source_head=HEAD, source_tree=TREE,
+                                          **(artifacts | {"release_sha256": "observed"}))
+
     def test_dropin_boot_sandbox_and_restart(self):
         out=normal.render_normal_dropin(STAGE).decode()
         for text in ("After=network-online.target","StartLimitIntervalSec=300s","StartLimitBurst=3",
