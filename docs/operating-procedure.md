@@ -151,6 +151,14 @@ same original without replay. Keep legacy originals readable and unchanged.
 A source implementation does not mount the protected caller or install the
 publication bridge.
 
+For a recorded native attempt attestation, the existing control caller can
+compare the full expected original request with
+`POST /v1/attempt/attest/original`. A match identifies that caller's prior
+recorded request and evidence digest. It does not prove the referenced
+verdict or effects or revive a stopped or superseded attempt. Use the
+independently verified original evidence for settlement; do not write
+completion from a model summary or a matching fingerprint alone.
+
 Route durable issue decisions, owner changes, source, material checks/review,
 blockers and next action to the existing native Linear record. Keep detailed
 private receipts/checkpoints in their existing custody. Follow

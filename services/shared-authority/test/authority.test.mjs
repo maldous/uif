@@ -1656,3 +1656,51 @@ test('new assessment claim cannot advance across restart without its original te
   }), { project: 'OffMenu', attempt_id: assess.attempt_id, lease: current });
   assert.deepEqual((await f.call('native', 'claim/observe', assess)).lease, current);
 });
+
+
+test('control compares exact retained attempt attestation without re-attesting', async () => {
+  const f = fixture();
+  await f.resume();
+  const request = await f.addGrant(scope, 'assess');
+  const { lease } = await f.call('native', 'claim', request);
+  const original = {
+    request_id: 'assess-attest-fixture', fence: lease.fence,
+    previous: 'assess', successor: 'assess-next', terminal_receipt_sha256: hex('b'),
+  };
+  const path = 'attempt/attest/original';
+  assert.deepEqual(await f.call('control', path, original), { matches: false });
+  await f.call('control', 'attempt/attest', original);
+  const mutations = [];
+  const trackWrites = () => {
+    const put = f.a.put.bind(f.a);
+    f.a.put = (...args) => { mutations.push(args[0]); return put(...args); };
+  };
+  trackWrites();
+  assert.deepEqual(await f.call('control', path, original), { matches: true });
+  for (const delta of [
+    { request_id: 'resume' }, { request_id: 'unknown' },
+    { previous: 'wrong' }, { successor: 'wrong' },
+    { terminal_receipt_sha256: hex('e') },
+    { fence: { ...lease.fence, generation: 2 } },
+    { fence: { ...lease.fence, coordinator_epoch: 3 } },
+    { fence: { ...lease.fence, deployment_sha256: hex('e') } },
+  ]) {
+    assert.deepEqual(await f.call('control', path, { ...original, ...delta }), { matches: false });
+  }
+  await assert.rejects(f.call('control', path, { ...original, extra: 1 }), /invalid_fields/);
+  for (const role of ['native', 'morgan', 'quota']) {
+    await assert.rejects(f.call(role, path, original), /peer_role_not_granted/);
+  }
+  await assert.rejects(f.a.handle('/v1/' + path, original, { ...f.peers.control, session_id: 'other' }),
+    /peer_role_not_granted/);
+  assert.deepEqual(mutations, []);
+  await f.call('control', 'control', {
+    request_id: 'stop-attest-fixture', expected_coordinator_epoch: 2, stopped: true,
+  });
+  f.a = f.restart();
+  mutations.length = 0;
+  trackWrites();
+  // An exact historical fact survives stop/restart, but is never a fresh authorization.
+  assert.deepEqual(await f.call('control', path, original), { matches: true });
+  assert.deepEqual(mutations, []);
+});
