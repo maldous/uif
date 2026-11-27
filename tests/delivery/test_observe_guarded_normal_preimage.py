@@ -14,14 +14,14 @@ g = observe.guard
 class RetainedGuardedPreimage(unittest.TestCase):
     def test_expiry_and_exact_consumption_are_not_start_permission(self):
         intent = {'operation_id': 'a'*64, 'launch_before': 100}
-        self.assertEqual(g._retained_idle_status(intent, None, 99), 'potentially_actionable')
-        self.assertEqual(g._retained_idle_status(intent, None, 100), 'expired')
+        self.assertEqual(observe._retained_idle_status(intent, None, 99), 'potentially_actionable')
+        self.assertEqual(observe._retained_idle_status(intent, None, 100), 'expired')
         exact = g.encode(g.start_consumption(intent, 42, 'b'*32))
-        self.assertEqual(g._retained_idle_status(intent, exact, 99), 'consumed')
+        self.assertEqual(observe._retained_idle_status(intent, exact, 99), 'consumed')
         for raw in (b'{}', g.encode(g.start_consumption(intent, 42, '0'*32)),
                     g.encode(g.start_consumption({**intent, 'operation_id': 'c'*64}, 42, 'b'*32))):
             with self.assertRaises(g.Held):
-                g._retained_idle_status(intent, raw, 101)
+                observe._retained_idle_status(intent, raw, 101)
 
     def test_expired_webhook_recognized_only_on_readback(self):
         plan = {key: 'a'*64 for key in g.WEBHOOK_PINS}
@@ -29,7 +29,7 @@ class RetainedGuardedPreimage(unittest.TestCase):
                     'job_id': '00000000-0000-0000-0000-000000000001', 'issued_at': 1, 'expires_at': 61}
         with patch.object(g.time, 'time', return_value=61), patch.object(g, 'read_record',
                                                                        return_value=g.encode(approval)):
-            self.assertEqual(g._verify_webhook_authorization(plan, approval, require_live=False), approval)
+            self.assertEqual(observe._retained_webhook_record(plan, approval), approval)
             with self.assertRaises(g.Held):
                 g._verify_webhook_authorization(plan, approval)
 
@@ -48,7 +48,7 @@ class RetainedGuardedPreimage(unittest.TestCase):
         with ExitStack() as stack:
             stack.enter_context(patch.object(g, 'bytes_pin', return_value=pin))
             manager = stack.enter_context(patch.object(observe.effective, '_state', return_value=state))
-            read = stack.enter_context(patch.object(g, 'observe_retained_idle_start', return_value='expired'))
+            read = stack.enter_context(patch.object(observe, 'observe_retained_idle_start', return_value='expired'))
             publish = stack.enter_context(patch.object(g, 'publish'))
             start = stack.enter_context(patch.object(g, 'serve_idle_stage'))
             def check():

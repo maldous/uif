@@ -847,7 +847,7 @@ def _webhook_authorization(config, job_id, plan, expires_at):
             'expires_at': expires_at, **asdict(config)}
 
 
-def _verify_webhook_authorization(plan, approval, *, require_live=True):
+def _verify_webhook_authorization(plan, approval):
     operation = plan['operation_id']
     require(hash_pin(operation) and type(approval) is dict and
             set(approval) == {'schema', 'job_id', 'preflight_sha256', 'issued_at',
@@ -857,8 +857,7 @@ def _verify_webhook_authorization(plan, approval, *, require_live=True):
             and approval['preflight_sha256'] == plan_digest(plan)
             and all(approval[key] == plan[key] for key in WEBHOOK_PINS)
             and type(approval['issued_at']) is type(approval['expires_at']) is int
-            and approval['issued_at'] < approval['expires_at'] <= approval['issued_at'] + 60
-            and (not require_live or approval['issued_at'] <= time.time() < approval['expires_at']),
+            and approval['issued_at'] <= time.time() < approval['expires_at'] <= approval['issued_at'] + 60,
             'invalid protected Windmill idle authorization')
     _webhook_job(approval['job_id'])
     require(read_record(RECEIPTS, operation + '.windmill-start.json') == encode(approval),
@@ -1128,128 +1127,83 @@ def drop_idle_privileges():
                       LOGNAME=account.pw_name, SHELL=account.pw_shell)
 
 
-def _retained_idle_original(custody, *, require_live):
-    """Read common guarded-start bindings; never consume or grant a start."""
-    selection = read_record(ROOT, 'selection.json')
-    selected = record(selection,
-                      ('mode', 'stage', 'launcher_sha256', 'config_sha256', 'interpreter_sha256'))
-    require((selected['mode'], selected['stage']) == ('idle', FIXED_STAGE), 'unit is parked')
-    stage = STAGES / FIXED_STAGE
-    for path, pin in (('launch.py', 'launcher_sha256'), (IDLE_CONFIG, 'config_sha256'),
-                      (INTERPRETER, 'interpreter_sha256')):
-        require(hash_pin(selected[pin]) and bytes_pin(stage / path, MAX_BUNDLE) == selected[pin],
-                'selected stage pin drift')
-    marker = (stage / MARKER).lstat()
-    require(stat.S_ISREG(marker.st_mode) and marker.st_uid == 0 and marker.st_nlink == 1
-            and not marker.st_mode & 0o022, 'protected activation marker unavailable')
-    require(marker.st_size > 0, 'signed start intent is missing')
-    raw = read_record(stage, MARKER)
-    approval = record(raw, ('schema', 'operation_id', 'preflight_sha256', 'preflight', 'confirmation',
-                            'selection_sha256', 'launch_before'))
-    confirmation = approval['confirmation']
-    plan = approval['preflight']
-    webhook = approval['schema'] == WEBHOOK_START_SCHEMA
-    require(all(hash_pin(approval[key]) for key in ('operation_id', 'preflight_sha256'))
-            and type(plan) is dict and plan_digest(plan) == approval['preflight_sha256']
-            and raw == encode(approval), 'invalid start intent')
-    if webhook:
-        _verify_webhook_authorization(plan, confirmation, require_live=require_live)
-    else:
-        require(type(confirmation) is dict
-                and confirmation.keys() == {'confirmation_sha256', 'signers_sha256', 'issued_at', 'expires_at'}
-                and all(hash_pin(confirmation[key]) for key in ('confirmation_sha256', 'signers_sha256')),
-                'invalid signed start intent')
-    issued, expires, launch_before = (confirmation['issued_at'], confirmation['expires_at'],
-                                      approval['launch_before'])
-    require((webhook or approval['schema'] == 'uif.foo-idle-start-intent/1')
-            and approval['selection_sha256'] == digest(selection)
-            and all(type(value) is int for value in (issued, expires, launch_before))
-            and issued < launch_before <= expires <= issued + 300
-            and (not require_live or issued <= time.time() < launch_before),
-            'signed start marker expired or no longer binds the selected stage')
-    operation = approval['operation_id']
-    unit = PROFILES[PROFILE_NAME].unit
-    webhook_applied = webhook and confirmation.get('apply_authority') == 'windmill'
-    host = WindmillIdleHost() if webhook_applied else LinuxIdleHost()
-    admission = host.load_admission()
-    if webhook_applied:
-        operator, operator_bytes = host.operator, host.operator_bytes
-    else:
-        operator_bytes = read_record(host.packet, 'admission.json')
-        operator = record(operator_bytes, ADMISSION_FIELDS)
-    principal, uid = operator['owner'], operator['owner_uid']
-    require((admission.operation_id, admission.unit, admission.stage, admission.idle_selection_sha256,
-             admission.lock_custody_sha256) ==
-            (operation, unit, FIXED_STAGE, digest(selection), plan_digest(custody))
-            and (plan['operation_id'], plan['unit'], plan['stage'], plan['selection_sha256'],
-                 plan['lock_custody_sha256'], plan['unit_sha256']) ==
-            (operation, unit, FIXED_STAGE, digest(selection), plan_digest(custody), host.unit_pin)
-            and (plan['signer_principal'], plan['original_owner_uid'], plan['original_admission_sha256'])
-            == (principal, uid, digest(operator_bytes))
-            and type(uid) is int and uid > 0 and uid == host.uid and pwd.getpwuid(uid).pw_name == principal
-            and read_record(RECEIPTS, operation + '.start-intent.json') == raw,
-            'original signed intent or installed apply binding changed')
-    require(host.verify_admission(admission), 'installed bootstrap changed')
-    original_intent, selected_receipt = apply_records(admission)
-    require(host.receipts(operation, admission.prior_selection_sha256) ==
-            (original_intent, selected_receipt, operation)
-            and plan['selected_receipt_sha256'] == plan_digest(selected_receipt),
-            'original apply completion changed')
-    unit_bytes = subprocess.check_output([SYSTEMCTL, '--system', '--no-pager', 'cat', unit],
-                                        env={'LC_ALL': 'C'}, timeout=4)
-    review = accepted_review(host.packet, PROFILES[PROFILE_NAME], FIXED_STAGE, operator['review_sha256'])
-    require(digest(unit_bytes) == host.unit_pin == review['parked_unit_sha256']
-            and review['bundle_sha256'] == plan['bundle_sha256']
-            and operator['review_sha256'] == plan['review_sha256']
-            and sealed_selection(review, allow_start_marker=True) == selection,
-            'reviewed unit or sealed bundle changed before start')
-    return selection, stage, raw, approval, confirmation, plan, host, principal, webhook
-
-
-def _retained_idle_status(approval, consumed, now):
-    """Conservatively classify a checked original, not authorize execution."""
-    if consumed is not None:
-        row = record(consumed, ('schema', 'operation_id', 'intent_sha256', 'main_pid', 'invocation_id'))
-        pid, invocation = row['main_pid'], row['invocation_id']
-        require(type(pid) is int and pid > 0 and type(invocation) is str
-                and re.fullmatch(r'[0-9a-f]{32}', invocation) is not None
-                and int(invocation, 16) != 0
-                and consumed == encode(start_consumption(approval, pid, invocation)),
-                'retained guarded start consumption ambiguous')
-        return 'consumed'
-    if now >= approval['launch_before']:
-        return 'expired'
-    # A future-dated or not-yet-consumed protected original is not harmless.
-    return 'potentially_actionable'
-
-
-def observe_retained_idle_start(locked_stream, expected_selection):
-    """Read only while the existing caller holds the exclusive selector lock."""
-    custody = lock_identity(os.fstat(locked_stream.fileno()))
-    require(lock_identity(LOCK.lstat()) == custody, 'guarded selector lock custody changed')
-    selection, stage, raw, approval, *_ = _retained_idle_original(custody, require_live=False)
-    require(digest(selection) == expected_selection, 'guarded selection differs from prior')
-    name = approval['operation_id'] + '.start-consumed.json'
-    try:
-        consumed = read_record(RECEIPTS, name)
-    except FileNotFoundError:
-        consumed = None
-    status = _retained_idle_status(approval, consumed, time.time())
-    require(lock_identity(LOCK.lstat()) == custody and read_record(ROOT, 'selection.json') == selection
-            and read_record(stage, MARKER) == raw, 'retained guarded start changed during observation')
-    return status
-
-
 def serve_idle_stage():
     """Consume one signed start at the privileged systemd edge, then exec unprivileged."""
     pid, invocation = trusted_start_process()
     with selector_lock(shared=False) as stream:
         custody = lock_identity(os.fstat(stream.fileno()))
-        selection, stage, raw, approval, confirmation, plan, host, principal, webhook = (
-            _retained_idle_original(custody, require_live=True))
+        selection = read_record(ROOT, 'selection.json')
+        selected = record(selection,
+                          ('mode', 'stage', 'launcher_sha256', 'config_sha256', 'interpreter_sha256'))
+        require((selected['mode'], selected['stage']) == ('idle', FIXED_STAGE), 'unit is parked')
+        stage = STAGES / FIXED_STAGE
+        for path, pin in (('launch.py', 'launcher_sha256'), (IDLE_CONFIG, 'config_sha256'),
+                          (INTERPRETER, 'interpreter_sha256')):
+            require(hash_pin(selected[pin]) and bytes_pin(stage / path, MAX_BUNDLE) == selected[pin],
+                    'selected stage pin drift')
+        marker = (stage / MARKER).lstat()
+        require(stat.S_ISREG(marker.st_mode) and marker.st_uid == 0 and marker.st_nlink == 1
+                and not marker.st_mode & 0o022, 'protected activation marker unavailable')
+        require(marker.st_size > 0, 'signed start intent is missing')
+        raw = read_record(stage, MARKER)
+        approval = record(raw, ('schema', 'operation_id', 'preflight_sha256', 'preflight', 'confirmation',
+                                'selection_sha256', 'launch_before'))
+        confirmation = approval['confirmation']
+        plan = approval['preflight']
+        webhook = approval['schema'] == WEBHOOK_START_SCHEMA
+        require(all(hash_pin(approval[key]) for key in ('operation_id', 'preflight_sha256'))
+                and type(plan) is dict and plan_digest(plan) == approval['preflight_sha256']
+                and raw == encode(approval), 'invalid start intent')
+        if webhook:
+            _verify_webhook_authorization(plan, confirmation)
+        else:
+            require(type(confirmation) is dict
+                    and confirmation.keys() == {'confirmation_sha256', 'signers_sha256', 'issued_at', 'expires_at'}
+                    and all(hash_pin(confirmation[key]) for key in ('confirmation_sha256', 'signers_sha256')),
+                    'invalid signed start intent')
+        issued, expires, launch_before = (confirmation['issued_at'], confirmation['expires_at'],
+                                          approval['launch_before'])
+        require((webhook or approval['schema'] == 'uif.foo-idle-start-intent/1')
+                and approval['selection_sha256'] == digest(selection)
+                and all(type(value) is int for value in (issued, expires, launch_before))
+                and issued <= time.time() < launch_before <= expires <= issued + 300,
+                'signed start marker expired or no longer binds the selected stage')
         operation = approval['operation_id']
         unit = PROFILES[PROFILE_NAME].unit
-        expires, launch_before = confirmation['expires_at'], approval['launch_before']
+        webhook_applied = webhook and confirmation.get('apply_authority') == 'windmill'
+        host = WindmillIdleHost() if webhook_applied else LinuxIdleHost()
+        admission = host.load_admission()
+        if webhook_applied:
+            operator, operator_bytes = host.operator, host.operator_bytes
+        else:
+            operator_bytes = read_record(host.packet, 'admission.json')
+            operator = record(operator_bytes, ADMISSION_FIELDS)
+        principal, uid = operator['owner'], operator['owner_uid']
+        require((admission.operation_id, admission.unit, admission.stage, admission.idle_selection_sha256,
+                 admission.lock_custody_sha256) ==
+                (operation, unit, FIXED_STAGE, digest(selection), plan_digest(custody))
+                and (plan['operation_id'], plan['unit'], plan['stage'], plan['selection_sha256'],
+                     plan['lock_custody_sha256'], plan['unit_sha256']) ==
+                (operation, unit, FIXED_STAGE, digest(selection), plan_digest(custody), host.unit_pin)
+                and (plan['signer_principal'], plan['original_owner_uid'], plan['original_admission_sha256'])
+                == (principal, uid, digest(operator_bytes))
+                and type(uid) is int and uid > 0 and uid == host.uid and pwd.getpwuid(uid).pw_name == principal
+                and read_record(RECEIPTS, operation + '.start-intent.json') == raw,
+                'original signed intent or installed apply binding changed')
+        require(host.verify_admission(admission), 'installed bootstrap changed')
+        original_intent, selected_receipt = apply_records(admission)
+        require(host.receipts(operation, admission.prior_selection_sha256) ==
+                (original_intent, selected_receipt, operation)
+                and plan['selected_receipt_sha256'] == plan_digest(selected_receipt),
+                'original apply completion changed')
+        unit_bytes = subprocess.check_output([SYSTEMCTL, '--system', '--no-pager', 'cat', unit],
+                                            env={'LC_ALL': 'C'}, timeout=4)
+        review = accepted_review(host.packet, PROFILES[PROFILE_NAME], FIXED_STAGE, operator['review_sha256'])
+        require(digest(unit_bytes) == host.unit_pin == review['parked_unit_sha256']
+                and review['bundle_sha256'] == plan['bundle_sha256']
+                and operator['review_sha256'] == plan['review_sha256']
+                and sealed_selection(review, allow_start_marker=True) == selection,
+                'reviewed unit or sealed bundle changed before start')
         witness_pin, witness_deadline = start_quiescence(host.packet, unit, host.unit_pin)
         require(witness_pin == plan['start_quiescence_sha256']
                 and launch_before == min(expires, witness_deadline)
