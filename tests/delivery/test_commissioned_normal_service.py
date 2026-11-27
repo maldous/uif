@@ -9,6 +9,7 @@ import sys
 from types import ModuleType, SimpleNamespace
 import unittest
 from unittest.mock import patch
+from uif.stokowski_cloudflare import launcher
 SOURCE = Path(__file__).resolve().parents[2] / "tools/delivery"
 with patch.object(sys, "path", [str(SOURCE), *sys.path]):
     import commissioned_normal_service as normal
@@ -143,47 +144,54 @@ class CommissionedServiceTest(unittest.TestCase):
     def test_actual_compiled_entry_waits_for_existing_verifier_then_configures(self):
         raw=self.build((HEAD,TREE))
         found=[]
-        mod=ModuleType("uif.stokowski_cloudflare.launcher")
         hold=ModuleType("uif.handoff_store"); remote=ModuleType("uif.stokowski_cloudflare.remote_authority")
         class Hold(ValueError): pass
         class AuthorityUnavailable(Hold): pass
         hold.Hold=Hold; remote.AuthorityUnavailable=AuthorityUnavailable
-        def wait(verify):
-            for _ in range(3):
-                found.append("verify")
-                if verify() is True: return
-                self.assertNotIn("configure",found)
-            raise AssertionError("test need at least one good challenge")
-        mod.wait_for_normal_authority=wait
+        def sleep(seconds):
+            self.assertEqual(seconds,5)
+            self.assertNotIn("configure",found)
+            found.append("sleep")
         ns={"__name__":"private_test",
             "_NativeSinks":lambda *a:found.append("sinks"),
             "configure":lambda *a,**kw:found.append("configure"),
             "_RemoteComposition":type("FakeComposition",(),{"options":lambda s:{}})(),
             "_VerifyCommissionedSelection":lambda:None}
         replies=iter([("other","mounted"),("own","stopped_idle"),("own","mounted")])
-        with patch.dict(sys.modules,{x.__name__:x for x in (mod,hold,remote)}):
+        with patch.dict(sys.modules,{x.__name__:x for x in (hold,remote)}), \
+                patch.object(launcher.time,"sleep",side_effect=sleep), \
+                patch.object(launcher,"_idle_notify") as notify, patch("builtins.print"):
+            def verify(callback):
+                def recorded(request):
+                    found.append("verify")
+                    return callback(request)
+                return recorded
             exec(compile(raw,"compiled","exec"),ns)
             with self.assertRaises(SystemExit) as held:
-                ns["guarded_staged_entry"](startup_binding="own",startup_verifier=lambda _:next(replies),
+                ns["guarded_staged_entry"](startup_binding="own",startup_verifier=verify(lambda _:next(replies)),
                                             idle_reason="free_route_unavailable")
             self.assertEqual(held.exception.code,78)
             self.assertEqual(found,[])
-            ns["guarded_staged_entry"](startup_binding="own",startup_verifier=lambda _:next(replies))
-            self.assertEqual(found,["verify","verify","verify","sinks","configure"])
+            ns["guarded_staged_entry"](startup_binding="own",startup_verifier=verify(lambda _:next(replies)))
+            self.assertEqual(found,["verify","sleep","verify","sleep","verify","sinks","configure"])
             found.clear()
             retry=iter([AuthorityUnavailable("transport"),Hold("authority_http_409"),("own","mounted")])
             def challenge(_request):
                 value=next(retry)
                 if isinstance(value,Exception): raise value
                 return value
-            ns["guarded_staged_entry"](startup_binding="own",startup_verifier=challenge)
-            self.assertEqual(found,["verify","verify","verify","sinks","configure"])
+            ns["guarded_staged_entry"](startup_binding="own",startup_verifier=verify(challenge))
+            self.assertEqual(found,["verify","sleep","verify","sleep","verify","sinks","configure"])
             found.clear()
             def wrong_install(_request): raise Hold("authority_installation_changed")
             with self.assertRaises(SystemExit) as held:
-                ns["guarded_staged_entry"](startup_binding="own",startup_verifier=wrong_install)
+                ns["guarded_staged_entry"](startup_binding="own",startup_verifier=verify(wrong_install))
             self.assertEqual(held.exception.code,78)
             self.assertEqual(found,["verify"])
+            self.assertIn(f"RestartPreventExitStatus={held.exception.code}",
+                          normal.render_normal_dropin(STAGE).decode())
+            self.assertTrue(notify.call_args_list)
+            self.assertTrue(all("READY=" not in call.args[0] for call in notify.call_args_list))
 
 
     def test_persisted_normal_record_checks_exact_members_and_mode(self):
