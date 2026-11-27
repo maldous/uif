@@ -629,6 +629,45 @@ class RealCheckoutTest(unittest.TestCase):
         self.assertTrue(original.with_suffix('.received').is_file())
         self.assertIsNone(self.c._running.get())
 
+        # Crash window: .received is durable but the original callback never
+        # reaches the .settled write. A fresh composition must not re-present.
+        received = original.with_suffix('.received')
+        before = received.read_bytes()
+        restarted = NativeComposition(self.r, '/unread-fixture')
+        restarted.installation = self.c.installation
+        restarted.assignment = lambda *a: grant
+        restarted.send_handoff = AsyncMock(side_effect=AssertionError('must not re-present'))
+        self.r.release_verified = Mock(return_value=None)
+        received.write_bytes(before + b' ')
+        asyncio.run(restarted.receive_pending(native))
+        self.assertFalse(original.with_suffix('.settled').exists())
+        self.r.release_verified.assert_not_called()
+        received.write_bytes(before)
+        restarted._receiving_after.clear()
+        stale = replace(claim, lease=replace(claim.lease, fence=replace(claim.lease.fence,
+                                                                      generation=claim.lease.fence.generation + 1)))
+        self.r.read_claim = lambda *a: stale
+        intent_before = original.read_bytes()
+        asyncio.run(restarted.receive_pending(native))
+        self.assertFalse(original.with_suffix('.settled').exists())
+        self.assertEqual((original.read_bytes(), received.read_bytes()), (intent_before, before))
+        self.r.release_verified.assert_not_called()
+        self.r.read_claim = lambda *a: claim
+        restarted._receiving_after.clear()
+        asyncio.run(restarted.receive_pending(native))
+        self.assertEqual((original.read_bytes(), received.read_bytes()), (intent_before, before))
+        settled = original.with_suffix('.settled')
+        retained_settlement = settled.read_bytes()
+        restarted.send_handoff.assert_not_called()
+        reconstructed = NativeComposition(self.r, '/unread-fixture')
+        reconstructed.installation = self.c.installation
+        reconstructed.assignment = lambda *a: grant
+        reconstructed.send_handoff = restarted.send_handoff
+        asyncio.run(reconstructed.receive_pending(native))
+        self.assertEqual(settled.read_bytes(), retained_settlement)
+        reconstructed.send_handoff.assert_not_called()
+        self.r.release_verified.assert_called_once_with(claim.lease)
+
     def test_original_provider_bytes_recovered_without_second_send(self):
         from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable, ProviderReply
         from uif.stokowski_cloudflare.shared_admission import SendIntent
