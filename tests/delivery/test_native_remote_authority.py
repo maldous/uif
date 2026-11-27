@@ -299,6 +299,33 @@ class NativeRemoteTest(unittest.TestCase):
         self.assertEqual([p for p,_,_ in w.calls].count('/v1/linear/upload'),1)
         self.assertFalse(asyncio.run(_LinearClient(None,c).update_issue_state(ISSUE,'Done')))
 
+    def test_stage_report_observation_uses_exact_original_without_sending(self):
+        worker, remote = make()
+        composition = NativeComposition(remote, '/unused')
+        composition._slot.set('_publish_run_report')
+        composition.current = lambda issue_id: RECORD
+        with tempfile.TemporaryDirectory() as parent:
+            path = Path(parent)
+            (path / '.git').mkdir()
+            composition.installation = lambda: {'assignments': {ISSUE: {'workspace_binding': {'path': str(path)}}}}
+            self.assertTrue(composition.linear('comment', ISSUE, {'body': 'report'}))
+        sent_op, result = next(iter(worker.effects.values()))
+        worker.calls.clear()
+        comment_id, terminal = composition.observe_stage_report(FENCE, 'assess', 'report')
+        self.assertEqual(comment_id, result['id'])
+        self.assertEqual(asdict(terminal.operation), sent_op)
+        self.assertEqual(terminal.status, 'verified')
+        self.assertEqual(terminal.receipt_sha256, result['receipt_sha256'])
+        self.assertIsNone(composition.observe_stage_report(FENCE, 'different-attempt', 'report'))
+        with self.assertRaisesRegex(Hold, 'different_original'):
+            composition.observe_stage_report(FENCE, 'assess', 'report\n')
+        with self.assertRaisesRegex(Hold, 'different_original'):
+            composition.observe_stage_report(replace(FENCE, lease_id='different'), 'assess', 'report')
+        result['receipt_sha256'] = 'a'*64
+        with self.assertRaisesRegex(Hold, 'authority_linear_effect_unsettled'):
+            composition.observe_stage_report(FENCE, 'assess', 'report')
+        self.assertEqual({path for path, _, _ in worker.calls}, {'/v1/linear/receipt', '/v1/original'})
+
     def test_release_requires_original_independent_completion(self):
         w,r=make()
         self.assertIsNone(r.release_verified(RECORD.lease))
