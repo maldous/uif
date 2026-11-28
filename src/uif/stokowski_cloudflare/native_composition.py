@@ -311,6 +311,20 @@ def observe_clean_assignment_workspace(path: Path, source: SourcePin, git_config
             'git_config_sha256': git_config_sha256, 'prepared_tree_sha256': prepared}
 
 
+def _require_unstarted_recipient_journals(path):
+    # The checkout digest intentionally excludes both private effect stores.
+    # A live successor fence can outlast its first effect or publisher handoff.
+    for name in ('uif-original-effects', 'uif-owner-handoffs'):
+        directory = path / '.git' / name
+        try:
+            info = directory.lstat()
+        except FileNotFoundError:
+            continue
+        require(stat.S_ISDIR(info.st_mode), 'authority_recipient_journal_needs_reconciliation')
+        with _handoff_directory(directory) as fd, os.scandir(fd) as entries:
+            require(next(entries, None) is None, 'authority_recipient_journal_needs_reconciliation')
+
+
 def workspace_recovery_digest(path):
     """Exact read-only inventory of retained private files and Git checkout metadata."""
     entries = []
@@ -454,6 +468,7 @@ class NativeComposition:
         require(observed == {**{k: binding[k] for k in ('path', 'device', 'inode')},
                 'git_config_sha256': data['git_config_sha256'], 'prepared_tree_sha256': data['prepared_tree_sha256']},
                 'authority_recovery_workspace_changed')
+        _require_unstarted_recipient_journals(path)
         current = self.remote._observe_unstarted_binding(grant, data['recipient_original'],
                         workspace_transition=binding['original_transition'])
         latest = self.installation()
@@ -463,6 +478,7 @@ class NativeComposition:
                 and observe_clean_assignment_workspace(path, grant.source, data['git_config_sha256']) == observed
                 and self.remote.clock().timestamp() < current.lease.expires_at,
                 'authority_recovery_workspace_assignment_changed')
+        _require_unstarted_recipient_journals(path)
         return current
 
     def selected(self, project, issue, scope_sha):

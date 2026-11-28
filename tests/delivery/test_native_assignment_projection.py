@@ -7,6 +7,7 @@ import unittest
 from uif.handoff_store import Hold, decode, digest, wire
 from uif.stokowski_cloudflare.native_assignment_projection import project_clean_assignment, project_unstarted_assignment
 from uif.stokowski_cloudflare.native_composition import observe_clean_assignment_workspace
+from uif.stokowski_cloudflare.native_composition import _retain_handoff_original
 import test_native_remote_authority as fixture
 import test_native_unstarted_recovery as recovery_fixture
 
@@ -61,6 +62,33 @@ class NativeAssignmentProjectionTest(unittest.TestCase):
         with self.assertRaisesRegex(Hold, 'workspace_changed'):
             native.observe_unstarted_assignment(case.owner, case.issue, grant.scope_sha256)
         peer.remote.transport.request.assert_not_called()
+        binding['inode'] -= 1
+        for journal in ('uif-original-effects', 'uif-owner-handoffs'):
+            with self.subTest(journal=journal):
+                folder = case.path / '.git' / journal
+                original = _retain_handoff_original(folder, 'retained.json', b'pending original', 8192)
+                self.assertEqual(observe_clean_assignment_workspace(
+                    case.path, grant.source, case.item['git_config_sha256']), observed)
+                with self.assertRaisesRegex(Hold, 'recipient_journal_needs_reconciliation'):
+                    native.observe_unstarted_assignment(case.owner, case.issue, grant.scope_sha256)
+                self.assertEqual(original.path.read_bytes(), b'pending original')
+                self.assertFalse(native.selected('OffMenu', case.issue, grant.scope_sha256))
+                with self.assertRaisesRegex(Hold, 'attempt_not_selected'), native.bind_dispatch(
+                        case.owner, case.issue, grant.scope_sha256, {'attempt': grant.attempts[0]}):
+                    self.fail('recovered attempt redispatched')
+                original.path.unlink()
+        peer.remote.transport.request.assert_not_called()
+        def effect_during_read(path, data=None, **options):
+            result = peer.read(path, data, **options)
+            if path == '/v1/claim/read':
+                _retain_handoff_original(case.path / '.git/uif-original-effects', 'concurrent.json',
+                                         b'pending at readback', 8192)
+            return result
+        peer.remote.transport.request.side_effect = effect_during_read
+        with self.assertRaisesRegex(Hold, 'recipient_journal_needs_reconciliation'):
+            native.observe_unstarted_assignment(case.owner, case.issue, grant.scope_sha256)
+        self.assertEqual([c.args[0] for c in peer.remote.transport.request.call_args_list],
+                         ['/v1/status', '/v1/transition/original', '/v1/claim/read'])
 
     def test_exact_checkout_and_grant_round_trip_without_claim(self):
         case = fixture.RealCheckoutTest()
