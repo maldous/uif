@@ -184,3 +184,41 @@ class FixedNormalSelection(unittest.TestCase):
                 txn.decode_selection_original(alternate, g.digest(alternate))
         self.assertFalse(list(self.receipts.iterdir()))
         self.assertFalse(self.selector.exists())
+
+    def test_fixed_action_materializes_then_reconciles_verified_same_original(self):
+        import shutil
+        from unittest.mock import Mock
+        shutil.rmtree(self.leaf)
+        resolve = Mock(return_value=(self.original, self.archive, self.bytes, self.unit))
+        previous = install.transaction.commit_normal_selection
+
+        def lose_ack(*args):
+            committed = previous(*args)
+            self.assertEqual(committed['status'], 'normal_pair_committed_on_disk')
+            raise OSError('terminal reply lost')
+
+        with patch.object(install.transaction, 'commit_normal_selection', side_effect=lose_ack):
+            with self.assertRaisesRegex(OSError, 'terminal reply lost'):
+                install._stage_and_select_from_trusted_owner(resolve)
+        self.assertEqual(resolve.call_count, 1)
+        selected = [self.leaf, self.selector, self.dropin, *sorted(self.receipts.iterdir())]
+        before = [p.stat().st_ino for p in selected]
+        result = install._stage_and_select_from_trusted_owner(resolve)
+        self.assertEqual(resolve.call_count, 2)
+        self.assertEqual([p.stat().st_ino for p in selected], before)
+        self.assertEqual(result['release_sha256'], self.staged.members_sha256)
+        self.assertEqual(result['manager_status'], 'disk_matches_manager_reload_needed')
+        self.assertFalse(result['installation_accepted'])
+        self.assertFalse(result['native_startup_verified'])
+        self.assertNotIn('manager', result)
+
+    def test_fixed_action_rejects_target_before_stage_creation(self):
+        import shutil
+        shutil.rmtree(self.leaf)
+        with self.assertRaisesRegex(g.Held, 'target bytes changed'):
+            install._stage_and_select_from_trusted_owner(
+                lambda: (self.original, self.archive, self.bytes + b'x', self.unit))
+        self.assertFalse(self.leaf.exists())
+        self.assertFalse(self.selector.exists())
+        self.assertFalse(self.dropin.exists())
+        self.assertFalse(list(self.receipts.iterdir()))

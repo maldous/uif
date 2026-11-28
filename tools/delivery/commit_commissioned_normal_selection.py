@@ -100,8 +100,8 @@ def _pin(raw):
     return None if raw is None else guard.digest(raw)
 
 
-def commit_normal_selection(original, selector, dropin, owner):
-    """Replay only the same journaled original; never repairs unknown disk state."""
+def _validated_target(original, selector, dropin):
+    """Shared exact original/target validation without any host effects."""
     guard.require(type(original) is SelectionOriginal
                   and type(original.staged) is NormalRuntimeStageApproval
                   and type(original.effective_original) is effective.NormalEffectiveOriginal
@@ -136,6 +136,12 @@ def commit_normal_selection(original, selector, dropin, owner):
     guard.require(selector == normal.render_normal_selection(stage, **{x: selected[x] for x in fields[4:]})
                   and selected['release_sha256'] == original.staged.members_sha256,
                   'normal selector not bound to staged exact release')
+    return selected
+
+
+def commit_normal_selection(original, selector, dropin, owner):
+    """Replay only the same journaled original; never repairs unknown disk state."""
+    selected = _validated_target(original, selector, dropin)
     staging = guard.encode({'schema': 'uif.foo-normal-runtime-staged/1', **vars(original.staged)})
     intent = encode_selection_original(original)
     receipt = guard.encode({'schema': 'uif.foo-normal-selection-disk-commit/1',

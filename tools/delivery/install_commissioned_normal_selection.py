@@ -132,14 +132,18 @@ class _FixedOwner:
         self.sync_selector_parent()
         self._sync(self.dropin)
 
-    def verify_staged(self, receipt, selected):
-        self._locked()
+    def verify_archive_target(self, selected):
         stage = guard.STAGES / self.original.staged.stage_leaf
         guard.require(selected['stage'] == str(stage)
                       and all(selected[key] == guard.digest(self.members[name][0]) for key, name in (
                           ('launcher_sha256', 'launch.py'), ('interpreter_sha256', guard.INTERPRETER),
                           ('authority_config_sha256', guard.IDLE_CONFIG))),
                       'normal selector pins differ from accepted archive bytes')
+        return stage
+
+    def verify_staged(self, receipt, selected):
+        self._locked()
+        stage = self.verify_archive_target(selected)
         staging._verify_directory(stage, {**self.members, staging.RECEIPT: (receipt, 0o400)})
         self._locked()
         return True
@@ -154,13 +158,7 @@ class _FixedOwner:
         return effective.observe_normal_effective(original)
 
 
-def _install_from_trusted_owner(resolve_protected_original):
-    """Private composition seam; resolver must be supplied by protected code.
-
-    Resolves the exact normal transaction original, matching archive, rendered
-    bytes, and independently retained typed guarded manager pins. Root transport
-    alone is not that resolver. No host binding is installed by this module.
-    """
+def _resolve_exact_owner_original(resolve_protected_original):
     guard.require(guard._private_webhook_root(), 'requires existing root maintenance owner context')
     original, archive, selector, dropin = resolve_protected_original()
     guard.require(type(original) is transaction.SelectionOriginal
@@ -169,5 +167,52 @@ def _install_from_trusted_owner(resolve_protected_original):
                   and original.prior_normal_dropin_sha256 is None
                   and type(original.staged.stage_leaf) is str
                   and re.fullmatch(r'uif1313-normal-[a-z0-9][a-z0-9.-]{1,65}', original.staged.stage_leaf), 'not a first fixed normal selection original')
+    return original, archive, selector, dropin
+
+
+def _install_from_trusted_owner(resolve_protected_original):
+    """Private composition seam; resolver must be supplied by protected code.
+
+    Resolves the exact normal transaction original, matching archive, rendered
+    bytes, and independently retained typed guarded manager pins. Root transport
+    alone is not that resolver. No host binding is installed by this module.
+    """
+    original, archive, selector, dropin = _resolve_exact_owner_original(resolve_protected_original)
     return transaction.commit_normal_selection(
         original, selector, dropin, _FixedOwner(original, archive))
+
+
+_MANAGER_RESULTS = frozenset({
+    'disk_release_differs', 'manager_observation_changed', 'manager_readback_unavailable',
+    'disk_matches_manager_reload_needed', 'disk_matches_effective_manager_differs',
+    'effective_normal_not_stopped', 'effective_normal_start_history_changed',
+    'effective_normal_stopped_same_original_observation',
+})
+
+
+def _stage_and_select_from_trusted_owner(resolve_protected_original):
+    """Owner-bound fixed install action. No arguments from a remote request.
+
+    Both existing stages retain their own immutable same-original receipts.
+    A crash between them leaves an exact inspectable stage, not a live start.
+    The selection step rechecks the full protected stage and guarded preimage.
+    The authenticated owner resolver and any later manager action are external.
+    """
+    original, archive, selector, dropin = _resolve_exact_owner_original(resolve_protected_original)
+    selected = transaction._validated_target(original, selector, dropin)
+    owner = _FixedOwner(original, archive)
+    owner.verify_archive_target(selected)
+    staged = staging.stage_normal_runtime(original.staged, archive)
+    committed = transaction.commit_normal_selection(original, selector, dropin, owner)
+    manager = committed['manager']['status']
+    guard.require(manager in _MANAGER_RESULTS
+                  and staged['status'] == 'normal_stage_materialized_not_selected'
+                  and staged['release_sha256'] == original.staged.members_sha256
+                  and committed['status'] == 'normal_pair_committed_on_disk'
+                  and all(guard.hash_pin(x) for x in
+                          (staged['receipt_sha256'], committed['receipt_sha256'])),
+                  'unexpected normal installer receipt')
+    return {'status': 'normal_pair_committed_on_disk', 'operation_id': original.operation_id,
+            'release_sha256': staged['release_sha256'], 'staging_receipt_sha256': staged['receipt_sha256'],
+            'selection_receipt_sha256': committed['receipt_sha256'], 'manager_status': manager,
+            'installation_accepted': False, 'native_startup_verified': False}
