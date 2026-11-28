@@ -14,7 +14,7 @@ import select
 import shutil
 import subprocess
 from types import SimpleNamespace
-from threading import Thread
+from threading import Lock, Thread
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -142,6 +142,11 @@ for (;;) {
     console.log('{}');
     continue;
   }
+  if (input.path === '@restore-quota') {
+    await call('quota', 'usage/write', { request_id: 'meter-restored', projection, source_receipt_sha256: h('5') });
+    console.log('{}');
+    continue;
+  }
   try {
     const result = await call('native', input.path.slice(4), input.body ?? {}, input.permit);
     const headers = { 'content-type': 'application/json' };
@@ -189,6 +194,7 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         original = 'cf-intake-' + intake_identity('OffMenu', self.issue.id, self.scope, 1) + '-assess'
         self.grant = replace(self.case.grant, attempts=(original,), scope_sha256=self.scope, expected_coordinator_epoch=2)
         self.calls, self.effects, self.lost = [], {}, False
+        self._bridge_lock = Lock()
 
     def bridge_read(self):
         if not select.select([self.bridge.stdout], [], [], 4)[0]:
@@ -198,9 +204,10 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         return json.loads(line)
 
     def exchange(self, path, body=None, permit=None):
-        self.bridge.stdin.write(json.dumps({'path': path, 'body': body, 'permit': permit}) + '\n')
-        self.bridge.stdin.flush()
-        return self.bridge_read()
+        with self._bridge_lock:
+            self.bridge.stdin.write(json.dumps({'path': path, 'body': body, 'permit': permit}) + '\n')
+            self.bridge.stdin.flush()
+            return self.bridge_read()
 
     def start_worker(self, *, recovered):
         self.recovered = recovered
@@ -431,6 +438,37 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await self.dispatch())
         self.assertEqual(self.exchange('@inspect'), {'out': [], 'effects': 0})
         self.assertNotIn(('/v1/recovery/enter', False), self.calls)
+
+    async def test_running_normal_discovery_recovers_admission_without_restart(self):
+        self.require_recipient_runtime()
+        self.start_worker(recovered=True)
+        self.wire_normal()
+        self.exchange('@drop-quota')
+        discovery = self.composition.options()['provider_discovery']
+        discovery.interval = discovery.timeout = 0.15
+        route_id = 'workers-ai-offmenu'
+
+        async def wait_for(predicate):
+            async with asyncio.timeout(4):
+                while not predicate():
+                    await asyncio.sleep(0.01)
+
+        async def normal():
+            self.assertTrue(discovery.active)
+            await wait_for(lambda: discovery.status()[0][1] != 'not-observed')
+            self.assertIsNone(discovery.observed(route_id))
+            self.assertIsNone(await self.dispatch())
+            self.assertEqual(self.exchange('@inspect'), {'out': [], 'effects': 0})
+            self.assertNotIn(('/v1/recovery/enter', False), self.calls)
+
+            self.exchange('@restore-quota')
+            await wait_for(lambda: discovery.observed(route_id) is not None)
+            self.assertTrue(discovery.active)
+            self.assertIsNotNone(await self.dispatch(), self.calls)
+            self.assertEqual(self.exchange('@inspect'), {'out': ['provider', 'linear'], 'effects': 2})
+            self.assertEqual(self.calls.count(('/v1/recovery/enter', False)), 1)
+
+        await discovery.run(normal)
 
     async def test_replaced_registered_task_cannot_enter_or_prepare_workspace(self):
         self.require_recipient_runtime()
