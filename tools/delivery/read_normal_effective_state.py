@@ -82,14 +82,25 @@ def _state():
     return values
 
 
-def observe_normal_effective(original):
-    """No load/start/reload, no path/argv output, no current installer conclusion."""
+def valid_predicate_pins(rows):
+    return (type(rows) is tuple and len(rows) <= 64
+            and all(type(row) is tuple and tuple(map(type, row)) == (str, bool, bool, str)
+                    for row in rows))
+
+
+def validate_observation_original(original):
+    """Check retained manager input types before any dependent filesystem effect."""
     require(type(original) is NormalEffectiveOriginal
             and hash_pin(original.expected_dropin_sha256) and hash_pin(original.observed_disk_dropin_sha256)
             and all(type(x) is int and x >= 0 for x in
                     (original.before_start_monotonic, original.before_restarts))
-            and type(original.conditions) is type(original.asserts) is tuple,
+            and valid_predicate_pins(original.conditions) and valid_predicate_pins(original.asserts),
             'expected exact normal observation inputs')
+
+
+def observe_normal_effective(original):
+    """No load/start/reload, no path/argv output, no current installer conclusion."""
+    validate_observation_original(original)
     stage = check_normal_stage(original.stage)
 
     def result(status):
