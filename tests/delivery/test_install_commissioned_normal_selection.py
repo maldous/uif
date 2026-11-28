@@ -1,10 +1,13 @@
+import ast
 from contextlib import contextmanager
 from dataclasses import replace
 import fcntl
 import os
 from pathlib import Path
+import stat
 import sys
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -254,3 +257,115 @@ class FixedNormalSelection(unittest.TestCase):
         self.assertFalse(self.selector.exists())
         self.assertFalse(self.dropin.exists())
         self.assertFalse(list(self.receipts.iterdir()))
+
+    def test_first_install_publishes_complete_selector_directory_and_reconciles(self):
+        parent = self.selector.parent
+        parent.rmdir()
+        rename = install._rename_noreplace
+
+        def lose_reply(source, target):
+            self.assertTrue(self.lock_held)
+            self.assertEqual(target, parent)
+            self.assertEqual((source/self.selector.name).read_bytes(), self.bytes)
+            self.assertEqual(stat.S_IMODE(source.stat().st_mode), 0o755)
+            self.assertEqual(len(list(self.receipts.iterdir())), 1)
+            self.assertFalse(self.dropin.exists())
+            rename(source, target)
+            raise OSError('selector directory acknowledgement lost')
+
+        with patch.object(install, '_rename_noreplace', side_effect=lose_reply):
+            with self.assertRaisesRegex(OSError, 'acknowledgement lost'):
+                self.run_original()
+        self.assertEqual(self.selector.read_bytes(), self.bytes)
+        self.assertEqual(parent.stat().st_uid, os.getuid())
+        self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o755)
+        self.assertEqual(stat.S_IMODE(self.selector.stat().st_mode), 0o444)
+        inode = parent.stat().st_ino
+        with patch.object(install, '_sync_parent', wraps=install._sync_parent) as sync:
+            result = self.run_original()
+        self.assertEqual(result['status'], 'normal_pair_committed_on_disk')
+        self.assertEqual(parent.stat().st_ino, inode)
+        self.assertEqual(self.run_original(), result)
+        sync.assert_any_call(parent)
+
+        # Exercise the emitted startup reader on the actual published bytes.
+        # The fixture's effective UID stands in for root and its temporary
+        # parent stands in for the trusted production root.
+        pins = ast.parse('if True:\n' + install.normal.normal_entry_pins(str(self.leaf), '1'*40, '2'*40))
+        reader = next(node for node in pins.body[0].body
+                      if isinstance(node, ast.FunctionDef) and node.name == '_CRaw')
+
+        def open_fixture(path, flags, **kwargs):
+            return os.open(parent.parent if path == '/' else path, flags, **kwargs)
+
+        def root_metadata(fd):
+            info = os.fstat(fd)
+            self.assertEqual(info.st_uid, os.getuid())
+            return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_nlink=info.st_nlink,
+                                   st_size=info.st_size, st_mtime_ns=info.st_mtime_ns,
+                                   st_ctime_ns=info.st_ctime_ns)
+
+        mounted_os = SimpleNamespace(open=open_fixture, close=os.close, fstat=root_metadata,
+                                     fdopen=os.fdopen, O_RDONLY=os.O_RDONLY, O_DIRECTORY=os.O_DIRECTORY,
+                                     O_NOFOLLOW=os.O_NOFOLLOW, O_NONBLOCK=os.O_NONBLOCK)
+        namespace = {'_COs': mounted_os, '_CStat': stat}
+        exec(compile(ast.Module(body=[reader], type_ignores=[]), 'commissioned-selector-reader', 'exec'), namespace)
+        self.assertEqual(namespace['_CRaw'](Path('/')/parent.name/self.selector.name, 16384), self.bytes)
+
+    def test_missing_selector_directory_requires_current_guarded_manager(self):
+        self.selector.parent.rmdir()
+        with patch.object(install.guarded, 'observe_guarded_preimage', return_value=False):
+            with self.assertRaisesRegex(g.Held, 'legacy effective preimage not verified'):
+                self.run_original()
+        self.assertFalse(self.selector.parent.exists())
+        self.assertFalse(self.dropin.exists())
+        self.assertFalse(list(self.receipts.iterdir()))
+
+    def test_selector_directory_race_and_unsafe_existing_parent_are_refused(self):
+        parent = self.selector.parent
+        parent.rmdir()
+        foreign = parent.with_name('foreign')
+        foreign.mkdir(mode=0o700)
+        rename = install._rename_noreplace
+
+        def race(source, target):
+            target.symlink_to(foreign, target_is_directory=True)
+            rename(source, target)
+
+        with patch.object(install, '_rename_noreplace', side_effect=race), self.assertRaises(FileExistsError):
+            self.run_original()
+        self.assertTrue(parent.is_symlink())
+        with self.assertRaisesRegex(g.Held, 'normal selector directory is not protected'):
+            self.run_original()
+        self.assertFalse(list(foreign.iterdir()))
+        parent.unlink()
+        parent.mkdir()
+        parent.chmod(0o775)
+        with self.assertRaisesRegex(g.Held, 'normal selector directory is not protected'):
+            self.run_original()
+        self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o775)
+        self.assertFalse(self.dropin.exists())
+
+    def test_selector_directory_appearance_after_prior_read_is_refused(self):
+        parent = self.selector.parent
+        parent.rmdir()
+        publish = install._FixedOwner.publish_selector
+
+        def race(owner, prior, raw):
+            parent.mkdir(mode=0o755)
+            publish(owner, prior, raw)
+
+        with patch.object(install._FixedOwner, 'publish_selector', race):
+            with self.assertRaisesRegex(g.Held, 'normal selector directory changed during locked selection'):
+                self.run_original()
+        self.assertTrue(parent.is_dir())
+        self.assertFalse(list(parent.iterdir()))
+        self.assertFalse(self.dropin.exists())
+
+    def test_missing_selector_directory_with_committed_receipt_is_not_recreated(self):
+        self.run_original()
+        self.selector.unlink()
+        self.selector.parent.rmdir()
+        with self.assertRaisesRegex(g.Held, 'normal selector directory missing after recorded disk commit'):
+            self.run_original()
+        self.assertFalse(self.selector.parent.exists())
