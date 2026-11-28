@@ -64,7 +64,7 @@ def _recipient_native_prologue(orchestration, dispatch, worker, authority):
         # and at terminal transitions, outside the running worker.
         source = Path(worker.__code__.co_filename)
         if (source != Path(orchestration.__file__) or sha256(source.read_bytes()).hexdigest()
-                != 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'):
+                != '59b063610dea19c18b736d3949607712f4c3ad0d8187c9956e5d6019b29d0352'):
             return None
         # getsource(function) unwraps decorators. Review the actual composition
         # shim and verify its closed-over native callable before unwrapping it.

@@ -39,7 +39,7 @@ PINS = {
     'workspace.py': '9ddb0ad8a1d5d43b54663aab14351fb70b07b13ffd6c76af99016fc6c7d28936',
 }
 PATCH = Path(__file__).resolve().parents[2] / 'tools/delivery/stokowski-verified-assessment-report.patch'
-PATCHED_ORCHESTRATOR_SHA256 = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
+PATCHED_ORCHESTRATOR_SHA256 = '59b063610dea19c18b736d3949607712f4c3ad0d8187c9956e5d6019b29d0352'
 
 
 class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):

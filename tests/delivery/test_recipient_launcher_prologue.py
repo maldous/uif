@@ -21,8 +21,9 @@ from test_native_remote_authority import ISSUE, RECORD, ROUTE
 RECONCILE_PREIMAGES = {
     '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96',
     '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38',
+    'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431',
 }
-RECONCILE_POSTIMAGE = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
+RECONCILE_POSTIMAGE = '59b063610dea19c18b736d3949607712f4c3ad0d8187c9956e5d6019b29d0352'
 
 
 class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):

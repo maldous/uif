@@ -40,6 +40,12 @@ an authenticated observation, and verifying a new admissible dispatch in the
 same runtime. Capture the process, claim, original operation and effect
 receipts. Repeat with a stale observation and a held original.
 
+`Stokowski commissioned idle: free_route_unavailable` means the normal mount
+verified its authority and is waiting for an installed route. A configured
+route with unavailable quota is handled by the running discovery lifecycle.
+Record the effective installed configuration and the current authority receipt
+when interpreting either state.
+
 Cloudflare's daily reset and an empty adaptive analytics result can support the
 usage history. For Workers AI admission, verify the account-wide bound, the
 exact Free route and its sender in the active deployment. Record any alternate
@@ -76,8 +82,10 @@ route whose reader or sender is unmounted. [Provider discovery and selection](..
    workspace, the role that can call it, the protected resolver that provides
    the retained release and original operation, and the actual target unit.
    Check the deployed Windmill action or owner interface and its original
-   status lookup. Carry the installer result for the exact release and the
-   effective systemd readback into the existing control action for normal
+   status lookup. Check effective privileges in the executing session. Morgan
+   can use the deployed Foo root-job interface for authorized host readback
+   when the checkout session cannot elevate. Carry the installer result for
+   the exact release and the effective systemd readback into the existing control action for normal
    activation. [Windmill routing](windmill-workspace.md)
    [Normal commissioning](../windmill/foo-installer-workflow.md#commission-the-normal-stokowski-release)
 3. Continue the first missing step with its existing owner. Use verified
