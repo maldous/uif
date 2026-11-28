@@ -475,7 +475,8 @@ class NativeComposition:
 
 
     @contextmanager
-    def bind_dispatch(self, owner, issue, scope_sha, record):
+    def bind_dispatch(self, owner, issue, scope_sha, record, *, fresh_assessment_run=None,
+                      verify_first_dispatch_applicability=None):
         grant = self.assignment(owner.project_name, issue.id, scope_sha)
         require(grant is not None and record['attempt'] in grant.attempts, 'authority_attempt_not_selected')
         role = self.attempt_account(grant, record['attempt'])
@@ -504,7 +505,25 @@ class NativeComposition:
         require(not (evidence / (key + '.settled')).exists() or (evidence / (key + '.released')).exists(),
                 'authority_original_release_pending')
         self._first_workspace(path, grant, prior)
-        claim = self.remote.acquire(grant, record['attempt'])
+        if verify_first_dispatch_applicability is None:
+            claim = self.remote.acquire(grant, record['attempt'])
+        else:
+            from .fresh_assessment_dispatch import (
+                observe_fresh_assessment_dispatch, retain_fresh_assessment_dispatch,
+            )
+            require(owner.project_name == 'OffMenu' and type(fresh_assessment_run) is int
+                    and fresh_assessment_run > 0 and 'project_intake' in record
+                    and grant.previous is None and record['attempt'] == grant.attempts[0],
+                    'authority_fresh_assessment_dispatch_scope')
+            fresh = retain_fresh_assessment_dispatch(
+                self, owner, issue, fresh_assessment_run, scope_sha,
+                verify_first_dispatch_applicability=verify_first_dispatch_applicability)
+            claim = observe_fresh_assessment_dispatch(
+                self, owner, issue, fresh_assessment_run, scope_sha, fresh.lease,
+                verify_first_dispatch_applicability=verify_first_dispatch_applicability)
+            require(claim == fresh and claim.attempt_id == record['attempt']
+                    and self.assignment(owner.project_name, issue.id, scope_sha) == grant,
+                    'authority_fresh_assessment_dispatch_changed')
         self._seen_fences[issue.id] = claim.lease.fence
         self._private_postimages[issue.id] = workspace_recovery_digest(path)
         binding = self._running.set((grant, claim))

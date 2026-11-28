@@ -129,11 +129,27 @@ async def _start_with_shutdown(owner, start):
 from ..provider_discovery import NormalProviderDiscovery
 
 
+def _native_dispatch_binding(authority_lifecycle, owner, issue, state, record,
+                             fresh_assessment_dispatch_verifier):
+    if authority_lifecycle is None:
+        return nullcontext()
+    if (fresh_assessment_dispatch_verifier is not None and owner.project_name == 'OffMenu'
+            and state == 'assess' and 'project_intake' in record):
+        run = owner._issue_state_runs.get(issue.id, 1)
+        return authority_lifecycle.bind_dispatch(
+            owner, issue, record['scope_sha256'], record, fresh_assessment_run=run,
+            verify_first_dispatch_applicability=fresh_assessment_dispatch_verifier)
+    return authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record)
+
+
 def configure(runner, orchestration, publication, *, policy: Path, database: Path,
               read_account_recovery=None, read_account_usage=None,
               open_fenced_connection=None, allows_native_dispatch=None, authority_lifecycle=None,
-              provider_discovery=None):
+              provider_discovery=None, fresh_assessment_dispatch_verifier=None):
     """Bind native custody and an optional trusted, cached account evidence reader."""
+    if fresh_assessment_dispatch_verifier is not None and (
+            authority_lifecycle is None or not callable(fresh_assessment_dispatch_verifier)):
+        raise ValueError('Expected an installed exclusive fresh-assessment dispatcher')
     if provider_discovery is not None and type(provider_discovery) is not NormalProviderDiscovery:
         raise ValueError('Expected installed normal provider discovery')
     if read_account_recovery is not None and not callable(read_account_recovery):
@@ -532,8 +548,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 owner._release_slot(issue.id)
                 return None
         previous = owner.running.get(issue.id)
-        binding = (authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record)
-                   if authority_lifecycle is not None else nullcontext())
+        binding = _native_dispatch_binding(
+            authority_lifecycle, owner, issue, state, record, fresh_assessment_dispatch_verifier)
         # Enter before native dispatch consumes the retry or acquires custody.
         # The task it creates inherits the bound original via contextvars.
         try:
