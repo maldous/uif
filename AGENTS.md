@@ -30,8 +30,8 @@ required. Native pauses, execution claims and publisher authority remain intact;
 an orchestration receiving acknowledgment is not a claim transfer or fence.
 
 Use the [Morgan peer transition playbook](docs/agents/morgan-peer-transition.md)
-when Morgan handles UIF handoff, return or refill. Stokowski runs native
-transitions in code; these agent instructions do not replace that runtime.
+when Morgan handles UIF handoff, return or refill, or recovers a Foo release.
+Stokowski runs native transitions in code.
 
 Use the [environment alignment skill](.agents/skills/uif-environment-alignment/SKILL.md)
 at startup, on demand and at quota/Morgan MCP transitions to collect real

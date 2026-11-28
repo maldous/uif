@@ -5,6 +5,26 @@ an advisory step for the authenticated owner adapter: use the current accepted
 scope to choose one explicit route, and ask the existing authority for a real
 reservation before any provider, worktree, Git or Linear effect.
 
+## Keep the model roster current
+
+Use Stokowski's existing provider discovery, pool and runtime hooks. Catalogue
+refresh discovers candidate combinations of provider, account, client protocol
+and model. Record the stage capabilities each combination has demonstrated,
+such as structured reports, tool calls, streaming and cancellation. A model can
+appear in several combinations with different capabilities and limits. Probe
+the full set of configured combinations over time, deduplicating metadata and
+quota reads shared by the same account. Prioritize stale observations and use
+provider reset times or `Retry-After` with bounded backoff. Keep healthy routes
+available while another cools down. [Legacy ANQR availability and fallback evidence](stokowski-provider-readiness.md#reusable-offline-protocol-fixtures-from-anqr)
+
+At dispatch, filter by the action's capabilities, current project permissions,
+fresh availability and headroom before selecting a route. Credential lifetime
+and model headroom are independent. If the roster has no eligible route, wait
+for the next scheduled refresh and continue work that needs no inference. Each
+refresh can make a recovered route eligible again. Qualification uses the
+existing adapter and reservation path. Reconcile an uncertain send under its
+original route before another model can handle the work.
+
 ## Inputs and decisions
 
 - Build a `PoolRequest` from the *verified* current Linear workspace, project,

@@ -1,8 +1,7 @@
 # Morgan peer transition playbook
 
-Use this when Morgan is appointed to oversee a UIF peer transition. It guides the
-agent's decisions; it does not appoint Morgan, run a scheduler, or authorize a
-state change. Stokowski detects and handles native runtime transitions through
+Use this when Morgan oversees a UIF peer transition or recovers a Foo release.
+Stokowski detects and handles native runtime transitions through
 reviewed code, its configured scheduler and the shared authority. Normal intake,
 claiming, continuation, publication reconciliation and refill must not depend
 on an agent reading these instructions, a Dot conversation, or manual polling.
@@ -37,18 +36,39 @@ a new admission or deployment gate.
 | Completion, refill or return to health | Observe exact terminal outcome and authenticated completion through the existing effect and publisher boundaries; verify current owner, scope and admission for the next eligible Linear issue. | Let the appointed scheduler refill. Do not issue another claim for held work, take from the other healthy peer, or substitute a new publisher. Restore capacity for eligible scopes without moving an active claim back merely because its old peer returned. |
 | Explicit owner pause or stop | Resolve the scope and current durable control state before any work; treat a shared stop as global where the authority defines it so. | Honor it across recovery and reboot. Read-only status and reconciliation do not lift it; unrelated work proceeds only outside the scope of the stop. |
 
-## Keep a blocked restoration moving
+## Locate and continue the normal Foo release
 
-For a missing or mismatched release artifact, hand off directly to
-[clean forward qualification](../windmill/foo-installer-workflow.md#fix-forward-when-a-retained-release-cannot-be-reused).
-Keep package preparation, protected installation preparation and control
-reconciliation moving under their existing owners. For each held lane,
-record the exact missing input, owner action and evidence that will reopen it.
-If the owner is unknown, mark ownership unverified and identify the existing
-route that can confirm it. Do not implicitly hand off the work.
-Status checks do not advance a lane. When the evidence arrives, resume the
-existing operation and continue to end-to-end acceptance without replaying a
-lost effect, restarting a held service, or transferring a claim.
+1. Start from the last **installation** receipt and the current service
+   selection recorded against the active release issue. For Stokowski, use
+   [UIF-1313](https://linear.app/maldous/issue/UIF-1313). Trace that original to
+   the retained archive, complete canonical
+   manifest, artifact digest, source revision and evidence for those exact
+   bytes. The guarded-idle start receipt identifies the earlier trial. Use the
+   approved in-place comparison to verify reusable components against the
+   independently retained manifest. Keep the archive, manifest, verification
+   and original receipt together at a stable locator the installer can read.
+   [Foo release workflow](../windmill/foo-installer-workflow.md#retain-the-inputs-for-the-next-recovery)
+2. Verify the installer at the destination. Identify the deployed action and
+   workspace, the role that can call it, the protected resolver that provides
+   the retained release and original operation, and the actual target unit.
+   Check the deployed Windmill action or owner interface and its original
+   status lookup. Carry the installer result for the exact release and the
+   effective systemd readback into the existing control action for normal
+   activation. [Windmill routing](windmill-workspace.md)
+   [Normal commissioning](../windmill/foo-installer-workflow.md#commission-the-normal-stokowski-release)
+3. Continue the first missing step with its existing owner. Use verified
+   retained components and rebuild only the missing parts through the existing
+   release route. If the original manifest is missing, qualify the complete
+   build from known source with deterministic checks and retain the result.
+   Prepare the protected installer and control inputs in parallel. If an action
+   is unavailable, name the exact missing input or callable, its owner and
+   the readback that will reopen it. Continue as soon as that evidence arrives.
+   [Forward qualification](../windmill/foo-installer-workflow.md#fix-forward-when-a-retained-release-cannot-be-reused)
+
+Use the same original after an uncertain result. Once the verified normal
+release is active, routine service restarts use its recorded selection and
+fresh runtime identity. They preserve the durable stop state and require no
+repeat release approval.
 
 Read the [BAU service contract](../operations/business-as-usual.md) for accepted
 status terms and the [white-room recovery contract](../white-room/startup-and-recovery.md)
