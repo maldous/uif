@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
-from inspect import getsource
+from inspect import getclosurevars, getsource
 import json
 import os
 from pathlib import Path
@@ -38,24 +38,40 @@ class _RecipientDispatch:
     started: bool = False
 
 
-def _recipient_native_prologue(orchestration, dispatch, worker):
-    """Qualify the native call site that runs after the current Linear read."""
+def _recipient_native_prologue(orchestration, dispatch, worker, authority):
+    """Qualify the native prologue and the reconciliation it relies on."""
+    native = orchestration.Orchestrator
+    reconcile = getattr(native, '_reconcile', None)
+    terminal = getattr(native, '_observe_terminal', None)
+    original_reconcile = getattr(reconcile, '__wrapped__', None)
     workspace = getattr(orchestration, 'ensure_workspace', None)
     globals_ = getattr(workspace, '__globals__', {})
     result = globals_.get('WorkspaceResult')
     reviewed = (
         (dispatch, 'da63ce2fe67723fe9e362cd8eb9c4eed5d69b7267ffffc42e625228c2392cc29'),
         (worker, '47a49c4930cf8a0faf670b6def7326f4f0982de7b8f9b548045899753a0c6482'),
+        (original_reconcile, '5479e5ee884ed8ba1f3f731cecc30eef7d13fef31a059b850107ef7dd605f46c'),
+        (terminal, '7a4d04b5824ea78596adc52a2eb9ada05aa9b05c464fba47fc59c5ba642672e9'),
         (workspace, '647eacc835b9c1b2698c6990cc3168ef35db379a1263f969ea1f02192f80c6be'),
         (result, '336dbd12bfcdc495bf9e7840f6a738ba8a64f88a5a2008c229b2cff5e8fbf9b3'),
     )
-    if getattr(worker, '__globals__', None) is not vars(orchestration):
+    if any(getattr(value, '__globals__', None) is not vars(orchestration)
+           for value in (dispatch, worker, original_reconcile, terminal)):
         return None
     try:
+        # getsource(function) unwraps decorators. Review the actual composition
+        # shim and verify its closed-over native callable before unwrapping it.
+        if (sha256(getsource(reconcile.__code__).encode()).hexdigest()
+                != '2e3d003b006b5259e9ee6793c3815cfdaf665768003863e6060c64347d085ba3'
+                or getclosurevars(reconcile).nonlocals != {
+                    'composition': authority, 'orchestration': orchestration,
+                    'original_reconcile': original_reconcile,
+                }):
+            return None
         if all(not hasattr(value, '__wrapped__') and sha256(getsource(value).encode()).hexdigest() == pin
                for value, pin in reviewed):
-            return workspace, result
-    except (OSError, TypeError, ValueError):
+            return workspace, result, reconcile, terminal
+    except (AttributeError, OSError, TypeError, ValueError):
         pass
     return None
 
@@ -279,9 +295,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 'recipient_task_active', 'verify_recipient_workspace', 'prepare_recipient_turn_thread',
                 'recipient_assessment_finisher',
             ))):
-        recipient_prologue = _recipient_native_prologue(orchestration, original_dispatch, original_worker)
+        recipient_prologue = _recipient_native_prologue(
+            orchestration, original_dispatch, original_worker, authority_lifecycle)
     if recipient_prologue is not None:
-        original_workspace, workspace_result = recipient_prologue
+        original_workspace, workspace_result, _, _ = recipient_prologue
 
         async def existing_recipient_workspace(workspace_root, issue_identifier, hooks):
             selected = recipient.get()
@@ -478,7 +495,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
 
     def recipient_stage_allowed(owner, issue, record):
         stage = owner._states_for(issue).get('assess')
-        return (owner.project_name == 'OffMenu' and owner._issue_current_state.get(issue.id) == 'assess'
+        return (recipient_prologue is not None
+                and getattr(getattr(owner, '_reconcile', None), '__func__', None) is recipient_prologue[2]
+                and getattr(getattr(owner, '_observe_terminal', None), '__func__', None) is recipient_prologue[3]
+                and owner.project_name == 'OffMenu' and owner._issue_current_state.get(issue.id) == 'assess'
                 and record and 'project_intake' in record and not record['read_paths'] and not record['write_roots']
                 and stage is not None and stage.type == 'agent' and stage.admission_review is True
                 and not stage.publication and stage.session == 'fresh' and stage.permission_mode == 'plan'
@@ -640,6 +660,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                     current = owner.running.get(issue.id)
                     task = owner._tasks.get(issue.id)
                     if current is not None and current is not previous and isinstance(task, asyncio.Task):
+                        current._uif_retained_recipient = True
                         selected_recipient.attempt = current
 
                         def release_unentered(done):

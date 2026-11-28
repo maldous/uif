@@ -14,8 +14,12 @@ from unittest.mock import AsyncMock, Mock, patch
 from uif.handoff_store import Hold
 from uif.stokowski_cloudflare import launcher
 from uif.stokowski_cloudflare.intake import intake_stages
-from uif.stokowski_cloudflare.native_composition import NativeComposition
+from uif.stokowski_cloudflare.native_composition import NativeComposition, _COMMENT_SLOTS, install_sinks
 from test_native_remote_authority import ISSUE, RECORD, ROUTE
+
+
+RECONCILE_PREIMAGE = '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96'
+RECONCILE_POSTIMAGE = '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38'
 
 
 class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
@@ -29,8 +33,8 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
 
         source = Path(orchestrator.__file__)
         self.assertEqual(source.parent, Path(staged))
-        self.assertEqual(sha256(source.read_bytes()).hexdigest(),
-                         '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96')
+        self.native_sha = sha256(source.read_bytes()).hexdigest()
+        self.assertIn(self.native_sha, {RECONCILE_PREIMAGE, RECONCILE_POSTIMAGE})
         self.orchestrator, self.runner, self.publication = orchestrator, runner, publication
         owner = self.owner = orchestrator.Orchestrator.__new__(orchestrator.Orchestrator)
         temp = TemporaryDirectory()
@@ -112,9 +116,10 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.bindings = []
         # Restore class and module hooks after installing the exact production launcher.
         for name in ('_dispatch', '_is_eligible', '_run_worker', '_entry_state_for',
-                     '_resolve_current_state', '_enter_gate'):
+                     '_resolve_current_state', '_resume_settlement', '_reconcile', *_COMMENT_SLOTS):
             self.enterContext(patch.object(orchestrator.Orchestrator, name, getattr(orchestrator.Orchestrator, name)))
         for module, name in ((orchestrator, 'ensure_workspace'), (orchestrator, 'run_turn'),
+                             (orchestrator, 'LinearClient'),
                              (orchestrator.MultiOrchestrator, 'start')):
             self.enterContext(patch.object(module, name, getattr(module, name)))
 
@@ -130,6 +135,7 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.assertIs(owner.running[issue.id], attempt)
         self.assertIn(issue.id, owner.claimed)
         self.assertEqual(attempt.session_id, self.claim.attempt_id)
+        self.assertIs(attempt._uif_retained_recipient, True)
         self.entries.append(attempt)
         if self.entry_error is not None:
             self.lifecycle.recipient_assignment.side_effect = Hold('Original entry already attempted')
@@ -150,6 +156,8 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         return self.path
 
     def configure(self):
+        install_sinks(self.orchestrator, self.lifecycle)
+
         def bind_runner(runner, orchestration, *, authorize_turn, **unused):
             async def capture(*, issue, attempt, workspace_path, **_):
                 binding = authorize_turn(issue, attempt, workspace_path)
@@ -176,8 +184,13 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         if 'prepare_turn_thread' not in launcher.NativeTurnBinding.__dataclass_fields__:
             self.skipTest('compose the independently reviewed native turn thread adapter')
 
-    async def test_pins_native_prologue_and_uses_same_task_before_workspace_and_turn(self):
+    def require_reconcile_patch(self):
         self.require_turn_binding()
+        if self.native_sha != RECONCILE_POSTIMAGE:
+            self.skipTest('apply the reviewed native reconciliation patch')
+
+    async def test_pins_native_prologue_and_uses_same_task_before_workspace_and_turn(self):
+        self.require_reconcile_patch()
         self.configure()
         self.assertTrue(self.owner._is_eligible(self.issue))
         self.assertEqual(self.entries, [])
@@ -200,7 +213,7 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.assertFalse(self.clone_marker.exists())
 
     async def test_removed_staged_path_does_not_trigger_native_clone_hook(self):
-        self.require_turn_binding()
+        self.require_reconcile_patch()
         self.configure()
         moved = self.root / 'original-only'
 
@@ -218,7 +231,7 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.owner._publish_run_report.assert_not_awaited()
 
     async def test_lost_original_and_parked_retry_do_not_schedule_a_new_native_task(self):
-        self.require_turn_binding()
+        self.require_reconcile_patch()
         self.configure()
         parked = object()
         self.owner.retry_attempts[ISSUE] = parked
@@ -241,13 +254,10 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.fetch_issue.assert_not_awaited()
 
     async def test_unreviewed_workspace_callable_does_not_select_recipient(self):
-        self.require_turn_binding()
+        self.require_reconcile_patch()
         original = self.orchestrator.ensure_workspace
         replacement = AsyncMock()
         with patch.object(self.orchestrator, 'ensure_workspace', replacement):
-            self.assertIsNone(launcher._recipient_native_prologue(
-                self.orchestrator, self.orchestrator.Orchestrator._dispatch,
-                self.orchestrator.Orchestrator._run_worker))
             self.configure()
             self.assertFalse(self.owner._is_eligible(self.issue))
             self.owner._dispatch(self.issue)
@@ -257,7 +267,7 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.lifecycle.recipient_assignment.assert_not_called()
 
     async def test_cancellation_before_entry_releases_only_its_registered_slot(self):
-        self.require_turn_binding()
+        self.require_reconcile_patch()
         self.configure()
         self.owner._dispatch(self.issue)
         task = self.owner._tasks[ISSUE]
@@ -271,3 +281,25 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.assertEqual(self.entries, [])
         self.fetch_issue.assert_not_awaited()
         self.assertFalse((self.path / '.stokowski').exists())
+
+    async def test_unpatched_native_reconciliation_holds_recipient_selection(self):
+        self.require_turn_binding()
+        if self.native_sha != RECONCILE_PREIMAGE:
+            self.skipTest('select the exact native reconciliation preimage')
+        self.configure()
+        self.assertFalse(self.owner._is_eligible(self.issue))
+        self.owner._dispatch(self.issue)
+        self.assertFalse(self.owner._tasks)
+        self.lifecycle.recipient_assignment.assert_not_called()
+
+    async def test_reconciler_replacement_after_dispatch_stops_original_before_entry(self):
+        self.require_reconcile_patch()
+        self.configure()
+        self.assertTrue(self.owner._is_eligible(self.issue))
+        self.owner._dispatch(self.issue)
+        task = self.owner._tasks[ISSUE]
+        with patch.object(self.owner, '_reconcile', AsyncMock()):
+            await task
+        self.assertEqual(self.entries, [])
+        self.fetch_issue.assert_not_awaited()
+        self.owner._release_slot.assert_called_once_with(ISSUE)
