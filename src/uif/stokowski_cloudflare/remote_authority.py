@@ -5,6 +5,7 @@ are expected pins checked against the receiver, never caller authentication.
 There is no redirect, provider fallback, request retry or local claim store.
 """
 from base64 import b64encode
+import asyncio
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, replace
@@ -119,8 +120,13 @@ class AccessTransport:
         self.host = _origin(origin)
         self._credential_file = Path(credential_file)
         self._dispatch_permit = ContextVar("fresh_assessment_dispatch_permit", default=None)
+        self._recipient_permit = ContextVar('recipient_recovery_permit', default=None)
 
     def request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
+        require(path != '/v1/recovery/enter', 'authority_recovery_journal_required')
+        return self._request(path, data, timeout=timeout, allow_absent=allow_absent, provider=provider)
+
+    def _request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
         require(path.startswith('/v1/') and re.fullmatch(r'/v1/[a-z/]+', path),
                 'authority_route')
         record = protected_record(self._credential_file, secret=True)
@@ -140,6 +146,9 @@ class AccessTransport:
                     and request.get('attempt_id') == claim.attempt_id,
                     'authority_dispatch_egress_scope')
             headers['uif-dispatch-permit'] = permit.for_effect()
+        recipient = self._recipient_permit.get()
+        if recipient is not None:
+            recipient.authorize(path, data, headers)
         conn = HTTPSConnection(self.host, timeout=timeout)
         try:
             conn.request('GET' if data is None else 'POST', path,
@@ -182,12 +191,56 @@ class AccessTransport:
                 and type(observed['entered']) is bool, 'authority_dispatch_observation_shape')
         return observed['entered']
 
+    def observe_recipient_entry(self, body):
+        result = self.request('/v1/recovery/observe', body)
+        require(type(result) is dict and result.keys() == {'entered'} and type(result['entered']) is bool,
+                'authority_recovery_observation_shape')
+        return result['entered']
+
+    @contextmanager
+    def _enter_journaled_recipient(self, body, claim, route, selected_task, verify_owner):
+        from .recipient_entry import _RecipientPermit
+        require(type(claim) is NativeClaim and claim.project == 'OffMenu' and claim.lease.fence.generation == 2
+                and type(body) is dict and body.keys() == {'current', 'attempt_id', 'original'}
+                and body['current'] == asdict(claim.lease) and body['attempt_id'] == claim.attempt_id
+                and type(body['original']) is dict and body['original'].keys() ==
+                    {'installation_sha256', 'session_id', 'request_id', 'request_sha256'}
+                and body['original']['session_id'] == claim.lease.fence.owner_session,
+                'authority_recovery_entry_scope')
+        pinned_sha(body['original']['installation_sha256'])
+        pinned_sha(body['original']['request_sha256'])
+        token(body['original']['request_id'])
+        require(isinstance(selected_task, asyncio.Task) and asyncio.current_task() is selected_task
+                and self._dispatch_permit.get() is None and self._recipient_permit.get() is None,
+                'authority_recovery_selected_task')
+        verify_owner()
+        try:
+            result = self._request('/v1/recovery/enter', body)
+        except AuthorityUnavailable as uncertain:
+            try:
+                self.observe_recipient_entry(body)
+            except (Hold, OSError):
+                pass
+            raise uncertain from None
+        require(type(result) is dict and result.keys() == {'entered', 'permit'} and result['entered'] is True
+                and type(result['permit']) is str and re.fullmatch(r'[0-9a-f]{64}', result['permit']),
+                'authority_recovery_first_entry_not_won')
+        permit = _RecipientPermit(claim, route, selected_task, verify_owner, result.pop('permit'))
+        binding = self._recipient_permit.set(permit)
+        try:
+            verify_owner()
+            yield
+        finally:
+            permit.revoke()
+            self._recipient_permit.reset(binding)
+
     @contextmanager
     def fresh_assessment_permission(self, claim, admission):
         """Bind a first affirmative reply to this native task; never retry entry."""
         require(type(claim) is NativeClaim and claim.project == 'OffMenu'
                 and type(admission) is dict and admission.keys() == {'attempt_id', 'first_intent_sha256'}
-                and admission['attempt_id'] == claim.attempt_id and self._dispatch_permit.get() is None,
+                and admission['attempt_id'] == claim.attempt_id and self._dispatch_permit.get() is None
+                and self._recipient_permit.get() is None,
                 'authority_dispatch_scope')
         pinned_sha(admission['first_intent_sha256'])
         body = {'current': asdict(claim.lease), **admission}

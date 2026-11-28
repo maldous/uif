@@ -318,7 +318,7 @@ def observe_clean_assignment_workspace(path: Path, source: SourcePin, git_config
             'git_config_sha256': git_config_sha256, 'prepared_tree_sha256': prepared}
 
 
-def _require_unstarted_recipient_journals(path):
+def _require_unstarted_recipient_journals(path, entry_marker=None):
     # The checkout digest intentionally excludes both private effect stores.
     # A live successor fence can outlast its first effect or publisher handoff.
     for name in ('uif-original-effects', 'uif-owner-handoffs'):
@@ -329,7 +329,8 @@ def _require_unstarted_recipient_journals(path):
             continue
         require(stat.S_ISDIR(info.st_mode), 'authority_recipient_journal_needs_reconciliation')
         with _handoff_directory(directory) as fd, os.scandir(fd) as entries:
-            require(next(entries, None) is None, 'authority_recipient_journal_needs_reconciliation')
+            require(all(name == 'uif-original-effects' and item.name == entry_marker for item in entries),
+                    'authority_recipient_journal_needs_reconciliation')
 
 
 def workspace_recovery_digest(path):
@@ -487,6 +488,9 @@ class NativeComposition:
 
     def observe_unstarted_assignment(self, owner, issue, scope_sha):
         """Verify the installed recipient's clean pre-dispatch workspace and original."""
+        return self._recipient_workspace(owner, issue, scope_sha)[0]
+
+    def _recipient_workspace(self, owner, issue, scope_sha, *, for_entry=False):
         require(owner.project_name == 'OffMenu', 'authority_recovery_workspace_project')
         installation = self.installation()
         data = installation['assignments'].get(issue.id)
@@ -506,7 +510,8 @@ class NativeComposition:
         require(observed == {**{k: binding[k] for k in ('path', 'device', 'inode')},
                 'git_config_sha256': data['git_config_sha256'], 'prepared_tree_sha256': data['prepared_tree_sha256']},
                 'authority_recovery_workspace_changed')
-        _require_unstarted_recipient_journals(path)
+        marker = digest(binding['original_transition']) + '.recipient-entry' if for_entry else None
+        _require_unstarted_recipient_journals(path, marker)
         current = self.remote._observe_unstarted_binding(grant, data['recipient_original'],
                         workspace_transition=binding['original_transition'])
         latest = self.installation()
@@ -516,8 +521,13 @@ class NativeComposition:
                 and observe_clean_assignment_workspace(path, grant.source, data['git_config_sha256']) == observed
                 and self.remote.clock().timestamp() < current.lease.expires_at,
                 'authority_recovery_workspace_assignment_changed')
-        _require_unstarted_recipient_journals(path)
-        return current
+        _require_unstarted_recipient_journals(path, marker)
+        return current, grant, binding, digest(data)
+
+    def recipient_first_entry(self, owner, issue, scope_sha, attempt):
+        """Staged adapter for an already-selected native task under its original handoff."""
+        from .recipient_entry import recipient_first_entry
+        return recipient_first_entry(self, owner, issue, scope_sha, attempt)
 
     def selected(self, project, issue, scope_sha):
         return self.assignment(project, issue.id, scope_sha) is not None
