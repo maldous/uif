@@ -54,6 +54,34 @@ def _route(value):
     )
 
 
+def current_usage_evidence(
+    route: FreeRoute,
+    evidence: AccountUsageEvidence | None,
+    *,
+    now: datetime,
+) -> bool:
+    """Check the current observation without authorizing a request."""
+    if (
+        not _route(route)
+        or type(evidence) is not AccountUsageEvidence
+        or not _route(evidence.route)
+        or evidence.route != route
+        or evidence.free_standard_no_fallback is not True
+        or evidence.completeness_verified is not True
+        or not all(map(_utc, (now, evidence.covered_through, evidence.valid_until)))
+    ):
+        return False
+    return (
+        type(evidence.utc_day) is str
+        and evidence.covered_through <= now < evidence.valid_until
+        and now - evidence.covered_through <= MAX_EVIDENCE_AGE
+        and evidence.covered_through.date() == now.date()
+        and evidence.utc_day == now.date().isoformat()
+        and all(type(value) is int and 0 <= value < LIMIT_MILLINEURONS
+                for value in (evidence.upper, evidence.gap_upper))
+    )
+
+
 def allows_request(
     route: FreeRoute,
     evidence: AccountUsageEvidence | None,
@@ -70,29 +98,13 @@ def allows_request(
     local use from that account's locked ledger, and invoke this predicate in
     the same atomic reservation boundary. Default missing evidence denies.
     """
-    if (
-        not _route(route)
-        or type(evidence) is not AccountUsageEvidence
-        or not _route(evidence.route)
-        or evidence.route != route
-        or evidence.free_standard_no_fallback is not True
-        or evidence.completeness_verified is not True
-        or not all(map(_utc, (now, request_not_after, evidence.covered_through, evidence.valid_until)))
-    ):
+    if (not current_usage_evidence(route, evidence, now=now)
+            or not _utc(request_not_after)
+            or not now < request_not_after <= evidence.valid_until
+            or request_not_after.date() != now.date()):
         return False
-    if (
-        type(evidence.utc_day) is not str
-        or not (evidence.covered_through <= now < request_not_after <= evidence.valid_until)
-        or now - evidence.covered_through > MAX_EVIDENCE_AGE
-        or not (
-            evidence.covered_through.date() == now.date() == request_not_after.date()
-            and evidence.utc_day == now.date().isoformat()
-        )
-    ):
-        return False
-    values = (evidence.upper, evidence.gap_upper, outstanding_local, request_maximum)
     return (
-        all(type(value) is int and 0 <= value < LIMIT_MILLINEURONS for value in values)
-        and request_maximum > 0
-        and sum(values) < LIMIT_MILLINEURONS
+        type(outstanding_local) is int and 0 <= outstanding_local < LIMIT_MILLINEURONS
+        and type(request_maximum) is int and 0 < request_maximum < LIMIT_MILLINEURONS
+        and evidence.upper + evidence.gap_upper + outstanding_local + request_maximum < LIMIT_MILLINEURONS
     )

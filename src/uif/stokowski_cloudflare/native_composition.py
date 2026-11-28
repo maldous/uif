@@ -34,7 +34,7 @@ from ..provider_pool import ProviderRoute, RouteAvailability
 from .account_admission import FreeRoute
 from .budget import BudgetRefused
 from .client import FreeAdmissionWindow, GLM_MODEL
-from .account_admission import allows_request
+from .account_admission import allows_request, current_usage_evidence
 from .client import MODEL_RESERVATIONS
 from . import client as workers_ai_client
 from .remote_authority import AccessTransport, NativeAssignment, RemoteAuthority, protected_record
@@ -1158,7 +1158,9 @@ class NativeComposition:
                     receipt = self.remote.read_usage(selected)
                     require(self.remote.verify_usage(self.remote.quota_issuer, receipt) is True,
                             'authority_quota_observation_not_authenticated')
-                    return receipt
+                    if current_usage_evidence(selected, receipt.projection, now=self.remote.clock()):
+                        return receipt
+                    return None
                 # Task cancellation cannot interrupt a running worker thread.
                 # Shield its real completion so discovery quarantines this route
                 # until the authenticated transport has actually returned.
