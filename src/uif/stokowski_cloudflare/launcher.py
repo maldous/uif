@@ -404,6 +404,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             unclaimed_checkout = not owner._settlement_path(issue).exists()
             state, run = await original_resolve(owner, issue, comments=comments)
             tracking = orchestration.parse_latest_tracking(comments)
+            if (state == 'assess' and tracking and tracking.get('type') == 'state'
+                    and tracking.get('state') == state and tracking.get('run') == run
+                    and restore_completed_successor(owner, issue, run) is True):
+                return 'investigate', run
             if (linear_state == 'active' and unclaimed_checkout and tracking is None):
                 owner._issue_current_state[issue.id] = 'assess'
                 return 'assess', run
@@ -504,6 +508,41 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                         and publication.full_accept(prior.get('accepted_review'), binding))
         except (OSError, ValueError, KeyError):
             return False
+        return False
+
+    def restore_completed_successor(owner, issue, run):
+        """Return true if restored, false for a held marked edge, or None if unrelated."""
+        def still_assess():
+            return (owner.project_name == 'OffMenu' and orchestration.state_key(issue.state) == 'active'
+                    and owner._issue_current_state.get(issue.id) == 'assess'
+                    and owner._issue_state_runs.get(issue.id) == run
+                    and all(issue.id not in records for records in (
+                        owner.running, owner._tasks, owner.claimed, owner.retry_attempts, owner._pending_gates)))
+
+        assignment = getattr(authority_lifecycle, 'assignment', None)
+        if not callable(assignment) or type(run) is not int or run < 1 or not still_assess():
+            return None
+        stages = admissions(owner, issue)
+        investigate = stages.get('investigate')
+        if not investigate or not automatic_stage_allowed(owner, issue, 'investigate', investigate, stages):
+            return None
+        try:
+            grant = assignment(owner.project_name, issue.id, investigate['scope_sha256'])
+            if type(getattr(grant, 'first_intent_sha256', None)) is not str:
+                return None
+            if successor_worker_ready:
+                claim = authority_lifecycle.successor_assignment(
+                    owner, issue, investigate['scope_sha256'], 'investigate', run)
+                if (getattr(claim, 'attempt_id', None) == investigate['attempt']
+                        and publication.scope(issue) == investigate['scope_sha256']
+                        and assignment(owner.project_name, issue.id, investigate['scope_sha256']) == grant
+                        and current_admission(owner, issue, 'investigate', investigate) and still_assess()):
+                    # Only memory changes. Native dispatch rechecks the same
+                    # protected workspace and consumed unentered successor.
+                    owner._issue_current_state[issue.id] = 'investigate'
+                    return True
+        except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError):
+            pass
         return False
 
     def codex_available(_):
@@ -624,6 +663,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     def eligible(owner, issue, **kwargs):
         if (owner.project_name not in projects or not native_allowed(owner, issue, selecting=True)
                 or not original_eligible(owner, issue, **kwargs)):
+            return False
+        if restore_completed_successor(owner, issue, owner._issue_state_runs.get(issue.id)) is False:
             return False
         stages = admissions(owner, issue)
         assess = stages.get('assess', {})

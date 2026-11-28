@@ -250,6 +250,63 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         native.bind_dispatch.assert_not_called()
         self.assertFalse(self.clone_marker.exists())
 
+    async def test_cold_active_resolver_restores_only_a_verified_unentered_successor(self):
+        native = self.prepare_successor()
+        from stokowski.tracking import make_state_comment
+
+        stages = {'assess': replace(self.stage, name='assess', admission_review=True),
+                  'investigate': self.stage}
+        self.owner._states_for = lambda _: stages
+        self.owner._entry_state_for = lambda _: 'assess'
+        self.owner._adopt_workflow_from_tracking = lambda *_: None
+        comments = [{'body': make_state_comment('assess', 1)}]
+        settlement = self.path / '.stokowski/settlement.json'
+        frozen = settlement.read_bytes()
+
+        async def restart():
+            self.owner._issue_current_state.clear()
+            self.owner._issue_state_runs.clear()
+            return await self.owner._resolve_current_state(self.issue, comments=comments)
+
+        self.assertEqual(await restart(), ('investigate', 1))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'investigate'})
+        native.successor_assignment.assert_called_once_with(
+            self.owner, self.issue, self.publication.scope(self.issue), 'investigate', 1)
+        self.assertEqual(settlement.read_bytes(), frozen)
+        self.assertEqual(self.owner._tasks, {})
+        self.owner._announce_state.assert_not_awaited()
+        self.fetch_issue.assert_not_awaited()
+
+        native.successor_assignment.side_effect = Hold('Consumed entry absence is unverified')
+        self.assertEqual(await restart(), ('assess', 1))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'assess'})
+        self.assertEqual(settlement.read_bytes(), frozen)
+        self.assertFalse(self.owner._is_eligible(self.issue))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'assess'})
+        native.successor_assignment.side_effect = None
+        self.assertTrue(self.owner._is_eligible(self.issue))  # No restart or state unset.
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'investigate'})
+        self.assertEqual(settlement.read_bytes(), frozen)
+        self.owner._announce_state.assert_not_awaited()
+        self.fetch_issue.assert_not_awaited()
+        title = self.issue.title
+
+        def scope_changed(*_):
+            self.issue.title = 'Changed while observing successor'
+            return self.claim
+
+        native.successor_assignment.side_effect = scope_changed
+        self.assertEqual(await restart(), ('assess', 1))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'assess'})
+        self.issue.title = title
+        native.successor_assignment.reset_mock(side_effect=True)
+        settlement.unlink()
+        self.assertEqual(await restart(), ('assess', 1))
+        native.successor_assignment.assert_not_called()
+        native.recipient_assignment.assert_not_called()
+        native.bind_dispatch.assert_not_called()
+        self.assertEqual(self.owner._tasks, {})
+
     async def test_successor_with_bootstrap_or_unverified_original_does_not_dispatch(self):
         native = self.prepare_successor()
         node, package = self.path / '.node-version', self.path / 'package.json'
