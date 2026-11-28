@@ -30,9 +30,14 @@ class FreeEvidence:
 def _provider_known(route):
     if type(route) is not Route or type(route.model) is not str:
         return False
+    if route.model.lower().rsplit("/", 1)[-1].split(":", 1)[0] in {"auto", "default", "latest"}:
+        return False
     if route.provider == "openrouter":
+        # The qualified endpoint slug may include variant, region and tier.
+        # The evidence issuer must prove it resolves uniquely.
         return (type(route.upstream) is str
-                and bool(re.fullmatch(r"[a-z0-9_.-]+", route.upstream))
+                and len(route.upstream) <= 64
+                and bool(re.fullmatch(r"[a-z0-9_.-]+(?:/[a-z0-9_.-]+){0,3}", route.upstream))
                 and bool(re.fullmatch(r"[a-z0-9_.-]+/[a-z0-9_.-]+:free", route.model)))
     return (route.provider == "groq" and route.upstream is None
             and bool(re.fullmatch(r"[a-z0-9_.-]+(?:/[a-z0-9_.-]+)?", route.model)))
@@ -77,13 +82,15 @@ def request_matches(route: Route, *, method: str, url: str, body: dict) -> bool:
         if not re.fullmatch(r"[a-z0-9_.-]+/[a-z0-9_.-]+:free", route.model):
             return False
         flags = body.get("provider")
-        if (type(flags) is not dict or flags.keys() != {"allow_fallbacks", "max_price", "only"}
+        if (type(flags) is not dict
+                or flags.keys() != {"allow_fallbacks", "max_price", "only", "require_parameters"}
                 or flags["allow_fallbacks"] is not False
+                or flags["require_parameters"] is not True
                 or flags["only"] != [route.upstream]):
             return False
         ceiling = flags["max_price"]
         return (body.keys() <= common | {"provider"} and type(ceiling) is dict
-                and ceiling.keys() == {"prompt", "completion"}
+                and ceiling.keys() == {"prompt", "completion", "request"}
                 and all(type(value) is int and value == 0 for value in ceiling.values()))
     return (route.provider == "groq"
             and bool(re.fullmatch(r"[a-z0-9_.-]+(?:/[a-z0-9_.-]+)?", route.model))
@@ -158,7 +165,8 @@ class SingleChatAttempt:
             if self._route.provider == "openrouter":
                 wire["provider"] = {"allow_fallbacks": False,
                                     "only": [self._route.upstream],
-                                    "max_price": {"prompt": 0, "completion": 0}}
+                                    "require_parameters": True,
+                                    "max_price": {"prompt": 0, "completion": 0, "request": 0}}
             if not request_matches(self._route, method=method, url=url, body=wire):
                 raise Refused("wrong provider destination")
             self._attempts += 1

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { matchChatPhysicalOperation, prepareChatToolCall, prepareChatToolResult }
   from '../chat-tool-envelope.mjs';
 
-const route = { provider: 'openrouter', model: 'tested/model:free', upstream: 'fixture',
+const route = { provider: 'openrouter', model: 'tested/model:free', upstream: 'fixture/fp8/us',
   account: 'free-account', credentialEpoch: 'e'.repeat(64) };
 const first = { route, attempt: 'attempt', originalId: 'a'.repeat(64), deadline: 1800,
   maxOutputTokens: 512, messages: [{ role: 'user', content: 'Synthetic question' }],
@@ -24,8 +24,10 @@ test('separately bound two-leg OpenRouter fixture; second leg carries only the e
   assert.throws(() => matchChatPhysicalOperation(op(a), b));
   assert.throws(() => matchChatPhysicalOperation({ ...op(b), payload_sha256: a.payloadSHA256 }, b));
   const body = JSON.parse(b.payload);
-  assert.deepEqual(body.provider, { allow_fallbacks: false,
-    max_price: { completion: 0, prompt: 0 }, only: ['fixture'] });
+  const provider = { allow_fallbacks: false, require_parameters: true,
+    max_price: { completion: 0, prompt: 0, request: 0 }, only: ['fixture/fp8/us'] };
+  assert.deepEqual(JSON.parse(a.payload).provider, provider);
+  assert.deepEqual(body.provider, provider);
   assert.equal(body.stream, false);
   assert.equal(body.tools, undefined);
   assert.deepEqual(body.messages.slice(-2), [{ role: 'assistant', content: null, tool_calls: [call] },
@@ -39,6 +41,13 @@ test('Groq exact fixed endpoint has no hosted tools/route knobs', async () => {
   assert.equal(JSON.parse(r.payload).provider, undefined);
   assert.throws(() => prepareChatToolCall({ ...first, plugins: ['chargeable'] }));
   assert.throws(() => prepareChatToolCall({ ...first, route: { ...route, model: 'tested/model' } }));
+  assert.throws(() => prepareChatToolCall({ ...first, route: { ...route, model: 'openrouter/auto:free' } }));
+  assert.throws(() => prepareChatToolCall({ ...first, route: { ...groq, model: 'default' } }));
+  assert.throws(() => prepareChatToolCall({ ...first, route: { ...route, model: route.model + '\n' } }));
+  assert.throws(() => prepareChatToolCall({ ...first, route: { ...groq, model: groq.model + '\n' } }));
+  for (const upstream of ['fixture//us', 'fixture/us\n', 'fixture/us?price=paid', 'a/b/c/d/e']) {
+    assert.throws(() => prepareChatToolCall({ ...first, route: { ...route, upstream } }));
+  }
 });
 
 test('second leg rejects replay, route or attempt substitution, unknown and counterfeit pairing', async () => {
