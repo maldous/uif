@@ -123,7 +123,7 @@ class AccessTransport:
         self._recipient_permit = ContextVar('recipient_recovery_permit', default=None)
 
     def request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
-        require(path != '/v1/recovery/enter', 'authority_recovery_journal_required')
+        require(path not in ('/v1/recovery/enter', '/v1/attempt/successor/enter'), 'authority_recovery_journal_required')
         return self._request(path, data, timeout=timeout, allow_absent=allow_absent, provider=provider)
 
     def _request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
@@ -230,6 +230,44 @@ class AccessTransport:
         try:
             verify_owner()
             yield
+        finally:
+            permit.revoke()
+            self._recipient_permit.reset(binding)
+
+    def observe_successor_entry(self, body):
+        result = self.request('/v1/attempt/successor/observe', body)
+        require(type(result) is dict and result.keys() == {'entered'} and type(result['entered']) is bool,
+                'authority_successor_entry_observation')
+        return result['entered']
+
+    @contextmanager
+    def _enter_journaled_successor(self, body, claim, route, task, verify_owner):
+        from .recipient_entry import _RecipientPermit
+        require(type(claim) is NativeClaim and claim.project == 'OffMenu' and claim.lease.fence.generation == 1
+                and set(body) == {'current', 'advance'} and body['current'] == asdict(claim.lease)
+                and body['advance']['current']['fence'] == body['current']['fence']
+                and body['advance']['attempt_id'] == claim.attempt_id
+                and isinstance(task, asyncio.Task) and task is asyncio.current_task()
+                and self._dispatch_permit.get() is None and self._recipient_permit.get() is None,
+                'authority_successor_entry_scope')
+        verify_owner()
+        try:
+            result = self._request('/v1/attempt/successor/enter', body)
+        except AuthorityUnavailable as uncertain:
+            try:
+                self.observe_successor_entry(body)
+            except (Hold, OSError):
+                pass
+            raise uncertain from None
+        require(type(result) is dict and result.keys() == {'entered','permit'} and result['entered'] is True
+                and type(result['permit']) is str and re.fullmatch(r'[0-9a-f]{64}', result['permit']),
+                'authority_successor_entry_not_won')
+        permit = _RecipientPermit(claim, route, task, verify_owner, result.pop('permit'))
+        permit.stage = 'marked-investigation'
+        binding = self._recipient_permit.set(permit)
+        try:
+            verify_owner()
+            yield permit
         finally:
             permit.revoke()
             self._recipient_permit.reset(binding)
@@ -579,6 +617,8 @@ class RemoteAuthority:
                 fence.coordinator_epoch == grant.expected_coordinator_epoch
                 and self.clock().timestamp() < record.lease.expires_at, 'authority_claim_changed_or_expired')
         if record.attempt_id != attempt:
+            require(not (grant.first_intent_sha256 is not None and record.attempt_id == grant.attempts[0]),
+                    'authority_marked_successor_first_entry_required')
             body = {'current': asdict(record.lease), 'expected_attempt_id': record.attempt_id, 'attempt_id': attempt,
                     'request_id': digest({'lease': fence.lease_id, 'attempt': attempt})}
             self.transport.request('/v1/claim/attempt', body)

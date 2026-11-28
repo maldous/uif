@@ -409,6 +409,10 @@ class NativeComposition:
         self._recipient_execution = ContextVar('native_recipient_first_entry', default=None)
         self._fresh_assessment = ContextVar('native_fresh_assessment_result', default=None)
         self._verified_assessment_report_sink = None
+        self._successor_native_worker_qualified = False
+        self._successor_stage_qualification = None
+        self._successor_settlement_qualified = False
+        self._advancing_assessment = ContextVar('marked_assessment_native_transition', default=None)
         self._seen_fences = {}
         self._renew_after = {}
         self._private_postimages = {}
@@ -596,6 +600,163 @@ class NativeComposition:
         from .recipient_entry import recipient_first_entry
         return recipient_first_entry(self, owner, issue, scope_sha, attempt, expected=expected)
 
+    def _successor_inputs(self, owner, issue, scope, run):
+        from .fresh_assessment_terminal import observe_consumed_fresh_assessment_successor
+        require(self._successor_native_worker_qualified and callable(self._successor_stage_qualification)
+                and self._successor_stage_qualification(owner, issue, run) is True,
+                'authority_successor_worker_unqualified')
+        grant = self.assignment(owner.project_name, issue.id, scope)
+        require(grant is not None and grant.first_intent_sha256 is not None,
+                'assessment_successor_grant')
+        advance = observe_consumed_fresh_assessment_successor(self, issue, run, scope)
+        current = self.remote.read_claim('OffMenu', advance['attempt_id'], True)
+        require(current is not None and current.lease.fence == _lease(advance['current']).fence
+                and self.remote.clock().timestamp() < current.lease.expires_at,
+                'assessment_successor_not_current')
+        path = self.verify_workspace(owner, issue, grant)
+        self._verify_successor_checkpoint(path, grant, current, advance)
+        _verify_fresh_tree(path, grant.source.head, git_env=_clean_git_environment())
+        return grant, current, path, advance
+
+    def _verify_successor_checkpoint(self, path, grant, claim, advance):
+        directory = path / '.git/uif-original-effects'
+        name = advance['request_id'] + '.successor-workspace'
+        with _handoff_directory(directory) as fd:
+            try:
+                raw = _retained_handoff_bytes(fd, name, 8192)
+            except FileNotFoundError:
+                self._first_workspace(path, grant, claim)
+                return
+        require(decode(raw, limit=8192) == {'advance': advance, 'workspace_sha256': workspace_recovery_digest(path)},
+                'authority_successor_workspace_changed')
+
+    def successor_assignment(self, owner, issue, scope_sha, stage, run):
+        if owner.project_name != 'OffMenu' or stage != 'investigate':
+            return None
+        item = self.installation()['assignments'].get(issue.id)
+        if item is None or 'fresh_assessment' not in item:
+            return None
+        _, current, path, advance = self._successor_inputs(owner, issue, scope_sha, run)
+        marker = advance['request_id'] + '.successor-entry'
+        with _handoff_directory(path / '.git/uif-original-effects') as fd:
+            try:
+                os.stat(marker, dir_fd=fd, follow_symlinks=False)
+            except FileNotFoundError:
+                pass
+            else:
+                raise Hold('authority_successor_entry_already_attempted')
+        require(not self.remote.transport.observe_successor_entry({'current': asdict(current.lease),
+                'advance': advance}), 'authority_successor_entry_already_attempted')
+        return current
+
+    @contextmanager
+    def successor_first_entry(self, owner, issue, scope_sha, attempt, *, expected):
+        from .fresh_assessment_terminal import _retain_first_request
+        task = asyncio.current_task()
+        run = owner._issue_state_runs.get(issue.id, 1)
+        grant, claim, path, advance = self._successor_inputs(owner, issue, scope_sha, run)
+        require(expected.attempt_id == claim.attempt_id and expected.lease.fence == claim.lease.fence,
+                'authority_successor_selected_original')
+        item_sha = digest(self.installation()['assignments'][issue.id])
+        marker = advance['request_id'] + '.successor-entry'
+        directory = path / '.git/uif-original-effects'
+
+        def verify_owner(_path=None):
+            require(isinstance(task, asyncio.Task) and not task.done() and not task.cancelling()
+                    and owner.running.get(issue.id) is attempt and owner._tasks.get(issue.id) is task
+                    and issue.id in owner.claimed and issue.id not in owner.completed
+                    and issue.id not in owner._pending_gates and issue.id not in getattr(owner, '_terminal_observed', {})
+                    and owner._issue_current_state.get(issue.id) == attempt.state_name == 'investigate'
+                    and owner._issue_state_runs.get(issue.id, 1) == run and attempt.session_id == claim.attempt_id
+                    and owner.pool is not None and not owner.pool.is_paused(owner.project_name),
+                    'authority_successor_selected_task')
+            installation = self.installation()
+            item = installation['assignments'].get(issue.id)
+            info = path.lstat()
+            require(type(item) is dict and digest(item) == item_sha
+                    and installation['coordinator_epoch'] == claim.lease.fence.coordinator_epoch
+                    and path.parent == Path(installation['workspace_root']) == owner.cfg.workspace.resolved_root().resolve(strict=True)
+                    and path.resolve(strict=True) == path and stat.S_ISDIR(info.st_mode)
+                    and stat.S_IMODE(info.st_mode) == 0o700
+                    and (info.st_dev, info.st_ino) == (item['workspace_binding']['device'], item['workspace_binding']['inode'])
+                    and self.remote.clock().timestamp() < claim.lease.expires_at, 'authority_successor_workspace_changed')
+
+        subject = {'schema': 'uif.marked-investigation-entry/1', 'advance': advance, 'run': run,
+                   'assignment_sha256': item_sha, 'scope_sha256': scope_sha}
+        verify_owner()
+        created, saved = _retain_first_request(directory, marker, subject, verify_owner)
+        require(saved == subject, 'authority_successor_entry_original_changed')
+        body = {'current': asdict(claim.lease), 'advance': advance}
+        if not created:
+            self.remote.transport.observe_successor_entry(body)
+            raise Hold('authority_successor_entry_already_attempted')
+        with self.remote.transport._enter_journaled_successor(body, claim, self.remote.route, task, verify_owner) as permit:
+            permit.workspace = path
+            permit.advance = advance
+            permit.run = run
+            permit.workflow = owner._workflow_name_for(issue)
+            active = self._recipient_execution.set(permit)
+            pair = self._running.set((grant, claim))
+            try:
+                yield claim
+            finally:
+                self._running.reset(pair)
+                self._recipient_execution.reset(active)
+
+    def successor_task_active(self, issue_id, attempt_id):
+        permit = self._recipient_execution.get()
+        return bool(permit is not None and permit.stage == 'marked-investigation'
+                    and self.recipient_task_active(issue_id, attempt_id))
+
+    def verify_successor_workspace(self, owner, issue, scope, attempt_id):
+        require(self.successor_task_active(issue.id, attempt_id), 'authority_successor_selected_task')
+        return self.verify_recipient_workspace(owner, issue, scope, attempt_id)
+
+    def successor_workspace_for_prologue(self, owner, issue, scope, attempt):
+        path = self.verify_successor_workspace(owner, issue, scope, attempt.session_id)
+        grant, claim = self._running.get()
+        self._verify_successor_checkpoint(path, grant, claim, self._recipient_execution.get().advance)
+        return path
+
+    def prepare_successor_turn_thread(self, bound_turn, require_turn_thread):
+        permit = self._recipient_execution.get()
+        require(permit is not None and permit.stage == 'marked-investigation', 'authority_successor_selected_task')
+        return permit.prepare_thread('turn', bound_turn, require_turn_thread)
+
+    def successor_investigation_finisher(self, issue, record, run):
+        attempt = record['attempt']
+        require(self.successor_task_active(issue.id, attempt), 'authority_successor_selected_task')
+        permit = self._recipient_execution.get()
+        require(permit.run == run, 'authority_successor_selected_task')
+
+        def finish(request_id, content):
+            permit.require_actor('turn', delegate_only=True)
+            require(permit.report is None and request_id == sha256(f'{attempt}:1'.encode()).hexdigest()
+                    and type(content) is str and 0 < len(content.encode()) <= 64_000,
+                    'authority_successor_provider_original')
+            claim = self.current(issue.id)
+            directory = permit.workspace / '.git/uif-original-effects'
+            with _handoff_directory(directory) as fd:
+                intent = decode(_retained_handoff_bytes(fd, request_id + '.json', 8192), limit=8192)
+            require(intent['operation']['fence'] == asdict(claim.lease.fence)
+                    and intent['operation']['original_id'] == request_id and intent['attempt_id'] == attempt
+                    and intent['route'] == asdict(permit.route), 'authority_successor_provider_original')
+            op = Operation(claim.lease.fence, request_id, intent['operation']['payload_sha256'])
+            response = self.remote.provider_result(op)
+            raw = response.read(256 * 1024 + 1)
+            reply = decode(raw, limit=256 * 1024)
+            choices = reply.get('choices')
+            require(type(choices) is list and len(choices) == 1 and type(choices[0]) is dict
+                    and type(choices[0].get('message')) is dict and not choices[0]['message'].get('tool_calls')
+                    and choices[0]['message'].get('content') == content, 'authority_successor_provider_result')
+            require(self.current(issue.id).lease.fence == claim.lease.fence, 'assessment_successor_not_current')
+            pinned_sha(response.receipt_sha256)
+            permit.report = _retain_handoff_original(directory, request_id + '.investigation-result', wire({
+                'operation': asdict(op), 'attempt_id': attempt, 'provider_receipt_sha256': response.receipt_sha256,
+                'result_sha256': sha256(raw).hexdigest(), 'content_sha256': sha256(content.encode()).hexdigest()
+            }), 8192)
+        return finish
+
     def selected(self, project, issue, scope_sha):
         return self.assignment(project, issue.id, scope_sha) is not None
 
@@ -695,6 +856,9 @@ class NativeComposition:
                     and fresh['attempt_id'] == grant.attempts[0],
                     'authority_dispatch_installation_scope')
             pinned_sha(fresh['first_intent_sha256'])
+        if fresh is not None and (stage == 'investigate' or
+                record['attempt'] == fresh['attempt_id'].removesuffix('-assess') + '-investigate'):
+            raise Hold('authority_marked_successor_first_entry_required')
         marked = fresh is not None and fresh['attempt_id'] == record['attempt']
         if marked:
             require(stage == 'assess' and owner.project_name == 'OffMenu' and 'project_intake' in record
@@ -1182,7 +1346,7 @@ class NativeComposition:
         permit = self._recipient_execution.get()
         if permit is not None:
             permit.require_actor('turn', delegate_only=True)
-            if permit.stage == 'assess':
+            if permit.stage in ('assess', 'marked-investigation'):
                 require(intent.route == permit.route and intent.operation.original_id ==
                         sha256(f'{permit.claim.attempt_id}:1'.encode()).hexdigest(),
                         'authority_recovery_provider_original')
@@ -1860,6 +2024,10 @@ class NativeComposition:
         fresh = self._fresh_assessment.get() if recipient is None else recipient
         if recipient is not None:
             recipient.require_actor('comment', delegate_only=True)
+        successor = recipient is not None and recipient.stage == 'marked-investigation'
+        if successor:
+            recipient.verify_tracking(slot, issue_id, body)
+            fresh = None
         if fresh is not None:
             require(slot == '_publish_run_report' and kind == 'comment' and fresh.report is not None
                     and payload == {'body': fresh.report.body}
@@ -1976,9 +2144,12 @@ class _LinearClient:
         if permit is None:
             return await asyncio.to_thread(native.linear, 'comment', issue_id, {'body': body})
         permit.require_actor(owner_only=True)
-        require(native._slot.get() == '_publish_run_report' and permit.report is not None
-                and permit.report.body == body and issue_id == permit.claim.lease.fence.scope.key.issue_id,
-                'authority_assessment_report_only_effect')
+        if permit.stage == 'marked-investigation':
+            permit.verify_tracking(native._slot.get(), issue_id, body)
+        else:
+            require(native._slot.get() == '_publish_run_report' and permit.report is not None
+                    and permit.report.body == body and issue_id == permit.claim.lease.fence.scope.key.issue_id,
+                    'authority_assessment_report_only_effect')
         cancelled = Event()
         selected = None
 
@@ -2108,6 +2279,21 @@ def install_sinks(orchestration, composition):
     composition._verified_assessment_report_sink = (
         native_report if source_sha == _VERIFIED_ASSESSMENT_REPORT_SINK_SHA256 else None)
 
+    successor_methods = {
+        '_resume_settlement': '24f961490789667df1544acc7fa075539cad5e3614cdff3f2a3df3bfb4458dd3',
+        '_transition': '19cff5898535fbde68e4867b22c4ecda1eb269cbc8805e693fface731377bb4b',
+        '_announce_state': 'b7e170ac754ddce03bad4c1c7e0a7f7d29e313d6f3b2e0ae157ac4b395fd5a15',
+        '_save_settlement': '5d971ceb3f2aa0877f8fffbc036998afd90b3afdcbd0e6b63f7f095cba2dad7d',
+        '_schedule_retry': 'd4fb9d11370f173aaf31fcd71b8ef32042c21cbe4452a255721ce8da9c1a99a3',
+    }
+    try:
+        composition._successor_settlement_qualified = all(
+            not hasattr(getattr(owner, name), '__wrapped__') and
+            sha256(getsource(getattr(owner, name)).encode()).hexdigest() == pin
+            for name, pin in successor_methods.items())
+    except (AttributeError, OSError, TypeError):
+        composition._successor_settlement_qualified = False
+
     def client(*args, **kwargs):
         return _LinearClient(original_client(*args, **kwargs), composition)
     client._shared_receiver = True
@@ -2117,7 +2303,21 @@ def install_sinks(orchestration, composition):
         async def with_original(*args, **kwargs):
             slot = composition._slot.set(name)
             try:
+                advancing = composition._advancing_assessment.get()
+                if advancing is not None and advancing[0]:
+                    _, verify, expected_owner, expected_issue, expected_run = advancing
+                    verify()
+                    if name == '_announce_state':
+                        require(args == (expected_owner, expected_issue, 'investigate', expected_run)
+                                and not kwargs, 'assessment_successor_transition_scope')
+                        return None  # The actual successor task submits this original tracking slot.
+                    require(name == '_transition', 'assessment_successor_transition_scope')
                 recipient = composition._recipient_execution.get()
+                if recipient is not None and recipient.stage == 'marked-investigation':
+                    recipient.require_actor(owner_only=True)
+                    require(name == '_announce_state' and args[2:] == ('investigate', recipient.run) and not kwargs,
+                            'authority_successor_downstream_held')
+                    return await native(*args, **kwargs)
                 if recipient is not None:
                     recipient.require_actor(owner_only=True)
                     if name == '_announce_state':
@@ -2176,7 +2376,81 @@ def install_sinks(orchestration, composition):
             orchestration.logger.warning('Original shared settlement held for %s (%s)', issue.identifier, type(error).__name__)
             return False
 
+    async def settle_approved_successor(native_owner, issue, attempt, record):
+        from .fresh_assessment_terminal import advance_marked_assessment, _retain_first_request
+        scope, run = record['scope_sha256'], record['run']
+        selected_task = asyncio.current_task()
+        original_record = wire(record)
+
+        def verify():
+            active = native_owner._tasks.get(issue.id)
+            require(asyncio.current_task() is selected_task and native_owner.running.get(issue.id) is attempt
+                    and (active is None or active is selected_task or active.done())
+                    and not selected_task.cancelling() and attempt.settlement_record is record
+                    and native_owner._issue_current_state.get(issue.id) in ('assess', 'investigate')
+                    and issue.id not in native_owner.completed and issue.id not in native_owner._pending_gates
+                    and issue.id not in getattr(native_owner, '_terminal_observed', {})
+                    and native_owner._issue_state_runs.get(issue.id, 1) == run
+                    and native_owner.pool is not None and not native_owner.pool.is_paused(native_owner.project_name)
+                    and composition._successor_stage_qualification(native_owner, issue, run) is True,
+                    'assessment_successor_settlement_owner')
+
+        grant = composition.assignment(native_owner.project_name, issue.id, scope)
+        require(grant is not None, 'assessment_successor_grant')
+        path = composition.verify_workspace(native_owner, issue, grant)
+        frozen = path / '.stokowski/settlement.json'
+        require(frozen.resolve(strict=True) == frozen and frozen.is_file() and frozen.stat().st_size <= 1024 * 1024
+                and wire(decode(frozen.read_bytes(), limit=1024 * 1024)) == original_record,
+                'assessment_successor_saved_disposition')
+        advance = advance_marked_assessment(composition, native_owner, issue, attempt, verify)
+        current = composition.remote.read_claim('OffMenu', advance['attempt_id'], True)
+        require(current is not None and asdict(current.lease.fence) == advance['current']['fence']
+                and not composition.remote.transport.observe_successor_entry(
+                    {'current': asdict(current.lease), 'advance': advance}),
+                'assessment_successor_entry_already_attempted')
+        verify()
+        # No replay after ambiguous local native transition. CAS loss before this
+        # marker is recoverable from the exact independently consumed CAS receipt.
+        subject = {'advance': advance, 'disposition_sha256': sha256(original_record).hexdigest()}
+        directory = path / '.git/uif-original-effects'
+        created, saved = _retain_first_request(directory, advance['request_id'] + '.successor-settlement', subject, verify)
+        require(created and saved == subject, 'assessment_successor_transition_already_attempted')
+        lease = current.lease
+        def verify_transition():
+            verify()
+            observed = composition.remote.read_claim('OffMenu', current.attempt_id, True)
+            require(observed is not None and observed.lease.fence == lease.fence
+                    and composition.remote.clock().timestamp() < observed.lease.expires_at,
+                    'assessment_successor_not_current')
+
+        scope_binding = [True, verify_transition, native_owner, issue, run]
+        tag = composition._advancing_assessment.set(scope_binding)
+        # The first assessment and the timer for its successor have different
+        # capabilities. The real successor task must acquire its own entry.
+        contexts = (composition._fresh_assessment, composition._running, composition.remote.transport._dispatch_permit)
+        tokens = [c.set(None) for c in contexts]
+        try:
+            verify_transition()
+            result = await original_settle(native_owner, issue, attempt)
+        finally:
+            scope_binding[0] = False
+            for context, token in zip(contexts, tokens):
+                context.reset(token)
+            composition._advancing_assessment.reset(tag)
+        if result is True and record.get('phase') == 'complete' and not record.get('terminal_retired'):
+            _retain_handoff_original(directory, advance['request_id'] + '.successor-workspace',
+                wire({'advance': advance, 'workspace_sha256': workspace_recovery_digest(path)}), 8192)
+        return result
+
     async def settle_bound(native_owner, issue, attempt):
+        if (composition._successor_native_worker_qualified and composition._successor_settlement_qualified
+                and callable(composition._successor_stage_qualification)
+                and attempt.state_name == 'assess' and isinstance(attempt.settlement_record, dict)
+                and attempt.settlement_record.get('phase') in ('report-unknown', 'transition')
+                and composition._recipient_execution.get() is None):
+            mark = composition.installation()['assignments'].get(issue.id, {}).get('fresh_assessment')
+            if mark is not None and mark['attempt_id'] == attempt.session_id:
+                return await settle_approved_successor(native_owner, issue, attempt, attempt.settlement_record)
         with composition.settlement_context(native_owner, issue, attempt) as (grant, original):
             record = attempt.settlement_record
             if attempt.state_name == 'assess' and record.get('phase') in {'report-unknown', 'transition'}:

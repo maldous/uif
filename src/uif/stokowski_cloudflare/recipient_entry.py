@@ -5,11 +5,12 @@ from contextvars import ContextVar
 from dataclasses import asdict
 from hashlib import sha256
 import os
+import re
 from pathlib import Path
 import stat
 from threading import Lock, current_thread
 
-from ..handoff_store import Hold, digest, require, wire
+from ..handoff_store import Hold, decode, digest, require, wire
 from .intake import intake_identity
 from .native_composition import _handoff_directory, _publish_private_original, _retained_handoff_bytes
 
@@ -84,12 +85,30 @@ class _RecipientPermit:
                 self._delegation.reset(binding)
         return invoke
 
+    def verify_tracking(self, slot, issue_id, body):
+        require(self.stage == 'marked-investigation' and slot == '_announce_state'
+                and issue_id == self.claim.lease.fence.scope.key.issue_id and type(body) is str,
+                'authority_successor_tracking_scope')
+        prefix, _, text = body.partition('\n\n')
+        match = re.fullmatch(r'<!-- stokowski:state (.{1,4096}) -->', prefix)
+        require(match is not None, 'authority_successor_tracking_scope')
+        data = decode(match[1].encode(), limit=8192)
+        timestamp = data.get('timestamp')
+        expected = {'state': 'investigate', 'run': self.run, 'timestamp': timestamp}
+        human = f'**[Stokowski]** Entering state: **investigate** (run {self.run})'
+        if self.workflow:
+            expected['workflow'] = self.workflow
+            human += f' · workflow `{self.workflow}`'
+        require(type(timestamp) is str and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00', timestamp)
+                and type(data.get('run')) is int and data == expected and text == human,
+                'authority_successor_tracking_scope')
+
     def authorize(self, path, data, headers):
         if path in _READS:
             return
         family = {'/v1/linear/comment': 'comment', '/v1/linear/upload': 'upload',
                   '/v1/source/write': 'turn', '/v1/source/checkpoint': 'turn', '/v1/send': 'turn'}.get(path)
-        if self.stage == 'assess':
+        if self.stage in ('assess', 'marked-investigation'):
             require(path in ('/v1/send', '/v1/linear/comment'), 'authority_recovery_effect_not_bound')
             self.require_actor(family, delegate_only=True)
         else:
@@ -116,11 +135,16 @@ class _RecipientPermit:
             raise Hold('authority_recovery_effect_not_bound')
         require(type(parent) is dict and parent.get('fence') == expected and request.get('attempt_id') == self.claim.attempt_id,
                 'authority_recovery_egress_scope')
-        if self.stage == 'assess':
+        if self.stage in ('assess', 'marked-investigation'):
             attempt = self.claim.attempt_id
             if path == '/v1/send':
                 require(parent.get('original_id') == sha256(f'{attempt}:1'.encode()).hexdigest(),
                         'authority_recovery_provider_original')
+            elif self.stage == 'marked-investigation':
+                issue_id = self.claim.lease.fence.scope.key.issue_id
+                self.verify_tracking('_announce_state', issue_id, request.get('body'))
+                require(parent.get('original_id') == digest({'attempt': attempt, 'slot': '_announce_state',
+                        'kind': 'comment', 'issue': issue_id}), 'authority_successor_tracking_scope')
             else:
                 issue_id = self.claim.lease.fence.scope.key.issue_id
                 require(self.report is not None and request.get('body') == self.report.body

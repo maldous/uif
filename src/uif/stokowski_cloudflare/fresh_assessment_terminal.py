@@ -161,3 +161,88 @@ def observe_consumed_fresh_assessment_successor(composition, issue, run, scope_s
     require(composition.assignment('OffMenu', issue.id, scope_sha256) == grant
             and remote.clock().timestamp() < lease.expires_at, 'assessment_successor_grant_changed')
     return advance
+
+
+def _retain_first_request(directory, name, body, before_publish):
+    """Only the creator of a durably retained request may make its first POST."""
+    from .native_composition import _handoff_directory, _publish_private_original, _retained_handoff_bytes
+    import os
+    raw = wire(body)
+    require(len(raw) <= 8192, 'assessment_successor_request_size')
+    # This directory already contains the marked first assessment's originals.
+    with _handoff_directory(directory) as fd:
+        try:
+            _publish_private_original(fd, name, raw, prefix='.successor-', before_publish=before_publish)
+            created = True
+        except FileExistsError:
+            created = False
+        retained = decode(_retained_handoff_bytes(fd, name, 8192), limit=8192)
+        os.fsync(fd)
+    parent = os.open(directory.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(parent)
+    finally:
+        os.close(parent)
+    return created, retained
+
+
+def advance_marked_assessment(composition, owner, issue, attempt, verify_owner):
+    """Consume only this frozen native disposition and the independently approved control edge."""
+    from .remote_authority import AuthorityUnavailable
+    record = attempt.settlement_record
+    run, scope = record['run'], record['scope_sha256']
+    stages = intake_stages({}, 'OffMenu', issue, scope, run)
+    previous, successor = (stages[k]['attempt'] for k in ('assess', 'investigate'))
+    disposition = record.get('post_disposition')
+    require(record.get('phase') in ('report-unknown', 'transition') and not record.get('attempted')
+            and record.get('kind') == 'worker' and record.get('state') == 'assess'
+            and record.get('issue_id') == issue.id and record.get('identifier') == issue.identifier
+            and record.get('session_id') == attempt.session_id == previous and isinstance(disposition, dict)
+            and disposition.get('event') == 'complete' and disposition.get('target') == 'investigate'
+            and (record['phase'] != 'transition' or record.get('event') == 'complete'
+                 and record.get('target') == 'investigate' and record.get('report_posted') is True),
+            'assessment_successor_frozen_disposition')
+    verify_owner()
+    grant = composition.assignment('OffMenu', issue.id, scope)
+    require(grant is not None and grant.first_intent_sha256 is not None and grant.previous is None
+            and grant.attempts[0] == previous and successor in grant.attempts, 'assessment_successor_grant')
+    remote = composition.remote
+    current = remote.read_claim('OffMenu', issue.id, False)
+    require(current is not None and current.attempt_id in (previous, successor), 'assessment_successor_not_current')
+    initial = remote.original_lease(grant)
+    require(initial.fence == current.lease.fence and initial.fence.generation == 1,
+            'assessment_successor_initial_original')
+    workspace = composition.verify_workspace(owner, issue, grant)
+    directory = workspace / '.git/uif-original-effects'
+    fence = current.lease.fence
+    body = record.get('expected_report_body')
+    require(type(body) is str and body and composition.observe_stage_report(fence, previous, body) is not None,
+            'assessment_successor_report_unverified')
+    request_id = digest({'lease': fence.lease_id, 'attempt': successor})
+    advance = {'request_id': request_id, 'current': asdict(current.lease), 'expected_attempt_id': previous,
+               'attempt_id': successor}
+    if current.attempt_id == previous:
+        def current_approval():
+            verify_owner()
+            require(composition.assignment('OffMenu', issue.id, scope) == grant
+                    and remote.read_claim('OffMenu', issue.id, False) == current
+                    and remote.clock().timestamp() < current.lease.expires_at, 'assessment_successor_not_current')
+            approved = remote.transport.request('/v1/attempt/attest/native',
+                {'current': asdict(current.lease), 'previous': previous, 'successor': successor})
+            require(type(approved) is dict and approved.keys() == {'matches'} and approved['matches'] is True,
+                    'assessment_successor_control_original_unverified')
+
+        current_approval()
+        created, saved = _retain_first_request(directory, request_id + '.successor-cas', advance, current_approval)
+        require(saved['request_id'] == request_id and saved['current']['fence'] == asdict(fence)
+                and saved['expected_attempt_id'] == previous and saved['attempt_id'] == successor,
+                'assessment_successor_cas_original')
+        if created:
+            current_approval()
+            try:
+                remote.transport.request('/v1/claim/attempt', saved)
+            except AuthorityUnavailable:
+                pass  # The exact retained CAS is the only way to recover.
+    observed = observe_consumed_fresh_assessment_successor(composition, issue, run, scope)
+    verify_owner()
+    return observed
