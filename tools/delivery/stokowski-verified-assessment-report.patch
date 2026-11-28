@@ -1,5 +1,5 @@
 # orchestrator.py before SHA-256 610cbf97a5f36c9dd305cfe456245a9efc29625287b44211adbd5cea77c3511f
-# orchestrator.py after SHA-256 afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431
+# orchestrator.py after SHA-256 59b063610dea19c18b736d3949607712f4c3ad0d8187c9956e5d6019b29d0352
 --- a/stokowski/orchestrator.py
 +++ b/stokowski/orchestrator.py
 @@ -10,6 +10,7 @@
@@ -10,7 +10,7 @@
  from datetime import datetime, timezone
  from pathlib import Path
  from typing import Any
-@@ -601,6 +602,24 @@
+@@ -601,6 +602,27 @@
          if self._linear:
              await self._linear.close()
 
@@ -19,12 +19,15 @@
 +        workspace = workspace_root / sanitize_key(issue_identifier)
 +        git = workspace / ".git"
 +        journal = git / "uif-original-effects"
-+        suffix = ".recipient-entry"
++        suffixes = {
++            ".recipient-entry", ".successor-cas", ".successor-settlement",
++            ".successor-workspace", ".successor-entry", ".investigation-result",
++        }
 +        try:
 +            if any(path.is_symlink() for path in (workspace, git, journal)):
 +                return True  # Never follow an unexpected path to decide on deletion.
 +            with os.scandir(journal) as entries:
-+                return any(len(entry.name) == 64 + len(suffix) and entry.name.endswith(suffix)
++                return any(entry.name[64:] in suffixes
 +                           and all(c in "0123456789abcdef" for c in entry.name[:64])
 +                           for entry in entries)
 +        except (FileNotFoundError, NotADirectoryError):
@@ -35,7 +38,7 @@
      async def _startup_cleanup(self):
          """Remove workspaces for issues already in terminal states."""
          try:
-@@ -610,10 +629,13 @@
+@@ -610,10 +632,13 @@
                  self.cfg.terminal_linear_states(),
              )
              ws_root = self.cfg.workspace.resolved_root()
@@ -52,7 +55,7 @@
          except Exception as e:
              logger.warning(f"Startup cleanup failed (continuing): {e}")
 
-@@ -985,7 +1007,8 @@
+@@ -985,7 +1010,8 @@
              # Clean up workspace
              try:
                  ws_root = self.cfg.workspace.resolved_root()
@@ -62,7 +65,7 @@
              except Exception as e:
                  logger.warning(f"Failed to remove workspace for {issue.identifier}: {e}", extra={"linked_to": issue.identifier})
              # Clean up tracking state
-@@ -3727,6 +3750,8 @@
+@@ -3727,6 +3753,8 @@
          attempt: RunAttempt,
          workspace_path: Path,
          state_name: str | None,
@@ -71,7 +74,7 @@
      ) -> None:
          """Upload evidence, post the run report, and apply the classification label.
 
-@@ -3734,6 +3759,11 @@
+@@ -3734,6 +3762,11 @@
          over having captured three screenshots is exactly when you want to see
          them. Nothing here is allowed to break the run: a Linear outage should
          cost you the report, not the work.
@@ -83,7 +86,7 @@
          """
          import json
          if attempt.status == "canceled":
-@@ -3747,6 +3777,23 @@
+@@ -3747,6 +3780,23 @@
 
          state = state_name or attempt.state_name or "run"
          run = self._issue_state_runs.get(issue.id, 1)
@@ -107,7 +110,7 @@
 
          # ── Evidence ────────────────────────────────────────────────────────
          uploaded: dict[str, str] = {}
-@@ -3783,6 +3830,9 @@
+@@ -3783,6 +3833,9 @@
              attempt.publication_event = "report-blocked"
              logger.warning("Native stage evidence retention failed issue=%s state=%s run=%s: %s",
                             issue.identifier, state, run, exc)
@@ -117,7 +120,7 @@
 
          for path in files if retained_evidence else []:
              try:
-@@ -3873,6 +3923,8 @@
+@@ -3873,6 +3926,8 @@
                  if qualified and attempt.publication_event != "report-blocked":
                      selection = (report.get("routing") or {}).get("working_source")
                      if selection is not None:
@@ -126,7 +129,7 @@
                          if report_mod.admission_event(report, issue=issue.identifier, state=state, run=run) != "complete":
                              raise ValueError("Working source can only prepare a qualified investigate continuation")
                          publication_mod.retain_working_source(workspace_path, current, run, selection,
-@@ -3996,7 +4048,7 @@
+@@ -3996,7 +4051,7 @@
                  and record["binding"].get("kind") == "source-free"):
              record["source_free_report_body"] = body
              publication_mod.save(workspace_path, publication_mod.RECORD, record)
@@ -135,7 +138,7 @@
              # Freeze the final CONTROLLER disposition before the writer. A lost
              # response may be reconciled by exact body readback, never by
              # reinterpreting the earlier raw model report as permission.
-@@ -4004,6 +4056,33 @@
+@@ -4004,6 +4059,33 @@
                                     state_name=state, report=attempt.report, report_posted=True,
                                     publication_event=acceptance_event if acceptance_record else attempt.publication_event)
              event = self._completion_event(issue, confirmed)
@@ -169,7 +172,7 @@
              attempt.settlement_record.update(expected_report_body=body, post_disposition=dict(
                  report=attempt.report, publication_event=confirmed.publication_event,
                  error=attempt.error, event=event,
-@@ -4034,7 +4113,8 @@
+@@ -4034,7 +4116,8 @@
              logger.warning("Failed to post run report", extra={"linked_to": issue.identifier})
 
          # ── Classification label ────────────────────────────────────────────
@@ -179,7 +182,7 @@
 
          # Posting is not review/publication settlement. Keep canonical evidence
          # on a hold; immutable copies also survive a later legitimate rework.
-@@ -4166,7 +4246,9 @@
+@@ -4166,7 +4249,9 @@
          if expected_retry is not None and (self.retry_attempts.get(issue.id) is not expected_retry
                  or running is not None or task is not None and not task.done() or issue.id in self._pending_gates):
              return False
@@ -190,7 +193,7 @@
              return False
          if not hasattr(self,"_terminal_observed"):
              self._terminal_observed = {}
-@@ -4505,6 +4587,8 @@
+@@ -4505,6 +4590,8 @@
          running_ids = [i for i,a in self.running.items() if a.status != "settling"]
          if not running_ids:
              return
@@ -199,7 +202,7 @@
 
          try:
              client = self._ensure_linear_client()
-@@ -4527,6 +4611,36 @@
+@@ -4527,6 +4614,36 @@
                  continue
 
              state_lower = state_key(current_state)
@@ -236,7 +239,7 @@
 
              if state_lower in terminal_lower:
                  # Terminal - stop worker and clean workspace
-@@ -4542,9 +4656,8 @@
+@@ -4542,9 +4659,8 @@
                  attempt = self.running.get(issue_id)
                  if attempt:
                      ws_root = self.cfg.workspace.resolved_root()
