@@ -50,7 +50,7 @@ def _recipient_native_prologue(orchestration, dispatch, worker, authority):
     reviewed = (
         (dispatch, 'da63ce2fe67723fe9e362cd8eb9c4eed5d69b7267ffffc42e625228c2392cc29'),
         (worker, '47a49c4930cf8a0faf670b6def7326f4f0982de7b8f9b548045899753a0c6482'),
-        (original_reconcile, '5479e5ee884ed8ba1f3f731cecc30eef7d13fef31a059b850107ef7dd605f46c'),
+        (original_reconcile, 'd6b4da1c014f6442e8805b7f82834c356696697490a60908a7fbabccfbd7af2d'),
         (terminal, '7a4d04b5824ea78596adc52a2eb9ada05aa9b05c464fba47fc59c5ba642672e9'),
         (workspace, '647eacc835b9c1b2698c6990cc3168ef35db379a1263f969ea1f02192f80c6be'),
         (result, '336dbd12bfcdc495bf9e7840f6a738ba8a64f88a5a2008c229b2cff5e8fbf9b3'),
@@ -59,6 +59,12 @@ def _recipient_native_prologue(orchestration, dispatch, worker, authority):
            for value in (dispatch, worker, original_reconcile, terminal)):
         return None
     try:
+        # The same native file also guards retained workspaces at startup
+        # and at terminal transitions, outside the running worker.
+        source = Path(worker.__code__.co_filename)
+        if (source != Path(orchestration.__file__) or sha256(source.read_bytes()).hexdigest()
+                != 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'):
+            return None
         # getsource(function) unwraps decorators. Review the actual composition
         # shim and verify its closed-over native callable before unwrapping it.
         if (sha256(getsource(reconcile.__code__).encode()).hexdigest()

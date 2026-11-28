@@ -18,8 +18,11 @@ from uif.stokowski_cloudflare.native_composition import NativeComposition, _COMM
 from test_native_remote_authority import ISSUE, RECORD, ROUTE
 
 
-RECONCILE_PREIMAGE = '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96'
-RECONCILE_POSTIMAGE = '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38'
+RECONCILE_PREIMAGES = {
+    '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96',
+    '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38',
+}
+RECONCILE_POSTIMAGE = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
 
 
 class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
@@ -34,7 +37,7 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         source = Path(orchestrator.__file__)
         self.assertEqual(source.parent, Path(staged))
         self.native_sha = sha256(source.read_bytes()).hexdigest()
-        self.assertIn(self.native_sha, {RECONCILE_PREIMAGE, RECONCILE_POSTIMAGE})
+        self.assertIn(self.native_sha, RECONCILE_PREIMAGES | {RECONCILE_POSTIMAGE})
         self.orchestrator, self.runner, self.publication = orchestrator, runner, publication
         owner = self.owner = orchestrator.Orchestrator.__new__(orchestrator.Orchestrator)
         temp = TemporaryDirectory()
@@ -282,10 +285,10 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.fetch_issue.assert_not_awaited()
         self.assertFalse((self.path / '.stokowski').exists())
 
-    async def test_unpatched_native_reconciliation_holds_recipient_selection(self):
+    async def test_earlier_native_reconciliation_holds_recipient_selection(self):
         self.require_turn_binding()
-        if self.native_sha != RECONCILE_PREIMAGE:
-            self.skipTest('select the exact native reconciliation preimage')
+        if self.native_sha not in RECONCILE_PREIMAGES:
+            self.skipTest('select an exact native reconciliation preimage')
         self.configure()
         self.assertFalse(self.owner._is_eligible(self.issue))
         self.owner._dispatch(self.issue)
