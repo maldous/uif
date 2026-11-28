@@ -257,30 +257,53 @@ for (const fresh of [false, true]) test(fresh
     };
     // Separate Linear issue; no native call after the initial claim.
     const recoveryScope = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
-    const recoveryGrant = { ...grant, scope: recoveryScope, attempt_ids: ['unstarted'],
+    const priorRole = fresh ? 'morgan' : 'native', recipient = fresh ? 'native' : 'morgan';
+    const recoveryGrant = { ...grant, scope: recoveryScope, attempt_ids: ['unstarted','unstarted-next'],
       sessions: ['native-s', 'morgan-s'] };
     delete recoveryGrant.fresh_assessment;
     assert.equal((await call(tokens.control, 'grant', { request_id: 'grant-unstarted',
       previous_sha256: null, grant: recoveryGrant })).status, 200);
-    const claimResponse = await call(tokens.native, 'claim', { ...claim, request_id: 'claim-unstarted',
+    const claimResponse = await call(tokens[priorRole], 'claim', { ...claim, request_id: 'claim-unstarted',
       scope: recoveryScope, attempt_id: 'unstarted' });
     assert.equal(claimResponse.status, 200);
     const { lease: current } = await claimResponse.json();
     const revoke = { request_id: 'revoke-unstarted', fence: current.fence, unstarted_attempt_id: 'unstarted' };
     assert.equal((await call(tokens.morgan, 'revoke', revoke)).status, 403);
     assert.equal((await call(tokens.control, 'revoke', revoke)).status, 200);
-    const handoff = { current, successor_session: 'morgan-s', expected_coordinator_epoch: 2,
+    const handoff = { current, successor_session: recipient + '-s', expected_coordinator_epoch: 2,
       quiesced_sha256: '8'.repeat(64), reconstruction_sha256: recoveryGrant.reconstruction_sha256,
       recovery: { revocation_id: revoke.request_id, attempt_id: 'unstarted' } };
     assert.equal((await call(tokens.control, 'attest', { request_id: 'witness-unstarted',
       fact: { kind: 'handoff', ...handoff } })).status, 200);
-    const recoveryResponse = await call(tokens.morgan, 'handoff', { request_id: 'receive-unstarted', ...handoff });
+    const recoveryResponse = await call(tokens[recipient], 'handoff', { request_id: 'receive-unstarted', ...handoff });
     assert.equal(recoveryResponse.status, 200);
     const assignment = await recoveryResponse.json();
     assert.equal(assignment.attempt_id, 'unstarted');
-    assert.equal(assignment.lease.fence.owner_session, 'morgan-s');
+    assert.equal(assignment.lease.fence.owner_session, recipient + '-s');
     assert.equal(assignment.lease.fence.generation, 2);
     assert.equal(physical, 0);
+
+    if (recipient === 'native') {
+      const status = await (await call(tokens.native,'status')).json();
+      const entry = {current:assignment.lease, attempt_id:assignment.attempt_id, original:{
+        installation_sha256:status.installation_sha256, session_id:'native-s',
+        request_id:assignment.request_id, request_sha256:assignment.request_sha256}};
+      assert.equal((await call(tokens.morgan,'recovery/enter',entry)).status,403);
+      assert.deepEqual(await (await call(tokens.native,'recovery/observe',entry)).json(),{entered:false});
+      const {permit} = await (await call(tokens.native,'recovery/enter',entry)).json();
+      assert.match(permit,/^[0-9a-f]{64}$/);
+      await instance.dispose();
+      instance = make();
+      assert.deepEqual(await (await call(tokens.native,'recovery/observe',entry)).json(),{entered:true});
+      assert.deepEqual(await (await call(tokens.native,'recovery/enter',entry)).json(),{entered:false});
+      const advance = {request_id:'recover-advance', current:assignment.lease,
+        expected_attempt_id:assignment.attempt_id,attempt_id:'unstarted-next'};
+      assert.equal((await call(tokens.control,'attempt/attest',{request_id:'approve-recovered-next',
+        fence:assignment.lease.fence,previous:advance.expected_attempt_id,successor:advance.attempt_id,
+        terminal_receipt_sha256:'a'.repeat(64)})).status,200);
+      assert.equal((await call(tokens.native,'claim/attempt',advance)).status,403);
+      assert.equal((await call(tokens.native,'claim/attempt',advance,permit)).status,200);
+    }
 
     const freshId = (scope) => digest({claim:scope, recovery:grant.reconstruction_sha256,
       authority:identity(c, peers[clients[0]]), epoch:2});
