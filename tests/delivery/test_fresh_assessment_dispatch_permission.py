@@ -42,6 +42,10 @@ class PermissionTest(IsolatedAsyncioTestCase):
             self.fail('legacy report or side-effect path ran')
         for slot in (*_COMMENT_SLOTS, '_reconcile', '_resume_settlement'):
             setattr(Owner, slot, no_legacy)
+        announcement = Mock()
+        async def ordinary_announcement(owner, issue, state, run):
+            announcement(issue.id, state, run)
+        Owner._announce_state = ordinary_announcement
         install_sinks(SimpleNamespace(LinearClient=type('FixtureLinear', (), {}),
                                       Orchestrator=Owner), composition)
         owner = Owner()
@@ -58,6 +62,10 @@ class PermissionTest(IsolatedAsyncioTestCase):
         async def child():
             with composition.fresh_assessment_worker(owner, issue, attempt):
                 delayed.append(asyncio.create_task(delayed_child()))
+                await owner._announce_state(issue, 'assess', 1)
+                announcement.assert_not_called()
+                await owner._announce_state(issue, 'investigate', 1)
+                announcement.assert_called_once_with(issue.id, 'investigate', 1)
                 await asyncio.to_thread(self.access.request, '/v1/send', {'intent': edge})
                 await owner._publish_run_report(issue, attempt, Path('/isolated-fixture'), 'assess')
             self.access.request('/v1/linear/upload', edge)
@@ -80,6 +88,9 @@ class PermissionTest(IsolatedAsyncioTestCase):
             await delayed[0]
             self.access.request('/v1/send', {'intent': edge})
         composition.publish_fresh_assessment_report.assert_called_once()
+        await owner._announce_state(issue, 'assess', 2)
+        self.assertEqual([x.args for x in announcement.call_args_list],
+                         [(issue.id, 'investigate', 1), (issue.id, 'assess', 2)])
         calls = http.request.call_args_list
         self.assertEqual([call.args[1] for call in calls], ['/v1/dispatch/enter', '/v1/send',
             '/v1/linear/comment', '/v1/linear/upload', '/v1/provider/receipt', '/v1/send'])

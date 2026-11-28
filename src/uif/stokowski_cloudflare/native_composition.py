@@ -1673,12 +1673,25 @@ def install_sinks(orchestration, composition):
         async def with_original(*args, **kwargs):
             slot = composition._slot.set(name)
             try:
-                if name == '_publish_run_report' and composition._fresh_assessment.get() is not None:
-                    return await publish_fresh(*args, **kwargs)
+                execution = composition._fresh_assessment.get()
+                if execution is not None:
+                    if name == '_publish_run_report':
+                        return await publish_fresh(*args, **kwargs)
+                    if name == '_announce_state':
+                        return await announce_fresh(native, execution, *args, **kwargs)
                 return await native(*args, **kwargs)
             finally:
                 composition._slot.reset(slot)
         return with_original
+
+    async def announce_fresh(native, execution, native_owner, issue, state, run):
+        if (native_owner.project_name == 'OffMenu' and state == 'assess'
+                and execution.claim.lease.fence.scope.key.issue_id == issue.id
+                and asyncio.current_task() is execution.permit.winner):
+            # The registered worker already logs its native dispatch locally.
+            # This advisory announcement is not the authorized report effect.
+            return None
+        return await native(native_owner, issue, state, run)
 
     async def publish_fresh(native_owner, issue, attempt, workspace_path, state_name):
         execution = composition._fresh_assessment.get()
