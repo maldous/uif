@@ -292,6 +292,42 @@ export class Authority {
       'uncertain_original_effect',
     );
   }
+  requireUnstartedAttempt(current, attempt) {
+    const f = current.fence, issue = issueKey(f.scope), key = canonical(f);
+    const history = this.row('SELECT record FROM claim_generations WHERE issue=? AND generation=1', issue);
+    const grant = this.grant(f.scope, f.source, { session_id: f.owner_session });
+    const initial = history && JSON.parse(history.record);
+    const ctl = this.control();
+    need(
+      f.generation === 1 && initial && equal(initial.lease, current) && equal(initial.grant, grant)
+        && grant.sessions.length === 2 && !Object.hasOwn(grant, 'fresh_assessment')
+        && f.coordinator_epoch === ctl.epoch && !ctl.stopped,
+      'unstarted_initial_claim_changed',
+    );
+    // Only the original, never-advanced attempt. A settled effect is still work.
+    // Stage advancement always retains its next_attempts edge for this fence.
+    // Control attests workspace quiescence outside the authority separately.
+    need(!this.row(`SELECT 1 FROM effects WHERE issue=?
+      UNION ALL SELECT 1 FROM source_attempts WHERE attempt=?
+      UNION ALL SELECT 1 FROM next_attempts WHERE fence=?
+      UNION ALL SELECT 1 FROM review_bindings WHERE attempt=?
+      UNION ALL SELECT 1 FROM completions WHERE fence=? LIMIT 1`,
+    issue, attempt, key, attempt, key), 'attempt_already_started_or_unreconciled');
+  }
+  requireUnstartedRevocation(fact) {
+    const { current, recovery } = fact, f = current.fence;
+    fields(recovery, 'attempt_id', 'revocation_id');
+    need(token(recovery.attempt_id) && token(recovery.revocation_id), 'invalid_recovery_original', 400);
+    const row = this.row('SELECT state,attempt,lease FROM claims WHERE issue=?', issueKey(f.scope));
+    const control = Object.values(this.c.peers).find((p) => p.role === 'control');
+    const original = this.row('SELECT result FROM receipts WHERE peer=? AND id=?',
+      this.peerKey(control), recovery.revocation_id);
+    need(row?.state === 'revoked-unstarted' && row.attempt === recovery.attempt_id
+      && equal(JSON.parse(row.lease), current) && original
+      && equal(JSON.parse(original.result), { revoked: f, unstarted_attempt_id: recovery.attempt_id }),
+    'exact_unstarted_revocation_required');
+    this.requireUnstartedAttempt(current, recovery.attempt_id);
+  }
   fact(id, expected) {
     const r = this.row('SELECT body FROM facts WHERE id=?', id);
     need(
@@ -518,7 +554,7 @@ export class Authority {
           // issue-specific grants and startup authority before admitting fresh effects.
           this.put('UPDATE installation SET realm=? WHERE singleton=1', this.realm);
           this.put('UPDATE control SET stopped=1,epoch=epoch+1 WHERE singleton=1');
-          this.put("UPDATE claims SET state='revoked' WHERE state='active'");
+          this.put("UPDATE claims SET state='revoked' WHERE state IN ('active','revoked-unstarted')");
           return { realm: this.realm, coordinator_epoch: ctl.epoch + 1, stopped: true };
         },
         true,
@@ -774,7 +810,7 @@ export class Authority {
         // Changed scope, permissions or reconstruction must never be inherited by
         // an already-issued fence, including after a peer is removed and re-added.
         if (prior && prior !== blob)
-          this.put("UPDATE claims SET state='revoked' WHERE issue=? AND state='active'", id);
+          this.put("UPDATE claims SET state='revoked' WHERE issue=? AND state IN ('active','revoked-unstarted')", id);
         this.put(
           'INSERT INTO grants VALUES (?,?) ON CONFLICT(issue) DO UPDATE SET body=excluded.body',
           id,
@@ -824,6 +860,7 @@ export class Authority {
           'expected_coordinator_epoch',
           'quiesced_sha256',
           'reconstruction_sha256',
+          ...(Object.hasOwn(f, 'recovery') ? ['recovery'] : []),
         );
         operationShape(
           c,
@@ -842,6 +879,7 @@ export class Authority {
       }
       const id = await digest(f);
       return this.receipt(peer, body.request_id, path, body, () => {
+        if (f.kind === 'handoff' && Object.hasOwn(f, 'recovery')) this.requireUnstartedRevocation(f);
         if (f.kind === 'completion') {
           const key = canonical(f.completion.fence),
             blob = canonical(f.completion);
@@ -971,14 +1009,19 @@ export class Authority {
     }
     if (path === '/v1/revoke') {
       only(peer, 'control');
-      fields(body, 'request_id', 'fence');
+      const recover = Object.hasOwn(body ?? {}, 'unstarted_attempt_id');
+      fields(body, 'request_id', 'fence', ...(recover ? ['unstarted_attempt_id'] : []));
       return this.receipt(peer, body.request_id, path, body, () => {
         const id = issueKey(body.fence.scope),
-          r = this.row('SELECT lease,state FROM claims WHERE issue=?', id);
-        need(
-          r && r.state === 'active' && equal(JSON.parse(r.lease).fence, body.fence),
-          'claim_fence_changed',
-        );
+          r = this.row('SELECT lease,state,attempt FROM claims WHERE issue=?', id);
+        need(r && (r.state === 'active' || (!recover && r.state === 'revoked-unstarted'))
+          && equal(JSON.parse(r.lease).fence, body.fence), 'claim_fence_changed');
+        if (recover) {
+          need(r.attempt === body.unstarted_attempt_id, 'attempt_preimage_changed');
+          this.requireUnstartedAttempt(JSON.parse(r.lease), r.attempt);
+          this.put("UPDATE claims SET state='revoked-unstarted' WHERE issue=?", id);
+          return { revoked: body.fence, unstarted_attempt_id: r.attempt };
+        }
         this.put("UPDATE claims SET state='revoked' WHERE issue=?", id);
         return { revoked: body.fence };
       });
@@ -1512,7 +1555,8 @@ export class Authority {
     const c = this.c,
       observe = path === '/v1/claim/observe';
     const action = observe ? 'claim' : path.slice(4),
-      kind = leaseKind(action),
+      recover = action === 'handoff' && Object.hasOwn(body ?? {}, 'recovery'),
+      kind = recover ? 'uif.shared-lease.recover-unstarted/1' : leaseKind(action),
       authority = identity(c, peer);
     let typed = { ...body, authority };
     if (action === 'claim') {
@@ -1537,6 +1581,7 @@ export class Authority {
         'expected_coordinator_epoch',
         'quiesced_sha256',
         'reconstruction_sha256',
+        ...(recover ? ['recovery'] : []),
       );
     else fields(body, 'request_id', 'completion');
     const hash = await digest({ kind, request: typed });
@@ -1554,6 +1599,7 @@ export class Authority {
       action === 'handoff'
         ? {
             kind: 'handoff',
+            ...(recover ? { recovery: body.recovery } : {}),
             current: body.current,
             successor_session: body.successor_session,
             expected_coordinator_epoch: body.expected_coordinator_epoch,
@@ -1626,9 +1672,15 @@ export class Authority {
         return { ...result, lease: renewed };
       }
       const r = this.row('SELECT * FROM claims WHERE issue=?', id);
-      need(r && ['active', 'revoked'].includes(r.state), 'claim_not_reconcilable');
+      if (recover) {
+        need(peer.session_id === body.successor_session && peer.session_id !== f.owner_session,
+          'named_successor_required', 403);
+        this.requireUnstartedRevocation(handoffFact);
+      } else {
+        need(r && ['active', 'revoked'].includes(r.state), 'claim_not_reconcilable');
+      }
       const prior = JSON.parse(r.lease);
-      need(equal(prior.fence, f) && f.owner_session === peer.session_id, 'original_owner_required');
+      need(equal(prior.fence, f) && (recover || f.owner_session === peer.session_id), 'original_owner_required');
       this.reconciled(f.scope);
       this.fact(factId, fact);
       if (action === 'release') {
@@ -1645,7 +1697,7 @@ export class Authority {
       );
       need(
         next &&
-          next.session_id !== peer.session_id &&
+          next.session_id !== f.owner_session &&
           !ctl.stopped &&
           ctl.epoch === body.expected_coordinator_epoch &&
           equal(current, prior) &&
@@ -1677,7 +1729,7 @@ export class Authority {
         lease.fence.generation,
         canonical({ grant: g, lease, request_id: body.request_id }),
       );
-      return { ...result, lease };
+      return recover ? { ...result, lease, attempt_id: r.attempt } : { ...result, lease };
     });
   }
   recordDestination(op, result) {

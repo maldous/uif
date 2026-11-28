@@ -1655,6 +1655,145 @@ test('peer transfer and return keep one claim; an independent hold does not stop
   assert.equal(f.calls.length, 0);
 });
 
+async function unstartedFixture(from = 'native') {
+  const f = fixture(), to = from === 'native' ? 'morgan' : 'native';
+  await f.resume();
+  const claim = await f.addGrant(), current = (await f.call(from, 'claim', claim)).lease;
+  const revoke = { request_id: 'freeze-original', fence: current.fence, unstarted_attempt_id: claim.attempt_id };
+  const handoff = {
+    current, successor_session: f.peers[to].session_id, expected_coordinator_epoch: 2,
+    quiesced_sha256: hex('7'), reconstruction_sha256: claim.reconstruction_sha256,
+    recovery: { attempt_id: claim.attempt_id, revocation_id: revoke.request_id },
+  };
+  const attest = { request_id: 'witness', fact: { kind: 'handoff', ...handoff } };
+  const accept = { request_id: 'accept', ...handoff };
+  return { f, from, to, claim, current, revoke, attest, accept };
+}
+
+for (const fromRole of ['native', 'morgan']) {
+  test('named successor recovers an unstarted assignment from an absent ' + fromRole, async () => {
+    const { f, to, claim, current, revoke, attest, accept } = await unstartedFixture(fromRole);
+    f.setTime(current.expires_at + 1);
+    await assert.rejects(f.call(to, 'handoff', accept), /exact_unstarted_revocation_required/);
+    await assert.rejects(f.call('control', 'attest', attest), /exact_unstarted_revocation_required/);
+    const revoked = await f.call('control', 'revoke', revoke);
+    f.a = f.restart();
+    assert.deepEqual(await f.call('control', 'revoke', revoke), revoked);
+    await assert.rejects(f.call(to, 'handoff', accept), /independent_original_evidence_missing/);
+    await assert.rejects(f.call('control', 'attest', { ...attest,
+      fact: { ...attest.fact, recovery: { ...accept.recovery, revocation_id: 'another-revocation' } } }),
+      /exact_unstarted_revocation_required/);
+    await f.call('control', 'attest', attest);
+    await assert.rejects(f.call('quota', 'handoff', accept), /peer_role_not_granted/);
+    await assert.rejects(f.call(to, 'handoff', { ...accept, successor_session: f.peers[fromRole].session_id }),
+      /named_successor_required/);
+    await assert.rejects(f.call(to, 'handoff', { ...accept, quiesced_sha256: hex('8') }),
+      /independent_original_evidence_missing/);
+    const races = await Promise.allSettled([accept, { ...accept, request_id: 'competing-accept' }]
+      .map((request) => f.call(to, 'handoff', request)));
+    assert.equal(races.filter((r) => r.status === 'fulfilled').length, 1);
+    const moved = races.find((r) => r.status === 'fulfilled').value;
+    assert.equal(moved.request_kind, 'uif.shared-lease.recover-unstarted/1');
+    assert.equal(moved.attempt_id, claim.attempt_id);
+    assert.equal(moved.lease.fence.generation, 2);
+    assert.equal(moved.lease.fence.owner_session, f.peers[to].session_id);
+    assert.notEqual(moved.lease.fence.lease_id, current.fence.lease_id);
+    f.a = f.restart();
+    const status = await f.call(to, 'status', {});
+    const lookup = { session_id: f.peers[to].session_id, request_id: moved.request_id,
+      installation_sha256: status.installation_sha256 };
+    assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);
+    assert.deepEqual(await f.call(to, 'handoff', { ...accept, request_id: moved.request_id }), moved);
+    assert.deepEqual(await f.call(to, 'claim/read', { project: 'OffMenu', by_attempt: true,
+      identifier: claim.attempt_id }), { project: 'OffMenu', attempt_id: claim.attempt_id, lease: moved.lease });
+    // No predecessor call was needed after its original claim.
+    await assert.rejects(f.call(fromRole, 'renew', { current, request_id: 'late' }), /claim_fence_changed/);
+    assert.equal(f.calls.length, 0);
+  });
+}
+
+test('ordinary revocation, new hold, same-epoch grant replacement and stop exclude unstarted recovery', async () => {
+  for (const reason of ['ordinary', 'explicit-hold', 'grant-replaced-restored', 'stop']) {
+    const { f, to, current, revoke, attest, accept } = await unstartedFixture();
+    if (reason === 'ordinary') {
+      await f.call('control', 'revoke', { request_id: revoke.request_id, fence: current.fence });
+      await assert.rejects(f.call('control', 'attest', attest), /exact_unstarted_revocation_required/);
+      continue;
+    }
+    await f.call('control', 'revoke', revoke);
+    await f.call('control', 'attest', attest);
+    if (reason === 'explicit-hold') {
+      await f.call('control', 'revoke', { request_id: 'hold', fence: current.fence });
+    } else if (reason === 'grant-replaced-restored') {
+      const original = f.a.grant(scope, source, f.peers.native);
+      const changed = { ...original, allow_uploads: false };
+      for (const [id, previous, grant] of [['replace', original, changed], ['restore', changed, original]]) {
+        await f.call('control', 'grant', { request_id: id, previous_sha256: await digest(previous), grant });
+      }
+    } else {
+      await f.call('control', 'control', { request_id: 'stop', expected_coordinator_epoch: 2, stopped: true });
+    }
+    f.a = f.restart();
+    await assert.rejects(f.call(to, 'handoff', accept),
+      /exact_unstarted_revocation_required|unstarted_initial_claim_changed/);
+  }
+});
+
+test('unstarted recovery preserves ambiguous effects, terminal effects and source or stage evidence', async () => {
+  for (const state of ['unknown', 'terminal', 'source', 'stage', 'completion', 'renewed']) {
+    const { f, current, revoke } = await unstartedFixture();
+    if (state === 'unknown' || state === 'terminal') {
+      const request = await f.request(current, await f.quota());
+      if (state === 'unknown') {
+        f.respond = async () => { throw Error('fixture-lost-response'); };
+        await assert.rejects(f.call('native', 'send', request));
+      } else {
+        await f.call('native', 'send', request);
+      }
+      const before = await f.call('native', 'original', { operation: request.intent.operation });
+      assert.equal(before.state, state);
+      await assert.rejects(f.call('control', 'revoke', revoke), /attempt_already_started_or_unreconciled/);
+      assert.deepEqual(await f.call('native', 'original', { operation: request.intent.operation }), before);
+      assert.equal(f.calls.length, 1);
+      continue;
+    }
+    if (state === 'source') {
+      await f.call('control', 'source/bind', {
+        request_id: 'bind-source', current, attempt_id: 'attempt', public_source_receipt_sha256: hex('2'),
+        paths: [{ path: 'work.py', writable: true, mode: null,
+          base_sha256: null, base_base64: null, base_git_blob: null }],
+      });
+    } else if (state === 'completion') {
+      await f.call('control', 'attest', { request_id: 'completion', fact: { kind: 'completion',
+        completion: { fence: current.fence, accepted: true, receipt_sha256: hex('3') } } });
+    } else if (state === 'stage') {
+      await f.call('control', 'attempt/attest', { request_id: 'next', fence: current.fence,
+        previous: 'attempt', successor: 'attempt-next', terminal_receipt_sha256: hex('3') });
+    } else {
+      f.setTime(start + 10);
+      await f.call('native', 'renew', { request_id: 'renew', current });
+    }
+    await assert.rejects(f.call('control', 'revoke', revoke),
+      /attempt_already_started_or_unreconciled|unstarted_initial_claim_changed/);
+    assert.equal(f.calls.length, 0);
+  }
+});
+
+test('a grant restricted to one peer cannot enter unstarted recovery', async () => {
+  const f = fixture();
+  await f.resume();
+  const claim = await f.addGrant();
+  const grant = f.a.grant(scope, source, f.peers.native);
+  await f.call('control', 'grant', { request_id: 'native-only', previous_sha256: await digest(grant),
+    grant: { ...grant, sessions: [f.peers.native.session_id] } });
+  const { lease } = await f.call('native', 'claim', claim);
+  await assert.rejects(f.call('control', 'revoke', { request_id: 'transfer-native-only',
+    fence: lease.fence, unstarted_attempt_id: 'attempt' }), /unstarted_initial_claim_changed/);
+  assert.deepEqual((await f.call('native', 'claim/read', {
+    project: 'OffMenu', identifier: 'attempt', by_attempt: true,
+  })).lease, lease);
+});
+
 test('publication completion hashes the protected outcome, not the observer receipt', async () => {
   const f = fixture();
   const lease = await admitted(f);

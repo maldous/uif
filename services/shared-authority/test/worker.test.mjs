@@ -255,6 +255,33 @@ for (const fresh of [false, true]) test(fresh
       attempt_id: attempt,
       reconstruction_sha256: grant.reconstruction_sha256,
     };
+    // Separate Linear issue; no native call after the initial claim.
+    const recoveryScope = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
+    const recoveryGrant = { ...grant, scope: recoveryScope, attempt_ids: ['unstarted'],
+      sessions: ['native-s', 'morgan-s'] };
+    delete recoveryGrant.fresh_assessment;
+    assert.equal((await call(tokens.control, 'grant', { request_id: 'grant-unstarted',
+      previous_sha256: null, grant: recoveryGrant })).status, 200);
+    const claimResponse = await call(tokens.native, 'claim', { ...claim, request_id: 'claim-unstarted',
+      scope: recoveryScope, attempt_id: 'unstarted' });
+    assert.equal(claimResponse.status, 200);
+    const { lease: current } = await claimResponse.json();
+    const revoke = { request_id: 'revoke-unstarted', fence: current.fence, unstarted_attempt_id: 'unstarted' };
+    assert.equal((await call(tokens.morgan, 'revoke', revoke)).status, 403);
+    assert.equal((await call(tokens.control, 'revoke', revoke)).status, 200);
+    const handoff = { current, successor_session: 'morgan-s', expected_coordinator_epoch: 2,
+      quiesced_sha256: '8'.repeat(64), reconstruction_sha256: recoveryGrant.reconstruction_sha256,
+      recovery: { revocation_id: revoke.request_id, attempt_id: 'unstarted' } };
+    assert.equal((await call(tokens.control, 'attest', { request_id: 'witness-unstarted',
+      fact: { kind: 'handoff', ...handoff } })).status, 200);
+    const recoveryResponse = await call(tokens.morgan, 'handoff', { request_id: 'receive-unstarted', ...handoff });
+    assert.equal(recoveryResponse.status, 200);
+    const assignment = await recoveryResponse.json();
+    assert.equal(assignment.attempt_id, 'unstarted');
+    assert.equal(assignment.lease.fence.owner_session, 'morgan-s');
+    assert.equal(assignment.lease.fence.generation, 2);
+    assert.equal(physical, 0);
+
     const race = await Promise.all(
       (fresh ? ['native'] : ['native', 'morgan']).map((role) => call(tokens[role], 'claim', claim)),
     );
