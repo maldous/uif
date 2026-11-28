@@ -60,6 +60,7 @@ const projection = { route, utc_day: day(now), covered_through: now, valid_until
   upper: 0, gap_upper: 0, free_standard_no_fallback: true, completeness_verified: true };
 const out = [];
 const report = recovered ? JSON.stringify({ summary: 'Synthetic bounded report.', verdict: 'approve',
+  data_sources: [{name: 'Detached issue assignment', how_verified: 'Pinned fixture original and task scope.'}],
   routing: { issue: seed.identifier, state: 'assess', run: 1, actionable: true, ownership_clear: true,
     deferred: false, owner_pause: false, uncertain_effects: false, missing_inputs: [] } }) : 'Synthetic bounded report.';
 let authority;
@@ -174,11 +175,11 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
             workspace=config.WorkspaceConfig(root=str(self.case.path.parent)),
             tracker=config.TrackerConfig(project_slug='offmenu'),
             states={'assess': config.StateConfig(name='assess', runner='cloudflare', admission_review=True,
-                                                permission_mode='plan', session='fresh')}))
+                permission_mode='plan', session='fresh', transitions={'complete': 'investigate'}),
+                'investigate': config.StateConfig(name='investigate', runner='cloudflare')}))
         self.owner._issue_current_state[self.issue.id] = 'assess'
         self.owner._issue_state_runs[self.issue.id] = 1
         self.owner._announced_states.add((self.issue.id, 'assess', 1))
-        self.owner._render_prompt_async = AsyncMock(return_value='Synthetic bounded assessment')
         self.now = datetime.now(timezone.utc).replace(microsecond=0)
         self.scope = publication.scope(self.issue)
         original = 'cf-intake-' + intake_identity('OffMenu', self.issue.id, self.scope, 1) + '-assess'
@@ -220,6 +221,7 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
             'identifier': self.issue.identifier}) + '\n')
         self.bridge.stdin.flush()
         original = self.bridge_read()
+        self.expected_fence = original['original']['lease']['fence']
 
         class Reply(BytesIO):
             def __init__(self, value):
@@ -369,8 +371,10 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls.count(('/v1/send', True)), 1)
         self.assertEqual(self.calls.count(('/v1/linear/comment', True)), 1)
         self.assertNotIn(('/v1/claim/attempt', False), self.calls)
+        settlement = json.loads((self.case.path / '.stokowski/settlement.json').read_bytes())
+        self.assertEqual(settlement['post_disposition']['target'], 'investigate')
         originals = (self.effects['/v1/send']['operation'], self.effects['/v1/linear/comment'])
-        self.assertEqual(originals[0]['fence'], originals[1]['fence'])
+        self.assertEqual([original['fence'] for original in originals], [self.expected_fence] * 2)
         self.exchange('@restart')
         for original in originals:
             observed = self.exchange('/v1/original', {'operation': original})
