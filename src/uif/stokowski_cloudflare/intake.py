@@ -17,8 +17,12 @@ def intake_profile(config, project, issue):
     return profile
 
 
+def intake_identity(project, issue_id, scope, run):
+    return sha256(json.dumps([project, issue_id, scope, run]).encode()).hexdigest()
+
+
 def intake_stages(profile, project, issue, scope, run):
-    identity = sha256(json.dumps([project, issue.id, scope, run]).encode()).hexdigest()
+    identity = intake_identity(project, issue.id, scope, run)
     statement = json.dumps({'title': issue.title, 'description': issue.description},
                            ensure_ascii=False)
     common = dict(project=project, scope_sha256=scope, project_intake=profile,

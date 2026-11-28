@@ -41,6 +41,7 @@ from . import client as workers_ai_client
 from .assessment_readiness import parse_assessment_report
 from .native import _native_report
 from .remote_authority import AccessTransport, AuthorityUnavailable, NativeAssignment, RemoteAuthority, protected_record
+from .intake import intake_identity
 from .shared_admission import NativeClaim
 from .remote_source import SourceTools, pinned_members, review_diff
 
@@ -1475,6 +1476,24 @@ class NativeComposition:
                 and type(marker['state']) is str and bool(marker['state'])
                 and type(marker['run']) is int and marker['run'] > 0,
                 'authority_waiting_gate_marker')
+        return self._retain_tracking_clock(claim, issue_id, original_id, body, prefix, human, marker, '.gate-clock')
+
+    def _investigation_tracking_body(self, claim, issue_id, original_id, body, fresh, grant):
+        prefix, _, human = body.partition('\n\n')
+        match = re.fullmatch(r'<!-- stokowski:state (.{1,4096}) -->', prefix)
+        require(match is not None and bool(human), 'authority_successor_tracking_marker')
+        marker = decode(match[1].encode(), limit=8192)
+        run = marker.get('run')
+        require(type(run) is int and run > 0 and marker.get('state') == 'investigate'
+                and set(marker) in ({'state', 'run', 'timestamp'}, {'state', 'run', 'timestamp', 'workflow'}),
+                'authority_successor_tracking_marker')
+        identity = intake_identity('OffMenu', issue_id, grant.scope_sha256, run)
+        require(fresh['attempt_id'] == grant.attempts[0] == f'cf-intake-{identity}-assess'
+                and claim.attempt_id == f'cf-intake-{identity}-investigate'
+                and claim.attempt_id in grant.attempts, 'authority_successor_tracking_attempt')
+        return self._retain_tracking_clock(claim, issue_id, original_id, body, prefix, human, marker, '.state-clock')
+
+    def _retain_tracking_clock(self, claim, issue_id, original_id, body, prefix, human, marker, suffix):
         stamp = marker['timestamp']
         pattern = r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{6})?\+00:00'
         require(type(stamp) is str and re.fullmatch(pattern, stamp) is not None,
@@ -1485,7 +1504,7 @@ class NativeComposition:
         semantic = prefix.replace(field, '"timestamp": null', 1) + '\n\n' + human
         item = self.installation()['assignments'][issue_id]
         directory = Path(item['workspace_binding']['path']) / '.git/uif-original-effects'
-        filename = original_id + '.gate-clock'
+        filename = original_id + suffix
         directory.mkdir(mode=0o700, exist_ok=True)
         require(directory == directory.resolve(strict=True), 'authority_private_receipt_directory')
         fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -1525,6 +1544,21 @@ class NativeComposition:
                 and raw == wire(saved), 'authority_waiting_gate_semantics_changed')
         datetime.fromisoformat(prior)
         return prefix.replace(field, f'"timestamp": "{prior}"', 1) + '\n\n' + human
+
+    def _retain_investigation_tracking_intent(self, operation):
+        """Only the writer of the first durable original may submit this marker."""
+        item = self.installation()['assignments'][operation.fence.scope.key.issue_id]
+        directory = Path(item['workspace_binding']['path']) / '.git/uif-original-effects'
+        name = operation.original_id + '.linear'
+        raw = wire(asdict(operation))
+        with _handoff_directory(directory) as fd:
+            try:
+                _publish_private_original(fd, name, raw, prefix='.state-intent-')
+                first = True
+            except FileExistsError:
+                first = False
+            require(_retained_handoff_bytes(fd, name, 8192) == raw, 'authority_successor_tracking_intent_changed')
+        return first
 
     def retained_linear(self, operation):
         """Keep the original fingerprint before a possibly partial network effect."""
@@ -1594,6 +1628,20 @@ class NativeComposition:
         if fresh is not None:
             require(claim.attempt_id == fresh.claim.attempt_id and claim.lease.fence == fresh.claim.lease.fence,
                     'authority_assessment_report_fence')
+        successor_tracking = False
+        if (kind == 'comment' and slot == '_announce_state' and type(body) is str
+                and body.startswith('<!-- stokowski:state {"state": "investigate",')):
+            mark = self.installation()['assignments'][issue_id].get('fresh_assessment')
+            if mark is not None:
+                require(claim.attempt_id != mark['attempt_id'], 'authority_assessment_tracking_not_admitted')
+                grant, _ = self._running.get()
+                original_id = self._linear_original_id(claim.lease.fence, claim.attempt_id, slot, kind)
+                body = self._investigation_tracking_body(claim, issue_id, original_id, body, mark, grant)
+                payload = dict(payload, body=body)
+                current = self.current(issue_id)
+                require(current.lease.fence == claim.lease.fence and current.attempt_id == claim.attempt_id,
+                        'authority_successor_tracking_claim_changed')
+                successor_tracking = True
         if (kind == 'comment' and slot == '_enter_gate' and type(body) is str
                 and body.startswith('<!-- stokowski:gate ')):
             original_id = self._linear_original_id(claim.lease.fence, claim.attempt_id, slot, kind)
@@ -1605,9 +1653,14 @@ class NativeComposition:
         # Different semantic bytes for the same native stage and effect slot
         # remain a conflict. A clock-only retry recovers the exact first bytes.
         op = self._linear_operation(claim.lease.fence, claim.attempt_id, slot, kind, payload)
-        self.retained_linear(op)
+        if successor_tracking:
+            may_submit = self._retain_investigation_tracking_intent(op)
+        else:
+            self.retained_linear(op)
+            may_submit = True
         result = self.remote.transport.request('/v1/linear/receipt', {'operation': asdict(op)}, allow_absent=True)
         if result is None:
+            require(may_submit, 'authority_successor_tracking_outcome_unknown')
             try:
                 result = self.remote.transport.request('/v1/linear/' + kind,
                             {'operation': asdict(op), 'attempt_id': claim.attempt_id, **payload})
