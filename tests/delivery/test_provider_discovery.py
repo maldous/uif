@@ -1,6 +1,7 @@
 import asyncio
 from dataclasses import replace
 import unittest
+from unittest.mock import AsyncMock, patch
 
 from uif.provider_discovery import Adapter, NormalProviderDiscovery
 from uif.provider_pool import PoolRequest, ProviderRoute, RouteAvailability
@@ -8,6 +9,30 @@ from uif.quota_handoff import LinearKey
 
 
 class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
+    async def test_unavailable_metadata_backs_off_and_fresh_evidence_resets_delay(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        route = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                              "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                              frozenset({"author"}))
+        read = AsyncMock(side_effect=[RuntimeError()] * 4 + [None, "fresh", RuntimeError(), None])
+        adapter = Adapter(route, read, lambda evidence, request: None)
+        discovery = NormalProviderDiscovery((adapter,), clock=lambda: 100, interval=30, timeout=8)
+        delays = []
+        evidence = []
+
+        async def sleep(delay):
+            delays.append(delay)
+            evidence.append(discovery._evidence.get(route.route_id))
+            if len(delays) == 8:
+                raise asyncio.CancelledError
+
+        with patch('uif.provider_discovery.asyncio.sleep', side_effect=sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                await discovery._poll(adapter)
+
+        self.assertEqual(delays, [30, 60, 120, 240, 300, 30, 30, 60])
+        self.assertEqual(evidence, [None] * 5 + ["fresh", None, None])
+
     async def test_normal_runtime_refresh_resumes_independently(self):
         key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
         a = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
