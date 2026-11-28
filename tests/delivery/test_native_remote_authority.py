@@ -358,6 +358,31 @@ class NativeRemoteTest(unittest.TestCase):
             self.assertIsNone(transport.request('/v1/claim/read',{},allow_absent=True))
             self.assertEqual(http.call_count,3)
 
+    def test_usage_cooldown_preserves_valid_http_hints_without_retrying_any_request(self):
+        from uif.provider_discovery import ProviderReadCooldown
+
+        with patch('uif.stokowski_cloudflare.remote_authority.HTTPSConnection') as http, \
+             patch('uif.stokowski_cloudflare.remote_authority.protected_record', return_value={
+                 'client_id': 'fixture', 'client_secret': 'fixture-value'}), \
+             patch('uif.stokowski_cloudflare.remote_authority.datetime') as clock:
+            clock.now.return_value = datetime(2026, 11, 28, 10, tzinfo=timezone.utc)
+            reply = http.return_value.getresponse.return_value
+            transport = AccessTransport('https://authority.example', '/unused')
+            for status, header, seconds in ((429, '600', 600),
+                    (503, 'Sat, 28 Nov 2026 10:02:00 GMT', 120)):
+                reply.status, reply.getheader.return_value = status, header
+                with self.assertRaises(ProviderReadCooldown) as cooldown:
+                    transport.request('/v1/usage/read', {})
+                self.assertEqual(cooldown.exception.delay_seconds, seconds)
+            reply.status, reply.getheader.return_value = 429, '1, 300'
+            with self.assertRaisesRegex(Hold, 'authority_http_429'):
+                transport.request('/v1/usage/read', {})
+            reply.getheader.return_value = '600'
+            with self.assertRaisesRegex(Hold, 'authority_http_429'):
+                transport.request('/v1/send', {}, provider=True)
+            self.assertEqual(http.return_value.request.call_count, 4)
+            reply.read.assert_not_called()
+
     def test_raw_recovery_digest_detects_untracked_retained_and_index_changes(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)
