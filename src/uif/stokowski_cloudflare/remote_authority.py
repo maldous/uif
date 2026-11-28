@@ -258,6 +258,35 @@ def _recovery_lease(value):
     return lease
 
 
+def unstarted_transition(grant, identity, realm, body):
+    """Validate and fingerprint a retained recipient request, without authenticating it."""
+    pinned_sha(realm)
+    require(type(body) is dict and body.keys() == {'request_id', 'current', 'successor_session',
+            'expected_coordinator_epoch', 'quiesced_sha256', 'reconstruction_sha256', 'recovery'},
+            'authority_recovery_request')
+    request_id = token(body['request_id'])
+    pinned_sha(body['quiesced_sha256'])
+    recovery = body['recovery']
+    require(type(recovery) is dict and recovery.keys() == {'attempt_id', 'revocation_id'},
+            'authority_recovery_originals')
+    token(recovery['revocation_id'])
+    fence = _recovery_lease(body['current']).fence
+    require(type(grant) is NativeAssignment and grant.previous is None
+            and fence.scope == grant.scope and fence.source == grant.source and fence.generation == 1
+            and (fence.authority_id, fence.deployment_sha256, fence.policy_sha256)
+                == (identity.authority_id, identity.deployment_sha256, identity.policy_sha256)
+            and fence.owner_session != body['successor_session'] == identity.session_id
+            and type(body['expected_coordinator_epoch']) is int
+            and fence.coordinator_epoch == body['expected_coordinator_epoch'] == grant.expected_coordinator_epoch
+            and body['reconstruction_sha256'] == grant.reconstruction_sha256
+            and recovery['attempt_id'] == grant.attempts[0], 'authority_recovery_assignment')
+    kind = 'uif.shared-lease.recover-unstarted/1'
+    return fence, {
+        'installation_sha256': realm, 'session_id': identity.session_id, 'request_id': request_id,
+        'request_kind': kind, 'request_sha256': digest({'kind': kind, 'request': dict(body, authority=asdict(identity))}),
+    }
+
+
 class RemoteAuthority:
     def __init__(self, transport, *, native, quota_issuer, route, repository_id,
                  workspace_id, project_id, reviewer_route=None, clock=None):
@@ -360,51 +389,36 @@ class RemoteAuthority:
         exact submitted handoff body together. This readback cannot prepare a
         workspace, issue a claim, or recreate a missing transition.
         """
-        binding = protected_record(binding_path)
+        return self._observe_unstarted_binding(grant, protected_record(binding_path))
+
+    def _observe_unstarted_binding(self, grant, binding, *, workspace_transition=None):
+        """Caller loads both inputs through the protected installation reader."""
         require(type(binding) is dict and binding.keys() == {'installation_sha256', 'handoff'},
                 'authority_recovery_binding')
-        realm = pinned_sha(binding['installation_sha256'])
+        realm = binding['installation_sha256']
         body = binding['handoff']
-        require(type(body) is dict and body.keys() == {'request_id', 'current', 'successor_session',
-                'expected_coordinator_epoch', 'quiesced_sha256', 'reconstruction_sha256', 'recovery'},
-                'authority_recovery_request')
-        request_id = token(body['request_id'])
-        pinned_sha(body['quiesced_sha256'])
-        recovery = body['recovery']
-        require(type(recovery) is dict and recovery.keys() == {'attempt_id', 'revocation_id'},
-                'authority_recovery_originals')
-        token(recovery['revocation_id'])
-        fence = _recovery_lease(body['current']).fence
         identity = self.identity
-        require(type(grant) is NativeAssignment and grant.previous is None
-                and fence.scope == grant.scope and fence.source == grant.source and fence.generation == 1
-                and (fence.scope.repository_id, fence.scope.key.workspace_id, fence.scope.key.project_id)
-                    == (self.repository_id, self.workspace_id, self.project_id)
-                and (fence.authority_id, fence.deployment_sha256, fence.policy_sha256)
-                    == (identity.authority_id, identity.deployment_sha256, identity.policy_sha256)
-                and fence.owner_session != body['successor_session'] == identity.session_id
-                and type(body['expected_coordinator_epoch']) is int
-                and fence.coordinator_epoch == body['expected_coordinator_epoch'] == grant.expected_coordinator_epoch
-                and body['reconstruction_sha256'] == grant.reconstruction_sha256
-                and recovery['attempt_id'] == grant.attempts[0], 'authority_recovery_assignment')
+        fence, transition = unstarted_transition(grant, identity, realm, body)
+        if workspace_transition is not None:
+            require(transition == workspace_transition, 'authority_recovery_workspace_transition')
+        attempt = body['recovery']['attempt_id']
+        require((fence.scope.repository_id, fence.scope.key.workspace_id, fence.scope.key.project_id)
+                == (self.repository_id, self.workspace_id, self.project_id), 'authority_recovery_assignment')
         status = self.status()
         require(status.get('installation_sha256') == status.get('commissioned_sha256') == realm
                 and not status['stopped'] and status['coordinator_epoch'] == fence.coordinator_epoch,
                 'authority_recovery_realm_or_epoch')
-        reply = self.transport.request('/v1/transition/original', {
-            'installation_sha256': realm, 'session_id': identity.session_id, 'request_id': request_id},
-            allow_absent=True)
-        kind = 'uif.shared-lease.recover-unstarted/1'
+        lookup = {k: transition[k] for k in ('installation_sha256', 'session_id', 'request_id')}
+        reply = self.transport.request('/v1/transition/original', lookup, allow_absent=True)
         require(type(reply) is dict and reply.keys() ==
                 {'request_id', 'request_kind', 'request_sha256', 'attempt_id', 'lease'}
-                and reply['request_kind'] == kind and reply['request_id'] == request_id
-                and reply['request_sha256'] == digest({'kind': kind, 'request': dict(body, authority=asdict(identity))})
-                and reply['attempt_id'] == recovery['attempt_id'], 'authority_recovery_receipt')
+                and all(reply[k] == transition[k] for k in ('request_kind', 'request_id', 'request_sha256'))
+                and reply['attempt_id'] == attempt, 'authority_recovery_receipt')
         moved = _recovery_lease(reply['lease'])
         require(moved.fence.lease_id != fence.lease_id
                 and moved.fence == replace(fence, owner_session=identity.session_id,
                     generation=fence.generation + 1, lease_id=moved.fence.lease_id), 'authority_recovery_fence')
-        current = self.read_claim('OffMenu', recovery['attempt_id'], True)
+        current = self.read_claim('OffMenu', attempt, True)
         require(current is not None and current.lease.fence == moved.fence
                 and current.lease.expires_at >= moved.expires_at
                 and self.clock().timestamp() < current.lease.expires_at, 'authority_recovery_not_current')
