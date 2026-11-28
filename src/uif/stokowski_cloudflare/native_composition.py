@@ -41,10 +41,12 @@ from .remote_authority import AccessTransport, AuthorityUnavailable, NativeAssig
 from .shared_admission import NativeClaim
 from .remote_source import SourceTools, pinned_members, review_diff
 
-# The installed native caller has fixed, reviewed source bytes. Only these
-# direct public read methods can reach its original authenticated client.
+# Public read methods delegated to the original authenticated client.
 _LINEAR_READS = frozenset({'fetch_candidate_issues', 'fetch_issue', 'fetch_issue_snapshots',
     'fetch_issue_states_by_ids', 'fetch_issues_by_states', 'fetch_comments', 'fetch_team_labels', 'close'})
+# Exact native _publication_comments query. Stokowski owns pagination and
+# completeness checks. The underlying GraphQL transport can also mutate.
+_PUBLICATION_COMMENTS_QUERY_SHA256 = '74cbcfc005ced889591a1e7c2d0f289c759a0ce1e2824cbfdd7ce4a5de36b795'
 
 
 def _preserve(directory, filename, content):
@@ -1576,6 +1578,18 @@ class _LinearClient:
         if name in _LINEAR_READS:
             return getattr(self._reader, name)
         raise AttributeError(name)
+
+    async def _graphql(self, query, variables):
+        require(type(query) is str and query.isascii()
+                and sha256(query.encode()).hexdigest() == _PUBLICATION_COMMENTS_QUERY_SHA256,
+                'authority_linear_publication_comments_query')
+        require(type(variables) is dict and variables.keys() == {'issueId', 'after'},
+                'authority_linear_publication_comments_variables')
+        issue_id, after = variables['issueId'], variables['after']
+        require(type(issue_id) is str and bool(issue_id)
+                and (after is None or type(after) is str and bool(after)),
+                'authority_linear_publication_comments_variables')
+        return await self._reader._graphql(query, {'issueId': issue_id, 'after': after})
 
     async def post_comment(self, issue_id, body):
         return await asyncio.to_thread(self._composition.linear, 'comment', issue_id, {'body': body})
