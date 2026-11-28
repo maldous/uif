@@ -1,5 +1,9 @@
 """Assessment terminal evidence join, detached from the native phase writer."""
+from contextlib import contextmanager
 from dataclasses import asdict
+import fcntl
+import os
+import stat
 from hashlib import sha256
 
 from ..effect_authority import Lease, TerminalEffect, pinned_sha, wire_seconds
@@ -166,7 +170,6 @@ def observe_consumed_fresh_assessment_successor(composition, issue, run, scope_s
 def _retain_first_request(directory, name, body, before_publish):
     """Only the creator of a durably retained request may make its first POST."""
     from .native_composition import _handoff_directory, _publish_private_original, _retained_handoff_bytes
-    import os
     raw = wire(body)
     require(len(raw) <= 8192, 'assessment_successor_request_size')
     # This directory already contains the marked first assessment's originals.
@@ -256,3 +259,72 @@ def advance_marked_assessment(composition, owner, issue, attempt, verify_owner):
             require(raw == wire(observed), 'assessment_successor_cas_original')
     verify_owner()
     return observed
+
+
+def _saved_native_settlement(workspace):
+    from .native_composition import _clock_file_identity
+    path = workspace / '.stokowski/settlement.json'
+    require(path == path.resolve(strict=True), 'assessment_successor_saved_disposition')
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        require(stat.S_ISREG(info.st_mode) and info.st_uid == os.geteuid() and info.st_nlink == 1
+                and 0 < info.st_size <= 1024 * 1024, 'assessment_successor_saved_disposition')
+        saved = decode(stream.read(info.st_size + 1), limit=1024 * 1024)
+        require(_clock_file_identity(info) == _clock_file_identity(os.fstat(stream.fileno()))
+                == _clock_file_identity(path.lstat()), 'assessment_successor_saved_disposition')
+        return saved
+
+
+def _settlement_subject(workspace, advance, record):
+    from .native_composition import workspace_recovery_digest
+    disposition = record['post_disposition']
+    normalized = dict(record, phase='transition', report_posted=True, event=disposition['event'],
+                      target=disposition.get('target'), report=disposition.get('report'),
+                      publication_event=disposition.get('publication_event'))
+    normalized.pop('attempted', None)
+    return {'advance': advance, 'disposition_sha256': digest(normalized),
+            'workspace_except_settlement': workspace_recovery_digest(workspace, exclude_native_settlement=True)}
+
+
+def completed_successor_workspace(workspace, directory_fd, advance):
+    from .native_composition import _retained_handoff_bytes
+    try:
+        raw = _retained_handoff_bytes(directory_fd, advance['request_id'] + '.successor-settlement', 8192)
+    except FileNotFoundError:
+        return False
+    saved = _saved_native_settlement(workspace)
+    disposition = saved.get('post_disposition')
+    require(type(disposition) is dict and saved.get('phase') == 'complete' and saved.get('attempted') is True
+            and saved.get('report_posted') is True and saved.get('event') == disposition.get('event') == 'complete'
+            and saved.get('target') == disposition.get('target') == 'investigate'
+            and saved.get('report') == disposition.get('report')
+            and saved.get('publication_event') == disposition.get('publication_event')
+            and raw == wire(_settlement_subject(workspace, advance, saved)),
+            'authority_successor_completed_workspace_changed')
+    return True
+
+
+@contextmanager
+def unattempted_native_settlement(workspace, advance, record, verify):
+    """Serialize recovery across processes until the pinned native writer leaves its durable preimage."""
+    from .native_composition import _clock_file_identity, _handoff_directory, _retained_handoff_bytes
+    subject = _settlement_subject(workspace, advance, record)
+    directory = workspace / '.git/uif-original-effects'
+    name = advance['request_id'] + '.successor-settlement'
+    _, saved = _retain_first_request(directory, name, subject, verify)
+    require(saved == subject, 'assessment_successor_settlement_original_changed')
+    with _handoff_directory(directory) as parent:
+        with os.fdopen(os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent), 'rb') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise ValueError('assessment_successor_settlement_in_progress') from None
+            require(_clock_file_identity(os.fstat(lock.fileno())) ==
+                    _clock_file_identity(os.stat(name, dir_fd=parent, follow_symlinks=False))
+                    and _retained_handoff_bytes(parent, name, 8192) == wire(subject),
+                    'assessment_successor_settlement_original_changed')
+            verify()
+            saved = _saved_native_settlement(workspace)
+            require(wire(saved) == wire(record) and saved['phase'] in ('report-unknown', 'transition')
+                    and not saved.get('attempted'), 'assessment_successor_settlement_already_attempted')
+            yield
