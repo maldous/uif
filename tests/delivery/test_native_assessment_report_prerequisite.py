@@ -2,7 +2,7 @@
 import ast
 import asyncio
 from copy import deepcopy
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from functools import wraps
 import hashlib
@@ -12,15 +12,17 @@ import os
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
+from threading import Event
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from uif.handoff_store import Hold, wire
 from uif.stokowski_cloudflare.assessment_readiness import project_assessment_readiness
 from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
 from uif.stokowski_cloudflare.intake import intake_stages
-from uif.stokowski_cloudflare.native import _native_report
+from uif.stokowski_cloudflare.native import NativeTurnBinding, _native_report, install_native_runner
+from uif.stokowski_cloudflare.turn import Attempt
 from uif.stokowski_cloudflare.native_composition import (
     NativeComposition, _COMMENT_SLOTS, _FreshAssessmentExecution, _LinearClient,
     _VerifiedAssessmentReport, install_sinks,
@@ -34,7 +36,7 @@ PINS = {
     'dependencies.py': '298694e9b728041716843a6f99a43671dbc0c6a75e3f67a25c9c4ca6aef36d06',
 }
 PATCH = Path(__file__).resolve().parents[2] / 'tools/delivery/stokowski-verified-assessment-report.patch'
-PATCHED_ORCHESTRATOR_SHA256 = '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96'
+PATCHED_ORCHESTRATOR_SHA256 = '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38'
 
 
 class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
@@ -121,6 +123,170 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         self.owner._finish_worker_bookkeeping = Mock()
         self.owner._settlement_path = lambda issue: self.workspace
         self.owner._save_settlement = Mock(side_effect=lambda issue, data: self.saved.append(deepcopy(data)))
+
+    def reconcile_owner(self, issue, attempt, task, state_reader, remove_workspace):
+        names = ('_reconcile', '_observe_terminal', '_on_worker_exit', '_finish_worker_bookkeeping')
+        methods = self.source('orchestrator.py', names, owner='Orchestrator', patched=True,
+                              **dict(self.native_bindings, replace=replace, Issue=SimpleNamespace,
+                                     remove_workspace=remove_workspace))
+        owner = type('RecipientNativeFixture', (), {name: getattr(methods, name) for name in names})()
+        owner.running = {issue.id: attempt}
+        owner._tasks = {issue.id: task}
+        owner.claimed = {issue.id}
+        owner._last_issues = {issue.id: issue}
+        owner.cfg = SimpleNamespace(
+            terminal_linear_states=lambda: ['Done'], active_linear_states=lambda: ['Active'],
+            linear_states=SimpleNamespace(review='Review'),
+            workspace=SimpleNamespace(resolved_root=lambda: self.workspace.parent),
+            hooks=SimpleNamespace(),
+        )
+        owner._ensure_linear_client = lambda: SimpleNamespace(fetch_issue_states_by_ids=state_reader)
+        owner._release_slot = Mock()
+        owner._states_for = lambda _: {}
+        owner._resume_settlement = AsyncMock()
+        owner._issue_current_state = {issue.id: 'assess'}
+        owner._issue_state_runs = {issue.id: 1}
+        owner._pending_gates = {}
+        owner._last_session_ids = {}
+        owner._last_completed_at = {}
+        owner._consume_retry = Mock()
+        owner._announced_states = set()
+        for field in ('input_tokens', 'output_tokens', 'cache_creation_tokens',
+                      'cache_read_tokens', 'tokens', 'cost_usd', 'tool_calls'):
+            setattr(owner, 'total_' + field, 0)
+        return owner
+
+    async def test_patched_reconcile_keeps_recipient_workspace_until_actual_executor_returns(self):
+        issue = self.issue
+        attempt = SimpleNamespace(
+            issue_id=issue.id, issue_identifier=issue.identifier, state_name='assess',
+            status='pending', _uif_retained_recipient=True, turn_count=0, started_at=None,
+            input_tokens=0, output_tokens=0, cache_creation_tokens=0, cache_read_tokens=0,
+            total_tokens=0, cost_usd=0, tool_call_count=0,
+        )
+        original_receipt = self.workspace / 'original-receipt'
+        original_receipt.write_bytes(b'original')
+        original_runner = AsyncMock(side_effect=AssertionError('Codex must remain unused'))
+        runner = SimpleNamespace(run_turn=original_runner)
+        orchestration = SimpleNamespace(run_turn=original_runner)
+        binding = NativeTurnBinding(
+            issue.id, self.workspace, Attempt('OffMenu', 'recipient'), (), (),
+            prepare_turn_thread=lambda bound, check: bound,
+        )
+        install_native_runner(
+            runner, orchestration, mode='cloudflare', client=Mock(),
+            authorize_turn=lambda *_: binding, codex_available=lambda _: False,
+            active_projects=lambda: {'OffMenu'},
+        )
+        ready = asyncio.Event()
+        ended = Event()
+        release = Event()
+        loop = asyncio.get_running_loop()
+        stop = {}
+
+        def physical_turn(*args, cancelled, **kwargs):
+            stop['active'] = cancelled
+            loop.call_soon_threadsafe(ready.set)
+            self.assertTrue(release.wait(2))
+            ended.set()
+            return 'original result'
+
+        async def worker():
+            try:
+                await runner.run_turn('cloudflare',
+                    SimpleNamespace(permission_mode='plan', turn_timeout_ms=5000),
+                    None, 'fixture', self.workspace, issue, attempt)
+            except asyncio.CancelledError:
+                attempt.status = 'canceled'
+                await owner._on_worker_exit(issue, attempt)
+
+        state_reader = AsyncMock(return_value={issue.id: 'Active'})
+        remove = AsyncMock()
+        with patch('uif.stokowski_cloudflare.native.run_turn', side_effect=physical_turn) as physical:
+            selected = asyncio.create_task(worker())
+            owner = self.reconcile_owner(issue, attempt, selected, state_reader, remove)
+            try:
+                await asyncio.wait_for(ready.wait(), 2)
+                await owner._reconcile()
+                self.assertEqual(attempt.status, 'running')
+                self.assertEqual(selected.cancelling(), 0)
+                terminal = SimpleNamespace(id=issue.id, state='Done')
+                self.assertFalse(owner._observe_terminal(issue, terminal, expected_attempt=attempt))
+
+                state_reader.return_value = {issue.id: 'Done'}
+                await owner._reconcile()
+                async with asyncio.timeout(2):
+                    while not stop['active']():
+                        await asyncio.sleep(0)
+                await owner._reconcile()
+                self.assertEqual(selected.cancelling(), 1)
+                self.assertIs(owner.running[issue.id], attempt)
+                self.assertIs(owner._tasks[issue.id], selected)
+                self.assertIn(issue.id, owner.claimed)
+                self.assertFalse(ended.is_set())
+                owner._release_slot.assert_not_called()
+                remove.assert_not_awaited()
+                self.assertEqual(original_receipt.read_bytes(), b'original')
+            finally:
+                release.set()
+                await asyncio.wait_for(selected, 2)
+            physical.assert_called_once()
+        self.assertTrue(ended.is_set())
+        self.assertNotIn(issue.id, owner.running)
+        self.assertNotIn(issue.id, owner._tasks)
+        self.assertNotIn(issue.id, owner.claimed)
+        owner._release_slot.assert_called_once_with(issue.id)
+        remove.assert_not_awaited()
+        self.assertEqual(original_receipt.read_bytes(), b'original')
+
+    async def test_patched_reconcile_cannot_apply_a_stale_terminal_read_to_replacement(self):
+        issue = self.issue
+        old = SimpleNamespace(status='running', _uif_retained_recipient=True)
+        replacement = SimpleNamespace(status='running', _uif_retained_recipient=True)
+        let_tasks_end = asyncio.Event()
+        old_task = asyncio.create_task(let_tasks_end.wait())
+        new_task = asyncio.create_task(let_tasks_end.wait())
+        reading = asyncio.Event()
+        allow_state = asyncio.Event()
+
+        async def state_read(ids):
+            self.assertEqual(ids, [issue.id])
+            reading.set()
+            await allow_state.wait()
+            return {issue.id: 'Done'}
+
+        remove = AsyncMock()
+        owner = self.reconcile_owner(issue, old, old_task, state_read, remove)
+        reconcile = asyncio.create_task(owner._reconcile())
+        try:
+            await asyncio.wait_for(reading.wait(), 2)
+            owner.running[issue.id] = replacement
+            owner._tasks[issue.id] = new_task
+            allow_state.set()
+            await asyncio.wait_for(reconcile, 2)
+            self.assertIs(owner.running[issue.id], replacement)
+            self.assertIs(owner._tasks[issue.id], new_task)
+            self.assertEqual(new_task.cancelling(), 0)
+            owner._release_slot.assert_not_called()
+            remove.assert_not_awaited()
+        finally:
+            let_tasks_end.set()
+            allow_state.set()
+            await asyncio.gather(old_task, new_task, reconcile, return_exceptions=True)
+
+    async def test_patched_reconcile_preserves_ordinary_terminal_cleanup(self):
+        issue = self.issue
+        attempt = SimpleNamespace(status='running', issue_identifier=issue.identifier)
+        task = asyncio.create_task(asyncio.sleep(0))
+        await task
+        remove = AsyncMock()
+        owner = self.reconcile_owner(
+            issue, attempt, task, AsyncMock(return_value={issue.id: 'Done'}), remove,
+        )
+        await owner._reconcile()
+        remove.assert_awaited_once_with(self.workspace.parent, issue.identifier, owner.cfg.hooks)
+        owner._release_slot.assert_called_once_with(issue.id)
+        self.assertNotIn(issue.id, owner.running)
 
     def prepared_attempt(self, raw):
         record = dict(phase='report-unknown', state='assess', run=1, kind='worker',
