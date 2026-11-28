@@ -14,6 +14,7 @@ import {
 
 // The existing authority owns the candidate bytes. There is no checkout, shell,
 // filesystem pointer, deferred write token or second owner on this path.
+export const recoveryEntryMutations = true;
 export const sourceTables = [
   'CREATE TABLE IF NOT EXISTS source_attempts (attempt TEXT PRIMARY KEY, fence TEXT NOT NULL, approval TEXT NOT NULL, revision INTEGER NOT NULL, byte_count INTEGER NOT NULL, history_bytes INTEGER NOT NULL, sealed TEXT)',
   'CREATE TABLE IF NOT EXISTS source_recovery (attempt TEXT NOT NULL,session TEXT NOT NULL,anchor TEXT NOT NULL,PRIMARY KEY(attempt,session))',
@@ -284,7 +285,7 @@ async function bind(a, b, peer) {
 function sizeOf(s) {
   return s === null ? 0 : (s.length / 4) * 3 - (s.endsWith('==') ? 2 : s.endsWith('=') ? 1 : 0);
 }
-async function write(a, b, peer, operationShape) {
+async function write(a, b, peer, operationShape, rawPermit) {
   fields(
     b,
     'operation',
@@ -328,6 +329,7 @@ async function write(a, b, peer, operationShape) {
     need(equal(previous.operation, op), 'original_operation_changed');
     return previous;
   }
+  const permitHash = await a.recoveryPermitHash(f, ref.attempt_id, peer, rawPermit);
   const tool = instruction(a, peer, f, ref, b.path);
   const result = {
     revision: b.expected_revision + 1,
@@ -363,6 +365,7 @@ async function write(a, b, peer, operationShape) {
     need(equal(tool, instruction(a, peer, f, ref, b.path)), 'original_source_tool_changed');
     changeMatches(current, after.value, tool);
     authorize(a, peer, f, ref.attempt_id, null, true);
+    a.requireRecoveryPermit(f, ref.attempt_id, permitHash);
     a.put(
       "INSERT INTO effects VALUES (?,?,?,?,NULL,0,'verified',?,?)",
       id,
@@ -494,11 +497,11 @@ async function historical(a, path, b, peer, operationShape) {
     sealed: latest.revision === b.revision && latest.sealed === hash,
   };
 }
-export async function sourceRoute(a, path, b, peer, operationShape) {
+export async function sourceRoute(a, path, b, peer, operationShape, rawPermit) {
   if (path === '/v1/source/original' || path === '/v1/source/recovery/revoke')
     return historical(a, path, b, peer, operationShape);
   if (path === '/v1/source/bind') return bind(a, b, peer);
-  if (path === '/v1/source/write') return write(a, b, peer, operationShape);
+  if (path === '/v1/source/write') return write(a, b, peer, operationShape, rawPermit);
   const action = path.slice('/v1/source/'.length),
     pairs = {
       list: [],
@@ -538,15 +541,20 @@ export async function sourceRoute(a, path, b, peer, operationShape) {
     return r;
   }
   need(uint(b.revision) && o.revision === b.revision, 'source_revision_changed');
+  // An already sealed candidate is readback, including for an admitted reviewer.
   const artifact = candidate(a, b, o),
-    candidate_sha256 = await digest(artifact);
+    candidate_sha256 = await digest(artifact),
+    permitHash = o.sealed ? undefined : await a.recoveryPermitHash(f, b.attempt_id, peer, rawPermit);
   return a.store.transactionSync(() => {
     const latest = context();
     need(
       latest.revision === b.revision && (!latest.sealed || latest.sealed === candidate_sha256),
       'source_revision_changed',
     );
-    a.put('UPDATE source_attempts SET sealed=? WHERE attempt=?', candidate_sha256, b.attempt_id);
+    if (!latest.sealed) {
+      a.requireRecoveryPermit(f, b.attempt_id, permitHash);
+      a.put('UPDATE source_attempts SET sealed=? WHERE attempt=?', candidate_sha256, b.attempt_id);
+    }
     return { candidate: artifact, candidate_sha256 };
   });
 }
