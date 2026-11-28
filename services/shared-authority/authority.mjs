@@ -561,7 +561,9 @@ export class Authority {
       return this.receipt(peer, body.request_id, path, body, () => {
         const ctl = this.control();
         need(ctl.epoch === body.expected_coordinator_epoch, 'control_epoch_changed');
-        const epoch = ctl.epoch + (!!ctl.stopped !== body.stopped ? 1 : 0);
+        // A new explicit stop supersedes prepared activations even when already stopped.
+        // receipt() has already returned any matching original before this transaction body.
+        const epoch = body.stopped || ctl.stopped ? ctl.epoch + 1 : ctl.epoch;
         if (bindsStartup) {
           need(body.startup.coordinator_epoch === epoch &&
             body.startup.previous_request_id === (this.normalStartup()?.request_id ?? null),
