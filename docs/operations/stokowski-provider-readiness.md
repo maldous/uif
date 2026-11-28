@@ -60,6 +60,33 @@ dispatch authority. Existing route admission governs live use.
 | **Anthropic Messages / Claude Code** | Messages uses Anthropic API credentials and billing; signed-in headless Claude Code has separate entitlement. No current eligible binding or included-only allowance established for either. |
 | **Other typed candidates / local runtimes** | Legacy metadata-only tooling checks catalogues for Hugging Face and Nous, account state for Fireworks, and balance for DeepSeek; none is an inference receipt. Cerebras, Cohere, Mistral, NVIDIA, SambaNova, Together and Z.ai are disabled references, not usable routes. Codebuff/Ollama drafts do not establish a qualified relay or local daemon. GitHub Models is [retired](https://docs.github.com/en/github-models), not the Copilot CLI. |
 
+### Refresh the provider catalogue
+
+Use the existing Foo Windmill connection to list named provider references and
+their resource, variable, or script metadata. If the owner supplies a Foo Bashrc
+binding, use its named reference through that owner-approved interface. Keep
+credential resolution and provider requests with the authorized runtime. A
+missing or inaccessible reference holds that direct route independently of
+other bindings.
+
+The existing catalogue projector reads the `data[].id` shape for [OpenAI](https://developers.openai.com/api/reference/resources/models/methods/list),
+[Mistral Studio](https://docs.mistral.ai/api/endpoint/models), and
+[OpenRouter](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties).
+It also reads `models[].id` from the [xAI language catalogue](https://docs.x.ai/developers/rest-api-reference/inference/models#list-language-models).
+The projector retains explicit model IDs only. Its observations establish
+discovery and carry no pricing, quota, or dispatch permission.
+
+On refresh, a newly listed model can enter assessment under the existing owner.
+An unavailable, stale, or incomplete read cannot renew an earlier availability
+observation. Recheck an exact configured route before dispatch and reconcile any
+outstanding original under its original account and model. Treat direct API and
+router routes for the same model as separate bindings. A direct account, client,
+supported protocol, and usage window must qualify on their own. On OpenRouter,
+require the exact `vendor/model:free` model and a current no-cost route with the
+required tool support, approved data handling, bounded retries, and no alternate
+models or paid fallback. The first live scope remains the authorized OffMenu
+rollout under the existing shared reservation and effect fence.
+
 ### Reusable offline protocol fixtures from ANQR
 
 [ANQR #217](https://github.com/maldous/anqr/issues/217) records the archived

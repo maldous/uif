@@ -33,6 +33,14 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(result.models, ())
         self.assertFalse(result.complete)
 
+    def test_xai_language_models_records_only_explicit_ids(self):
+        model = "grok-test-snapshot"
+        result = observe("xai-language-models", {"models": [{
+            "id": model, "aliases": ["grok-latest"], "input_modalities": ["text"],
+            "prompt_text_token_price": 0, "completion_text_token_price": 0,
+        }]})
+        self.assertEqual(dataclasses.asdict(result), {"models": (model,), "complete": False})
+
     def test_invalid_input_never_becomes_a_positive_observation(self):
         for shape, payload in (
             ("some-url", {"data": [{"id": "some-model"}]}),
@@ -41,6 +49,8 @@ class CatalogueTests(unittest.TestCase):
             ("openai-models", {"data": [{"id": "\n"}]}),
             ("openai-models", {"data": [{"id": "a" * 193}]}),
             ("openai-models", {"data": [{"id": "a"}] * 4097}),
+            ("xai-language-models", {"data": [{"id": "grok-test"}]}),
+            ("xai-language-models", {"models": [{"aliases": ["grok-test"]}]}),
             ("gemini-models", {"models": [{"name": "model"}]}),
             ("cloudflare-workers-ai", {"success": False, "result": []}),
             ("windmill-model-audit", {"provider": "deepseek", "status": "balance_metadata_verified",

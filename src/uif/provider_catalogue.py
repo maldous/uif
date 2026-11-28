@@ -11,6 +11,7 @@ _ID = re.compile(r"[A-Za-z0-9@][A-Za-z0-9@./_:-]*")
 # The parser is selected by an installed caller, never by upstream JSON.
 _SHAPES = {
     "openai-models": ("data", "id", ""),
+    "xai-language-models": ("models", "id", ""),
     "gemini-models": ("models", "name", "models/"),
     "cloudflare-workers-ai": ("result", "name", ""),
     "codex-app-server": ("data", "model", ""),
