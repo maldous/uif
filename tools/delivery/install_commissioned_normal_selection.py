@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 import re
 import stat
+from tempfile import TemporaryDirectory
 
 import commissioned_normal_service as normal
 import commit_commissioned_normal_selection as transaction
@@ -16,10 +17,11 @@ import guarded_service_upgrade as guard
 import observe_guarded_normal_preimage as guarded
 import read_normal_effective_state as effective
 import stage_commissioned_normal_runtime as staging
-from install_guarded_idle_bootstrap import _publish_once, _sync_parent
+from install_guarded_idle_bootstrap import _publish_once, _rename_noreplace, _sync_parent
 
 
 _ROOT_UID = 0
+_UNOBSERVED = object()
 
 
 def _snapshot(path, modes):
@@ -46,6 +48,7 @@ class _FixedOwner:
         self.original = original
         self.members = staging._members(archive, original.staged)
         self.stream = None
+        self._selector_parent_pin = _UNOBSERVED
         self.selector = Path(normal.SELECTION)
         self.dropin = guard.DROPIN.with_name(normal.DROPIN)
 
@@ -64,6 +67,7 @@ class _FixedOwner:
                 self._locked()
             finally:
                 self.stream = None
+                self._selector_parent_pin = _UNOBSERVED
 
     def _read(self, path, modes):
         self._locked()
@@ -77,7 +81,29 @@ class _FixedOwner:
     def read_guarded_selector(self):
         return self._read(guard.SELECTOR, (0o444, 0o644))
 
+    def _selector_parent_absent(self):
+        self._locked()
+        parent = self.selector.parent
+        guard.protected_parents(parent)
+        try:
+            info = parent.lstat()
+        except FileNotFoundError:
+            guard.require(self.read_disk_receipt(self.original.operation_id) is None,
+                          'normal selector directory missing after recorded disk commit')
+            pin = None
+        else:
+            guard.require(stat.S_ISDIR(info.st_mode) and info.st_uid == _ROOT_UID
+                          and not info.st_mode & 0o022, 'normal selector directory is not protected')
+            pin = guard.lock_identity(info)
+        guard.require(self._selector_parent_pin is _UNOBSERVED or self._selector_parent_pin == pin,
+                      'normal selector directory changed during locked selection')
+        self._selector_parent_pin = pin
+        self._locked()
+        return pin is None
+
     def read_selector(self):
+        if self._selector_parent_absent():
+            return None
         return self._read(self.selector, (0o444,))
 
     def read_normal_dropin(self):
@@ -91,7 +117,26 @@ class _FixedOwner:
         self._locked()
 
     def publish_selector(self, prior, raw):
-        self._publish_absent(self.selector, prior, raw, 0o444)
+        if not self._selector_parent_absent():
+            self._publish_absent(self.selector, prior, raw, 0o444)
+            return
+        guard.require(prior is None and self.original.prior_selector_sha256 is None,
+                      'normal selector directory is not an absent first-install preimage')
+        # The transaction has persisted its intent and verified the guarded manager.
+        # Publish the complete directory and selector together without replacement.
+        parent = self.selector.parent
+        with TemporaryDirectory(prefix='.normal-selector-', dir=parent.parent) as temporary:
+            directory = Path(temporary)
+            selector = directory / self.selector.name
+            _publish_once(selector, 0o444, lambda out: out.write(raw))
+            # The service opens each ancestor as a read-only directory.
+            directory.chmod(0o755)
+            _sync_parent(selector)
+            self._locked()
+            pin = guard.lock_identity(directory.lstat())
+            _rename_noreplace(directory, parent)
+            self._selector_parent_pin = pin
+        self._locked()
 
     def publish_normal_dropin(self, prior, raw):
         self._publish_absent(self.dropin, prior, raw, 0o444)
@@ -127,6 +172,9 @@ class _FixedOwner:
 
     def sync_selector_parent(self):
         self._sync(self.selector)
+        # A lost acknowledgement can leave the directory visible before its
+        # own parent was synced. Commit that entry before publishing the drop-in.
+        self._sync(self.selector.parent)
 
     def sync_target_parents(self):
         self.sync_selector_parent()
