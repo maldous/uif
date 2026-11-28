@@ -71,6 +71,8 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
     else:
         from commissioned_normal_service import normal_entry_pins
         entry_pins = normal_entry_pins(stage, *commissioned_source)
+        src = src.replace('startup_verifier=None, idle_reason=None):',
+                          'startup_verifier=None, idle_reason=None, commissioned_no_route=False):')
         # Keep the existing stdin credential and operating directory. Only the
         # guarded-idle launcher resolves code from the historical native shelf.
         for legacy_path in ('    ROOT=Path("/opt/uif-stokowski/native-core-20261113-a1")\n',
@@ -98,7 +100,8 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
         except (OSError, ValueError):
             print("Stokowski commissioned normal adapter is not verified.", file=_StartupSys.stderr)
             raise SystemExit(78) from None'''
-        guard = '''    if idle_reason is not None:
+        guard = '''    if (type(commissioned_no_route) is not bool or idle_reason is not None
+            or (_RemoteComposition is None) != commissioned_no_route):
         raise SystemExit(78)
     import sys
     from uif.handoff_store import Hold
@@ -138,7 +141,10 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
               file=sys.stderr)
         raise SystemExit(78) from None
 
-    wait_for_normal_authority(_commissioned_verify)'''
+    wait_for_normal_authority(_commissioned_verify)
+    if commissioned_no_route:
+        from uif.stokowski_cloudflare.launcher import serve_commissioned_no_route_idle
+        return serve_commissioned_no_route_idle(_commissioned_verify)'''
     src = src.replace(ORIGINAL_GUARD, guard)
     # Isolated mode (-I -S -B) remains mandatory even before importing the adapter.
     # The installed package tree and interpreter are independently pinned by the
