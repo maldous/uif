@@ -363,6 +363,128 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
         await discovery.run(normal)
         remote.verify_usage.assert_called_once_with(proof.issuer, proof)
 
+    async def test_workers_roster_reports_fresh_coverage_and_expires_without_another_read(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from uif.stokowski_cloudflare.account_admission import (
+            LIMIT_MILLINEURONS, AccountUsageEvidence, FreeRoute,
+        )
+        from uif.stokowski_cloudflare.client import GLM_MODEL
+        from uif.stokowski_cloudflare.native_composition import NativeComposition
+        from uif.stokowski_cloudflare.shared_admission import AccountReservationSnapshot, AccountUsageReceipt
+
+        covered = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        now = covered + timedelta(seconds=10)
+        route = FreeRoute('a' * 32, GLM_MODEL, 'fixture-gateway', 'b' * 64)
+        proof = AccountUsageEvidence(route, '2026-11-25', covered, covered + timedelta(minutes=2),
+                                     20, 30, True, True)
+        snapshot = AccountReservationSnapshot(receipt_sha256='c' * 64,
+            observed_at=int(now.timestamp()), debt_millineurons=100, ceiling_breached=False)
+        receipt = AccountUsageReceipt(object(), 'c' * 64, proof, reservation_snapshot=snapshot)
+        remote = SimpleNamespace(
+            routes={'OffMenu': route}, clock=lambda: now,
+            workspace_id='00000000-0000-0000-0000-000000000001',
+            project_id='00000000-0000-0000-0000-000000000002',
+            read_usage=Mock(return_value=receipt), verify_usage=Mock(return_value=True),
+            quota_issuer=receipt.issuer,
+        )
+        discovery = NativeComposition(remote, '/unread-roster-fixture')._installed_provider_discovery()
+
+        async def normal_start():
+            nonlocal now
+            async with asyncio.timeout(2):
+                while discovery.observed('workers-ai-offmenu') is None:
+                    await asyncio.sleep(.002)
+            roster = discovery.roster()
+            self.assertEqual(roster['route_readers'], (('workers-ai-offmenu', 'observed'),))
+            row, = roster['routes']
+            self.assertEqual(row['model'], GLM_MODEL)
+            self.assertEqual(row['account_sha256'], discovery.adapters[0].route.account_sha256)
+            self.assertNotIn(route.account_id, repr(row))
+            self.assertNotIn(route.credential_epoch_sha256, repr(row))
+            self.assertEqual(row['dispatch_hold'], 'task-admission-unchecked')
+            self.assertEqual(row['headroom']['amount'], LIMIT_MILLINEURONS - 1 - 150)
+            self.assertEqual(row['reservations']['amount'], 100)
+            observation = row['account_observation']
+            self.assertEqual(observation['metadata_state'], 'current')
+            self.assertEqual(observation['coverage_age_seconds'], 10)
+            self.assertEqual(observation['expires_at_epoch_seconds'], covered.timestamp() + 90)
+            self.assertEqual(observation['resets_at_epoch_seconds'], covered.timestamp() + 12 * 3600)
+            self.assertEqual(observation['account_usage_upper_millineurons'], 20)
+            self.assertEqual(observation['outside_gap_upper_millineurons'], 30)
+
+            now = covered + timedelta(seconds=91)
+            stale, = discovery.roster()['routes']
+            self.assertEqual(stale['dispatch_hold'], 'quota-evidence-stale')
+            self.assertIsNone(stale['headroom'])
+            self.assertIsNone(stale['reservations'])
+            self.assertEqual(stale['account_observation']['coverage_age_seconds'], 91)
+            self.assertNotIn('account_usage_upper_millineurons', stale['account_observation'])
+            remote.read_usage.assert_called_once_with(route)
+            remote.verify_usage.assert_called_once_with(receipt.issuer, receipt)
+
+        await discovery.run(normal_start)
+
+    def test_workers_roster_counts_only_exact_current_authority_reservations(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from uif.stokowski_cloudflare.account_admission import (
+            LIMIT_MILLINEURONS, AccountUsageEvidence, FreeRoute,
+        )
+        from uif.stokowski_cloudflare.client import GLM_MODEL, MODEL_RESERVATIONS
+        from uif.stokowski_cloudflare.native_composition import NativeComposition
+        from uif.stokowski_cloudflare.shared_admission import (
+            AccountReservationSnapshot, AccountUsageReceipt,
+        )
+
+        covered = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        now = int(covered.timestamp()) + 15
+        route = FreeRoute('a' * 32, GLM_MODEL, None, 'b' * 64)
+        proof = AccountUsageEvidence(
+            route, '2026-11-25', covered, covered + timedelta(minutes=2), 20, 30, True, True,
+        )
+        receipt = AccountUsageReceipt(object(), 'c' * 64, proof)
+        valid = AccountReservationSnapshot(
+            receipt_sha256=receipt.receipt_sha256, observed_at=now - 5,
+            debt_millineurons=100, ceiling_breached=False,
+        )
+        remote = SimpleNamespace(
+            routes={'OffMenu': route}, clock=lambda: datetime.fromtimestamp(now, timezone.utc),
+            workspace_id='00000000-0000-0000-0000-000000000001',
+            project_id='00000000-0000-0000-0000-000000000002',
+            read_usage=Mock(),
+        )
+        discovery = NativeComposition(remote, '/unread-roster-fixture')._installed_provider_discovery()
+        adapter, = discovery.adapters
+
+        def describe(reported):
+            return adapter.describe(replace(receipt, reservation_snapshot=reported), now=now)
+
+        _, hold, headroom, debt = describe(valid)
+        self.assertEqual(hold, 'task-admission-unchecked')
+        self.assertEqual(debt, {'unit': 'millineurons', 'amount': 100,
+                                'observed_at_epoch_seconds': now - 5})
+        self.assertEqual(headroom['amount'], LIMIT_MILLINEURONS - 1 - 150)
+        for invalid in (None, replace(valid, receipt_sha256='d' * 64),
+                        replace(valid, observed_at=int(covered.timestamp()) - 1),
+                        replace(valid, observed_at=now + 1),
+                        replace(valid, debt_millineurons=True),
+                        replace(valid, ceiling_breached=1)):
+            _, hold, headroom, debt = describe(invalid)
+            self.assertEqual(hold, 'reservation-headroom-unverified')
+            self.assertIsNone(headroom)
+            self.assertIsNone(debt)
+        maximum = MODEL_RESERVATIONS[GLM_MODEL]
+        _, hold, headroom, _ = describe(replace(valid, debt_millineurons=LIMIT_MILLINEURONS - 50 - maximum))
+        self.assertEqual(hold, 'quota-ceiling')
+        self.assertEqual(headroom['amount'], maximum - 1)
+        _, hold, headroom, _ = describe(replace(valid, ceiling_breached=True))
+        self.assertEqual(hold, 'budget-ceiling-breached')
+        self.assertEqual(headroom['amount'], 0)
+        remote.read_usage.assert_not_called()
+
     async def test_composed_worker_thread_remains_accountable_until_transport_finishes(self):
         from datetime import datetime, timedelta, timezone
         from threading import Event

@@ -27,12 +27,15 @@ class Adapter:
 
     When supplied, capabilities(evidence, request) returns a frozenset of
     capabilities proved by the same observation used for availability.
+    The optional describe(evidence, now=...) is a nonsecret diagnostic
+    projection of that cached observation, its hold, headroom and reservations.
     """
 
     route: ProviderRoute
     read: object
     project: object
     capabilities: object = None
+    describe: object = None
 
 
 def _capability_set(value):
@@ -56,6 +59,7 @@ class NormalProviderDiscovery:
                 or any(type(a) is not Adapter or type(a.route) is not ProviderRoute
                        or not callable(a.read) or not callable(a.project)
                        or (a.capabilities is not None and not callable(a.capabilities))
+                       or (a.describe is not None and not callable(a.describe))
                        for a in adapters)
                 or type(diagnostics) is not tuple
                 or any(type(a) is not MetadataAdapter or type(a.route_id) is not str or not a.route_id
@@ -130,8 +134,29 @@ class NormalProviderDiscovery:
     def roster(self):
         """Report installed readers and diagnostics without granting eligibility."""
         now = self.clock()
+        statuses = self.status()
+        routes = []
+        for adapter, (route_id, reader_status) in zip(self.adapters, statuses):
+            route = adapter.route
+            evidence = self.observed(route_id)
+            quota, hold, headroom, reservations = None, reader_status, None, None
+            if evidence is not None:
+                hold = "quota-diagnostics-unavailable"
+                if adapter.describe is not None:
+                    try:
+                        quota, hold, headroom, reservations = adapter.describe(evidence, now=now)
+                    except Exception:
+                        pass
+            routes.append({
+                "route_id": route_id, "provider": route.provider, "client": route.client,
+                "model": route.model, "account_sha256": route.account_sha256,
+                "reader_status": reader_status, "account_observation": quota,
+                "headroom": headroom, "reservations": reservations,
+                "dispatch_hold": hold,
+            })
         return {
-            "route_readers": self.status(),
+            "route_readers": statuses,
+            "routes": tuple(routes),
             "metadata_candidates": tuple({
                 **a.describe(self.observed(a.route_id), now=now),
                 "route_id": a.route_id,

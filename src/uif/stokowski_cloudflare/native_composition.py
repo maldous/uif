@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from hashlib import sha1, sha256
 from inspect import Parameter, getsource, signature
 from pathlib import Path
@@ -33,17 +33,17 @@ from ..quota_handoff import LinearKey
 from ..codex_metadata_bridge import CodexMetadataBinding, describe_codex_metadata
 from ..provider_discovery import Adapter, MetadataAdapter, NormalProviderDiscovery
 from ..provider_pool import ProviderRoute, RouteAvailability
-from .account_admission import FreeRoute
+from .account_admission import (LIMIT_MILLINEURONS, MAX_EVIDENCE_AGE, FreeRoute,
+                                allows_request, current_usage_evidence)
 from .budget import BudgetRefused
 from .client import FreeAdmissionWindow, GLM_MODEL
-from .account_admission import allows_request, current_usage_evidence
 from .client import MODEL_RESERVATIONS
 from . import client as workers_ai_client
 from .assessment_readiness import parse_assessment_report
 from .native import _native_report
 from .remote_authority import AccessTransport, AuthorityUnavailable, NativeAssignment, RemoteAuthority, protected_record
 from .intake import intake_identity
-from .shared_admission import NativeClaim
+from .shared_admission import AccountReservationSnapshot, AccountUsageReceipt, NativeClaim
 from .remote_source import SourceTools, pinned_members, review_diff
 
 # Public read methods delegated to the original authenticated client.
@@ -1438,7 +1438,54 @@ class NativeComposition:
                     proof.covered_through.timestamp(), proof.valid_until.timestamp(),
                     receipt.receipt_sha256, ready, ready, ready)
 
-            adapters.append(Adapter(route, observe, project))
+            def describe(receipt, *, now, selected=exact):
+                if type(receipt) is not AccountUsageReceipt or receipt.projection.route != selected:
+                    return None, 'quota-evidence-invalid', None, None
+                proof = receipt.projection
+                current = datetime.fromtimestamp(now, UTC)
+                reset = proof.covered_through.replace(hour=0, minute=0, second=0,
+                                                      microsecond=0) + timedelta(days=1)
+                expires = min(reset, proof.valid_until, proof.covered_through + MAX_EVIDENCE_AGE)
+                snapshot = {
+                    'receipt_sha256': receipt.receipt_sha256,
+                    'covered_through_epoch_seconds': proof.covered_through.timestamp(),
+                    'coverage_age_seconds': (current - proof.covered_through).total_seconds(),
+                    'expires_at_epoch_seconds': expires.timestamp(),
+                    'resets_at_epoch_seconds': reset.timestamp(),
+                    'metadata_state': 'stale',
+                }
+                if not current_usage_evidence(selected, proof, now=current):
+                    return snapshot, 'quota-evidence-stale', None, None
+                snapshot.update(
+                    metadata_state='current', account_usage_upper_millineurons=proof.upper,
+                    outside_gap_upper_millineurons=proof.gap_upper,
+                )
+                maximum = MODEL_RESERVATIONS.get(selected.model)
+                if maximum is None:
+                    return snapshot, 'model-request-ceiling-unavailable', None, None
+                reported = receipt.reservation_snapshot
+                if (type(reported) is AccountReservationSnapshot
+                        and reported.receipt_sha256 == receipt.receipt_sha256
+                        and type(reported.observed_at) is int
+                        and proof.covered_through.timestamp() <= reported.observed_at <= now
+                        and reported.observed_at < min(reset, proof.valid_until).timestamp()
+                        and type(reported.debt_millineurons) is int
+                        and 0 <= reported.debt_millineurons < 2**53
+                        and type(reported.ceiling_breached) is bool):
+                    debt = reported.debt_millineurons
+                    reservations = {'unit': 'millineurons', 'amount': debt,
+                                    'observed_at_epoch_seconds': reported.observed_at}
+                    amount = 0 if reported.ceiling_breached else max(
+                        0, LIMIT_MILLINEURONS - 1 - proof.upper - proof.gap_upper - debt)
+                    headroom = {**reservations, 'amount': amount}
+                    hold = ('budget-ceiling-breached' if reported.ceiling_breached else
+                            'quota-ceiling' if amount < maximum else 'task-admission-unchecked')
+                    return snapshot, hold, headroom, reservations
+                hold = ('quota-ceiling' if proof.upper + proof.gap_upper + maximum >= LIMIT_MILLINEURONS
+                        else 'reservation-headroom-unverified')
+                return snapshot, hold, None, None
+
+            adapters.append(Adapter(route, observe, project, describe=describe))
         async def observe_codex():
             return await _read_provider_thread(lambda: self._codex_metadata.read(
                 lambda: int(self.remote.clock().timestamp())))
