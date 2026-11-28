@@ -7,7 +7,7 @@ from hashlib import sha256
 from unittest.mock import patch
 
 from uif.effect_authority import transition_request_sha256
-from uif.handoff_store import Hold
+from uif.handoff_store import Hold, digest
 from uif.stokowski_cloudflare import fresh_assessment_dispatch as dispatch
 from uif.stokowski_cloudflare.fresh_assessment_dispatch import (
     observe_fresh_assessment_dispatch, retain_fresh_assessment_dispatch,
@@ -15,6 +15,30 @@ from uif.stokowski_cloudflare.fresh_assessment_dispatch import (
 from uif.stokowski_cloudflare.intake import intake_stages
 from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
 import test_native_remote_authority as fixture
+
+
+def enroll(grant, item, issue, run, previous, successor):
+    # The enrolled claim-input digest uses the v1 grant fields predating the
+    # transport mark. Computing it independently catches self-referential pins.
+    grant_fields = ('scope', 'source', 'reconstruction_sha256', 'scope_sha256',
+                    'expected_coordinator_epoch', 'attempts', 'previous', 'previous_completion_sha256')
+    data = asdict(grant)
+    original = grant.claim(fixture.OWNER)
+    intent = dict(schema='uif.fresh-assessment-first-dispatch/1',
+                  grant_sha256=digest({k: data[k] for k in grant_fields}), claim=asdict(original),
+                  issue_identifier=issue.identifier, run=run, previous=previous, successor=successor,
+                  workspace_binding=item['workspace_binding'], git_config_sha256=item['git_config_sha256'],
+                  prepared_tree_sha256=item['prepared_tree_sha256'])
+    pin = digest(intent)
+    item['fresh_assessment'] = dict(attempt_id=previous, first_intent_sha256=pin)
+    return replace(grant, first_intent_sha256=pin)
+
+
+def ready_owner(owner):
+    owner._issue_state_runs = {}
+    owner.claimed, owner.completed = set(), set()
+    owner._issue_current_state, owner._tasks, owner._pending_gates, owner.retry_attempts = {}, {}, {}, {}
+    owner.pool = SimpleNamespace(is_paused=lambda project: False)
 
 
 class FreshAssessmentDispatchTest(unittest.TestCase):
@@ -31,6 +55,7 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
         case.c.assignment = lambda *args: grant
         original = grant.claim(fixture.OWNER)
         case.item['workspace_binding']['original_claim_id'] = original.request_id
+        grant = enroll(grant, case.item, issue, 1, previous, successor)
         lease = replace(fixture.RECORD.lease, fence=replace(fixture.RECORD.lease.fence, source=grant.source))
         claim = replace(fixture.RECORD, attempt_id=previous, lease=lease)
         old_request = case.worker.request
@@ -43,6 +68,10 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
         still_owned = True
 
         def transport(path, body=None, **options):
+            if path in ('/v1/claim', '/v1/claim/observe'):
+                expected = asdict(original)
+                del expected['authority']
+                self.assertEqual(body, dict(expected, attempt_id=previous, first_intent_sha256=grant.first_intent_sha256))
             if (path == '/v1/claim/read' and body['by_attempt'] and case.worker.claim is not None
                     and body['identifier'] != case.worker.claim.attempt_id):
                 return None
@@ -60,6 +89,7 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
 
         if old:
             case.worker.claim = claim
+        ready_owner(case.owner)
         case.r.transport.request = transport
 
         def verify(owner, verified_issue, run, assignment):
@@ -135,7 +165,7 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
                             launch.append(case.c._running.get()[1])
                         self.assertEqual(launch, [claim])
                     else:
-                        failure = {'pin': 'authority_intent', 'unpatched': 'native_report_sink', 'lost': 'lost'}
+                        failure = {'pin': 'fresh_assessment_scope|authority_intent', 'unpatched': 'native_report_sink', 'lost': 'lost'}
                         with self.assertRaisesRegex(Hold, failure[permission]):
                             with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
                                 self.fail('native dispatch launched')

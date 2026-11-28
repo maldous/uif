@@ -234,6 +234,7 @@ class NativeAssignment:
     attempts: tuple[str, ...]
     previous: Lease | None = None
     previous_completion_sha256: str | None = None
+    first_intent_sha256: str | None = None
 
     def __post_init__(self):
         require(type(self.scope) is Scope and type(self.source) is SourcePin
@@ -242,6 +243,10 @@ class NativeAssignment:
                 and len(set(self.attempts)) == len(self.attempts), 'authority_native_assignment')
         pinned_sha(self.reconstruction_sha256)
         pinned_sha(self.scope_sha256)
+        if self.first_intent_sha256 is not None:
+            pinned_sha(self.first_intent_sha256)
+            require(self.previous is None and self.previous_completion_sha256 is None,
+                    'authority_marked_initial_claim_only')
         if self.previous is not None or self.previous_completion_sha256 is not None:
             require(type(self.previous) is Lease and self.previous.fence.scope.key.claim_identity ==
                     self.scope.key.claim_identity, 'authority_previous_claim_scope')
@@ -395,14 +400,15 @@ class RemoteAuthority:
     def verify_usage(self, issuer, receipt):
         return issuer == self.quota_issuer and receipt is self._verified_usage.get()
 
-    def _submit_initial_claim_once(self, grant):
-        """Single old claim endpoint call for an already retained first-dispatch original."""
-        require(type(grant) is NativeAssignment and grant.previous is None and
+    def _submit_initial_claim_once(self, grant, retained_intent_sha256):
+        """The marked journal winner submits the independently enrolled digest."""
+        require(type(grant) is NativeAssignment and grant.previous is None
+                and grant.first_intent_sha256 == pinned_sha(retained_intent_sha256) and
                 (grant.scope.repository_id, grant.scope.key.workspace_id, grant.scope.key.project_id)
                 == (self.repository_id, self.workspace_id, self.project_id),
                 'authority_native_initial_scope')
         request = grant.claim(self.identity)
-        body = dict(_mutation_body(request), attempt_id=grant.attempts[0])
+        body = dict(_mutation_body(request), attempt_id=grant.attempts[0], first_intent_sha256=retained_intent_sha256)
         return _lease_reply(request, _receipt(self.transport.request('/v1/claim', body))).lease
 
     def observe_unstarted_recovery(self, grant, binding_path):
@@ -451,9 +457,11 @@ class RemoteAuthority:
         request = grant.claim(self.identity)
         if grant.previous is None:
             body = dict(_mutation_body(request), attempt_id=grant.attempts[0])
+            if grant.first_intent_sha256 is not None:
+                body['first_intent_sha256'] = grant.first_intent_sha256
             raw = self.transport.request('/v1/claim/observe', body, allow_absent=True)
             if raw is None:
-                require(allow_acquire, 'authority_original_claim_unverified')
+                require(allow_acquire and grant.first_intent_sha256 is None, 'authority_original_claim_unverified')
                 raw = self.transport.request('/v1/claim', body)
             return _lease_reply(request, _receipt(raw)).lease
         kind = 'uif.shared-lease.reclaim/1'
@@ -481,6 +489,8 @@ class RemoteAuthority:
                 and (grant.scope.repository_id, grant.scope.key.workspace_id, grant.scope.key.project_id)
                     == (self.repository_id, self.workspace_id, self.project_id), 'authority_native_scope')
         status = self.status()
+        require(grant.first_intent_sha256 is None or attempt != grant.attempts[0],
+                'authority_marked_first_dispatch_required')
         require(not status['stopped'] and status['coordinator_epoch'] == grant.expected_coordinator_epoch,
                 'authority_paused_or_epoch')
         issue_id = grant.scope.key.issue_id
