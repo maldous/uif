@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Miniflare } from 'miniflare';
-import { canonical, digest, digestBytes, wire, models, day } from '../protocol.mjs';
+import { canonical, digest, digestBytes, wire, models, day, identity } from '../protocol.mjs';
 
 // Real local workerd + SQLite DO. JWKS, quota and physical provider routing use isolated fixtures. All
 // network egress is intercepted; no provider, Access or production calls occur.
@@ -282,6 +282,15 @@ for (const fresh of [false, true]) test(fresh
     assert.equal(assignment.lease.fence.generation, 2);
     assert.equal(physical, 0);
 
+    const freshId = (scope) => digest({claim:scope, recovery:grant.reconstruction_sha256,
+      authority:identity(c, peers[clients[0]]), epoch:2});
+    if (fresh) {
+      assert.equal((await call(tokens.native, 'claim', claim)).status, 409);
+      claim.request_id = await freshId(scope);
+      claim.first_intent_sha256 = firstIntent;
+      assert.equal((await call(tokens.morgan, 'claim', claim)).status, 403);
+      assert.equal((await call(tokens.native, 'claim/observe', claim)).status, 404);
+    }
     const race = await Promise.all(
       (fresh ? ['native'] : ['native', 'morgan']).map((role) => call(tokens[role], 'claim', claim)),
     );
@@ -363,12 +372,18 @@ for (const fresh of [false, true]) test(fresh
       const lostGrant = {...grant, scope: lostScope, attempt_ids: [lostAttempt],
         fresh_assessment: {attempt_id: lostAttempt, first_intent_sha256: lostIntent}};
       assert.equal((await call(tokens.control, 'grant', {request_id:'grant-uncertain', previous_sha256:null, grant:lostGrant})).status, 200);
-      const lostClaim = await call(jwt, 'claim', {...claim, request_id:'claim-uncertain', scope:lostScope, attempt_id:lostAttempt});
+      const lostOriginal = {...claim, request_id:await freshId(lostScope),
+        scope:lostScope, attempt_id:lostAttempt, first_intent_sha256:lostIntent};
+      const lostClaim = await call(jwt, 'claim', lostOriginal);
       assert.equal(lostClaim.status, 200);
       const lostEntry = {current: (await lostClaim.json()).lease, attempt_id: lostAttempt, first_intent_sha256: lostIntent};
       assert.equal((await call(jwt, 'dispatch/enter', lostEntry)).status, 200);
       await instance.dispose();
       instance = make();
+      assert.deepEqual((await (await call(jwt, 'claim/observe', lostOriginal)).json()).lease, lostEntry.current);
+      const {first_intent_sha256, ...plainOriginal} = lostOriginal;
+      assert.equal((await call(jwt, 'claim/observe', plainOriginal)).status, 409);
+      assert.equal((await call(tokens.morgan, 'dispatch/enter', lostEntry)).status, 403);
       assert.deepEqual(await (await call(jwt, 'dispatch/observe', entry)).json(), {entered: true});
       assert.deepEqual(await (await call(jwt, 'dispatch/enter', entry)).json(), {entered: false});
       assert.deepEqual(await (await call(jwt, 'dispatch/observe', lostEntry)).json(), {entered: true});
