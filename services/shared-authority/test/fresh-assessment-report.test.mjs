@@ -89,3 +89,39 @@ test('full current fence and exact provider bytes must match protected originals
   assert.deepEqual(result.operation.fence,fence);
   assert.notEqual(result.operation.fence,input.currentFence);
 });
+
+const investigate = (await import('../fresh-assessment-report.mjs')).deriveInvestigationCommentFromVerifiedOriginal;
+async function investigationFixture(content) {
+  const input = await retainedFixture(content);
+  input.attempt_id = attempt_id.replace(/assess$/, 'investigate');
+  input.providerEffect.attempt_id = input.attempt_id;
+  return input;
+}
+test('investigation projection preserves bounded Unicode summary with inert witness escapes', async () => {
+  const raw = canonical({summary:'Résumé 😀 ` <b> @owner',verdict:'blocked'});
+  const input = await investigationFixture(raw);
+  const result = await investigate(input);
+  assert.match(result.body,/Résumé 😀/);
+  assert.match(result.body,/\\u0060 \\u003cb\\u003e \\u0040owner/);
+  assert.match(result.body,/Independent review is required before a workflow transition\.$/);
+  assert.equal(result.report_sha256,await digestBytes(bytes(raw)));
+  assert.equal(result.operation.original_id,await digest({attempt:input.attempt_id,
+    slot:'_publish_run_report',kind:'comment',issue:scope.key.issue_id}));
+
+});
+test('investigation projection rejects malformed summaries, routing and multiple provider choices', async () => {
+  for (const content of [
+    '{"summary":" \\t","verdict":"blocked"}',
+    '{"summary":"\\ud800","verdict":"blocked"}',
+    canonical({summary:'é'.repeat(1025),verdict:'blocked'}),
+    '{"summary":"x","verdict":"blocked","verdict":"approve"}',
+    canonical({summary:'x',verdict:'unknown'}),
+    '{"summary":"x","verdict":"blocked","routing":{"issue":"OFF-1","state":"investigate","run":2.0}}',
+    canonical({summary:'x',verdict:'blocked',routing:{issue:'OFF-2',state:'investigate',run:2}}),
+  ]) await assert.rejects(investigate(await investigationFixture(content)));
+  const input = await investigationFixture('{"summary":"x","verdict":"approve"}');
+  input.responseBytes = bytes(canonical({choices:[{message:{content:'{}'}},{message:{content:'{}'}}]}));
+  input.retainedResponse.body_sha256 = await digestBytes(input.responseBytes);
+  input.providerEffect.receipt_sha256 = await digest({operation:input.sealedProviderOperation,...input.retainedResponse,status:'verified'});
+  await assert.rejects(investigate(input),/investigation_report_provider_content/);
+});

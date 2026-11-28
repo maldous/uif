@@ -732,13 +732,56 @@ class NativeComposition:
             require(type(choices) is list and len(choices) == 1 and type(choices[0]) is dict
                     and type(choices[0].get('message')) is dict and not choices[0]['message'].get('tool_calls')
                     and choices[0]['message'].get('content') == content, 'authority_successor_provider_result')
-            require(self.current(issue.id).lease.fence == claim.lease.fence, 'assessment_successor_not_current')
+            current = self.current(issue.id)
+            require(current.lease.fence == claim.lease.fence and current.attempt_id == attempt,
+                    'assessment_successor_not_current')
             pinned_sha(response.receipt_sha256)
-            permit.report = _retain_handoff_original(directory, request_id + '.investigation-result', wire({
+            _retain_handoff_original(directory, request_id + '.investigation-result', wire({
                 'operation': asdict(op), 'attempt_id': attempt, 'provider_receipt_sha256': response.receipt_sha256,
                 'result_sha256': sha256(raw).hexdigest(), 'content_sha256': sha256(content.encode()).hexdigest()
             }), 8192)
+            from .investigation_report import render_investigation_report
+            rendered = render_investigation_report(content.encode(), issue=issue, run=run,
+                scope_sha256=self._running.get()[0].scope_sha256, attempt_id=attempt)
+            permit.report = _VerifiedAssessmentReport(run, content.encode(), rendered)
         return finish
+
+    def observe_successor_report(self, fence, attempt_id, issue, run, scope_sha256, workspace):
+        """Recover only the existing report receipt from its original provider result."""
+        from .investigation_report import render_investigation_report
+        require(type(fence) is ClaimFence and fence.scope.key.issue_id == issue.id,
+                'authority_successor_report_recovery_binding')
+        original_id = sha256(f'{attempt_id}:1'.encode()).hexdigest()
+        directory = Path(workspace) / '.git/uif-original-effects'
+        with _handoff_directory(directory) as fd:
+            intent = decode(_retained_handoff_bytes(fd, original_id + '.json', 8192), limit=8192)
+            fact = decode(_retained_handoff_bytes(fd, original_id + '.investigation-result', 8192), limit=8192)
+        require(intent['operation']['fence'] == asdict(fence)
+                and intent['operation']['original_id'] == original_id and intent['attempt_id'] == attempt_id
+                and fact['operation'] == intent['operation'] and fact['attempt_id'] == attempt_id
+                and intent['route'] == asdict(self.remote.routes['OffMenu']),
+                'authority_successor_report_recovery_binding')
+        operation = Operation(fence, original_id, intent['operation']['payload_sha256'])
+        response = self.remote.provider_result(operation)
+        pinned_sha(response.receipt_sha256)
+        raw = response.read(256 * 1024 + 1)
+        result = decode(raw, limit=256 * 1024)
+        choices = result.get('choices')
+        require(type(choices) is list and len(choices) == 1 and type(choices[0]) is dict
+                and type(choices[0].get('message')) is dict and not choices[0]['message'].get('tool_calls'),
+                'authority_successor_provider_result')
+        content = choices[0]['message'].get('content')
+        require(type(content) is str and fact == {'operation': asdict(operation), 'attempt_id': attempt_id,
+                'provider_receipt_sha256': response.receipt_sha256, 'result_sha256': sha256(raw).hexdigest(),
+                'content_sha256': sha256(content.encode()).hexdigest()},
+                'authority_successor_report_recovery_result')
+        body = render_investigation_report(content.encode(), issue=issue, run=run,
+                scope_sha256=scope_sha256, attempt_id=attempt_id)
+        report_operation = self._linear_operation(fence, attempt_id, '_publish_run_report', 'comment', {'body': body})
+        with _handoff_directory(directory) as fd:
+            saved = _retained_handoff_bytes(fd, report_operation.original_id + '.linear', 8192)
+        require(saved == wire(asdict(report_operation)), 'authority_successor_report_recovery_original')
+        return self.observe_stage_report(fence, attempt_id, body)
 
     def selected(self, project, issue, scope_sha):
         return self.assignment(project, issue.id, scope_sha) is not None
@@ -2022,11 +2065,16 @@ class NativeComposition:
         body = payload.get('body')
         recipient = self._recipient_execution.get()
         fresh = self._fresh_assessment.get() if recipient is None else recipient
-        if recipient is not None:
-            recipient.require_actor('comment', delegate_only=True)
         successor = recipient is not None and recipient.stage == 'marked-investigation'
+        successor_report = successor and slot == '_publish_run_report'
+        if recipient is not None:
+            recipient.require_actor('report-comment' if successor_report else 'comment', delegate_only=True)
         if successor:
-            recipient.verify_tracking(slot, issue_id, body)
+            if successor_report:
+                require(kind == 'comment' and payload == {'body': body}, 'authority_successor_report_scope')
+                recipient.verify_report(slot, issue_id, body)
+            else:
+                recipient.verify_tracking(slot, issue_id, body)
             fresh = None
         if fresh is not None:
             require(slot == '_publish_run_report' and kind == 'comment' and fresh.report is not None
@@ -2034,6 +2082,9 @@ class NativeComposition:
                     and issue_id == fresh.claim.lease.fence.scope.key.issue_id,
                     'authority_assessment_report_only_effect')
         claim = self.current(issue_id)
+        if successor_report:
+            require(claim.attempt_id == recipient.claim.attempt_id
+                    and claim.lease.fence == recipient.claim.lease.fence, 'authority_successor_report_fence')
         if fresh is not None:
             require(claim.attempt_id == fresh.claim.attempt_id and claim.lease.fence == fresh.claim.lease.fence,
                     'authority_assessment_report_fence')
@@ -2062,19 +2113,20 @@ class NativeComposition:
         # Different semantic bytes for the same native stage and effect slot
         # remain a conflict. A clock-only retry recovers the exact first bytes.
         op = self._linear_operation(claim.lease.fence, claim.attempt_id, slot, kind, payload)
-        if successor_tracking:
+        if successor_tracking or successor_report:
             may_submit = self._retain_investigation_tracking_intent(op)
         else:
             self.retained_linear(op)
             may_submit = True
         result = self.remote.transport.request('/v1/linear/receipt', {'operation': asdict(op)}, allow_absent=True)
         if result is None:
-            require(may_submit, 'authority_successor_tracking_outcome_unknown')
+            require(may_submit, 'authority_successor_report_outcome_unknown' if successor_report
+                    else 'authority_successor_tracking_outcome_unknown')
             try:
                 result = self.remote.transport.request('/v1/linear/' + kind,
                             {'operation': asdict(op), 'attempt_id': claim.attempt_id, **payload})
             except AuthorityUnavailable:
-                if fresh is None:
+                if fresh is None and not successor_report:
                     raise
                 require(self.observe_stage_report(claim.lease.fence, claim.attempt_id, body) is not None,
                         'authority_assessment_report_outcome_unknown')
@@ -2144,8 +2196,13 @@ class _LinearClient:
         if permit is None:
             return await asyncio.to_thread(native.linear, 'comment', issue_id, {'body': body})
         permit.require_actor(owner_only=True)
+        family = 'comment'
         if permit.stage == 'marked-investigation':
-            permit.verify_tracking(native._slot.get(), issue_id, body)
+            if native._slot.get() == '_publish_run_report':
+                permit.verify_report(native._slot.get(), issue_id, body)
+                family = 'report-comment'
+            else:
+                permit.verify_tracking(native._slot.get(), issue_id, body)
         else:
             require(native._slot.get() == '_publish_run_report' and permit.report is not None
                     and permit.report.body == body and issue_id == permit.claim.lease.fence.scope.key.issue_id,
@@ -2156,7 +2213,7 @@ class _LinearClient:
         def require_thread():
             require(not cancelled.is_set() and current_thread() is selected, 'authority_recovery_comment_thread')
 
-        bound = permit.prepare_thread('comment', lambda: native.linear('comment', issue_id, {'body': body}),
+        bound = permit.prepare_thread(family, lambda: native.linear('comment', issue_id, {'body': body}),
                                       require_thread)
 
         def submit():
@@ -2375,6 +2432,17 @@ def install_sinks(orchestration, composition):
                 recipient = composition._recipient_execution.get()
                 if recipient is not None and recipient.stage == 'marked-investigation':
                     recipient.require_actor(owner_only=True)
+                    if name == '_publish_run_report':
+                        native_owner, issue, attempt, workspace, state = args
+                        require(not kwargs and state == attempt.state_name == 'investigate'
+                                and native_owner.project_name == 'OffMenu'
+                                and recipient.report is not None and recipient.report.run == recipient.run
+                                and attempt.status == 'succeeded' and attempt.session_id == recipient.claim.attempt_id
+                                and Path(workspace) == recipient.workspace
+                                and attempt.result_text == _native_report(recipient.report.raw.decode()),
+                                'authority_successor_report_original')
+                        await _LinearClient(None, composition).post_comment(issue.id, recipient.report.body)
+                        return None
                     require(name == '_announce_state' and args[2:] == ('investigate', recipient.run) and not kwargs,
                             'authority_successor_downstream_held')
                     return await native(*args, **kwargs)
