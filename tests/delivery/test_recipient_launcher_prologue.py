@@ -50,12 +50,14 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.clone_marker = self.root / 'unauthorized-clone'
         self.stage = StateConfig(name='assess', type='agent', runner='codex', session='fresh',
                                  permission_mode='plan', admission_review=True)
-        owner.cfg = SimpleNamespace(
+        config = SimpleNamespace(
             workspace=WorkspaceConfig(root=str(self.root)),
             active_linear_states=lambda: ['Backlog'], terminal_linear_states=lambda: ['Done'],
             hooks=HooksConfig(after_create=f'touch {self.clone_marker}'), claude=ClaudeConfig(),
             agent_env=lambda: {}, tracker=SimpleNamespace(project_slug='offmenu'),
+            linear_states=SimpleNamespace(todo='Todo', active='In Progress'),
         )
+        owner.workflow = SimpleNamespace(config=config)
         owner.project_name = 'OffMenu'
         owner.pool = SimpleNamespace(is_paused=lambda _: False)
         owner.running, owner._tasks, owner.retry_attempts = {}, {}, {}
