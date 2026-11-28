@@ -1656,6 +1656,40 @@ test('normal startup bind reconciles the same authenticated original without reb
   assert.equal(reply.expires_at, start + 5);
 });
 
+test('a later explicit stop fences a prepared normal activation when already stopped', async () => {
+  const f = fixture();
+  const activate = {
+    request_id: 'prepared-normal', expected_coordinator_epoch: 1, stopped: false,
+    startup: { stage: 'uif1313-normal-fixture', session_id: f.peers.native.session_id,
+      evidence_sha256: hex('3'), coordinator_epoch: 2, previous_request_id: null },
+  };
+  const stop = {request_id: 'operator-stop', expected_coordinator_epoch: 1, stopped: true};
+  const stopped = await f.call('control', 'control', stop);
+  f.a = f.restart();
+  await assert.rejects(f.call('control', 'control', activate), /control_epoch_changed/);
+  assert.deepEqual(stopped, {coordinator_epoch: 2, stopped: true});
+  assert.deepEqual(await f.call('control', 'control', stop), stopped);
+  const challenge = {unit: 'stokowski-foo.service', stage: activate.startup.stage, nonce: 'cold-start'};
+  await assert.rejects(f.call('native', 'startup/read', challenge), /startup_not_bound/);
+
+  const again = {...stop, request_id: 'operator-stop-again', expected_coordinator_epoch: 2};
+  assert.deepEqual(await f.call('control', 'control', again), {coordinator_epoch: 3, stopped: true});
+  assert.deepEqual(await f.call('control', 'control', stop), stopped);
+  const state = await f.call('control', 'status', {});
+  assert.equal(state.coordinator_epoch, 3);
+  assert.equal(state.stopped, true);
+  assert.equal(state.normal_startup_request_id, null);
+
+  const current = {...activate, request_id: 'new-normal-activation', expected_coordinator_epoch: 3,
+    startup: {...activate.startup, coordinator_epoch: 4}};
+  const started = await f.call('control', 'control', current);
+  assert.equal(started.coordinator_epoch, 4);
+  // Reading the historical stop receipt never stops the new commissioned run.
+  assert.deepEqual(await f.call('control', 'control', again), {coordinator_epoch: 3, stopped: true});
+  f.a = f.restart();
+  assert.equal((await f.call('native', 'startup/read', challenge)).coordinator_epoch, 4);
+});
+
 test('one control action activates the installed normal release for unattended restarts', async () => {
   const f = fixture();
   const unit = 'stokowski-foo.service';
