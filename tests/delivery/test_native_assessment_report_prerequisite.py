@@ -10,6 +10,8 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
+import shutil
 import subprocess
 from tempfile import TemporaryDirectory
 from threading import Event
@@ -17,7 +19,7 @@ from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, Mock, patch
 
-from uif.handoff_store import Hold, wire
+from uif.handoff_store import Hold, digest, wire
 from uif.stokowski_cloudflare.assessment_readiness import project_assessment_readiness
 from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
 from uif.stokowski_cloudflare.intake import intake_stages
@@ -34,9 +36,10 @@ PINS = {
     'report.py': '6f72f4cc2e39f92e4da6a44d5240ec7ba44f9f8fd94d611271ca8be905eb0fe6',
     'publication.py': '7d2007cc7993e496e11a0da30152278951b31f2c4f42c9dcacd0582619aca48b',
     'dependencies.py': '298694e9b728041716843a6f99a43671dbc0c6a75e3f67a25c9c4ca6aef36d06',
+    'workspace.py': '9ddb0ad8a1d5d43b54663aab14351fb70b07b13ffd6c76af99016fc6c7d28936',
 }
 PATCH = Path(__file__).resolve().parents[2] / 'tools/delivery/stokowski-verified-assessment-report.patch'
-PATCHED_ORCHESTRATOR_SHA256 = '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38'
+PATCHED_ORCHESTRATOR_SHA256 = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
 
 
 class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
@@ -125,10 +128,11 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         self.owner._save_settlement = Mock(side_effect=lambda issue, data: self.saved.append(deepcopy(data)))
 
     def reconcile_owner(self, issue, attempt, task, state_reader, remove_workspace):
-        names = ('_reconcile', '_observe_terminal', '_on_worker_exit', '_finish_worker_bookkeeping')
+        names = ('_reconcile', '_observe_terminal', '_on_worker_exit', '_finish_worker_bookkeeping',
+                 '_retains_recipient_entry')
         methods = self.source('orchestrator.py', names, owner='Orchestrator', patched=True,
                               **dict(self.native_bindings, replace=replace, Issue=SimpleNamespace,
-                                     remove_workspace=remove_workspace))
+                                     remove_workspace=remove_workspace, os=os, sanitize_key=lambda issue: issue))
         owner = type('RecipientNativeFixture', (), {name: getattr(methods, name) for name in names})()
         owner.running = {issue.id: attempt}
         owner._tasks = {issue.id: task}
@@ -287,6 +291,89 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         remove.assert_awaited_once_with(self.workspace.parent, issue.identifier, owner.cfg.hooks)
         owner._release_slot.assert_called_once_with(issue.id)
         self.assertNotIn(issue.id, owner.running)
+
+    def terminal_cleanup_owner(self, root, terminal, *, patched=True):
+        hook = AsyncMock()
+        workspace = self.source('workspace.py', ('remove_workspace', 'sanitize_key'),
+                                re=re, shutil=shutil, run_hook=hook, logger=Mock())
+        names = ('_retains_recipient_entry', '_startup_cleanup', '_transition') if patched else (
+            '_startup_cleanup', '_transition',
+        )
+        methods = self.source('orchestrator.py', names, owner='Orchestrator', patched=patched,
+                              os=os, sanitize_key=workspace.sanitize_key,
+                              remove_workspace=workspace.remove_workspace, logger=Mock())
+        owner = type('RestartedNativeFixture', (), {name: getattr(methods, name) for name in names})()
+        owner.cfg = SimpleNamespace(
+            tracker=SimpleNamespace(project_slug='OffMenu'),
+            terminal_linear_states=lambda: ['Done'],
+            workspace=SimpleNamespace(resolved_root=lambda: root),
+            hooks=SimpleNamespace(before_remove='fixture hook', timeout_ms=100),
+        )
+        owner._ensure_linear_client = lambda: SimpleNamespace(
+            fetch_issues_by_states=AsyncMock(return_value=terminal), update_issue_state=AsyncMock(return_value=True),
+        )
+        owner.project_name = 'OffMenu'
+        owner.ledger = Mock()
+        owner._states_for = lambda _: {
+            'publish': SimpleNamespace(transitions={'complete': 'end'}, publication=None),
+            'end': SimpleNamespace(type='terminal'),
+        }
+        owner._issue_current_state = {issue.id: 'publish' for issue in terminal}
+        owner._issue_state_runs = {}
+        owner._announced_states = set()
+        owner._pending_gates = {}
+        owner._last_session_ids = {}
+        owner.claimed = set()
+        owner.completed = set()
+        return owner, hook
+
+    async def test_patched_startup_and_transition_preserve_the_recipient_journal(self):
+        root = self.workspace
+        recovered = SimpleNamespace(id='recovered', identifier='OFF-1')
+        ordinary = SimpleNamespace(id='ordinary', identifier='OFF-2')
+        terminal = [recovered, ordinary]
+        path = root / recovered.identifier
+        journal = path / '.git/uif-original-effects'
+        journal.mkdir(parents=True, mode=0o700)
+        original = {'installation_sha256': 'a' * 64, 'session_id': 'morgan',
+                    'request_id': 'handoff', 'request_sha256': 'b' * 64}
+        record = wire({
+            'schema': 'uif.native-recipient-entry/1', 'original': original, 'fence': {},
+            'attempt_id': 'recipient', 'stage': 'assess', 'run': 1, 'scope_sha256': 'c' * 64,
+            'workspace_binding': {'path': str(path), 'original_transition': original},
+        })
+        receipt = journal / (digest(original) + '.recipient-entry')
+        receipt.write_bytes(record)
+        receipt.chmod(0o600)
+        ordinary_path = root / ordinary.identifier
+
+        for origin in ('restart', 'transition'):
+            with self.subTest(origin=origin):
+                ordinary_path.mkdir()
+                owner, hook = self.terminal_cleanup_owner(root, terminal)
+                if origin == 'restart':
+                    await owner._startup_cleanup()
+                else:
+                    self.assertTrue(await owner._transition(recovered, 'complete'))
+                    self.assertTrue(await owner._transition(ordinary, 'complete'))
+                    self.assertEqual(owner.completed, {recovered.id, ordinary.id})
+                self.assertEqual(receipt.read_bytes(), record)
+                self.assertFalse(ordinary_path.exists())
+                hook.assert_awaited_once_with('fixture hook', ordinary_path, 100, 'before_remove')
+
+        # A later native worker may have no in-memory recipient marker.
+        attempt = SimpleNamespace(status='running', issue_identifier=recovered.identifier)
+        task = asyncio.create_task(asyncio.sleep(0))
+        await task
+        remove = AsyncMock()
+        owner = self.reconcile_owner(
+            recovered, attempt, task, AsyncMock(return_value={recovered.id: 'Done'}), remove,
+        )
+        owner.cfg.workspace.resolved_root = lambda: root
+        await owner._reconcile()
+        remove.assert_not_awaited()
+        self.assertEqual(receipt.read_bytes(), record)
+        owner._release_slot.assert_called_once_with(recovered.id)
 
     def prepared_attempt(self, raw):
         record = dict(phase='report-unknown', state='assess', run=1, kind='worker',
