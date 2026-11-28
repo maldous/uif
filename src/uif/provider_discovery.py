@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass, replace
+from hashlib import sha256
 from math import isfinite
 
 from .handoff_store import Hold
@@ -9,6 +10,25 @@ from .provider_pool import PoolSelection, ProviderRoute, RouteAvailability, sele
 from .quota_handoff import TOKEN
 
 _MAX_RETRY_DELAY_SECONDS = 300
+
+
+def neutral_route_order(route_ids, *, operation_id):
+    """Order permitted routes for a new operation without a provider priority.
+
+    Use this when forming a request that has no explicit priority. Order is
+    stable across refreshes and input ordering. Recovery uses its original route.
+    """
+    if (type(operation_id) is not str or not TOKEN.fullmatch(operation_id)
+            or type(route_ids) is not tuple
+            or any(type(route_id) is not str or not TOKEN.fullmatch(route_id)
+                   for route_id in route_ids)
+            or len(set(route_ids)) != len(route_ids)):
+        raise ValueError("Invalid operation or permitted provider route IDs")
+
+    def rank(route_id):
+        return sha256(f"{operation_id}\0{route_id}".encode()).digest(), route_id
+
+    return tuple(sorted(route_ids, key=rank))
 
 
 class ProviderReadCooldown(Hold):
@@ -131,6 +151,18 @@ class NormalProviderDiscovery:
         return tuple((a.route.route_id, self._state.get(a.route.route_id, "not-observed"))
                      for a in self.adapters)
 
+    def _metadata_row(self, adapter, now):
+        reader_status = ("reader-unmounted" if adapter.read is None
+                         else self._state.get(adapter.route_id, "not-observed"))
+        try:
+            description = adapter.describe(self.observed(adapter.route_id), now=now)
+            if type(description) is not dict:
+                raise ValueError("Invalid metadata diagnostics")
+        except Exception:
+            description = {"metadata_state": "unavailable", "account_observation": None,
+                           "dispatch_hold": "quota-diagnostics-unavailable"}
+        return {**description, "route_id": adapter.route_id, "reader_status": reader_status}
+
     def roster(self):
         """Report installed readers and diagnostics without granting eligibility."""
         now = self.clock()
@@ -157,12 +189,7 @@ class NormalProviderDiscovery:
         return {
             "route_readers": statuses,
             "routes": tuple(routes),
-            "metadata_candidates": tuple({
-                **a.describe(self.observed(a.route_id), now=now),
-                "route_id": a.route_id,
-                "reader_status": ("reader-unmounted" if a.read is None
-                                  else self._state.get(a.route_id, "not-observed")),
-            } for a in self.diagnostics),
+            "metadata_candidates": tuple(self._metadata_row(a, now) for a in self.diagnostics),
         }
 
     @property
