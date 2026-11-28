@@ -1,28 +1,42 @@
 """Provider refresh in the normal service lifecycle; never an effect authority."""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import isfinite
 
-from .provider_pool import ProviderRoute, RouteAvailability, select_route
+from .provider_pool import PoolSelection, ProviderRoute, RouteAvailability, select_route
+from .quota_handoff import TOKEN
 
 _MAX_RETRY_DELAY_SECONDS = 300
 
 
 @dataclass(frozen=True)
 class Adapter:
-    """Installed, trusted evidence reader and per-request projection."""
+    """Installed, trusted evidence reader and per-request projections.
+
+    When supplied, capabilities(evidence, request) returns a frozenset of
+    capabilities proved by the same observation used for availability.
+    """
 
     route: ProviderRoute
     read: object
     project: object
+    capabilities: object = None
+
+
+def _capability_set(value):
+    return type(value) is frozenset and all(
+        type(item) is str and TOKEN.fullmatch(item) for item in value
+    )
 
 
 class NormalProviderDiscovery:
     def __init__(self, adapters, *, clock, interval, timeout):
         if (type(adapters) is not tuple
                 or any(type(a) is not Adapter or type(a.route) is not ProviderRoute
-                       or not callable(a.read) or not callable(a.project) for a in adapters)
+                       or not callable(a.read) or not callable(a.project)
+                       or (a.capabilities is not None and not callable(a.capabilities))
+                       for a in adapters)
                 or len({a.route.route_id for a in adapters}) != len(adapters)
                 or not callable(clock)
                 or any(type(v) not in (int, float) or not isfinite(v) for v in (interval, timeout))
@@ -88,30 +102,48 @@ class NormalProviderDiscovery:
         """Return only this lifecycle's latest owner adapter observation."""
         return self._evidence.get(route_id) if self._running else None
 
-    def select(self, request, *, owner_paused, pending_original):
-        now = self.clock()
+    def select(self, request, *, owner_paused, pending_original, required_capabilities=frozenset()):
+        """Filter current observations for the task's explicitly required capabilities."""
         routes = tuple(a.route for a in self.adapters)
-        scoped = select_route(request, routes=routes, observations=(), now=now,
+        scoped = select_route(request, routes=routes, observations=(), now=self.clock(),
                               owner_paused=owner_paused, pending_original=pending_original)
         eligible = {route_id for route_id, reason in scoped.rejected if reason == "evidence-missing"}
         if not eligible:
             return scoped
+        if not _capability_set(required_capabilities):
+            return PoolSelection(None, None, "required-capabilities-invalid")
         rows = []
+        unsupported = set()
         for adapter in self.adapters:
-            if adapter.route.route_id not in eligible:
+            route_id = adapter.route.route_id
+            if route_id not in eligible:
                 continue
-            evidence = self._evidence.get(adapter.route.route_id)
+            evidence = self.observed(route_id)
             if evidence is None:
                 continue
             try:
                 row = adapter.project(evidence, request)
             except Exception:
                 continue
-            if type(row) is RouteAvailability and row.route == adapter.route:
-                rows.append(row)
-        return select_route(request, routes=routes,
-                            observations=tuple(rows), now=now, owner_paused=owner_paused,
-                            pending_original=pending_original)
+            if type(row) is not RouteAvailability or row.route != adapter.route:
+                continue
+            if required_capabilities and row.request == request and row.classification == "available":
+                try:
+                    capabilities = (adapter.capabilities(evidence, request)
+                                    if adapter.capabilities is not None else None)
+                except Exception:
+                    capabilities = None
+                if not _capability_set(capabilities) or not required_capabilities <= capabilities:
+                    unsupported.add(route_id)
+                    continue
+            rows.append(row)
+        selection = select_route(request, routes=routes, observations=tuple(rows), now=self.clock(),
+                                 owner_paused=owner_paused, pending_original=pending_original)
+        return replace(selection, rejected=tuple(
+            (route_id, "capability-unproved"
+             if route_id in unsupported and reason == "evidence-missing" else reason)
+            for route_id, reason in selection.rejected
+        ))
 
     async def run(self, normal_start):
         """One normal service lifecycle, with independent per-route pollers."""

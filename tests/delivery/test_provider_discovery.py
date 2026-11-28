@@ -127,6 +127,9 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
                     break
                 await asyncio.sleep(.001)
             self.assertEqual(select().route, b)
+            needs_tools = select(required_capabilities=frozenset({"tool-calls"}))
+            self.assertIsNone(needs_tools.route)
+            self.assertIn(("groq", "capability-unproved"), needs_tools.rejected)
             projected.clear()
             self.assertIsNone(select(pending_original=True).route)
             self.assertIsNone(select(owner_paused=True).route)
@@ -142,6 +145,76 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(await d.run(normal_start), "stopped")
         d.clock = lambda: 100
+        self.assertIsNone(select().route)
+
+    async def test_task_capabilities_follow_latest_route_evidence(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        primary = ProviderRoute("primary", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                                "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                                frozenset({"author"}))
+        secondary = replace(primary, route_id="secondary", provider="groq", client="opencode",
+                            model="exact-groq", account_sha256="e"*64)
+        request = PoolRequest(key, "owner/repo", "a"*64, "b"*64, "original",
+                              "ordinary-software", "author", "new", ("primary", "secondary"))
+        tools = frozenset({"tool-calls"})
+        rich = (frozenset({"structured-reports", "tool-calls"}), 109)
+        report_only = (frozenset({"structured-reports"}), 109)
+        unavailable = (None, 109)
+        latest = {"primary": rich, "secondary": rich}
+        now = 100
+
+        def adapter(route):
+            async def read():
+                return latest[route.route_id]
+
+            def project(observation, asked):
+                _, until = observation
+                return RouteAvailability(route, asked, "available", 99, until, "f"*64,
+                                         True, True, True)
+
+            return Adapter(route, read, project, lambda observation, _: observation[0])
+
+        discovery = NormalProviderDiscovery(
+            (adapter(primary), adapter(secondary)),
+            clock=lambda: now, interval=.01, timeout=.005,
+        )
+
+        async def refreshed():
+            for _ in range(100):
+                if all(discovery.observed(name) is snapshot for name, snapshot in latest.items()):
+                    return
+                await asyncio.sleep(.001)
+            self.fail("discovery did not observe the expected capability update")
+
+        def select(required=tools):
+            return discovery.select(request, owner_paused=False, pending_original=False,
+                                    required_capabilities=required)
+
+        async def normal_start():
+            nonlocal now
+            await refreshed()
+            self.assertEqual(select().route, primary)
+            latest["primary"] = report_only
+            await refreshed()
+            decision = select()
+            self.assertEqual(decision.route, secondary)
+            self.assertIn(("primary", "capability-unproved"), decision.rejected)
+            self.assertEqual(select(frozenset({"structured-reports"})).route, primary)
+
+            latest["secondary"] = unavailable
+            await refreshed()
+            self.assertIsNone(select().route)
+            self.assertIn(("secondary", "capability-unproved"), select().rejected)
+            self.assertEqual(select("tool-calls").hold, "required-capabilities-invalid")
+
+            latest["primary"] = rich
+            await refreshed()
+            self.assertEqual(select().route, primary)
+            now = 109
+            self.assertIsNone(select().route)
+            self.assertIn(("primary", "evidence-stale"), select().rejected)
+
+        await discovery.run(normal_start)
         self.assertIsNone(select().route)
 
     async def test_cancel_resistant_reader_does_not_hold_other_route_or_shutdown(self):
