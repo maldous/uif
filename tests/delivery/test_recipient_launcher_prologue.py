@@ -42,6 +42,8 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         env = os.environ.copy()
         env.pop('GIT_CONFIG_COUNT', None)
         subprocess.run(['git', 'init', '-q', '-b', 'develop', str(self.path)], env=env, check=True)
+        subprocess.run(['git', '-C', str(self.path), 'remote', 'add', 'origin',
+                        'https://github.com/maldous/offmenu.git'], env=env, check=True)
         subprocess.run(['git', '-C', str(self.path), '-c', 'user.name=Fixture',
                         '-c', 'user.email=fixture@example.invalid', 'commit', '-q', '--allow-empty',
                         '-m', 'synthetic workspace'], env=env, check=True)
@@ -61,6 +63,7 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         owner.project_name = 'OffMenu'
         owner.pool = SimpleNamespace(is_paused=lambda _: False)
         owner.running, owner._tasks, owner.retry_attempts = {}, {}, {}
+        owner._retry_timers = {}
         owner.claimed, owner.completed = set(), set()
         owner._issue_current_state, owner._issue_state_runs = {ISSUE: 'assess'}, {ISSUE: 1}
         owner._pending_gates = {}
