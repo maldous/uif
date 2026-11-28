@@ -40,6 +40,35 @@ The installed configuration digest includes Access issuer/audience, service iden
 | `/v1/linear/comment`, `/v1/linear/upload`, `/v1/linear/receipt` | For a comment send `{operation,attempt_id,body}`. For a file send `{operation,attempt_id,filename,content_type,body_base64}`. The original binds the issue, action and exact content. Both upload allocation and PUT validate current ownership. Receipt lookup `{operation}` returns the original comment ID or private asset URL and `receipt_sha256`. |
 | `/v1/original`, `/v1/reconcile` | Original lookup is read-only and retains unknown outcomes. Control may record an independently attested exact original receipt once; it cannot overwrite a terminal result or settle an in-flight call. |
 
+### Native entry after an unstarted recovery
+
+A new `recover-unstarted/1` handoff to the configured native recipient records first-entry
+eligibility in the same transaction as the handoff receipt. The recipient first retains its
+create-only local intent. Only its creating task may POST `/v1/recovery/enter` with
+`{current, attempt_id, original:{installation_sha256,session_id,request_id,request_sha256}}`.
+The authority compares the exact handoff original, live native fence, current lease and attempt.
+The winner receives `{entered:true,permit}` after durable confirmation. A second entrant receives
+`{entered:false}`. After an uncertain response, use `/v1/recovery/observe` with the current lease
+for the same fence. The boolean reply never returns the permit. The native process retains the
+permit only for the winning task.
+
+The `uif-dispatch-permit` header accompanies each new Workers AI send, Linear comment or
+upload, source write/checkpoint, initial attempt advance and active onward handoff for this
+recovered attempt. The authority rechecks the permit at reservation and immediately before
+egress, including the attachment PUT. Source mutations require a permit-aware source sink.
+Detached provider calls without recipient capability propagation remain held. Renewals,
+original receipt reads and terminal reconciliation use their existing authority. An exact
+independently attested terminal completion can release the fence. A revoked fence can move
+under its existing quiescence, reconstruction and reconciled-original requirements. Neither
+operation issues first-entry permission. A later stage requires its existing independently
+attested attempt transition.
+
+Pre-upgrade native recovery originals remain observable. They cannot establish exclusive
+first entry or authorize new effects on their recovered attempt. Ordinary cooperative
+handoffs, released-and-reclaimed issues and Morgan-recipient recovery keep their own
+transition semantics. Work outside the authority must use the winning native task and its
+protected workspace binding.
+
 ## Effect ordering and recovery
 
 The same SQLite transaction compares the live claim, source, generation, attempt, deadline and whole-account evidence before reserving the original operation. Strict admission requires `upper + gap_upper + retained liabilities + request maximum < 7,500,000` millineurons. Pending sends survive UTC rollover. Verified local usage keeps its full conservative estimate until covered by subsequent independently verified complete telemetry. Same-day upper bounds may only increase. An observed overrun durably freezes the affected account pending correction of the invalid reservation assumption.

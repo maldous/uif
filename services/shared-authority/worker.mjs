@@ -26,7 +26,8 @@ export default {
       // Never forward the Access client secret, cookie or caller-chosen principal.
       const headers = new Headers();
       const forwarded = ['cf-access-jwt-assertion', 'content-type'];
-      if (['/v1/send', '/v1/linear/comment'].includes(url.pathname))
+      if (['/v1/send', '/v1/linear/comment', '/v1/linear/upload', '/v1/source/write', '/v1/source/checkpoint',
+        '/v1/claim/attempt', '/v1/handoff'].includes(url.pathname))
         forwarded.push('uif-dispatch-permit');
       for (const name of forwarded) {
         if (request.headers.has(name)) headers.set(name, request.headers.get(name));

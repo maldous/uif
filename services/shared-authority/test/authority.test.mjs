@@ -1980,6 +1980,123 @@ test('a recovered native recipient cannot borrow the marked assessment entry mec
   assert.equal(f.calls.length, 0);
 });
 
+async function recoveredNative() {
+  const { f, revoke, attest, accept } = await unstartedFixture('morgan');
+  await f.call('control','revoke',revoke);
+  await f.call('control','attest',attest);
+  const moved = await f.call('native','handoff',accept);
+  return {f, moved, input:{current:moved.lease,attempt_id:moved.attempt_id,original:{
+    installation_sha256:f.a.realm,session_id:f.peers.native.session_id,
+    request_id:moved.request_id,request_sha256:moved.request_sha256,
+  }}};
+}
+
+test('only the new native recovery entrant receives permission; an uncertain reply is observe-only', async () => {
+  const { f, input, moved } = await recoveredNative();
+  const enter = value => f.call('native','recovery/enter',value);
+  const observe = () => f.call('native','recovery/observe',input);
+  await assert.rejects(f.call('morgan','recovery/enter',input), /peer_role_not_granted/);
+  for (const key of Object.keys(input.original)) {
+    await assert.rejects(enter({...input, original:{...input.original, [key]:hex('e')}}), /native_recovery_original_not_current/);
+  }
+  await assert.rejects(enter({...input,attempt_id:'other'}), /native_recovery_original_not_current/);
+  assert.deepEqual(await observe(), {entered:false});
+  const oldLease = input.current;
+  f.setTime(start + 1);
+  input.current = (await f.call('native','renew',{current:oldLease,request_id:'extend'})).lease;
+  await assert.rejects(enter({...input,current:oldLease}), /native_recovery_original_not_current/);
+  const entrants = await Promise.all([enter(input),enter(input)]);
+  assert.equal(entrants.filter(r => r.entered).length, 1);
+  assert.deepEqual(entrants.find(r => !r.entered), {entered:false});
+  const {permit} = entrants.find(r => r.entered);
+  assert.match(permit,/^[0-9a-f]{64}$/);
+  assert.equal(f.a.row('SELECT permit_sha FROM recovery_entries').permit_sha,await digest(permit));
+  f.a = f.restart();
+  assert.deepEqual(await observe(), {entered:true});
+  assert.deepEqual(await enter(input), {entered:false});
+  const {request_sha256, ...lookup} = input.original;
+  assert.deepEqual(await f.call('native','transition/original',lookup),moved);
+  const request = await f.request(input.current, await f.quota());
+  for (const token of [undefined, hex('9'), request_sha256])
+    await assert.rejects(f.call('native','send',request,token), /native_recovery_permit_required/);
+  assert.equal(f.calls.length, 0);
+  await f.call('native','send',request,permit);
+  assert.equal(f.calls.length, 1);
+});
+
+test('lost durable recovery entry acknowledgment never issues a replacement capability', async () => {
+  const {f,input} = await recoveredNative();
+  f.storage.sync = async () => {throw new Error('lost reply');};
+  await assert.rejects(f.call('native','recovery/enter',input), /lost reply/);
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','recovery/observe',input),{entered:true});
+  assert.deepEqual(await f.call('native','recovery/enter',input),{entered:false});
+  const upload = await uploadInput(f,input.current);
+  await assert.rejects(f.call('native','linear/upload',upload), /native_recovery_permit_required/);
+  assert.equal(f.calls.length, 0);
+});
+
+test('recovered native upload rechecks the winner before PUT and retains the uncertain allocation', async () => {
+  const {f,input} = await recoveredNative();
+  const upload = await uploadInput(f,input.current);
+  const {permit} = await f.call('native','recovery/enter',input);
+  f.respond = async req => {
+    assert.equal(req.method,'POST');
+    await f.call('control','revoke',{request_id:'stop-upload',fence:input.current.fence});
+    return presign();
+  };
+  await assert.rejects(f.call('native','linear/upload',upload,permit), /owner_not_current/);
+  assert.equal(f.calls.length,1);
+  assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',upload.operation.original_id).state,'sending');
+});
+
+test('recovery cannot open an older generation, spend on a detached route, or advance without the winner', async () => {
+  const {f,input} = await recoveredNative();
+  const {fence} = input.current;
+  const op = {fence,original_id:'prepared',payload_sha256:hex('f')};
+  for (const submit of ['dispatchGemmaPrepared','dispatchIncludedResponsesPrepared'])
+    await assert.rejects(f.a[submit]({operation:op,attempt:input.attempt_id},f.peers.native), /native_recovery_permit_required/);
+  await assert.rejects(f.call('native','linear/comment',{attempt_id:input.attempt_id,operation:op}), /native_recovery_permit_required/);
+  const advance = {request_id:'next',current:input.current,expected_attempt_id:input.attempt_id,attempt_id:'attempt-next'};
+  await f.call('control','attempt/attest',{request_id:'attest-next',fence,previous:input.attempt_id,
+    successor:advance.attempt_id,terminal_receipt_sha256:hex('6')});
+  await assert.rejects(f.call('native','claim/attempt',advance), /native_recovery_permit_required/);
+  const {permit} = await f.call('native','recovery/enter',input);
+  assert.equal((await f.call('native','claim/attempt',advance,permit)).attempt_id,advance.attempt_id);
+  assert.equal((await f.call('native','claim/attempt',advance)).attempt_id,advance.attempt_id);
+  await assert.rejects(f.call('native','recovery/enter',input), /native_recovery_original_not_current/);
+  const other = await recoveredNative();
+  // Previous versions recorded only the exact handoff+lease. A new process may
+  // still read them, but a migration must never create first-entry permission.
+  other.f.a.put('DELETE FROM recovery_entries');
+  other.f.a = other.f.restart();
+  await assert.rejects(other.f.call('native','recovery/enter',other.input), /native_recovery_original_not_current/);
+  const oldSend = await other.f.request(other.input.current, await other.f.quota());
+  await assert.rejects(other.f.call('native','send',oldSend), /native_recovery_permit_required/);
+  assert.equal(other.f.calls.length,0);
+});
+
+test('independently attested release and revoked handoff can settle a recovered fence without a lost permit', async () => {
+  for (const action of ['release', 'handoff']) {
+    const {f,input} = await recoveredNative();
+    const {current} = input, {fence} = current;
+    const completion = {fence,accepted:false,receipt_sha256:hex('7')};
+    const handoff = {current,expected_coordinator_epoch:fence.coordinator_epoch,successor_session:f.peers.morgan.session_id,
+      reconstruction_sha256:hex('c'),quiesced_sha256:hex('b')};
+    const body = {request_id:'settle',...(action === 'release' ? {completion} : handoff)};
+    if (action === 'handoff') await assert.rejects(f.call('native', action, body), /native_recovery_permit_required/);
+    await f.call('control','revoke',{request_id:'revoke-return',fence});
+    await assert.rejects(f.call('native',action,body), /independent_original_evidence_missing/);
+    const fact = action === 'release' ? {kind:'completion',completion} : {kind:'handoff',...handoff};
+    await f.call('control','attest',{request_id:'approved-release-or-move',fact});
+    const result = await f.call('native',action,body);
+    if (action === 'release') assert.deepEqual(result.completion,completion);
+    else assert.equal(result.lease.fence.owner_session,f.peers.morgan.session_id);
+    assert.deepEqual(await f.call('native',action,body),result);
+    await assert.rejects(f.call('native','recovery/enter',input), /owner_not_current|claim_fence_changed/);
+  }
+});
+
 test('retained handoff and live recipient claim do not distinguish first entry from an interrupted recipient', async () => {
   for (const uncertain of [false, true]) {
     const { f, to, claim, revoke, attest, accept } = await unstartedFixture('morgan');
@@ -1989,6 +2106,9 @@ test('retained handoff and live recipient claim do not distinguish first entry f
     const status = await f.call(to, 'status', {});
     const lookup = { installation_sha256: status.installation_sha256,
       session_id: f.peers[to].session_id, request_id: accept.request_id };
+    const entry = {current:moved.lease, attempt_id:claim.attempt_id,
+      original:{...lookup, request_sha256:moved.request_sha256}};
+    const {permit} = await f.call(to, 'recovery/enter', entry);
     const claimLookup = { project: 'OffMenu', by_attempt: true, identifier: claim.attempt_id };
     const current = await f.call(to, 'claim/read', claimLookup);
     const request = await f.request(current.lease, await f.quota(), { attempt: claim.attempt_id });
@@ -1996,9 +2116,9 @@ test('retained handoff and live recipient claim do not distinguish first entry f
     assert.equal((await f.call(to, 'original', operation)).state, 'unknown');
     if (uncertain) {
       f.respond = async () => { throw new Error('simulated destination response loss'); };
-      await assert.rejects(f.call(to, 'send', request), /external_effect_unknown/);
+      await assert.rejects(f.call(to, 'send', request, permit), /external_effect_unknown/);
     } else {
-      await f.call(to, 'send', request);
+      await f.call(to, 'send', request, permit);
     }
     f.a = f.restart();
     assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);

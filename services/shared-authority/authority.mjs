@@ -22,10 +22,10 @@ import {
   json,
 } from './protocol.mjs';
 
-import { sourceTables, sourceRoute } from './source-overlay.mjs';
+import * as sourceOverlay from './source-overlay.mjs';
 
 const tables = [
-  ...sourceTables,
+  ...sourceOverlay.sourceTables,
   'CREATE TABLE IF NOT EXISTS installation (singleton INTEGER PRIMARY KEY CHECK(singleton=1), realm TEXT NOT NULL, anchor TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS authorizations (kind TEXT NOT NULL,id TEXT NOT NULL,realm TEXT NOT NULL,PRIMARY KEY(kind,id))',
   'CREATE TABLE IF NOT EXISTS control (singleton INTEGER PRIMARY KEY CHECK(singleton=1), epoch INTEGER NOT NULL, stopped INTEGER NOT NULL)',
@@ -39,6 +39,7 @@ const tables = [
   'CREATE TABLE IF NOT EXISTS provider_results (id TEXT PRIMARY KEY,response BLOB NOT NULL,gateway TEXT,issue TEXT NOT NULL,policy TEXT NOT NULL,body_sha TEXT NOT NULL,ack TEXT)',
   'CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, issue TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS assessment_dispatch (attempt TEXT PRIMARY KEY, issue TEXT NOT NULL, intent_sha TEXT NOT NULL, fence TEXT, permit_sha TEXT, provider_op TEXT, report_binding_sha TEXT)',
+  'CREATE TABLE IF NOT EXISTS recovery_entries (fence TEXT PRIMARY KEY, attempt TEXT NOT NULL, original TEXT NOT NULL, permit_sha TEXT)',
   'CREATE TABLE IF NOT EXISTS next_attempts (fence TEXT NOT NULL, previous TEXT NOT NULL, successor TEXT NOT NULL, PRIMARY KEY(fence,previous,successor))',
   'CREATE TABLE IF NOT EXISTS review_bindings (attempt TEXT PRIMARY KEY, body TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS carryovers (account TEXT NOT NULL,id TEXT NOT NULL,amount INTEGER NOT NULL,receipt TEXT NOT NULL, PRIMARY KEY(account,id))',
@@ -365,6 +366,75 @@ export class Authority {
       return result;
     });
   }
+  recoveryEntry(fence, attempt) {
+    if (fence?.generation !== 2 || !token(attempt) ||
+        !Object.values(this.c.peers).some(p => p.role === 'native' && p.session_id === fence.owner_session)) return;
+    const row = this.row('SELECT attempt,original,permit_sha FROM recovery_entries WHERE fence=?', canonical(fence));
+    if (row) return row.attempt === attempt ? row : undefined;
+
+    // An older binary recorded the transition and fence but could have started
+    // work without an entry row. Only a proved ordinary handoff/reclaim excludes
+    // that uncertainty. Never create an entry or mint a permit from history.
+    const historicalHold = {original:null, permit_sha:null};
+    const history = this.row('SELECT record FROM claim_generations WHERE issue=? AND generation=2',
+      issueKey(fence.scope));
+    const generation = history && JSON.parse(history.record);
+    if (!generation || !equal(generation.lease?.fence, fence)) return historicalHold;
+    for (const principal of Object.values(this.c.peers).filter(p => peerRoles.includes(p.role))) {
+      const receipt = this.row('SELECT result FROM receipts WHERE peer=? AND id=?',
+        this.peerKey(principal), generation.request_id);
+      const result = receipt && JSON.parse(receipt.result);
+      if (!result?.lease?.fence || !equal(result.lease.fence, fence) || result.request_id !== generation.request_id) continue;
+      if ((principal.role === 'morgan' && result.request_kind === leaseKind('handoff')) ||
+          (principal.role === 'native' && result.request_kind === 'uif.shared-lease.reclaim/1')) return;
+      if (principal.role === 'native' && result.request_kind === 'uif.shared-lease.recover-unstarted/1' &&
+          token(result.attempt_id)) return result.attempt_id === attempt ? historicalHold : undefined;
+    }
+    return historicalHold;
+  }
+  async recoveryPermitHash(fence, attempt, peer, rawPermit) {
+    if (!this.recoveryEntry(fence, attempt) || !sha(rawPermit)) return;
+    need(peer.role === 'native' && peer.session_id === fence.owner_session, 'peer_role_not_granted', 403);
+    return digest(rawPermit);
+  }
+  requireRecoveryPermit(fence, attempt, hash) {
+    const entry = this.recoveryEntry(fence, attempt);
+    if (!entry) return;
+    need(sha(hash) && entry.permit_sha === hash, 'native_recovery_permit_required', 403);
+    const { row } = this.ownerFence(fence.owner_session, fence);
+    need(row.attempt === attempt, 'native_recovery_attempt_changed');
+  }
+  async recoveryDispatch(path, body, peer) {
+    only(peer, 'native');
+    need(Object.values(this.c.peers).some(p => p.role === 'native' && p.session_id === peer.session_id),
+      'peer_role_not_granted', 403);
+    fields(body, 'current', 'attempt_id', 'original');
+    fields(body.current, 'fence', 'expires_at');
+    fields(body.original, 'installation_sha256', 'session_id', 'request_id', 'request_sha256');
+    const { fence } = body.current;
+    fenceShape(this.c, fence);
+    const read = () => {
+      const { lease, row } = this.owner(peer, fence);
+      const entry = this.recoveryEntry(fence, body.attempt_id);
+      need(equal(lease, body.current) && row.attempt === body.attempt_id && entry &&
+        body.original.installation_sha256 === this.realm && entry.original === canonical(body.original),
+        'native_recovery_original_not_current');
+      return entry;
+    };
+    if (path === '/v1/recovery/observe') return {entered: read().permit_sha !== null};
+    const permit = Array.from(crypto.getRandomValues(new Uint8Array(32)),
+      byte => byte.toString(16).padStart(2, '0')).join('');
+    const hash = await digest(permit);
+    const won = this.store.transactionSync(() => {
+      if (read().permit_sha !== null) return false;
+      this.put('UPDATE recovery_entries SET permit_sha=? WHERE fence=? AND permit_sha IS NULL', hash, canonical(fence));
+      return true;
+    });
+    if (!won) return {entered:false};
+    await this.store.sync();
+    need(read().permit_sha === hash, 'native_recovery_original_not_current');
+    return {entered:true, permit};
+  }
   async assessmentDispatch(path, body, peer) {
     only(peer, 'native');
     need(Object.values(this.c.peers).some((p) => p.role === 'native' &&
@@ -589,7 +659,15 @@ export class Authority {
     }
     need(path === '/v1/status' || this.commissioned(), 'installation_recommission_required');
     const c = this.c;
-    if (path.startsWith('/v1/source/')) return sourceRoute(this, path, body, peer, operationShape);
+    if (path === '/v1/recovery/enter' || path === '/v1/recovery/observe')
+      return this.recoveryDispatch(path, body, peer);
+    if (path.startsWith('/v1/source/')) {
+      if (!sourceOverlay.recoveryEntryMutations && ['/v1/source/write', '/v1/source/checkpoint'].includes(path)) {
+        const fence = body?.operation?.fence ?? body?.current?.fence;
+        need(!this.recoveryEntry(fence, body?.attempt_id), 'native_recovery_source_sink_unavailable');
+      }
+      return sourceOverlay.sourceRoute(this, path, body, peer, operationShape, dispatchPermit);
+    }
     if (path === '/v1/transition/original') {
       fields(body, 'installation_sha256', 'session_id', 'request_id');
       need(
@@ -1367,13 +1445,15 @@ export class Authority {
       const operation = path === '/v1/send' ? body.intent?.operation : body.operation;
       const attempt = path === '/v1/send' ? body.intent?.attempt_id : body.attempt_id;
       const permitHash = await this.assessmentPermitHash(path, operation, attempt, peer, dispatchPermit);
+      const recoveryHash = await this.recoveryPermitHash(operation?.fence, attempt, peer, dispatchPermit);
+      this.requireRecoveryPermit(operation?.fence, attempt, recoveryHash);
       const id = operation?.original_id;
       need(token(id) && !this.inflight.has(id), 'original_in_flight');
       this.inflight.add(id);
       try {
-        if (path === '/v1/send') return await this.send(body, peer, permitHash);
-        if (path === '/v1/linear/upload') return await this.upload(body, peer);
-        return await this.comment(body, peer, permitHash);
+        if (path === '/v1/send') return await this.send(body, peer, permitHash, recoveryHash);
+        if (path === '/v1/linear/upload') return await this.upload(body, peer, recoveryHash);
+        return await this.comment(body, peer, permitHash, recoveryHash);
       } finally {
         this.inflight.delete(id);
       }
@@ -1545,10 +1625,12 @@ export class Authority {
     if (path === '/v1/claim/attempt') {
       only(peer, ...peerRoles);
       fields(body, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
+      const recoveryHash = await this.recoveryPermitHash(body.current?.fence, body.expected_attempt_id, peer, dispatchPermit);
       return this.receipt(peer, body.request_id, path, body, () => {
         const l = body.current,
           { lease, row } = this.owner(peer, l.fence);
         need(equal(lease, l), 'claim_fence_changed');
+        this.requireRecoveryPermit(l.fence, row.attempt, recoveryHash);
         const g = this.grant(l.fence.scope, l.fence.source, peer);
         need(
           g.attempt_ids.includes(body.attempt_id) && row.attempt === body.expected_attempt_id,
@@ -1574,7 +1656,7 @@ export class Authority {
       });
     }
     if (['/v1/claim', '/v1/claim/observe', '/v1/renew', '/v1/handoff', '/v1/release'].includes(path))
-      return this.transition(path, body, peer);
+      return this.transition(path, body, peer, dispatchPermit);
     throw new Refusal('unknown_route', 404);
   }
   allowedRoute(route) {
@@ -1593,7 +1675,7 @@ export class Authority {
     const row = this.checkpoint(account);
     return row && row.receipt_sha === receipt.receipt_sha256 && sha(row.checkpoint_sha) && sha(row.opening_sha);
   }
-  async transition(path, body, peer) {
+  async transition(path, body, peer, dispatchPermit) {
     only(peer, ...peerRoles);
     const c = this.c,
       observe = path === '/v1/claim/observe';
@@ -1651,6 +1733,9 @@ export class Authority {
       need(prev.fingerprint === (await digest({ path: '/v1/claim', body })), 'original_request_changed');
       return JSON.parse(prev.result);
     }
+    // An onward handoff of active work is scoped to the current attempt.
+    const outgoingPermitHash = action === 'handoff' && !recover && sha(dispatchPermit)
+      ? await digest(dispatchPermit) : undefined;
     const handoffFact =
       action === 'handoff'
         ? {
@@ -1745,6 +1830,8 @@ export class Authority {
       } else {
         need(r && ['active', 'revoked'].includes(r.state), 'claim_not_reconcilable');
       }
+      if (action === 'handoff' && !recover && r.state === 'active')
+        this.requireRecoveryPermit(f, r.attempt, outgoingPermitHash);
       const prior = JSON.parse(r.lease);
       need(equal(prior.fence, f) && (recover || f.owner_session === peer.session_id), 'original_owner_required');
       this.reconciled(f.scope);
@@ -1795,6 +1882,12 @@ export class Authority {
         lease.fence.generation,
         canonical({ grant: g, lease, request_id: body.request_id }),
       );
+      if (recover && next.role === 'native') {
+        const original = {installation_sha256: this.realm, session_id: next.session_id,
+          request_id: body.request_id, request_sha256: hash};
+        this.put('INSERT INTO recovery_entries VALUES (?,?,?,NULL)',
+          canonical(lease.fence), r.attempt, canonical(original));
+      }
       return recover ? { ...result, lease, attempt_id: r.attempt } : { ...result, lease };
     });
   }
@@ -1939,7 +2032,7 @@ export class Authority {
       need(readPosted() === receipt, 'assessment_terminal_report_unverified');
     };
   }
-  async comment(body, peer, permitHash) {
+  async comment(body, peer, permitHash, recoveryHash) {
     fields(body, 'operation', 'attempt_id', 'body');
     const op = body.operation;
     operationShape(this.c, op);
@@ -1977,7 +2070,7 @@ export class Authority {
       null,
       0,
       () => { qualify(); reportCheck?.(); },
-      out,
+      out, recoveryHash,
     );
     need(response.status === 200, 'original_linear_outcome_unknown', 502);
     const raw = await readBytes(response.body, 768000),
@@ -1995,7 +2088,7 @@ export class Authority {
     const receipt_sha256 = await digest({ operation: op, id, body_sha256: await digestBytes(raw) });
     return this.recordDestination(op, { id, receipt_sha256 });
   }
-  async upload(body, peer) {
+  async upload(body, peer, recoveryHash) {
     fields(body, 'operation', 'attempt_id', 'filename', 'content_type', 'body_base64');
     const { operation: op, attempt_id, filename, content_type } = body;
     operationShape(this.c, op);
@@ -2030,12 +2123,15 @@ export class Authority {
       })) === op.payload_sha256,
       'upload_fingerprint_changed',
     );
-    const qualify = () => this.linearGrant(peer, op, attempt_id, 'allow_uploads');
+    const qualify = () => {
+      this.requireRecoveryPermit(op.fence, attempt_id, recoveryHash);
+      this.linearGrant(peer, op, attempt_id, 'allow_uploads');
+    };
     const out = this.linearRequest(
       'mutation Upload($type:String!,$name:String!,$size:Int!){fileUpload(contentType:$type,filename:$name,size:$size){success uploadFile{uploadUrl assetUrl headers{key value}}}}',
       { type: content_type, name: filename, size },
     );
-    const response = await this.physical(op, attempt_id, null, 0, qualify, out);
+    const response = await this.physical(op, attempt_id, null, 0, qualify, out, recoveryHash);
     need(response.status === 200, 'upload_allocation_unknown', 502);
     const doc = json(await readBytes(response.body, 32768)),
       allocation = doc.data?.fileUpload;
@@ -2103,8 +2199,9 @@ export class Authority {
     });
     return this.recordDestination(op, { asset_url: asset.href, receipt_sha256 });
   }
-  async physical(op, attempt, account, amount, qualify, outgoing) {
+  async physical(op, attempt, account, amount, qualify, outgoing, recoveryHash) {
     this.store.transactionSync(() => {
+      this.requireRecoveryPermit(op.fence, attempt, recoveryHash);
       qualify(false);
       need(
         !this.row('SELECT 1 AS found FROM effects WHERE id=?', op.original_id),
@@ -2129,6 +2226,7 @@ export class Authority {
         this.row('SELECT state FROM effects WHERE id=?', op.original_id)?.state === 'sending',
         'original_state_changed',
       );
+      this.requireRecoveryPermit(op.fence, attempt, recoveryHash);
       qualify(true);
     } catch (e) {
       const hash = await digest({ operation: op, status: 'denied', kind: 'pre-egress-fence' });
@@ -2243,6 +2341,7 @@ export class Authority {
   async dispatchGemmaPrepared({ operation, attempt, project, prompt, deadline, credential,
     readQuote, verifySettlement }, peer) {
     operationShape(this.c, operation);
+    this.requireRecoveryPermit(operation.fence, attempt);
     need(
       token(attempt) && sha(project) && typeof prompt === 'string' &&
       new TextEncoder().encode(prompt).byteLength <= 4096 && prompt.length > 0 &&
@@ -2369,6 +2468,7 @@ export class Authority {
   async dispatchIncludedResponsesPrepared({ operation, attempt, organization, project,
     credentialEpoch, credential, input, deadline, maximumMicrousd, optIn, intent, readGrant, verifySettlement }, peer) {
     operationShape(this.c, operation);
+    this.requireRecoveryPermit(operation.fence, attempt);
     const identifier = (s) => typeof s === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/.test(s);
     need(token(attempt) && identifier(organization) && identifier(project) &&
       sha(credentialEpoch) && typeof input === 'string' && input.length > 0 &&
@@ -2474,7 +2574,7 @@ export class Authority {
     return this.providerResponse(bytes, null, hash);
   }
 
-  async send(body, peer, permitHash) {
+  async send(body, peer, permitHash, recoveryHash) {
     fields(body, 'intent', 'body_base64');
     const i = body.intent;
     fields(
@@ -2573,7 +2673,7 @@ export class Authority {
         this.qualifySend(peer, i, promptSHA, include);
         this.bindAssessmentProviderOperation(peer, op, i.attempt_id, permitHash, include);
       },
-      outgoing,
+      outgoing, recoveryHash,
     );
     // Read and authenticate response at the same fixed origin. HTTP errors,
     // timeout, malformed/missing usage, and missing gateway IDs retain maximum.
