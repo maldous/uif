@@ -1,4 +1,4 @@
-import { deriveFreshAssessmentCommentFromVerifiedOriginal } from './fresh-assessment-report.mjs';
+import { deriveFreshAssessmentCommentFromVerifiedOriginal, deriveInvestigationCommentFromVerifiedOriginal } from './fresh-assessment-report.mjs';
 import {
   need,
   Refusal,
@@ -629,8 +629,11 @@ export class Authority {
     if (op.fence.generation !== 1 || !this.recoveryEntry(op.fence, attempt)) return;
     const issue = op.fence.scope.key.issue_id;
     const provider = family === 'provider';
-    const original = provider ? await digestBytes(new TextEncoder().encode(attempt + ':1'))
-      : await digest({attempt, slot:'_announce_state', kind:'comment', issue});
+    const providerID = await digestBytes(new TextEncoder().encode(attempt + ':1'));
+    const trackingID = await digest({attempt, slot:'_announce_state', kind:'comment', issue});
+    const reportID = await digest({attempt, slot:'_publish_run_report', kind:'comment', issue});
+    const report = !provider && op.original_id === reportID;
+    const original = provider ? providerID : report ? reportID : trackingID;
     need(op.original_id === original, 'investigation_effect_original_changed');
     if (provider) {
       need(equal(value.route, this.c.route) && !Object.hasOwn(value.request, 'tools') &&
@@ -640,18 +643,57 @@ export class Authority {
             'available evidence and any remaining gaps. No further tools are available.',
         }), 'investigation_provider_request_changed');
     }
-    return () => {
+    const read = () => {
+      const {row} = this.owner(peer, op.fence);
       const grant = this.grant(op.fence.scope, op.fence.source, peer);
       const previous = attempt.slice(0, -'investigate'.length) + 'assess';
-      need(grant.fresh_assessment?.attempt_id === previous && grant.fresh_assessment.report_binding,
+      need(peer.role === 'native' && row.attempt === attempt &&
+        grant.fresh_assessment?.attempt_id === previous && grant.fresh_assessment.report_binding,
         'investigation_effect_not_admitted');
-      if (!provider) investigationTracking(value, grant.fresh_assessment.report_binding.run);
-      // The physical reservation journals the full operation in this transaction.
-      // A pre-upgrade operation with another ID is still the original, even if settled.
-      need(!this.row(`SELECT 1 FROM effects WHERE issue=? AND attempt=?
-        AND (account IS NOT NULL)=? AND (id<>? OR op<>?)`,
-        issueKey(op.fence.scope), attempt, provider ? 1 : 0, original, canonical(op)),
+      if (!provider && !report) investigationTracking(value, grant.fresh_assessment.report_binding.run);
+      // Only these two canonical comment slots are distinct. An unknown older
+      // comment remains consumed custody and cannot be relabelled as a new slot.
+      if (provider) need(!this.row(`SELECT 1 FROM effects WHERE issue=? AND attempt=?
+        AND account IS NOT NULL AND (id<>? OR op<>?)`,
+        issueKey(op.fence.scope), attempt, original, canonical(op)), 'investigation_effect_original_changed');
+      else need(!this.row(`SELECT 1 FROM effects WHERE issue=? AND attempt=? AND account IS NULL
+        AND (id NOT IN (?,?) OR (id=? AND op<>?))`,
+        issueKey(op.fence.scope), attempt, trackingID, reportID, original, canonical(op)),
         'investigation_effect_original_changed');
+      if (!report) return;
+      const retained = this.row('SELECT * FROM assessment_dispatch WHERE attempt=?', previous);
+      const effect = this.row('SELECT * FROM effects WHERE id=?', providerID);
+      const result = this.row('SELECT * FROM provider_results WHERE id=?', providerID);
+      const binding = grant.fresh_assessment.report_binding;
+      need(!this.row('SELECT 1 FROM effects WHERE issue=? AND attempt=? AND account IS NOT NULL AND id<>?',
+        issueKey(op.fence.scope), attempt, providerID), 'investigation_effect_original_changed');
+      need(retained?.report_binding_sha && retained.issue === issueKey(op.fence.scope) &&
+        retained.fence === canonical(op.fence) && effect?.attempt === attempt &&
+        effect.issue === issueKey(op.fence.scope) && effect.account === this.c.route.account_id &&
+        effect.state === 'verified' && JSON.parse(effect.op).original_id === providerID && result?.issue === issueKey(op.fence.scope) &&
+        grant.result_retention && result.policy === canonical(grant.result_retention) &&
+        grant.result_retention.readers.includes(peer.session_id) &&
+        (result.response instanceof ArrayBuffer || result.response instanceof Uint8Array) &&
+        result.response.byteLength <= 256 * 1024,
+        'investigation_report_result_unavailable', 403);
+      return {binding, bindingSHA:retained.report_binding_sha, operation:JSON.parse(effect.op),
+        bytes:new Uint8Array(result.response).slice(), receipt:effect.receipt,
+        bodySHA:result.body_sha, gateway:result.gateway};
+    };
+    const before = read();
+    if (report) {
+      const expected = await deriveInvestigationCommentFromVerifiedOriginal({
+        config:this.c, currentFence:op.fence, ownerBinding:before.binding,
+        ownerBindingSha256:before.bindingSHA, attempt_id:attempt,
+        sealedProviderOperation:before.operation,
+        providerEffect:{operation:before.operation,attempt_id:attempt,status:'verified',receipt_sha256:before.receipt},
+        retainedResponse:{body_sha256:before.bodySHA,gateway_receipt:before.gateway},responseBytes:before.bytes,
+      });
+      need(expected.body === value && equal(expected.operation, op), 'investigation_report_original_changed', 403);
+    }
+    return () => {
+      const after = read();
+      if (report) this.assessmentReportSnapshotUnchanged(before, after);
     };
   }
   async handle(path, body, peer, dispatchPermit) {
