@@ -55,6 +55,7 @@ const tables = [
   'CREATE INDEX IF NOT EXISTS effects_account ON effects(account,state,settled_at)',
 ];
 const LIMIT = 7500000;
+const USAGE_FRESH_SECONDS = 90;
 const NATIVE_UNIT = 'stokowski-foo.service';
 const NORMAL_STAGE = /^uif1313-normal-[a-z0-9][a-z0-9.-]{1,65}$/;
 const peerRoles = ['native', 'morgan'];
@@ -116,7 +117,7 @@ function projectionOK(p, route, t, end, liability, maximum) {
       boundedRequest(p.covered_through) &&
       boundedRequest(p.valid_until) &&
       p.covered_through <= t &&
-      t - p.covered_through <= 90 &&
+      t - p.covered_through <= USAGE_FRESH_SECONDS &&
       t < end &&
       end <= p.valid_until &&
       p.utc_day === day(t) &&
@@ -1343,7 +1344,21 @@ export class Authority {
         'usage_unavailable',
         404,
       );
-      return receipt;
+      const observed_at = this.clock(), projection = receipt.projection;
+      if (!boundedRequest(observed_at) || !equal(projection.route, body.route) ||
+          observed_at < projection.covered_through || observed_at >= projection.valid_until ||
+          observed_at - projection.covered_through > USAGE_FRESH_SECONDS ||
+          day(observed_at) !== projection.utc_day) return receipt;
+
+      // Report what the sender actually counts, at the same watermark. Keep
+      // the mutable ledger view outside the stored and hashed quota receipt.
+      const account = body.route.account_id;
+      const debt_millineurons = this.accountReservationDebt(account, projection.covered_through);
+      if (!uint(debt_millineurons)) return receipt;
+      const ceiling_breached = !!this.row('SELECT 1 FROM budget_breaches WHERE account=?', account);
+      return { ...receipt, reservation_snapshot: {
+        receipt_sha256: receipt.receipt_sha256, observed_at, debt_millineurons, ceiling_breached,
+      } };
     }
     if (path === '/v1/linear/state') throw new Refusal('linear_atomic_state_cas_unavailable');
     if (path === '/v1/publication') throw new Refusal('offmenu_sole_git_publisher_required');

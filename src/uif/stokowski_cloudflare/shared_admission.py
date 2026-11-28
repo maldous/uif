@@ -21,10 +21,21 @@ from .client import FencedFreeCall, FreeAdmissionWindow, MAX_OUTPUT_TOKENS, MODE
 
 
 @dataclass(frozen=True)
+class AccountReservationSnapshot:
+    """Read-only account debt and freeze state at one exact quota watermark."""
+
+    receipt_sha256: str
+    observed_at: int
+    debt_millineurons: int
+    ceiling_breached: bool
+
+
+@dataclass(frozen=True)
 class AccountUsageReceipt:
     issuer: AuthorityIdentity
     receipt_sha256: str
     projection: AccountUsageEvidence
+    reservation_snapshot: AccountReservationSnapshot | None = None
 
 
 @dataclass(frozen=True)
