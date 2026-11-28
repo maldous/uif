@@ -255,3 +255,19 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.assertFalse(self.entries)
         self.assertEqual(self.owner._tasks, {})
         self.lifecycle.recipient_assignment.assert_not_called()
+
+    async def test_cancellation_before_entry_releases_only_its_registered_slot(self):
+        self.require_turn_binding()
+        self.configure()
+        self.owner._dispatch(self.issue)
+        task = self.owner._tasks[ISSUE]
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        self.owner._release_slot.assert_called_once_with(ISSUE)
+        self.assertNotIn(ISSUE, self.owner.running)
+        self.assertNotIn(ISSUE, self.owner._tasks)
+        self.assertNotIn(ISSUE, self.owner.claimed)
+        self.assertEqual(self.entries, [])
+        self.fetch_issue.assert_not_awaited()
+        self.assertFalse((self.path / '.stokowski').exists())
