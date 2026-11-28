@@ -28,10 +28,12 @@ from uif.stokowski_cloudflare.remote_authority import AccessTransport, RemoteAut
 
 
 ROOT = Path(__file__).resolve().parents[2]
+RECIPIENT_NATIVE_POSTIMAGE = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
 PINNED_SOURCE = {
     'orchestrator.py': {'610cbf97a5f36c9dd305cfe456245a9efc29625287b44211adbd5cea77c3511f',
                         '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96',
-                        '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38'},
+                        '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38',
+                        RECIPIENT_NATIVE_POSTIMAGE},
     'runner.py': {'2492210a8d43cae9b2e0ebae256f8d37298fc75c0f2c65c3fdbd66a925c6b351'},
 }
 WORKER = r'''
@@ -336,9 +338,10 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
                 or not hasattr(launcher, '_recipient_native_prologue')
                 or not hasattr(NativeComposition, 'recipient_assignment')):
             self.skipTest('recipient launcher, composition and owner-thread bridge must all be wired')
-        if 'verified_assessment_report' not in signature(
-                self.orchestrator.Orchestrator._publish_run_report).parameters:
-            self.skipTest('select the pinned native assessment report postimage for recipient tests')
+        if sha256((self.shelf / 'orchestrator.py').read_bytes()).hexdigest() != RECIPIENT_NATIVE_POSTIMAGE:
+            self.skipTest('select the pinned native postimage with retained recipient restart cleanup')
+        self.assertIn('verified_assessment_report', signature(
+            self.orchestrator.Orchestrator._publish_run_report).parameters)
 
     async def test_exact_recovered_winner_reaches_provider_and_report_and_refuses_copied_thread(self):
         self.require_recipient_runtime()
