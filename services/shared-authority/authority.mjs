@@ -368,15 +368,28 @@ export class Authority {
     });
   }
   recoveryEntry(fence, attempt) {
-    if (fence?.generation !== 2 || !token(attempt) ||
+    if (![1,2].includes(fence?.generation) || !token(attempt) ||
         !Object.values(this.c.peers).some(p => p.role === 'native' && p.session_id === fence.owner_session)) return;
+    const historicalHold = {original:null, permit_sha:null};
+    if (fence.generation === 1) {
+      if (!/^cf-intake-[a-f0-9]{64}-investigate$/.test(attempt)) return;
+      const entry = this.row('SELECT original,permit_sha FROM recovery_entries WHERE fence=? AND attempt=?',
+        canonical(fence), attempt);
+      if (entry) return entry;
+      const history = this.row('SELECT record FROM claim_generations WHERE issue=? AND generation=1', issueKey(fence.scope));
+      const first = history && JSON.parse(history.record);
+      const previous = attempt.slice(0, -'investigate'.length) + 'assess';
+      if (!first || !equal(first.lease.fence, fence)) return historicalHold;
+      if (first.grant.fresh_assessment?.attempt_id === previous && first.grant.fresh_assessment.report_binding)
+        return historicalHold;
+      return;
+    }
     const row = this.row('SELECT attempt,original,permit_sha FROM recovery_entries WHERE fence=?', canonical(fence));
     if (row) return row.attempt === attempt ? row : undefined;
 
     // An older binary recorded the transition and fence but could have started
     // work without an entry row. Only a proved ordinary handoff/reclaim excludes
     // that uncertainty. Never create an entry or mint a permit from history.
-    const historicalHold = {original:null, permit_sha:null};
     const history = this.row('SELECT record FROM claim_generations WHERE issue=? AND generation=2',
       issueKey(fence.scope));
     const generation = history && JSON.parse(history.record);
@@ -405,6 +418,86 @@ export class Authority {
     const { row } = this.ownerFence(fence.owner_session, fence);
     need(row.attempt === attempt, 'native_recovery_attempt_changed');
   }
+  async assessmentEdgeCheck(body, peer, consumed) {
+    only(peer, 'native');
+    need(Object.values(this.c.peers).some((x) => x.role === 'native' &&
+      x.session_id === peer.session_id), 'peer_role_not_granted', 403);
+    const lookup = !Object.hasOwn(body ?? {}, 'original');
+    fields(body, 'current', ...(lookup ? (consumed ? [] : ['previous', 'successor']) : ['original']),
+      ...(consumed ? ['advance'] : []));
+    const { current, advance } = body;
+    fields(current, 'fence', 'expires_at');
+    fenceShape(this.c, current.fence, true);
+    if (consumed) {
+      fields(advance, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
+      fields(advance.current, 'fence', 'expires_at');
+      need(token(advance.request_id) && uint(advance.current.expires_at), 'invalid_stage_transition', 400);
+      if (!token(advance.expected_attempt_id) || !token(advance.attempt_id) ||
+          !equal(advance.current.fence, current.fence)) return () => false;
+    }
+    const control = Object.values(this.c.peers).filter(x => x.role === 'control');
+    if (control.length !== 1) return () => false;
+    const issuer = this.peerKey(control[0]);
+    const previous = consumed ? advance.expected_attempt_id : body.previous;
+    const successorId = consumed ? advance.attempt_id : body.successor;
+    if (lookup && (!token(previous) || !token(successorId))) return () => false;
+    const readRetained = () => this.row(
+      'SELECT body FROM assessment_attestations WHERE fence=? AND previous=? AND successor=? AND issuer=?',
+      canonical(current.fence), previous, successorId, issuer);
+    const stored = lookup && readRetained();
+    if (lookup && !stored) return () => false;
+    const original = lookup ? JSON.parse(stored.body) : body.original;
+    fields(original, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
+    fenceShape(this.c, original.fence, true);
+    need(token(original.request_id) && token(original.previous) && token(original.successor) &&
+      original.previous !== original.successor && sha(original.terminal_receipt_sha256),
+    'invalid_stage_transition', 400);
+    if (!equal(current.fence, original.fence) || (lookup && (original.previous !== previous || original.successor !== successorId))) return () => false;
+    const expected = await digest({ path: '/v1/attempt/attest', body: original });
+    let advanceFingerprint;
+    if (consumed) {
+      if (advance.expected_attempt_id !== original.previous || advance.attempt_id !== original.successor)
+        return () => false;
+      advanceFingerprint = await digest({path: '/v1/claim/attempt', body: advance});
+    }
+    return () => {
+      // No asynchronous boundary after the live owner/lease/grant recheck.
+      // The tuple alone may come from another path and cannot prove this hash.
+      this.live(peer);
+      try {
+        const { row, lease } = this.owner(peer, current.fence);
+        const grant = this.grant(lease.fence.scope, lease.fence.source, peer);
+        if (!equal(lease, current) || !grant.attempt_ids.includes(original.successor) ||
+            !this.row('SELECT 1 FROM next_attempts WHERE fence=? AND previous=? AND successor=?',
+              canonical(lease.fence), original.previous, original.successor)) return false;
+        if (lookup && (current.fence.generation !== 1 || grant.fresh_assessment?.attempt_id !== original.previous ||
+            !grant.fresh_assessment.report_binding)) return false;
+        const successor = this.row('SELECT issue FROM attempts WHERE id=?', original.successor);
+        if (consumed) {
+          // After consumption, only the exact native CAS receipt for the same
+          // control-attested edge proves how this still-current successor entered.
+          if (row.attempt !== original.successor || successor?.issue !== issueKey(current.fence.scope) ||
+              grant.fresh_assessment?.attempt_id !== original.previous ||
+              !grant.fresh_assessment.report_binding) return false;
+          const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+            this.peerKey(peer), advance.request_id);
+          if (receipt?.fingerprint !== advanceFingerprint || !equal(JSON.parse(receipt.result),
+              {project: 'OffMenu', attempt_id: original.successor, lease: advance.current})) return false;
+        } else if (row.attempt !== original.previous || successor) return false;
+        if (lookup && readRetained()?.body !== stored.body) return false;
+        const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+          issuer, original.request_id);
+        return receipt?.fingerprint === expected &&
+          equal(JSON.parse(receipt.result), { terminal_receipt_sha256: original.terminal_receipt_sha256 });
+      } catch (error) {
+        if (error instanceof Refusal && [
+          'owner_not_current', 'claim_fence_changed', 'authority_pins_changed',
+          'issue_grant_missing', 'issue_grant_not_current', 'stopped_expired_or_superseded',
+        ].includes(error.message)) return false;
+        throw error;
+      }
+    };
+  }
   async recoveryDispatch(path, body, peer) {
     only(peer, 'native');
     need(Object.values(this.c.peers).some(p => p.role === 'native' && p.session_id === peer.session_id),
@@ -422,7 +515,11 @@ export class Authority {
         'native_recovery_original_not_current');
       return entry;
     };
-    if (path === '/v1/recovery/observe') return {entered: read().permit_sha !== null};
+    need(fence.generation === 2, 'native_recovery_original_not_current');
+    return this.dispatchEntry(fence, read, path === '/v1/recovery/observe');
+  }
+  async dispatchEntry(fence, read, observeOnly) {
+    if (observeOnly) return {entered: read().permit_sha !== null};
     const permit = Array.from(crypto.getRandomValues(new Uint8Array(32)),
       byte => byte.toString(16).padStart(2, '0')).join('');
     const hash = await digest(permit);
@@ -540,77 +637,18 @@ export class Authority {
       }
     }
     if (path === '/v1/attempt/attest/native' || path === '/v1/attempt/successor/read') {
-      const consumed = path === '/v1/attempt/successor/read';
-      only(peer, 'native');
-      need(Object.values(this.c.peers).some((x) => x.role === 'native' &&
-        x.session_id === peer.session_id), 'peer_role_not_granted', 403);
-      const lookup = consumed && !Object.hasOwn(body ?? {}, 'original');
-      fields(body, 'current', ...(lookup ? [] : ['original']), ...(consumed ? ['advance'] : []));
-      const { current, advance } = body;
-      fields(current, 'fence', 'expires_at');
-      fenceShape(this.c, current.fence, true);
-      if (consumed) {
-        fields(advance, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
-        fields(advance.current, 'fence', 'expires_at');
-        need(token(advance.request_id) && uint(advance.current.expires_at), 'invalid_stage_transition', 400);
-        if (!token(advance.expected_attempt_id) || !token(advance.attempt_id) ||
-            !equal(advance.current.fence, current.fence)) return {matches:false};
-      }
-      const control = Object.values(this.c.peers).filter(x => x.role === 'control');
-      if (control.length !== 1) return {matches:false};
-      const issuer = this.peerKey(control[0]);
-      const readRetained = () => this.row(
-        'SELECT body FROM assessment_attestations WHERE fence=? AND previous=? AND successor=? AND issuer=?',
-        canonical(current.fence), advance.expected_attempt_id, advance.attempt_id, issuer);
-      const stored = lookup && readRetained();
-      if (lookup && !stored) return {matches:false};
-      const original = lookup ? JSON.parse(stored.body) : body.original;
-      fields(original, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
-      fenceShape(this.c, original.fence, true);
-      need(token(original.request_id) && token(original.previous) && token(original.successor) &&
-        original.previous !== original.successor && sha(original.terminal_receipt_sha256),
-      'invalid_stage_transition', 400);
-      if (!equal(current.fence, original.fence)) return { matches: false };
-      const expected = await digest({ path: '/v1/attempt/attest', body: original });
-      let advanceFingerprint;
-      if (consumed) {
-        if (advance.expected_attempt_id !== original.previous || advance.attempt_id !== original.successor)
-          return { matches: false };
-        advanceFingerprint = await digest({path: '/v1/claim/attempt', body: advance});
-      }
-      // No asynchronous boundary after the live owner/lease/grant recheck.
-      // The tuple alone may come from another path and cannot prove this hash.
-      this.live(peer);
-      try {
-        const { row, lease } = this.owner(peer, current.fence);
-        const grant = this.grant(lease.fence.scope, lease.fence.source, peer);
-        if (!equal(lease, current) || !grant.attempt_ids.includes(original.successor) ||
-            !this.row('SELECT 1 FROM next_attempts WHERE fence=? AND previous=? AND successor=?',
-              canonical(lease.fence), original.previous, original.successor)) return { matches: false };
-        const successor = this.row('SELECT issue FROM attempts WHERE id=?', original.successor);
-        if (consumed) {
-          // After consumption, only the exact native CAS receipt for the same
-          // control-attested edge proves how this still-current successor entered.
-          if (row.attempt !== original.successor || successor?.issue !== issueKey(current.fence.scope) ||
-              grant.fresh_assessment?.attempt_id !== original.previous ||
-              !grant.fresh_assessment.report_binding) return { matches: false };
-          const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
-            this.peerKey(peer), advance.request_id);
-          if (receipt?.fingerprint !== advanceFingerprint || !equal(JSON.parse(receipt.result),
-              {project: 'OffMenu', attempt_id: original.successor, lease: advance.current})) return { matches: false };
-        } else if (row.attempt !== original.previous || successor) return { matches: false };
-        if (lookup && readRetained()?.body !== stored.body) return {matches:false};
-        const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
-          issuer, original.request_id);
-        return { matches: receipt?.fingerprint === expected &&
-          equal(JSON.parse(receipt.result), { terminal_receipt_sha256: original.terminal_receipt_sha256 }) };
-      } catch (error) {
-        if (error instanceof Refusal && [
-          'owner_not_current', 'claim_fence_changed', 'authority_pins_changed',
-          'issue_grant_missing', 'issue_grant_not_current', 'stopped_expired_or_superseded',
-        ].includes(error.message)) return { matches: false };
-        throw error;
-      }
+      const check = await this.assessmentEdgeCheck(body, peer, path === '/v1/attempt/successor/read');
+      return {matches:check()};
+    }
+    if (path === '/v1/attempt/successor/enter' || path === '/v1/attempt/successor/observe') {
+      fields(body,'current','advance');
+      const check = await this.assessmentEdgeCheck(body, peer, true);
+      const read = () => {
+        const entry = this.recoveryEntry(body.current.fence, body.advance.attempt_id);
+        need(check() && entry?.original === canonical(body.advance), 'assessment_successor_entry_not_current');
+        return entry;
+      };
+      return this.dispatchEntry(body.current.fence, read, path.endsWith('/observe'));
     }
     if (path === '/v1/attempt/attest/original') {
       only(peer, 'control');
@@ -1648,6 +1686,12 @@ export class Authority {
     if (path === '/v1/claim/attempt') {
       only(peer, ...peerRoles);
       fields(body, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
+      const fence = body.current?.fence;
+      const marked = token(body.expected_attempt_id) && this.row(
+        'SELECT 1 FROM assessment_dispatch WHERE attempt=? AND report_binding_sha IS NOT NULL', body.expected_attempt_id);
+      const approved = marked && await this.assessmentEdgeCheck({current:body.current,
+        previous:body.expected_attempt_id, successor:body.attempt_id}, peer, false);
+      const expectedId = marked && await digest({lease:fence.lease_id, attempt:body.attempt_id});
       const recoveryHash = await this.recoveryPermitHash(body.current?.fence, body.expected_attempt_id, peer, dispatchPermit);
       return this.receipt(peer, body.request_id, path, body, () => {
         const l = body.current,
@@ -1673,6 +1717,10 @@ export class Authority {
           !this.row('SELECT 1 FROM attempts WHERE id=?', body.attempt_id),
           'attempt_already_consumed',
         );
+        if (marked || (g.fresh_assessment?.attempt_id === row.attempt && g.fresh_assessment.report_binding)) {
+          need(approved && body.request_id === expectedId && approved(), 'assessment_successor_original_unverified');
+          this.put('INSERT INTO recovery_entries VALUES (?,?,?,NULL)', canonical(l.fence), body.attempt_id, canonical(body));
+        }
         this.put('INSERT INTO attempts VALUES (?,?)', body.attempt_id, issueKey(l.fence.scope));
         this.put('UPDATE claims SET attempt=? WHERE issue=?', body.attempt_id, issueKey(l.fence.scope));
         return { project: 'OffMenu', attempt_id: body.attempt_id, lease };
