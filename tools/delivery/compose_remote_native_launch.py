@@ -59,6 +59,7 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
     if idle_reason is not None:
         from uif.stokowski_cloudflare.launcher import serve_supervised_idle
         return serve_supervised_idle(idle_reason)'''
+    native_source_check = ''
     if commissioned_source is None:
         guard = legacy_guard
         stage_argument = "_GuardedMarker.parent.name"
@@ -70,6 +71,21 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
     else:
         from commissioned_normal_service import normal_entry_pins
         entry_pins = normal_entry_pins(stage, *commissioned_source)
+        # Keep the existing stdin credential and operating directory. Only the
+        # guarded-idle launcher resolves code from the historical native shelf.
+        for legacy_path in ('    ROOT=Path("/opt/uif-stokowski/native-core-20261113-a1")\n',
+                            '    sys.path.insert(0,str(ROOT/"python"))\n',
+                            '    sys.path.append(str(ROOT/"web-deps"))\n'):
+            if src.count(legacy_path) != 1:
+                raise ValueError('Unrecognized native shelf imports in parked launcher')
+            src = src.replace(legacy_path, '')
+        native_source_check = '''    try:
+        for _Source in ("__init__", "__main__", "config", "runner", "orchestrator", "publication"):
+            _CRaw(_Site / "stokowski" / (_Source + ".py"), 4*1024*1024)
+    except (OSError, ValueError):
+        print("Stokowski commissioned native source is unavailable.", file=_StartupSys.stderr)
+        raise SystemExit(78) from None
+'''
         if src.count(EXACT_LEGACY_MARKER) != 2:
             raise ValueError('Unrecognized guarded legacy marker sites')
         src = src.replace(EXACT_LEGACY_MARKER, '    _VerifyCommissionedSelection()')
@@ -132,7 +148,7 @@ def compose(source, stage, launcher_pin, composition_pin, transport_pin, source_
         raise SystemExit("Native authority requires the isolated installed interpreter")
     import hashlib as _StartupHash, sys as _StartupSys
     _Site = _GuardedPath({stage!r}) / "venv/lib/python3.12/site-packages"
-    for _Name, _Pin in (("native_composition", {composition_pin!r}), ("remote_authority", {transport_pin!r}),
+{native_source_check}    for _Name, _Pin in (("native_composition", {composition_pin!r}), ("remote_authority", {transport_pin!r}),
                          ("remote_source", {source_pin!r}), ("native", {native_pin!r}),
                          ("turn", {turn_pin!r}), ("launcher", {launcher_pin!r})):
         _Member = _Site / "uif/stokowski_cloudflare" / (_Name + ".py")

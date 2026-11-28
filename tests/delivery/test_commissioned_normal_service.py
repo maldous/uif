@@ -5,6 +5,7 @@ import os
 import pwd
 from pathlib import Path
 import subprocess
+from tempfile import TemporaryDirectory
 import sys
 from types import ModuleType, SimpleNamespace
 import unittest
@@ -50,9 +51,15 @@ if __name__ == "__main__":
 ''').encode()
 
 class CommissionedServiceTest(unittest.TestCase):
-    def build(self, mode=None, stage=STAGE):
-        with patch.object(comp,"PREIMAGE",sha256(FIXTURE).hexdigest()):
-            return comp.compose(FIXTURE,stage,*PINS,commissioned_source=mode)
+    def build(self, mode=None, stage=STAGE, pins=PINS):
+        raw = FIXTURE
+        if mode is not None:
+            raw = raw.replace(b'    runner = orchestrator', b'''    ROOT=Path("/opt/uif-stokowski/native-core-20261113-a1")
+    sys.path.insert(0,str(ROOT/"python"))
+    sys.path.append(str(ROOT/"web-deps"))
+    runner = orchestrator''')
+        with patch.object(comp, "PREIMAGE", sha256(raw).hexdigest()):
+            return comp.compose(raw, stage, *pins, commissioned_source=mode)
     def test_legacy_unchanged_byte_for_byte(self):
         self.assertEqual(sha256(self.build()).hexdigest(), "15ca2dca92fbe8000b7bb620a0b7885d85c79ec02897730459d455334eb37e79")
     @unittest.skipUnless(os.getenv("UIF_EXACT_PARKED_FIXTURE"),
@@ -83,6 +90,57 @@ class CommissionedServiceTest(unittest.TestCase):
             self.assertFalse(ns["_guarded_startup_authorized"](
                 binding,lambda req:(req,binding,"mounted",30),"mounted"))
         self.assertEqual(events,["durable-selection"])
+    def test_normal_imports_only_from_stage_and_requires_native_entry_files(self):
+        adapter = b'# fixture adapter'
+        generated = self.build((HEAD, TREE), pins=[sha256(adapter).hexdigest()]*6).decode()
+        self.assertNotIn('native-core-20261113-a1', generated)
+        self.assertNotIn('ROOT/"python"', generated)
+        self.assertNotIn('ROOT/"web-deps"', generated)
+        # Run the exact emitted import setup up to the real authority import.
+        # Root ownership is covered by _CRaw's separate custody test.
+        first = generated.index('    _Site = _GuardedPath(')
+        last = generated.index('    from uif.stokowski_cloudflare.native_composition', first)
+        with TemporaryDirectory() as fixture:
+            root = Path(fixture)
+            stage = root/'stage'
+            site = stage/'venv/lib/python3.12/site-packages'
+            foreign = root/'foreign'
+            for origin, base in [('stage', site), ('foreign', foreign)]:
+                pkg = base/'stokowski'
+                pkg.mkdir(parents=True)
+                for name in ('__init__', '__main__', 'config', 'runner', 'orchestrator', 'publication'):
+                    (pkg/(name+'.py')).write_text(f'ORIGIN = {origin!r}')
+                (base/'example_dependency.py').write_text(f'ORIGIN = {origin!r}')
+            adapters = site/'uif/stokowski_cloudflare'
+            adapters.mkdir(parents=True)
+            for name in ('native_composition', 'remote_authority', 'remote_source', 'native', 'turn', 'launcher'):
+                (adapters/(name+'.py')).write_bytes(adapter)
+            setup = generated[first:last].replace(repr(STAGE), repr(str(stage)))
+            program = (f'import sys as _StartupSys, hashlib as _StartupHash\n'
+                       f'from pathlib import Path as _GuardedPath\n'
+                       f'_StartupSys.path.insert(0, {str(foreign)!r})\n'
+                       f'def _CRaw(path, limit): return path.read_bytes()\n'
+                       f'if True:\n{setup}'
+                       'import stokowski.config, example_dependency\n'
+                       'print(stokowski.config.ORIGIN, example_dependency.ORIGIN)')
+
+            def run():
+                return subprocess.run([sys.executable, '-I', '-S', '-B', '-c', program],
+                                      capture_output=True)
+
+            selected = run()
+            self.assertEqual(selected.returncode, 0, selected.stderr)
+            self.assertEqual(selected.stdout.strip(), b'stage stage')
+            for missing in ['__init__', 'config', '__main__']:
+                member = site/'stokowski'/(missing+'.py')
+                contents = member.read_bytes()
+                member.unlink()
+                denied = run()
+                self.assertEqual(denied.returncode, 78, denied.stderr)
+                self.assertIn(b'commissioned native source is unavailable', denied.stderr)
+                self.assertEqual(denied.stdout, b'')
+                member.write_bytes(contents)
+
     def test_legacy_and_wrong_scope_cannot_be_commissioned(self):
         for path in normal.LEGACY:
             with self.assertRaises(ValueError): self.build((HEAD,TREE),path)
