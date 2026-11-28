@@ -284,6 +284,120 @@ test('distinct peer claims survive scoped expiry and fence a same-issue race', a
   assert.equal(f.calls.length, 0);
 });
 
+test('two qualified account sends overlap a Morgan original and fence a competing claim',
+  { timeout: 5000 }, async () => {
+    const f = fixture();
+    const reviewRoute = { ...route, account_id: 'b'.repeat(32), credential_epoch_sha256: hex('7') };
+    f.config.reviewer_route = reviewRoute;
+    f.config.reviewer_opening_liability = {
+      original_id: 'fixture-opening', millineurons: 2489344, receipt_sha256: hex('4'),
+    };
+    f.a = f.restart();
+    await f.resume();
+
+    const newIssue = () => ({ ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } });
+    const authorClaim = await f.addGrant(scope, 'raced-author');
+    const otherClaim = { ...authorClaim, request_id: 'competing-author' };
+    const movedClaim = { ...authorClaim, request_id: 'moved-author',
+      scope: { ...scope, key: { ...scope.key, project_id: crypto.randomUUID() } } };
+    const races = await Promise.allSettled([
+      f.call('native', 'claim', authorClaim), f.call('morgan', 'claim', otherClaim),
+      f.call('morgan', 'claim', movedClaim),
+    ]);
+    assert.equal(races[2].status, 'rejected');
+    assert.match(races[2].reason.message, /scope_or_source_unbound/);
+    const winners = races.slice(0, 2).map((result, index) => result.status === 'fulfilled' ? index : -1)
+      .filter((index) => index !== -1);
+    assert.equal(winners.length, 1);
+    const [winner] = winners, loser = 1 - winner;
+    const roles = ['native', 'morgan'], original = [authorClaim, otherClaim][winner];
+    const authorLease = races[winner].value.lease;
+    assert.match(races[loser].reason.message, /issue_or_attempt_already_claimed/);
+    assert.deepEqual(await f.call(roles[winner], 'claim/observe', original), races[winner].value);
+
+    const reviewScope = newIssue(), reviewPeer = roles[loser];
+    const reviewClaim = await f.addGrant(reviewScope, 'review-author', start + 600,
+      { 'review-author-next': 'review-author' });
+    const { lease: reviewLease } = await f.call(reviewPeer, 'claim', reviewClaim);
+    const authorQuota = await f.quota();
+    const preparation = await f.request(reviewLease, authorQuota,
+      { attempt: 'review-author', id: hex('8') });
+    await f.call(reviewPeer, 'send', preparation);
+    const authorReceipt = await f.call(reviewPeer, 'original', { operation: preparation.intent.operation });
+    const prompt = 'exact independent synthetic review';
+    await f.call('control', 'review/bind', {
+      request_id: 'fixture-review-bind', current: reviewLease,
+      candidate: { kind: 'uif.native-review-candidate/1', issue_id: reviewScope.key.issue_id,
+        scope_sha256: hex('c'), author_attempt_id: 'review-author', review_attempt_id: 'review-author-next',
+        source, candidate_tree: null, review_prompt_sha256: await digestBytes(Buffer.from('prepared review')) },
+      author_operation: preparation.intent.operation, author_receipt_sha256: authorReceipt.terminal.receipt_sha256,
+      checkpoint_receipt_sha256: hex('d'), send_prompt_sha256: await digestBytes(Buffer.from(prompt)),
+    });
+    await f.call(reviewPeer, 'claim/attempt', { request_id: 'fixture-review-advance', current: reviewLease,
+      expected_attempt_id: 'review-author', attempt_id: 'review-author-next' });
+    const reviewerQuota = await f.quota(0, reviewRoute);
+    const author = await f.request(authorLease, authorQuota, { attempt: 'raced-author', id: hex('1') });
+    const reviewer = await f.request(reviewLease, reviewerQuota,
+      { attempt: 'review-author-next', id: hex('2'), selectedRoute: reviewRoute, prompt });
+
+    const morganScope = newIssue(), morganAttempt = 'morgan-independent';
+    const morganClaim = await f.addGrant(morganScope, morganAttempt);
+    const { lease: morganLease } = await f.call('morgan', 'claim', morganClaim);
+    const report = 'synthetic deterministic check result';
+    const comment = { operation: { fence: morganLease.fence, original_id: 'fixture-morgan-comment',
+      payload_sha256: await digest({ kind: 'uif.linear-comment/1', attempt_id: morganAttempt,
+        issue_id: morganScope.key.issue_id, body: report }) }, attempt_id: morganAttempt, body: report };
+
+    const bothEntered = Promise.withResolvers(), finish = Promise.withResolvers(), accounts = new Set();
+    f.respond = async (outgoing) => {
+      if (outgoing.url === 'https://api.linear.app/graphql') {
+        assert.equal(accounts.size, 2);
+        const { variables: { input } } = await outgoing.json();
+        assert.deepEqual([input.issueId, input.body], [morganScope.key.issue_id, report]);
+        return Response.json({ data: { commentCreate: { success: true,
+          comment: { id: input.id, body: input.body, issue: { id: input.issueId } } } } });
+      }
+      const account = new URL(outgoing.url).pathname.split('/')[4];
+      assert.ok([route.account_id, reviewRoute.account_id].includes(account));
+      assert.ok(!accounts.has(account));
+      accounts.add(account);
+      if (accounts.size === 2) bothEntered.resolve();
+      await finish.promise;
+      return Response.json({ model: route.model, choices: [{}], usage: { neurons: 0.007 } },
+        { headers: { 'cf-aig-log-id': 'fixture-' + account } });
+    };
+
+    const sends = Promise.all([
+      f.call(roles[winner], 'send', author), f.call(reviewPeer, 'send', reviewer),
+    ]);
+    try {
+      await Promise.race([bothEntered.promise, sends]);
+      assert.equal(accounts.size, 2);
+      await assert.rejects(f.call(roles[loser], 'send', author), /original_in_flight/);
+      const duplicate = await f.request(authorLease, authorQuota, { attempt: 'raced-author', id: hex('3') });
+      duplicate.intent.operation.fence = { ...authorLease.fence, owner_session: f.peers[roles[loser]].session_id };
+      await assert.rejects(f.call(roles[loser], 'send', duplicate), /claim_fence_changed/);
+      for (const { intent } of [author, reviewer]) {
+        assert.deepEqual({ ...f.a.row('SELECT account,amount,state FROM effects WHERE id=?',
+          intent.operation.original_id) }, { account: intent.route.account_id,
+          amount: intent.maximum_millineurons, state: 'sending' });
+      }
+      const racerKey = `${scope.key.workspace_id}:${scope.key.issue_id}`;
+      assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claims WHERE issue=?', racerKey).n, 1);
+      assert.equal(f.a.row('SELECT COUNT(*) AS n FROM effects WHERE issue=? AND account IS NOT NULL', racerKey).n, 1);
+      const result = await f.call('morgan', 'linear/comment', comment);
+      assert.deepEqual(await f.call('morgan', 'linear/receipt', { operation: comment.operation }), result);
+    } finally {
+      finish.resolve();
+      await sends;
+    }
+    for (const [peer, body] of [[roles[winner], author], [reviewPeer, reviewer]]) {
+      const settled = await f.call(peer, 'original', { operation: body.intent.operation });
+      assert.equal(settled.terminal.status, 'verified');
+    }
+    assert.equal(f.calls.length, 4);  // prerequisite author, two overlapping sends, Morgan comment
+  });
+
 test('durable stop survives reconstruction, original claim is observable, no recovered permission', async () => {
   const f = fixture();
   await f.resume();
