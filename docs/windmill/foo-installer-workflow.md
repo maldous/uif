@@ -94,6 +94,30 @@ does not supply the separate recovery host adapter, startup evidence, or
 release authority. Do not reuse the old activation original to stage or
 start the new release.
 
+## Recover the installed Stokowski build first
+
+When moving from guarded idle to normal service, reuse the custom runtime
+already installed on Foo where it can be verified. Recover the bits that
+are missing; do not start with a stock rebuild or copy a new selector over
+the running configuration.
+
+1. Start from the last installed runtime receipt, not the last start job.
+   Follow its release reference to the retained native artifact or complete
+   canonical file map, manifest digest and acceptance for those exact bytes.
+   A guarded-idle receipt is not evidence of a normal selection; an earlier
+   overlay manifest is not interchangeable with the installed core.
+2. Use the existing in-place shelf comparison against that independent
+   expected map. Keep reusable verified components and package only the
+   missing normal-stage inputs. If only the old manifest is missing but the
+   exact complete source or artifact is available through existing custody,
+   qualify that exact build afresh. Record an observed file inventory as
+   observed only; do not label two matching file hashes or a manifest
+   generated from the current host as recovered acceptance.
+3. Pass the complete normal-stage package through the existing installer and
+   continue through commissioning below. Keep the final manifest, artifact
+   locator and original install receipt together so the next recovery can
+   resume from that record.
+
 ## Commission the normal Stokowski release
 
 This is a different operation from a guarded-idle start, verifier maintenance,
