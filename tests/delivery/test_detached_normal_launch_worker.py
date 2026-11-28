@@ -19,7 +19,7 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 import test_native_remote_authority as fixture
-from uif.handoff_store import Hold, decode, wire
+from uif.handoff_store import Hold, decode, digest, wire
 from uif.stokowski_cloudflare import launcher
 from uif.stokowski_cloudflare.intake import intake_identity
 from uif.stokowski_cloudflare.native_assignment_projection import project_unstarted_assignment
@@ -62,7 +62,7 @@ const h = digit => digit.repeat(64);
 const projection = { route, utc_day: day(now), covered_through: now, valid_until: now + 250,
   upper: 0, gap_upper: 0, free_standard_no_fallback: true, completeness_verified: true };
 const out = [];
-const report = recovered ? JSON.stringify({ summary: 'Synthetic bounded report.', verdict: 'approve',
+const report = recovered || seed.marked ? JSON.stringify({ summary: 'Synthetic bounded report.', verdict: 'approve',
   data_sources: [{name: 'Detached issue assignment', how_verified: 'Pinned fixture original and task scope.'}],
   routing: { issue: seed.identifier, state: 'assess', run: 1, actionable: true, ownership_clear: true,
     deferred: false, owner_pause: false, uncertain_effects: false, missing_inputs: [] } }) : 'Synthetic bounded report.';
@@ -79,8 +79,10 @@ const startAuthority = () => new Authority(storage, { ...scope.key, repository_i
     if (req.url === `https://api.cloudflare.com/client/v4/accounts/${route.account_id}/ai/v1/chat/completions`) {
       const body = await req.json();
       if (body.model !== route.model || body.stream !== false) throw Error('unbound fixture request');
+      const content = seed.marked && out.includes('provider')
+        ? JSON.stringify({summary:'Confirmed bounded investigation result.',verdict:'blocked'}) : report;
       out.push('provider');
-      return Response.json({ model: route.model, choices: [{ message: { content: report } }],
+      return Response.json({ model: route.model, choices: [{ message: { content } }],
         usage: { neurons: 0.001 } }, { headers: { 'cf-aig-log-id': 'fixture-only' } });
     }
     if (req.url === 'https://api.linear.app/graphql') {
@@ -101,11 +103,16 @@ const grant = { scope, source, sessions: ['native-session', 'morgan-session'], a
   allow_provider: true, allow_comments: true, allow_uploads: false, review_of: {},
   result_retention: { max_response_bytes: 65536, max_retained_results: 16,
     readers: ['native-session', 'morgan-session', 'control-session'], evidence_sha256: h('e') } };
+if (seed.marked) {
+  grant.attempt_ids.push(seed.successor);
+  grant.fresh_assessment = {attempt_id:attempt, first_intent_sha256:seed.marked,
+    report_binding:{scope, issue_identifier:seed.identifier, run:1, scope_sha256:seed.scope_sha256}};
+}
 await call('control', 'grant', { request_id: 'grant', previous_sha256: null, grant });
 const base = { scope, source, attempt_id: attempt, request_id: seed.claim_id,
   expected_coordinator_epoch: 2, reconstruction_sha256: seed.reconstruction };
 let submitted = null, original;
-original = await call(recovered ? 'morgan' : 'native', 'claim', base);
+original = seed.marked ? null : await call(recovered ? 'morgan' : 'native', 'claim', base);
 if (recovered) {
   const revocation_id = 'freeze';
   await call('control', 'revoke', { request_id: revocation_id, fence: original.lease.fence,
@@ -125,6 +132,10 @@ for (;;) {
   const input = JSON.parse(next.value);
   if (input.path === '@inspect') {
     console.log(JSON.stringify({ out, effects: authority.row('SELECT COUNT(*) AS n FROM effects').n }));
+    continue;
+  }
+  if (seed.marked && input.path === '@approve-marked-assessment') {
+    console.log(JSON.stringify(await call('control', 'attempt/attest', input.body)));
     continue;
   }
   if (input.path === '@restart') {
@@ -202,8 +213,19 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         self.bridge.stdin.flush()
         return self.bridge_read()
 
-    def start_worker(self, *, recovered):
+    def start_worker(self, *, recovered, marked=False):
         self.recovered = recovered
+        self.marked = marked
+        if marked:
+            from uif.stokowski_cloudflare.fresh_assessment_dispatch import _first_dispatch_intent
+            previous = self.grant.attempts[0]
+            successor = previous.removesuffix('assess') + 'investigate'
+            self.grant = replace(self.grant, attempts=(previous, successor))
+            request = self.grant.claim(fixture.OWNER)
+            self.case.item['workspace_binding']['original_claim_id'] = request.request_id
+            first = digest(_first_dispatch_intent(self.grant, request, self.issue, 1, previous, successor, self.case.item))
+            self.grant = replace(self.grant, first_intent_sha256=first)
+            self.case.item['fresh_assessment'] = {'attempt_id':previous, 'first_intent_sha256':first}
         node = shutil.which('node')
         self.assertIsNotNone(node, 'fixture requires the locked Node runtime')
         self.bridge = subprocess.Popen([node, '--input-type=module', '-e', WORKER], cwd=ROOT / 'services/shared-authority',
@@ -222,10 +244,11 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
             'attempt': self.grant.attempts[0], 'reconstruction': self.grant.reconstruction_sha256,
             'claim_id': self.grant.claim(fixture.OWNER).request_id,
             'now': int(self.now.timestamp()), 'route': asdict(fixture.ROUTE), 'recovered': recovered,
-            'identifier': self.issue.identifier}) + '\n')
+            'identifier': self.issue.identifier, 'scope_sha256':self.scope,
+            'marked': self.grant.first_intent_sha256, 'successor': self.grant.attempts[-1]}) + '\n')
         self.bridge.stdin.flush()
         original = self.bridge_read()
-        self.expected_fence = original['original']['lease']['fence']
+        self.expected_fence = original['original']['lease']['fence'] if original['original'] else None
 
         class Reply(BytesIO):
             def __init__(self, value):
@@ -247,6 +270,9 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
                 result = self.exchange(path, request, permit)
                 if result['status'] == 200 and path in ('/v1/send', '/v1/linear/comment'):
                     self.effects[path] = request['intent' if path == '/v1/send' else 'operation']
+                if self.marked and result['status'] == 200 and path == '/v1/linear/comment':
+                    self.comments.append({'id':result['body']['id'], 'body':request['body'],
+                                          'createdAt':self.now.isoformat(), 'updatedAt':self.now.isoformat()})
                 if self.lost and path == '/v1/recovery/enter':
                     raise OSError('fixture lost entry acknowledgement after SQLite commit')
                 connection.getresponse.return_value = Reply(result)
@@ -286,9 +312,13 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
                 'attempt': self.grant.attempts[0], 'read_paths': ['guide.md'], 'write_roots': [],
                 'source_head': self.grant.source.head, 'branch': self.grant.source.branch,
                 'prompt': 'Synthetic bounded assessment'}}}}
-        if self.recovered:
+        if self.recovered or self.marked:
             policy['admissions'][self.issue.id]['assess'].update(read_paths=[],
                 project_intake={'origin': 'https://github.com/maldous/offmenu.git'})
+        if self.marked:
+            from uif.stokowski_cloudflare.intake import intake_stages
+            policy['admissions'][self.issue.id] = intake_stages(
+                {'origin':'https://github.com/maldous/offmenu.git'}, 'OffMenu', self.issue, self.scope, 1)
         self.enterContext(patch.object(launcher, '_protected_json', return_value=policy))
         for module, names in ((self.orchestrator, ('LinearClient', 'run_turn', 'ensure_workspace')),
                               (self.runner, ('run_turn',)),
@@ -298,9 +328,11 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
             for name in set(names):
                 self.enterContext(patch.object(module, name, getattr(module, name)))
         install_sinks(self.orchestrator, auth)
-        comments = {'issue': {'comments': {'nodes': [], 'pageInfo': {'hasNextPage': False}}}}
+        self.comments = []
+        comments = {'issue': {'comments': {'nodes': self.comments, 'pageInfo': {'hasNextPage': False}}}}
         self.owner._linear = fixture._LinearClient(SimpleNamespace(
-            fetch_issue=AsyncMock(return_value=self.issue), _graphql=AsyncMock(return_value=comments)), auth)
+            fetch_issue=AsyncMock(return_value=self.issue), fetch_comments=AsyncMock(return_value=self.comments),
+            _graphql=AsyncMock(return_value=comments)), auth)
         launcher.configure(self.runner, self.orchestrator, self.publication, policy=Path('/unused-fixture'),
                            database=self.case.path.parent / 'budget.sqlite', **auth.options())
         self.enterContext(patch('socket.socket.connect', side_effect=AssertionError('fixture network prohibited')))
@@ -313,6 +345,58 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         if task is not None:
             await asyncio.wait_for(task, 5)
         return task
+
+    async def test_marked_assessment_advances_only_after_control_and_starts_one_investigation(self):
+        self.require_recipient_runtime()
+        self.issue.state = 'Active'
+        self.owner.pool.available_for = lambda project: 1
+        self.owner.workflow.config.states['investigate'] = self.config.StateConfig(
+            name='investigate', runner='cloudflare', permission_mode='plan', session='fresh')
+        self.start_worker(recovered=False, marked=True)
+        self.wire_normal()
+        self.assertTrue(self.composition._successor_settlement_qualified)
+        self.assertTrue(self.composition._successor_native_worker_qualified)
+        await self.dispatch()
+        previous, successor = self.grant.attempts
+        self.assertEqual(self.exchange('@inspect')['out'], ['provider','linear'], self.calls)
+        self.assertNotIn(('/v1/claim/attempt', False), self.calls)
+        original = self.owner.running[self.issue.id]
+        self.assertEqual(original.session_id, previous)
+        report = self.effects['/v1/linear/comment']
+        posted = self.exchange('/v1/linear/receipt', {'operation':report})['body']
+        witness = json.loads(self.comments[0]['body'].split('```json\n',1)[1].split('\n```',1)[0])
+        terminal = {'schema':'uif.fresh-offmenu-assessment-terminal/1', 'issue_id':self.issue.id,
+            'issue_identifier':self.issue.identifier,'run':1,'state':'assess','successor_state':'investigate',
+            'scope_sha256':self.scope,'previous':previous,'successor':successor,
+            'report_sha256':witness['report_sha256'],'posted_comment_id':posted['id'],
+            'posted_effect':{'operation':report,'status':'verified','receipt_sha256':posted['receipt_sha256']}}
+        approval = {'request_id':'confirmed-fixture-assessment','fence':report['fence'],'previous':previous,
+                    'successor':successor,'terminal_receipt_sha256':digest(terminal)}
+        self.assertEqual(self.exchange('@approve-marked-assessment', approval),
+                         {'terminal_receipt_sha256':digest(terminal)})
+        from uif.stokowski_cloudflare import fresh_assessment_terminal as continuation
+        retain = continuation._retain_first_request
+        def interrupt_after_marker(directory, name, body, before_publish):
+            result = retain(directory, name, body, before_publish)
+            if name.endswith('.successor-settlement'):
+                raise OSError('fixture restart before native transition')
+            return result
+        with patch.object(continuation, '_retain_first_request', side_effect=interrupt_after_marker):
+            self.assertFalse(await self.owner._resume_settlement(self.issue, original))
+        self.assertEqual(self.calls.count(('/v1/claim/attempt',False)),1)
+        self.assertNotIn(('/v1/attempt/successor/enter',False),self.calls)
+        self.assertFalse(original.settlement_record.get('attempted'))
+        self.exchange('@restart')
+        self.assertTrue(await self.owner._resume_settlement(self.issue, original), (original.error,self.calls))
+        # The pinned native transition schedules its own original retry.
+        async with asyncio.timeout(5):
+            while not tuple((self.case.path / '.git/uif-original-effects').glob('*.investigation-result')):
+                await asyncio.sleep(0.05)
+        self.assertEqual(self.exchange('@inspect')['out'], ['provider','linear','linear','provider'])
+        self.assertEqual(self.calls.count(('/v1/claim/attempt',False)),1)
+        self.assertEqual(self.calls.count(('/v1/attempt/successor/enter',False)),1)
+        self.assertEqual(self.calls.count(('/v1/send',True)),2)
+        self.assertEqual(self.calls.count(('/v1/linear/comment',True)),2)
 
     async def test_unregistered_issue_cannot_reach_any_native_worker_effect(self):
         self.start_worker(recovered=False)

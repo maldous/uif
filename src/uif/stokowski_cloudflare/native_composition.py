@@ -338,10 +338,12 @@ def _require_unstarted_recipient_journals(path, entry_marker=None):
                     'authority_recipient_journal_needs_reconciliation')
 
 
-def workspace_recovery_digest(path):
+def workspace_recovery_digest(path, *, exclude_native_settlement=False):
     """Exact read-only inventory of retained private files and Git checkout metadata."""
     entries = []
     def add_file(p):
+        if exclude_native_settlement and p == path / '.stokowski/settlement.json':
+            return
         info = p.lstat()
         if stat.S_ISLNK(info.st_mode):
             value = {'link': os.readlink(p)}
@@ -619,13 +621,21 @@ class NativeComposition:
         return grant, current, path, advance
 
     def _verify_successor_checkpoint(self, path, grant, claim, advance):
+        from .fresh_assessment_terminal import _saved_native_settlement, completed_successor_workspace
+        saved = _saved_native_settlement(path)
+        require(saved.get('phase') == 'complete' and saved.get('report_posted') is True
+                and saved.get('attempted') is True and saved.get('event') == 'complete'
+                and saved.get('target') == 'investigate' and saved.get('state') == 'assess'
+                and saved.get('issue_id') == grant.scope.key.issue_id and saved.get('scope_sha256') == grant.scope_sha256
+                and saved.get('session_id') == advance['expected_attempt_id'], 'authority_successor_completed_workspace_changed')
         directory = path / '.git/uif-original-effects'
         name = advance['request_id'] + '.successor-workspace'
         with _handoff_directory(directory) as fd:
             try:
                 raw = _retained_handoff_bytes(fd, name, 8192)
             except FileNotFoundError:
-                self._first_workspace(path, grant, claim)
+                if not completed_successor_workspace(path, fd, advance):
+                    self._first_workspace(path, grant, claim)
                 return
         require(decode(raw, limit=8192) == {'advance': advance, 'workspace_sha256': workspace_recovery_digest(path)},
                 'authority_successor_workspace_changed')
@@ -2287,10 +2297,13 @@ def install_sinks(orchestration, composition):
         '_schedule_retry': 'd4fb9d11370f173aaf31fcd71b8ef32042c21cbe4452a255721ce8da9c1a99a3',
     }
     try:
-        composition._successor_settlement_qualified = all(
+        saver = orchestration.publication_mod.save
+        composition._successor_settlement_qualified = (not hasattr(saver, '__wrapped__') and
+            sha256(getsource(saver).encode()).hexdigest() ==
+            '1cd969eea145cff2b828e1d7be9916b84b3a13531e7ee12ad2d6cf2c8a814ec9' and all(
             not hasattr(getattr(owner, name), '__wrapped__') and
             sha256(getsource(getattr(owner, name)).encode()).hexdigest() == pin
-            for name, pin in successor_methods.items())
+            for name, pin in successor_methods.items()))
     except (AttributeError, OSError, TypeError):
         composition._successor_settlement_qualified = False
 
@@ -2377,7 +2390,7 @@ def install_sinks(orchestration, composition):
             return False
 
     async def settle_approved_successor(native_owner, issue, attempt, record):
-        from .fresh_assessment_terminal import advance_marked_assessment, _retain_first_request
+        from .fresh_assessment_terminal import advance_marked_assessment, unattempted_native_settlement
         scope, run = record['scope_sha256'], record['run']
         selected_task = asyncio.current_task()
         original_record = wire(record)
@@ -2409,12 +2422,7 @@ def install_sinks(orchestration, composition):
                     {'current': asdict(current.lease), 'advance': advance}),
                 'assessment_successor_entry_already_attempted')
         verify()
-        # No replay after ambiguous local native transition. CAS loss before this
-        # marker is recoverable from the exact independently consumed CAS receipt.
-        subject = {'advance': advance, 'disposition_sha256': sha256(original_record).hexdigest()}
         directory = path / '.git/uif-original-effects'
-        created, saved = _retain_first_request(directory, advance['request_id'] + '.successor-settlement', subject, verify)
-        require(created and saved == subject, 'assessment_successor_transition_already_attempted')
         lease = current.lease
         def verify_transition():
             verify()
@@ -2423,24 +2431,33 @@ def install_sinks(orchestration, composition):
                     and composition.remote.clock().timestamp() < observed.lease.expires_at,
                     'assessment_successor_not_current')
 
-        scope_binding = [True, verify_transition, native_owner, issue, run]
-        tag = composition._advancing_assessment.set(scope_binding)
-        # The first assessment and the timer for its successor have different
-        # capabilities. The real successor task must acquire its own entry.
-        contexts = (composition._fresh_assessment, composition._running, composition.remote.transport._dispatch_permit)
-        tokens = [c.set(None) for c in contexts]
-        try:
+        def verify_unentered():
             verify_transition()
-            result = await original_settle(native_owner, issue, attempt)
-        finally:
-            scope_binding[0] = False
-            for context, token in zip(contexts, tokens):
-                context.reset(token)
-            composition._advancing_assessment.reset(tag)
-        if result is True and record.get('phase') == 'complete' and not record.get('terminal_retired'):
-            _retain_handoff_original(directory, advance['request_id'] + '.successor-workspace',
-                wire({'advance': advance, 'workspace_sha256': workspace_recovery_digest(path)}), 8192)
-        return result
+            current_claim = composition.remote.read_claim('OffMenu', current.attempt_id, True)
+            require(current_claim is not None and current_claim.lease.fence == lease.fence
+                    and not composition.remote.transport.observe_successor_entry(
+                        {'current':asdict(current_claim.lease), 'advance':advance}),
+                    'assessment_successor_entry_already_attempted')
+
+        with unattempted_native_settlement(path, advance, record, verify_unentered):
+            scope_binding = [True, verify_transition, native_owner, issue, run]
+            tag = composition._advancing_assessment.set(scope_binding)
+            # The first assessment and the timer for its successor have different
+            # capabilities. The real successor task must acquire its own entry.
+            contexts = (composition._fresh_assessment, composition._running, composition.remote.transport._dispatch_permit)
+            tokens = [c.set(None) for c in contexts]
+            try:
+                verify_transition()
+                result = await original_settle(native_owner, issue, attempt)
+            finally:
+                scope_binding[0] = False
+                for context, token in zip(contexts, tokens):
+                    context.reset(token)
+                composition._advancing_assessment.reset(tag)
+            if result is True and record.get('phase') == 'complete' and not record.get('terminal_retired'):
+                _retain_handoff_original(directory, advance['request_id'] + '.successor-workspace',
+                    wire({'advance': advance, 'workspace_sha256': workspace_recovery_digest(path)}), 8192)
+            return result
 
     async def settle_bound(native_owner, issue, attempt):
         if (composition._successor_native_worker_qualified and composition._successor_settlement_qualified

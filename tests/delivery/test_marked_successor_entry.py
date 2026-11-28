@@ -119,6 +119,15 @@ class SuccessorEntryTest(IsolatedAsyncioTestCase):
     def advance_claim(self):
         return advance_marked_assessment(self.native,self.owner,self.issue,self.assessment,lambda: None)
 
+    def completed_workspace_fixture(self):
+        from uif.stokowski_cloudflare.native_composition import workspace_recovery_digest
+        path = self.case.path
+        (path / '.stokowski').mkdir(mode=0o700)
+        record = dict(self.assessment.settlement_record, phase='complete', attempted=True, report_posted=True,
+                      event='complete', target='investigate', report=None, publication_event=None)
+        (path / '.stokowski/settlement.json').write_bytes(wire(record))
+        self.case.item['recovered_tree_sha256'] = workspace_recovery_digest(path)
+
     def select(self):
         return self.native.successor_assignment(self.owner,self.issue,self.scope,'investigate',1)
 
@@ -161,6 +170,7 @@ class SuccessorEntryTest(IsolatedAsyncioTestCase):
         self.fault='after-cas'
         self.assertEqual(self.advance_claim(),self.advance)
         self.assertEqual(self.advance_claim(),self.advance)
+        self.completed_workspace_fixture()
         selected=self.select()
         self.fault='after-enter'
         with self.assertRaisesRegex(AuthorityUnavailable,'lost entry'),self.enter(selected):
@@ -175,6 +185,7 @@ class SuccessorEntryTest(IsolatedAsyncioTestCase):
 
     async def test_selected_native_turn_and_tracking_are_independent_single_originals(self):
         self.advance_claim()
+        self.completed_workspace_fixture()
         selected=self.select()
         with self.enter(selected):
             self.assertEqual(self.native.successor_workspace_for_prologue(
@@ -221,3 +232,37 @@ class SuccessorEntryTest(IsolatedAsyncioTestCase):
             self.assertEqual(self.calls.count('/v1/linear/comment'),1)
         self.assertNotIn(self.secret.encode(), b''.join(f.read_bytes() for f in self.journal.iterdir()
                                                       if f.name.endswith('successor-entry')))
+
+    async def test_cold_unattempted_original_rejoins_and_completed_phase_recovers_workspace(self):
+        from uif.stokowski_cloudflare.fresh_assessment_terminal import unattempted_native_settlement
+        advance = self.advance_claim()
+        path = self.case.path
+        (path / '.stokowski').mkdir(mode=0o700)
+        phase = path / '.stokowski/settlement.json'
+        record = self.assessment.settlement_record
+        phase.write_bytes(wire(record))
+        with self.assertRaisesRegex(RuntimeError,'stopped before native attempted'):
+            with unattempted_native_settlement(path, advance, record, lambda: None):
+                with self.assertRaisesRegex(ValueError,'in_progress'):
+                    with unattempted_native_settlement(path, advance, record, lambda: None):
+                        self.fail('concurrent owner')
+                raise RuntimeError('stopped before native attempted')
+        with unattempted_native_settlement(path, advance, record, lambda: None):
+            record.update(phase='transition',report_posted=True,event='complete',target='investigate',
+                          report=None,publication_event=None)
+            phase.write_bytes(wire(record))
+        with unattempted_native_settlement(path, advance, record, lambda: None):
+            record['attempted'] = True
+            phase.write_bytes(wire(record))
+        with self.assertRaisesRegex(Hold,'already_attempted'):
+            with unattempted_native_settlement(path, advance, record, lambda: None):
+                self.fail('ambiguous native effect')
+        with self.assertRaisesRegex(Hold,'completed_workspace_changed'):
+            self.select()
+        record['phase'] = 'complete'
+        phase.write_bytes(wire(record))
+        self.assertEqual(self.select(), self.claim)
+        (path / 'unexpected.txt').write_text('external mutation')
+        with self.assertRaisesRegex(Hold,'completed_workspace_changed'):
+            self.select()
+        self.assertNotIn('/v1/attempt/successor/enter', self.calls)
