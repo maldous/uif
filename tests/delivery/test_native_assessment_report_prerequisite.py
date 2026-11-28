@@ -1,5 +1,6 @@
 """Offline report-boundary reproduction against explicitly selected Foo source."""
 import ast
+import asyncio
 from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
@@ -7,6 +8,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import subprocess
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
@@ -26,12 +28,26 @@ PINS = {
     'publication.py': '7d2007cc7993e496e11a0da30152278951b31f2c4f42c9dcacd0582619aca48b',
     'dependencies.py': '298694e9b728041716843a6f99a43671dbc0c6a75e3f67a25c9c4ca6aef36d06',
 }
+PATCH = Path(__file__).resolve().parents[2] / 'tools/delivery/stokowski-verified-assessment-report.patch'
+PATCHED_ORCHESTRATOR_SHA256 = '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96'
 
 
 class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
-    def source(self, name, bindings=(), *, owner=None, **namespace):
+    def source(self, name, bindings=(), *, owner=None, patched=False, **namespace):
         raw = (self.root / name).read_bytes()
         self.assertEqual(sha256(raw).hexdigest(), PINS[name])
+        if patched:
+            self.assertEqual(name, 'orchestrator.py')
+            with TemporaryDirectory() as scratch:
+                target = Path(scratch) / 'stokowski' / name
+                target.parent.mkdir()
+                target.write_bytes(raw)
+                result = subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-i', str(PATCH)],
+                                        cwd=scratch, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertNotIn('offset', result.stdout)
+                raw = target.read_bytes()
+                self.assertEqual(sha256(raw).hexdigest(), PATCHED_ORCHESTRATOR_SHA256)
         parsed = ast.parse(raw)
         if bindings:
             nodes = parsed.body if owner is None else next(
@@ -61,11 +77,12 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         dependencies = self.source('dependencies.py')
         methods = ('_publication_current_issue', '_publication_comments',
                    '_publish_run_report', '_completion_event', '_resume_settlement')
-        methods = self.source('orchestrator.py', methods, owner='Orchestrator',
+        self.native_bindings = dict(
             report_mod=self.report, publication_mod=self.publication, dependencies_mod=dependencies,
             artifacts_mod=SimpleNamespace(collect=Mock(return_value=[]), MAX_ARTIFACT_BYTES=1),
             state_key=str.casefold, datetime=datetime, timezone=timezone,
-            logger=Mock(), RunAttempt=SimpleNamespace)
+            asyncio=asyncio, logger=Mock(), Path=Path, RunAttempt=SimpleNamespace)
+        methods = self.source('orchestrator.py', methods, owner='Orchestrator', **self.native_bindings)
         self.owner = type('NativeReportFixture', (), {
             name: method for name, method in vars(methods).items() if name.startswith('_')
             and callable(method)
@@ -99,13 +116,15 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         self.owner._save_settlement = Mock(side_effect=lambda issue, data: self.saved.append(deepcopy(data)))
 
     def prepared_attempt(self, raw):
-        record = dict(phase='report-unknown', state='assess', run=1)
+        record = dict(phase='report-unknown', state='assess', run=1, kind='worker',
+                      issue_id=self.issue.id, session_id='fixture', scope_sha256=self.publication.scope(self.issue))
         attempt = SimpleNamespace(status='succeeded', state_name='assess', attempt=0, session_id='fixture',
             result_text=_native_report(raw.decode()), started_at=None, model='fixture',
             total_tokens=0, cost_usd=0, tool_call_count=0, tool_error_count=0, artifacts=[],
             publication_event=None, error=None, report_posted=False, settlement_record=record,
             admission_context=self.publication.human_context([]), admission_state='active')
         self.owner.running = {self.issue.id: attempt}
+        self.owner._tasks = {self.issue.id: asyncio.current_task()}
         self.saved = []
         return attempt
 
@@ -213,3 +232,127 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
                 disposition = self.saved[0]['post_disposition']
                 self.assertEqual(disposition['event'], 'report-blocked')
                 self.assertIn(error, disposition['error'])
+
+    def use_patched_report(self):
+        method = self.source('orchestrator.py', ('_publish_run_report',), owner='Orchestrator',
+                             patched=True, **self.native_bindings)._publish_run_report
+        self.owner._publish_run_report = method.__get__(self.owner)
+
+    def prepared_verified_attempt(self, raw):
+        attempt = self.prepared_attempt(raw)
+        attempt.assessed_input = {'dependency_sources': [], 'dependency_observations': []}
+        self.owner._dependency_input_snapshot = AsyncMock(return_value=([], []))
+        callback = Mock(return_value=(_native_report(raw.decode()), json.loads(raw),
+                                      self.deterministic_body(raw)))
+        return attempt, callback
+
+    async def test_patched_report_preserves_the_default_native_body(self):
+        attempt = self.prepared_attempt(self.raw)
+        self.reader.post_comment = AsyncMock(return_value=False)
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        original = self.saved[0]
+
+        self.use_patched_report()
+        attempt = self.prepared_attempt(self.raw)
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        self.assertEqual(self.saved[0], original)
+        self.assertEqual(self.reader.post_comment.await_args_list[0],
+                         self.reader.post_comment.await_args_list[1])
+        self.assertEqual(self.owner._apply_classification_label.await_count, 2)
+
+    async def test_patched_report_freezes_approved_body_and_recovers_once(self):
+        self.use_patched_report()
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        attempt, callback = self.prepared_verified_attempt(raw)
+        body = self.deterministic_body(raw)
+
+        def lose_ack(kind, issue_id, payload):
+            self.assertEqual((kind, issue_id, payload), ('comment', self.issue.id, {'body': body}))
+            self.assertEqual(self.saved[-1]['expected_report_body'], body)
+            self.assertEqual(self.saved[-1]['post_disposition']['event'], 'complete')
+            raise OSError('fixture lost acknowledgement')
+
+        composition = Mock(linear=Mock(side_effect=lose_ack))
+        self.owner._ensure_linear_client = lambda: _LinearClient(self.reader, composition)
+        with self.assertRaisesRegex(OSError, 'lost acknowledgement'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        callback.assert_called_once_with(self.issue.id, attempt.session_id, 1)
+        self.owner._apply_classification_label.assert_not_awaited()
+        with self.assertRaisesRegex(RuntimeError, 'unfrozen native'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        attempt.status = 'settling'
+        posted = dict(id='receipt', body=body, createdAt='a', updatedAt='a')
+        self.reader._graphql.return_value['issue']['comments']['nodes'] = [posted]
+        self.assertTrue(await self.owner._resume_settlement(self.issue, attempt))
+        self.assertEqual(attempt.settlement_record['phase'], 'complete')
+        self.owner._transition.assert_awaited_once()
+        composition.linear.assert_called_once()
+        callback.assert_called_once()
+
+    async def test_patched_report_refuses_native_holds_and_provider_mismatch(self):
+        self.use_patched_report()
+        self.reader.post_comment = AsyncMock(return_value=False)
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        for changed in ('thin', 'blocker', 'result-envelope', 'workspace-report', 'settlement-custody'):
+            with self.subTest(changed=changed):
+                attempt, callback = self.prepared_verified_attempt(self.raw if changed == 'thin' else raw)
+                current = deepcopy(self.issue)
+                self.reader.fetch_issue.return_value = current
+                if changed == 'blocker':
+                    current.blocked_by = [SimpleNamespace(state='Active')]
+                if changed == 'result-envelope':
+                    attempt.result_text += '\n'
+                if changed == 'workspace-report':
+                    shadow = self.workspace / '.stokowski' / 'report.json'
+                    shadow.parent.mkdir()
+                    shadow.write_bytes(wire(json.loads(raw) | {'summary': 'Unverified local shadow'}))
+                if changed == 'settlement-custody':
+                    async def replaced_settlement(*args):
+                        attempt.settlement_record = None
+                        return current
+                    self.reader.fetch_issue.side_effect = replaced_settlement
+                with self.assertRaisesRegex(RuntimeError, 'Verified assessment'):
+                    await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                         verified_assessment_report=callback)
+                self.assertEqual(self.saved, [])
+                if changed == 'workspace-report':
+                    shadow.unlink()
+        self.reader.post_comment.assert_not_awaited()
+
+    async def test_patched_report_keeps_the_existing_report_only_effect_scope(self):
+        self.use_patched_report()
+        self.reader.post_comment = AsyncMock(return_value=True)
+        self.reader.upload_file = AsyncMock()
+        self.publication.retain_working_source = Mock()
+        self.publication.verified_stage_evidence = Mock(return_value={'artifacts': []})
+        artifacts = self.native_bindings['artifacts_mod']
+        artifacts.clear = Mock()
+
+        blocked = wire(json.loads(self.raw) | {'verdict': 'blocked', 'classification': 'chore'})
+        attempt, callback = self.prepared_verified_attempt(blocked)
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                             verified_assessment_report=callback)
+        self.assertTrue(attempt.report_posted)
+        self.assertEqual(self.saved[0]['post_disposition']['event'], 'report-blocked')
+        self.reader.post_comment.assert_awaited_once_with(self.issue.id, self.deterministic_body(blocked))
+        self.reader.post_comment.reset_mock()
+        self.owner._apply_classification_label.assert_not_awaited()
+
+        raw = json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]}
+        raw['routing']['working_source'] = {'ref': 'unapproved'}
+        attempt, callback = self.prepared_verified_attempt(wire(raw))
+        with self.assertRaisesRegex(RuntimeError, 'lacks current native admission evidence'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        self.publication.retain_working_source.assert_not_called()
+        callback.assert_not_called()
+
+        artifacts.collect.return_value = [self.workspace / 'artifact.txt']
+        attempt, callback = self.prepared_verified_attempt(blocked)
+        with self.assertRaisesRegex(RuntimeError, 'cannot upload artifacts'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        self.reader.upload_file.assert_not_awaited()
+        self.reader.post_comment.assert_not_awaited()
