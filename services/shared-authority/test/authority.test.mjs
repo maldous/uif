@@ -168,12 +168,14 @@ function fixture() {
   ctx.request = async (
     lease,
     quota,
-    { attempt = 'attempt', id = hex('9'), end = time + 60, selectedRoute, prompt = 'fixture' } = {},
+    { attempt = 'attempt', id = hex('9'), end = time + 60, selectedRoute, prompt = 'fixture', reportOnly = false } = {},
   ) => {
     const route = selectedRoute || config.route;
     const bytes = Buffer.from(
       canonical({
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: prompt }, ...(reportOnly ? [{role:'user',
+          content:'Return the final report as one JSON object with summary and verdict, and the applicable native routing fields. Preserve the actions actually taken, available evidence and any remaining gaps. No further tools are available.',
+        }] : [])],
         model: route.model,
         max_tokens: 2048,
         stream: false,
@@ -2802,7 +2804,7 @@ test('an independently attested assessment CAS arms only its single native inves
   await assert.rejects(f.call('native','recovery/enter',{current:a.current,attempt_id:a.successor,original:{
     request_id:advance.request_id, request_sha256:hex('b'), installation_sha256:f.a.realm, session_id:f.peers.native.session_id}}),
     /native_recovery_original_not_current/);
-  const send = await f.request(a.current,await f.quota(),{attempt:a.successor,id:hex('b')});
+  const send = await f.request(a.current,await f.quota(),{attempt:a.successor,id:await digestBytes(Buffer.from(a.successor + ':1')), reportOnly:true});
   for (const candidate of [undefined,hex('a'),a.permit])
     await assert.rejects(f.call('native','send',send,candidate), /native_recovery_permit_required/);
   const entries = await Promise.all([enter(),enter(),enter()]);
@@ -2817,10 +2819,90 @@ test('an independently attested assessment CAS arms only its single native inves
   f.a = f.restart();
   const after = f.calls.length;
   const different = await f.request(a.current,await f.quota(),{attempt:a.successor,id:hex('c')});
-  await assert.rejects(f.call('native','send',different,winners[0].permit),/uncertain_original_effect/);
+  await assert.rejects(f.call('native','send',different,winners[0].permit),/investigation_effect_original_changed/);
   await assert.rejects(f.call('native','send',send,winners[0].permit),/original_already_recorded/);
   assert.equal(f.calls.length,after);
   assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',send.intent.operation.original_id).state,'sending');
+});
+
+test('marked investigation admits only its one source-free provider and one exact native state announcement', async () => {
+  const f = fixture(), a = await adjudicatedAssessment(f,'approve');
+  const {original,advance} = await assessmentTransition(a,await postExactAssessment(f,a));
+  await f.call('control','attempt/attest',original);
+  await f.call('native','claim/attempt',advance);
+  const {permit} = await f.call('native','attempt/successor/enter',{current:a.current,advance});
+  const attempt = a.successor, issue = scope.key.issue_id, fence = a.current.fence;
+  const trackingId = await digest({attempt,slot:'_announce_state',kind:'comment',issue});
+  const tracking = async (body, id = trackingId) => ({body,attempt_id:attempt,operation:{
+    fence,original_id:id,payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id:attempt,issue_id:issue,body}),
+  }});
+  const body = '<!-- stokowski:state {"state": "investigate", "run": 1, "timestamp": "2026-11-28T13:00:00.123456+00:00", "workflow": "offmenu"} -->\n\n' +
+    '**[Stokowski]** Entering state: **investigate** (run 1) · workflow `offmenu`';
+  const comment = await tracking(body);
+  for (const invalid of [await tracking(body,hex('e')), await tracking('arbitrary comment'),
+    await tracking(body + '\n'), await tracking(body.replaceAll('offmenu','offmenu` link')),
+    await tracking(body.replaceAll('run 1','run 2')), await tracking(body.replace('11-28','02-31')),
+    await tracking(body.replaceAll('offmenu`','different`')), await tracking(body.replace('"run": 1','"run": 2'))]) {
+    await assert.rejects(f.call('native','linear/comment',invalid,permit),/investigation_(tracking_changed|effect_original_changed)/);
+  }
+  await assert.rejects(f.call('native','linear/upload',comment,permit),/investigation_effect_not_admitted/);
+  const hash = await digest(permit);
+  assert.throws(() => f.a.requireRecoveryPermit(fence,attempt,hash),/investigation_effect_not_admitted/);
+  const quota = await f.quota(), id = await digestBytes(Buffer.from(attempt + ':1'));
+  const send = await f.request(a.current,quota,{attempt,id,reportOnly:true});
+  const changed = await f.request(a.current,quota,{attempt,id:hex('c')});
+  await assert.rejects(f.call('native','send',changed,permit),/investigation_effect_original_changed/);
+  await assert.rejects(f.call('native','send',await f.request(a.current,quota,{attempt,id}),permit),
+    /investigation_provider_request_changed/);
+  assert.equal(f.calls.length,2);
+  // The request settlement and full-operation pin survive a cold reopen.
+  f.respond = async req => {
+    if (req.url === 'https://api.linear.app/graphql') {
+      const {variables:{input}} = await req.json();
+      return Response.json({data:{commentCreate:{success:true,comment:{id:input.id,body:input.body,issue:{id:issue}}}}});
+    }
+    return Response.json({model:route.model,choices:[{}],usage:{neurons:0.007}},
+      {headers:{'cf-aig-log-id':'fixture-investigation'}});
+  };
+  const outcomes = await Promise.allSettled([f.call('native','linear/comment',comment,permit),
+    f.call('native','linear/comment',comment,permit)]);
+  assert.equal(outcomes.filter(x => x.status === 'fulfilled').length,1);
+  await f.call('native','send',send,permit);
+  f.a = f.restart();
+  const changedClock = await tracking(body.replace('123456','123457'));
+  for (const [path,input] of [['linear/comment',changedClock],['send',changed],
+    ['send',await f.request(a.current,quota,{attempt,id,prompt:'another payload',reportOnly:true})]])
+    await assert.rejects(f.call('native',path,input,permit),/investigation_effect_original_changed/);
+  assert.equal((await f.call('native','original',{operation:comment.operation})).terminal.status,'verified');
+  assert.equal((await f.call('native','original',{operation:send.intent.operation})).terminal.status,'verified');
+  assert.equal(f.calls.length,4);
+});
+
+test('an older settled investigation operation consumes its family under the current receiver', async () => {
+  const f = fixture(), a = await adjudicatedAssessment(f,'approve');
+  const {original,advance} = await assessmentTransition(a,await postExactAssessment(f,a));
+  await f.call('control','attempt/attest',original);
+  await f.call('native','claim/attempt',advance);
+  const {permit} = await f.call('native','attempt/successor/enter',{current:a.current,advance});
+  const attempt = a.successor, issue = scope.key.issue_id;
+  const send = await f.request(a.current,await f.quota(),{
+    attempt, id:await digestBytes(Buffer.from(attempt + ':1')), reportOnly:true,
+  });
+  const body = '<!-- stokowski:state {"state": "investigate", "run": 1, "timestamp": "2026-11-28T13:00:00+00:00"} -->\n\n' +
+    '**[Stokowski]** Entering state: **investigate** (run 1)';
+  const comment = {body,attempt_id:attempt,operation:{fence:a.current.fence,
+    original_id:await digest({attempt,slot:'_announce_state',kind:'comment',issue}),
+    payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id:attempt,issue_id:issue,body})}};
+  for (const [id,account] of [[hex('b'),route.account_id],[hex('c'),null]]) {
+    const op = {fence:a.current.fence,original_id:id,payload_sha256:hex('d')};
+    f.a.put("INSERT INTO effects VALUES (?,?,?,?,?,0,'verified',?,?)",
+      id, scope.key.workspace_id + ':' + issue, canonical(op), attempt, account, hex('e'),start);
+    assert.equal((await f.call('native','original',{operation:op})).terminal.status,'verified');
+  }
+  f.a = f.restart();
+  for (const [path,input] of [['send',send],['linear/comment',comment]])
+    await assert.rejects(f.call('native',path,input,permit),/investigation_effect_original_changed/);
+  assert.equal(f.calls.length,2);
 });
 
 test('uncertain investigation entry and historical consumed CAS never mint replacement permission', async () => {
@@ -2989,7 +3071,7 @@ test('only exact independently attested posted ready report allows investigate a
   assert.equal(f.a.row('SELECT COUNT(*) AS n FROM attempts WHERE id=?',a.successor).n,1);
   // Only the investigation entrant can begin the successor provider work.
   const entry = await f.call('native','attempt/successor/enter',{current:a.current,advance});
-  const next = await f.request(a.current,await f.quota(),{attempt:a.successor,id:hex('b')});
+  const next = await f.request(a.current,await f.quota(),{attempt:a.successor,id:await digestBytes(Buffer.from(a.successor + ':1')), reportOnly:true});
   f.respond = async () => Response.json({model:route.model,choices:[{}],usage:{neurons:0.007}},
     {headers:{'cf-aig-log-id':'fixture-follow-on'}});
   assert.equal((await f.call('native','send',next,entry.permit)).status,200);
