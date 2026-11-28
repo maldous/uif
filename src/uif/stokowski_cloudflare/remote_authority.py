@@ -9,8 +9,10 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from http.client import HTTPException, HTTPSConnection
 from io import BytesIO
+from math import ceil
 import os
 from pathlib import Path
 import re
@@ -23,6 +25,7 @@ from ..effect_authority import (
     _lease_reply, _release_reply, pinned_sha, wire_seconds,
 )
 from ..handoff_store import Hold, decode, digest, require, wire
+from ..provider_discovery import ProviderReadCooldown
 from ..quota_handoff import LinearKey, token
 from ..shared_issue_coordinator import _lease
 from .account_admission import AccountUsageEvidence, FreeRoute
@@ -95,6 +98,22 @@ class _DispatchPermit:
         return secret
 
 
+def _metadata_retry_delay(header):
+    if type(header) is not str or not 0 < len(header) <= 48:
+        return None
+    if re.fullmatch(r'[0-9]{1,10}', header):
+        delay = int(header)
+    else:
+        try:
+            deadline = parsedate_to_datetime(header)
+            if deadline.utcoffset() is None:
+                return None
+            delay = max(0, ceil((deadline - datetime.now(timezone.utc)).total_seconds()))
+        except (TypeError, ValueError, OverflowError):
+            return None
+    return delay if delay <= 2**31 - 1 else None
+
+
 class AccessTransport:
     def __init__(self, origin, credential_file):
         self.host = _origin(origin)
@@ -126,6 +145,10 @@ class AccessTransport:
             conn.request('GET' if data is None else 'POST', path,
                          body=None if data is None else wire(data), headers=headers)
             reply = conn.getresponse()
+            if path == '/v1/usage/read' and reply.status in (429, 503):
+                delay = _metadata_retry_delay(reply.getheader('Retry-After'))
+                if delay is not None:
+                    raise ProviderReadCooldown(delay)
             if allow_absent and reply.status == 404:
                 # An Access login page, unknown Worker route or intermediary
                 # 404 never proves absence of the original operation.

@@ -3,7 +3,7 @@ from dataclasses import replace
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from uif.provider_discovery import Adapter, NormalProviderDiscovery
+from uif.provider_discovery import Adapter, NormalProviderDiscovery, ProviderReadCooldown
 from uif.provider_pool import PoolRequest, ProviderRoute, RouteAvailability
 from uif.quota_handoff import LinearKey
 
@@ -32,6 +32,33 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(delays, [30, 60, 120, 240, 300, 30, 30, 60])
         self.assertEqual(evidence, [None] * 5 + ["fresh", None, None])
+
+    async def test_metadata_retry_after_can_extend_backoff_and_clears_old_evidence(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        route = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                              "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                              frozenset({"author"}))
+        read = AsyncMock(side_effect=["fresh", ProviderReadCooldown(600),
+                                      ProviderReadCooldown(1), "recovered"])
+        adapter = Adapter(route, read, lambda evidence, request: None)
+        discovery = NormalProviderDiscovery((adapter,), clock=lambda: 100, interval=30, timeout=8)
+        polls = []
+
+        async def sleep(delay):
+            polls.append((delay, discovery.status(), route.route_id in discovery._evidence))
+            if len(polls) == 4:
+                raise asyncio.CancelledError
+
+        with patch('uif.provider_discovery.asyncio.sleep', side_effect=sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                await discovery._poll(adapter)
+
+        self.assertEqual(polls, [
+            (30, (("codex", "observed"),), True),
+            (600, (("codex", "reader-throttled"),), False),
+            (60, (("codex", "reader-throttled"),), False),
+            (30, (("codex", "observed"),), True),
+        ])
 
     async def test_authenticated_but_stale_account_receipts_do_not_reset_polling(self):
         from datetime import datetime, timedelta, timezone

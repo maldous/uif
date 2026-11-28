@@ -4,9 +4,20 @@ import asyncio
 from dataclasses import dataclass
 from math import isfinite
 
+from .handoff_store import Hold
 from .provider_pool import ProviderRoute, RouteAvailability, select_route
 
 _MAX_RETRY_DELAY_SECONDS = 300
+
+
+class ProviderReadCooldown(Hold):
+    """A verified metadata reader must wait before checking this route again."""
+
+    def __init__(self, delay_seconds):
+        if type(delay_seconds) is not int or not 0 <= delay_seconds <= 2**31 - 1:
+            raise ValueError("Invalid provider cooldown")
+        super().__init__("provider_metadata_cooldown")
+        self.delay_seconds = delay_seconds
 
 
 @dataclass(frozen=True)
@@ -45,6 +56,7 @@ class NormalProviderDiscovery:
         delay = self.interval
         max_delay = max(self.interval, _MAX_RETRY_DELAY_SECONDS)
         while True:
+            retry_after = 0
             old = self._inflight.get(key)
             if old is not None and not old.done():
                 self._state[key] = "reader-quarantined"
@@ -62,6 +74,10 @@ class NormalProviderDiscovery:
                 else:
                     try:
                         self._evidence[key] = task.result()
+                    except ProviderReadCooldown as cooldown:
+                        self._evidence.pop(key, None)
+                        self._state[key] = "reader-throttled"
+                        retry_after = cooldown.delay_seconds
                     except (Exception, asyncio.CancelledError):
                         self._evidence.pop(key, None)
                         self._state[key] = "reader-unavailable"
@@ -71,7 +87,7 @@ class NormalProviderDiscovery:
             observed = self._state[key] == "observed"
             if observed:
                 delay = self.interval
-            await asyncio.sleep(delay)
+            await asyncio.sleep(max(delay, retry_after))
             if not observed:
                 delay = min(delay * 2, max_delay)
 
