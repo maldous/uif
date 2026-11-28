@@ -1607,14 +1607,31 @@ class NativeComposition:
         if not pending.is_file() or complete.exists():
             return
         receipt = directory / (key + '.received')
+        receiving = directory / (key + '.receiving')
         source_work = self.installation()['assignments'][grant.scope.key.issue_id].get('source_overlays')
-        if (source_work or (directory / (key + '.receiving')).exists()) and not receipt.exists():
+        publisher_handoff = source_work or receiving.exists()
+        if publisher_handoff and not receipt.exists():
             return
         require(pending.resolve(strict=True) == pending and pending.stat().st_size <= 4096,
                 'authority_retained_lease_path')
         lease = _lease(decode(pending.read_bytes(), limit=4096))
         require(lease.fence == self.remote.original_lease(grant).fence,
                 'authority_release_original_fence')
+        if publisher_handoff:
+            # Cold recovery can already have both .received and .settled and
+            # skip receive_pending. Validate the protected original again at
+            # the final release boundary, before any authority mutation.
+            with _handoff_directory(directory) as fd:
+                raw = _retained_handoff_bytes(fd, receiving.name, 8192)
+                received = _retained_handoff_bytes(fd, receipt.name, 8192)
+            intent = decode(raw, limit=8192)
+            require(raw == wire(intent) and received == raw
+                    and intent['issue_id'] == grant.scope.key.issue_id
+                    and intent['scope_sha256'] == grant.scope_sha256
+                    and intent['attempt_id'] in grant.attempts
+                    and intent['fence'] == asdict(lease.fence)
+                    and workspace_recovery_digest(path) == intent['workspace_sha256'],
+                    'authority_received_handoff_changed')
         receipt = self.remote.release_verified(lease)
         if receipt is not None:
             _retain_handoff_original(directory, complete.name, wire(asdict(receipt)), 8192)

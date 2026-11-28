@@ -842,6 +842,58 @@ class RealCheckoutTest(unittest.TestCase):
         from unittest.mock import call
         self.assertEqual(self.r.release_verified.call_args_list, [call(claim.lease)] * 2)
 
+    def test_cold_late_release_rejects_untrusted_publisher_receipts(self):
+        from uif.handoff_store import wire
+
+        request = self.grant.claim(OWNER)
+        lease = replace(RECORD.lease, fence=replace(FENCE, source=self.grant.source))
+        self.worker.original = dict(request_id=request.request_id, request_kind=request.kind,
+            request_sha256=transition_request_sha256(request), lease=asdict(lease))
+        self.worker.completion = Completion(lease.fence, True, 'a'*64)
+        self.item.update(source_overlays={'fixture': True}, scope_sha256=self.grant.scope_sha256)
+        self.c.assignment = lambda *args: self.grant
+        self.c.prepare_handoff(self.path, self.grant,
+            NativeClaim('OffMenu', self.grant.attempts[0], lease), {'run':1}, 'publish')
+        journal = self.path / '.git/uif-original-effects'
+        pending = journal / (request.request_id + '.receiving')
+        received, settled = pending.with_suffix('.received'), pending.with_suffix('.settled')
+        settled.write_bytes(wire(asdict(lease)))
+        settled.chmod(0o600)
+        original = pending.read_bytes()
+        foreign = json.loads(original)
+        cases = {'malformed': b'{', 'noncanonical': original + b' ', 'oversized': b'x'*8193,
+                 'different_receipt': wire(dict(foreign, run=2))}
+        for field, value in (('issue_id', 'foreign'), ('scope_sha256', 'f'*64),
+                             ('attempt_id', 'foreign'), ('fence', asdict(replace(lease.fence, generation=2)))):
+            changed = dict(foreign, **{field: value})
+            cases[field] = wire(changed)
+        for case in (*cases, 'symlink', 'hardlink', 'public', 'missing_intent'):
+            with self.subTest(case=case):
+                pending.write_bytes(original)
+                pending.chmod(0o600)
+                raw = cases.get(case, original)
+                # Matching foreign intent and receipt must still fail their binding.
+                if case in ('issue_id', 'scope_sha256', 'attempt_id', 'fence'):
+                    pending.write_bytes(raw)
+                if case == 'symlink':
+                    received.symlink_to(pending)
+                elif case == 'hardlink':
+                    received.hardlink_to(pending)
+                else:
+                    received.write_bytes(raw)
+                    received.chmod(0o644 if case == 'public' else 0o600)
+                if case == 'missing_intent':
+                    pending.unlink()
+                restarted = NativeComposition(self.r, '/unused')
+                restarted.installation = self.c.installation
+                restarted.assignment = self.c.assignment
+                with patch.object(self.r, 'release_verified', return_value=None) as release:
+                    asyncio.run(restarted.reconcile_originals(self.owner, Mock()))
+                received.unlink()
+                release.assert_not_called()
+                self.assertFalse(pending.with_suffix('.released').exists())
+                self.assertEqual(settled.read_bytes(), wire(asdict(lease)))
+
     def test_release_ack_loss_recovers_same_authenticated_original_and_keeps_exact_receipt(self):
         from uif.handoff_store import wire
         from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
