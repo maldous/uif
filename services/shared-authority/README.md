@@ -64,7 +64,19 @@ Only an existing authenticated control owner may request this narrower behavior,
 `fresh_assessment: {attempt_id, first_intent_sha256}` to an otherwise valid OffMenu grant before
 the issue or attempt has any claim. The attempt must be the selected first automatic assess
 (`cf-intake-<64 lowercase hex>-assess`). The control owner must independently bind the exact
-approved first dispatch intent; a missing producer is not supplied by this interface.
+approved first dispatch intent.
+
+For this grant, the configured native Access session supplies `first_intent_sha256` on
+`/v1/claim`. Its request ID is the native assignment's deterministic SHA-256 over
+`{claim: scope, recovery: reconstruction_sha256, authority: authenticated_identity, epoch: expected_coordinator_epoch}`.
+The claim transaction compares the enrolled digest, original ID, source, attempt, epoch and
+current grant before issuing generation one. The receipt fingerprint covers the complete body.
+The shared lease receipt retains its existing typed digest. To reconcile a missing reply,
+submit the identical original to `/v1/claim/observe`. A historical plain original remains
+observable with its original body. It cannot open a new dispatch under this enrollment.
+The Foo journal custodian verifies and retains the local bytes before submission. The authority
+verifies the configured native session and authorized original. All processes able to use that
+service credential share the same native principal.
 
 The existing configured native peer can POST `/v1/dispatch/enter` with exact
 `{current, attempt_id, first_intent_sha256}`, where `current` is the active native lease. Only

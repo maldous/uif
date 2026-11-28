@@ -393,6 +393,11 @@ export class Authority {
     const won = this.store.transactionSync(() => {
       const prior = read();
       if (prior.fence !== null) return false;
+      const history = this.row('SELECT record FROM claim_generations WHERE issue=? AND generation=1',
+        prior.issue);
+      const first = history && JSON.parse(history.record);
+      need(first?.first_intent_sha256 === prior.intent_sha && equal(first.lease.fence, fence),
+        'assessment_first_claim_original_required');
       this.put('UPDATE assessment_dispatch SET fence=?,permit_sha=? WHERE attempt=? AND fence IS NULL',
         canonical(fence), hash, body.attempt_id);
       return true;
@@ -1581,7 +1586,9 @@ export class Authority {
       recover = action === 'handoff' && Object.hasOwn(body ?? {}, 'recovery'),
       kind = recover ? 'uif.shared-lease.recover-unstarted/1' : leaseKind(action),
       authority = identity(c, peer);
-    let typed = { ...body, authority };
+    const markedClaim = action === 'claim' && Object.hasOwn(body ?? {}, 'first_intent_sha256');
+    let expectedMarkedId;
+    const typed = { ...body, authority };
     if (action === 'claim') {
       fields(
         body,
@@ -1591,8 +1598,19 @@ export class Authority {
         'source',
         'reconstruction_sha256',
         'attempt_id',
+        ...(markedClaim ? ['first_intent_sha256'] : []),
       );
       scopeSource(c, body.scope, body.source);
+      if (markedClaim) {
+        need(sha(body.first_intent_sha256), 'invalid_dispatch_intent', 400);
+        need(peer.role === 'native' && Object.values(c.peers).some(
+          (p) => p.role === 'native' && p.session_id === peer.session_id), 'peer_role_not_granted', 403);
+        expectedMarkedId = await digest({
+          claim: body.scope, recovery: body.reconstruction_sha256, authority, epoch: body.expected_coordinator_epoch,
+        });
+        // These two transport fields are bound by the full request fingerprint in receipts.
+        delete typed.first_intent_sha256;
+      }
       delete typed.attempt_id;
     } else if (action === 'renew') fields(body, 'request_id', 'current');
     else if (action === 'handoff')
@@ -1650,8 +1668,17 @@ export class Authority {
             g.attempt_ids.includes(body.attempt_id),
           'reconstruction_or_attempt_unverified',
         );
-        need(!g.fresh_assessment || body.attempt_id === g.fresh_assessment.attempt_id,
-          'assessment_initial_attempt_required');
+        if (g.fresh_assessment) {
+          need(body.attempt_id === g.fresh_assessment.attempt_id, 'assessment_initial_attempt_required');
+          const enrolled = this.row('SELECT issue,intent_sha FROM assessment_dispatch WHERE attempt=?',
+            body.attempt_id);
+          need(markedClaim && body.request_id === expectedMarkedId && enrolled?.issue === id &&
+            enrolled.intent_sha === body.first_intent_sha256 &&
+            g.fresh_assessment.first_intent_sha256 === body.first_intent_sha256,
+            'assessment_first_claim_original_required');
+        } else {
+          need(!markedClaim, 'assessment_first_claim_not_enrolled');
+        }
         need(
           !this.row('SELECT issue FROM claims WHERE issue=? OR attempt=?', id, body.attempt_id),
           'issue_or_attempt_already_claimed',
@@ -1678,7 +1705,8 @@ export class Authority {
           'INSERT INTO claim_generations VALUES (?,?,?)',
           id,
           lease.fence.generation,
-          canonical({ grant: g, lease, request_id: body.request_id }),
+          canonical({ grant: g, lease, request_id: body.request_id,
+            ...(markedClaim ? {first_intent_sha256: body.first_intent_sha256} : {}) }),
         );
         return { ...result, lease };
       }

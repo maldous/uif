@@ -130,7 +130,9 @@ function fixture() {
     return {
       scope: s,
       source,
-      request_id: 'claim-' + attempt,
+      request_id: fresh_assessment ? await digest({claim:s, recovery:grant.reconstruction_sha256,
+        authority:identity(config, peers.native), epoch:2}) : 'claim-' + attempt,
+      ...(fresh_assessment ? {first_intent_sha256:fresh_assessment.first_intent_sha256} : {}),
       attempt_id: attempt,
       expected_coordinator_epoch: 2,
       reconstruction_sha256: hex('c'),
@@ -2184,6 +2186,103 @@ test('native reads only its live exact existing control attempt original', async
   await f.call('native','claim/attempt',
     {current,expected_attempt_id:'assess',attempt_id:'assess-next',request_id:'native-successor'});
   assert.deepEqual(await read(), {matches:false}, 'consumed attestation is historical only');
+});
+
+test('only the exact enrolled native first-claim original can acquire a marked issue', async () => {
+  const f = fixture();
+  await f.resume();
+  const attempt_id = 'cf-intake-' + hex('1') + '-assess', first_intent_sha256 = hex('d');
+  const marked = await f.addGrant(scope, attempt_id, start + 800, {}, {attempt_id, first_intent_sha256});
+  const {first_intent_sha256: marker, ...plain} = marked;
+  const deny = (patch) => f.call('native', 'claim', {...marked, ...patch});
+  await assert.rejects(f.call('native', 'claim', plain), /assessment_first_claim_original_required/);
+  await assert.rejects(deny({first_intent_sha256:hex('b')}), /assessment_first_claim_original_required/);
+  await assert.rejects(deny({request_id:'other-original'}), /assessment_first_claim_original_required/);
+  await assert.rejects(f.call('morgan', 'claim', marked), /peer_role_not_granted/);
+  await assert.rejects(f.a.handle('/v1/claim', marked, {...f.peers.native, session_id:'other'}),
+    /peer_role_not_granted/);
+  await assert.rejects(f.call('native', 'claim/observe', marked), /original_claim_not_found/);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claims').n, 0);
+  const results = await Promise.all([f.call('native','claim',marked), f.call('native','claim',marked)]);
+  assert.deepEqual(results[0], results[1]);
+  const {attempt_id: attempt, ...typed} = plain;
+  assert.equal(results[0].request_sha256, await digest({kind:'uif.shared-lease.claim/3',
+    request:{...typed, authority:identity(f.config,f.peers.native)}}));
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','claim/observe',marked), results[0]);
+  for (const path of ['claim', 'claim/observe']) {
+    await assert.rejects(f.call('native',path,plain), /original_request_changed/);
+    await assert.rejects(f.call('native',path,{...marked,first_intent_sha256:hex('c')}), /original_request_changed/);
+  }
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 1);
+  assert.equal(f.a.row('SELECT fence FROM assessment_dispatch WHERE attempt=?', attempt_id).fence, null);
+  const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
+  const reconstruction = hex('f');
+  await f.call('control','grant',{request_id:'rotate-active-original',previous_sha256:await digest(grant),
+    grant:{...grant,reconstruction_sha256:reconstruction}});
+  const rotated = {...marked, reconstruction_sha256:reconstruction, request_id:await digest({
+    claim:scope,recovery:reconstruction,authority:identity(f.config,f.peers.native),epoch:2})};
+  await assert.rejects(f.call('native','claim',rotated), /issue_or_attempt_already_claimed/);
+  assert.deepEqual(await f.call('native','claim/observe',marked),results[0]);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 1);
+  const otherScope = {...scope,key:{...scope.key,issue_id:crypto.randomUUID()}};
+  const other = await f.addGrant(otherScope, 'unmarked');
+  await assert.rejects(f.call('native','claim',{...other, first_intent_sha256:marker}), /assessment_first_claim_not_enrolled/);
+  const existing = await f.call('morgan','claim',other);
+  const {attempt_id: unmarkedAttempt, ...ordinary} = other;
+  assert.equal(existing.request_sha256, await digest({kind:'uif.shared-lease.claim/3',
+    request:{...ordinary, authority:identity(f.config,f.peers.morgan)}}));
+});
+
+test('a waiting marked claim sees a changed control epoch or grant at commit', async () => {
+  for (const change of ['stop', 'rotate']) {
+    const f = fixture();
+    await f.resume();
+    const attempt_id = 'cf-intake-' + hex('3') + '-assess';
+    const claim = await f.addGrant(scope, attempt_id, start + 800, {},
+      {attempt_id, first_intent_sha256:hex('a')});
+    const receipt = f.a.receipt.bind(f.a);
+    f.a.receipt = async (...args) => {
+      if (args[2] === '/v1/claim') {
+        if (change === 'stop') {
+          await f.call('control','control',{request_id:'stop', expected_coordinator_epoch:2, stopped:true});
+        } else {
+          const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
+          await f.call('control','grant',{request_id:'rotate',previous_sha256:await digest(grant),
+            grant:{...grant,reconstruction_sha256:hex('d')}});
+        }
+      }
+      return receipt(...args);
+    };
+    await assert.rejects(f.call('native','claim',claim),
+      change === 'stop' ? /admission_stopped_or_epoch_changed/ : /reconstruction_or_attempt_unverified/);
+    await assert.rejects(f.call('native','claim/observe',claim), /original_claim_not_found/);
+    assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 0);
+  }
+});
+
+test('pre-upgrade plain marked claim remains observable without acquiring first-entry provenance', async () => {
+  const f = fixture();
+  await f.resume();
+  const attempt_id = 'cf-intake-' + hex('2') + '-assess', first_intent_sha256 = hex('a');
+  const marked = await f.addGrant(scope, attempt_id, start + 800, {}, {attempt_id, first_intent_sha256});
+  const {first_intent_sha256: marker, ...plain} = marked;
+  const old = await f.call('native', 'claim', marked);
+  // Reopen the exact pre-upgrade on-disk shapes: plain full request fingerprint,
+  // and a generation record containing the enrolled grant, lease and request ID.
+  const priorGeneration = JSON.parse(f.a.row('SELECT record FROM claim_generations').record);
+  delete priorGeneration.first_intent_sha256;
+  f.a.put('UPDATE claim_generations SET record=?', canonical(priorGeneration));
+  f.a.put('UPDATE receipts SET fingerprint=? WHERE peer=? AND id=?',
+    await digest({path:'/v1/claim', body:plain}), f.a.peerKey(f.peers.native), plain.request_id);
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','claim/observe',plain), old);
+  for (const path of ['claim','claim/observe'])
+    await assert.rejects(f.call('native',path,marked), /original_request_changed/);
+  const entry = {current:old.lease,attempt_id,first_intent_sha256:marker};
+  assert.deepEqual(await f.call('native','dispatch/observe',entry), {entered:false});
+  await assert.rejects(f.call('native','dispatch/enter',entry), /assessment_first_claim_original_required/);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 1);
 });
 
 async function freshAssessment(f, attempt_id, first_intent_sha256 = hex('a')) {
