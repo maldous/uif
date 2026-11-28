@@ -101,6 +101,19 @@ class PinnedNativeSuccessorTrackingTest(IsolatedAsyncioTestCase):
         self.assertEqual(self.owner._announced_states, set())
         self.assertEqual(self.worker.calls, [])
 
+    async def test_held_native_transition_preserves_attempt_and_assessment_state(self):
+        self.composition._running.set((fixture.GRANT, fixture.RECORD))
+        self.composition.installation = lambda: {'assignments': {fixture.ISSUE: {
+            'fresh_assessment': {'attempt_id': fixture.RECORD.attempt_id, 'first_intent_sha256': 'e' * 64}}}}
+        before = deepcopy(self.record)
+        self.assertFalse(await self.owner._resume_settlement(self.issue, self.attempt))
+        self.assertEqual(self.record, before)
+        self.assertEqual(self.owner._issue_current_state[self.issue.id], 'assess')
+        self.assertEqual(self.owner._announced_states, set())
+        self.assertEqual(self.saved, [])
+        self.assertEqual(self.worker.calls, [])
+        self.owner._schedule_retry.assert_not_called()
+
     async def test_only_current_successor_records_and_recovers_its_original_tracking(self):
         issue = SimpleNamespace(id=self.issue.id, identifier='OFF-1', title='Fixture', description='')
         stages = intake_stages({}, 'OffMenu', issue, fixture.GRANT.scope_sha256, 1)
@@ -128,7 +141,7 @@ class PinnedNativeSuccessorTrackingTest(IsolatedAsyncioTestCase):
             inherited = self.composition._fresh_assessment.set(_FreshAssessmentExecution(
                 replace(claim, attempt_id=previous), Path(workspace)))
             try:
-                with self.assertRaisesRegex(Hold, 'successor_tracking_in_assessment'):
+                with self.assertRaisesRegex(Hold, 'assessment_report_only_effect'):
                     await self.owner._announce_state(issue, 'investigate', 1)
             finally:
                 self.composition._fresh_assessment.reset(inherited)

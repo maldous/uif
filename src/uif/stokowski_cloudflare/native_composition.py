@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass
 from functools import wraps
 from datetime import datetime, timedelta
 from hashlib import sha1, sha256
+from inspect import Parameter, getsource, signature
 from pathlib import Path
 from secrets import token_hex
 from tempfile import NamedTemporaryFile
@@ -37,15 +38,21 @@ from .client import FreeAdmissionWindow, GLM_MODEL
 from .account_admission import allows_request
 from .client import MODEL_RESERVATIONS
 from . import client as workers_ai_client
+from .assessment_readiness import parse_assessment_report
+from .native import _native_report
 from .remote_authority import AccessTransport, AuthorityUnavailable, NativeAssignment, RemoteAuthority, protected_record
 from .intake import intake_identity
 from .shared_admission import NativeClaim
 from .remote_source import SourceTools, pinned_members, review_diff
 
-# The installed native caller has fixed, reviewed source bytes. Only these
-# direct public read methods can reach its original authenticated client.
+# Public read methods delegated to the original authenticated client.
 _LINEAR_READS = frozenset({'fetch_candidate_issues', 'fetch_issue', 'fetch_issue_snapshots',
     'fetch_issue_states_by_ids', 'fetch_issues_by_states', 'fetch_comments', 'fetch_team_labels', 'close'})
+# Exact native _publication_comments query. Stokowski owns pagination and
+# completeness checks. The underlying GraphQL transport can also mutate.
+_PUBLICATION_COMMENTS_QUERY_SHA256 = '74cbcfc005ced889591a1e7c2d0f289c759a0ce1e2824cbfdd7ce4a5de36b795'
+# Native method text from the exact postimage of the reviewed assessment patch.
+_VERIFIED_ASSESSMENT_REPORT_SINK_SHA256 = '1061be06c90156bf06f2cc9aafb8dfab6301c8f9560e0d1b5d0f61649630c28e'
 
 
 def _preserve(directory, filename, content):
@@ -341,13 +348,19 @@ def workspace_recovery_digest(path):
     return digest(sorted(entries))
 
 
+@dataclass(frozen=True)
+class _VerifiedAssessmentReport:
+    run: int
+    raw: bytes
+    body: str
+
+
 @dataclass
 class _FreshAssessmentExecution:
     claim: NativeClaim
     workspace: Path
     permit: object | None = None
-    body: str | None = None
-    report_started: bool = False
+    report: _VerifiedAssessmentReport | None = None
 
 
 class NativeComposition:
@@ -356,6 +369,7 @@ class NativeComposition:
         self._running = ContextVar('shared_native_effect_assignment', default=None)
         self._slot = ContextVar('native_original_linear_effect', default=None)
         self._fresh_assessment = ContextVar('native_fresh_assessment_result', default=None)
+        self._verified_assessment_report_sink = None
         self._seen_fences = {}
         self._renew_after = {}
         self._private_postimages = {}
@@ -530,6 +544,7 @@ class NativeComposition:
             require(stage == 'assess' and owner.project_name == 'OffMenu' and 'project_intake' in record
                     and prior is not None and prior.attempt_id == record['attempt'],
                     'authority_dispatch_fresh_assessment_scope')
+            require(self._verified_assessment_report_sink is not None, 'authority_assessment_native_report_sink')
             from .fresh_assessment_dispatch import observe_fresh_assessment_dispatch
 
             def verify_installed(current_owner, current_issue, run, current_grant):
@@ -769,7 +784,7 @@ class NativeComposition:
             workspace = frozen_workspace()
             if execution is not None:
                 require(execution.claim == original and execution.workspace == workspace[0]
-                        and execution.body is None and not execution.report_started
+                        and execution.report is None
                         and request_id == sha256(f'{attempt}:1'.encode()).hexdigest(),
                         'authority_assessment_one_fresh_provider_original')
             directory = workspace[0] / '.git/uif-original-effects'
@@ -822,7 +837,7 @@ class NativeComposition:
                         'authority_original_handoff_bytes_changed')
                 os.fsync(fd)
             if execution is not None:
-                execution.body = rendered
+                execution.report = _VerifiedAssessmentReport(run, content.encode(), rendered)
             return _RetainedHandoffOriginal(directory / name, pin)
         return finish
 
@@ -835,28 +850,25 @@ class NativeComposition:
                 'authority_assessment_finisher_context')
         return self.retain_assessment_result(issue, record, run)
 
-    def publish_fresh_assessment_report(self, issue, attempt, workspace, state):
+    def verified_fresh_assessment_report(self, issue, attempt, workspace, state):
         execution = self._fresh_assessment.get()
         require(execution is not None and state == 'assess' and attempt.state_name == 'assess'
                 and execution.claim.lease.fence.scope.key.issue_id == issue.id
                 and Path(workspace) == execution.workspace,
                 'authority_assessment_report_context')
-        if attempt.status != 'succeeded' or execution.body is None:
-            return
-        current = self.current(issue.id)
-        require(current.attempt_id == attempt.session_id == execution.claim.attempt_id
-                and current.lease.fence == execution.claim.lease.fence,
-                'authority_assessment_report_fence')
-        if execution.report_started:
-            require(self.observe_stage_report(current.lease.fence, current.attempt_id, execution.body)
-                    is not None, 'authority_assessment_report_outcome_unknown')
-            return
-        execution.report_started = True
-        try:
-            self.linear('comment', issue.id, {'body': execution.body})
-        except AuthorityUnavailable:
-            require(self.observe_stage_report(current.lease.fence, current.attempt_id, execution.body)
-                    is not None, 'authority_assessment_report_outcome_unknown')
+        pair = self._running.get()
+        report = execution.report
+        require(pair is not None and pair[1] == execution.claim
+                and attempt.session_id == execution.claim.attempt_id and report is not None,
+                'authority_assessment_report_original')
+
+        def read_original(issue_id, session_id, run):
+            require(self._fresh_assessment.get() is execution and self._running.get() == pair
+                    and execution.report is report and (issue_id, session_id, run) ==
+                    (issue.id, execution.claim.attempt_id, report.run),
+                    'authority_assessment_report_binding')
+            return _native_report(report.raw.decode()), parse_assessment_report(report.raw), report.body
+        return read_original
 
     def retain_final_review(self, request_id, content):
         grant, original = self._running.get()
@@ -1545,20 +1557,28 @@ class NativeComposition:
         return comment_id, self._verified_terminal(operation, result)
 
     def linear(self, kind, issue_id, payload):
-        claim = self.current(issue_id)
         slot = self._slot.get()
         require(slot is not None, 'authority_original_linear_slot_missing')
         body = payload.get('body')
+        fresh = self._fresh_assessment.get()
+        if fresh is not None:
+            require(slot == '_publish_run_report' and kind == 'comment' and fresh.report is not None
+                    and payload == {'body': fresh.report.body}
+                    and issue_id == fresh.claim.lease.fence.scope.key.issue_id,
+                    'authority_assessment_report_only_effect')
+        claim = self.current(issue_id)
+        if fresh is not None:
+            require(claim.attempt_id == fresh.claim.attempt_id and claim.lease.fence == fresh.claim.lease.fence,
+                    'authority_assessment_report_fence')
         successor_tracking = False
         if (kind == 'comment' and slot == '_announce_state' and type(body) is str
                 and body.startswith('<!-- stokowski:state {"state": "investigate",')):
-            fresh = self.installation()['assignments'][issue_id].get('fresh_assessment')
-            if fresh is not None:
-                require(claim.attempt_id != fresh['attempt_id'], 'authority_assessment_tracking_not_admitted')
-                require(self._fresh_assessment.get() is None, 'authority_successor_tracking_in_assessment')
+            mark = self.installation()['assignments'][issue_id].get('fresh_assessment')
+            if mark is not None:
+                require(claim.attempt_id != mark['attempt_id'], 'authority_assessment_tracking_not_admitted')
                 grant, _ = self._running.get()
                 original_id = self._linear_original_id(claim.lease.fence, claim.attempt_id, slot, kind)
-                body = self._investigation_tracking_body(claim, issue_id, original_id, body, fresh, grant)
+                body = self._investigation_tracking_body(claim, issue_id, original_id, body, mark, grant)
                 payload = dict(payload, body=body)
                 current = self.current(issue_id)
                 require(current.lease.fence == claim.lease.fence and current.attempt_id == claim.attempt_id,
@@ -1583,8 +1603,15 @@ class NativeComposition:
         result = self.remote.transport.request('/v1/linear/receipt', {'operation': asdict(op)}, allow_absent=True)
         if result is None:
             require(may_submit, 'authority_successor_tracking_outcome_unknown')
-            result = self.remote.transport.request('/v1/linear/' + kind,
-                        {'operation': asdict(op), 'attempt_id': claim.attempt_id, **payload})
+            try:
+                result = self.remote.transport.request('/v1/linear/' + kind,
+                            {'operation': asdict(op), 'attempt_id': claim.attempt_id, **payload})
+            except AuthorityUnavailable:
+                if fresh is None:
+                    raise
+                require(self.observe_stage_report(claim.lease.fence, claim.attempt_id, body) is not None,
+                        'authority_assessment_report_outcome_unknown')
+                return True
         require(kind == 'comment' and str(UUID(result['id'])) == result['id'], 'authority_linear_comment_result')
         self._verified_terminal(op, result)
         return True
@@ -1630,6 +1657,18 @@ class _LinearClient:
         if name in _LINEAR_READS:
             return getattr(self._reader, name)
         raise AttributeError(name)
+
+    async def _graphql(self, query, variables):
+        require(type(query) is str and query.isascii()
+                and sha256(query.encode()).hexdigest() == _PUBLICATION_COMMENTS_QUERY_SHA256,
+                'authority_linear_publication_comments_query')
+        require(type(variables) is dict and variables.keys() == {'issueId', 'after'},
+                'authority_linear_publication_comments_variables')
+        issue_id, after = variables['issueId'], variables['after']
+        require(type(issue_id) is str and bool(issue_id)
+                and (after is None or type(after) is str and bool(after)),
+                'authority_linear_publication_comments_variables')
+        return await self._reader._graphql(query, {'issueId': issue_id, 'after': after})
 
     async def post_comment(self, issue_id, body):
         return await asyncio.to_thread(self._composition.linear, 'comment', issue_id, {'body': body})
@@ -1717,6 +1756,17 @@ def install_sinks(orchestration, composition):
     original_preflight = owner._publication_preflight
     slots = {name: getattr(owner, name) for name in _COMMENT_SLOTS}
     require(all(asyncio.iscoroutinefunction(fn) for fn in slots.values()), 'authority_unrecognized_native_sink')
+    native_report = slots['_publish_run_report']
+    source_sha = None
+    if not hasattr(native_report, '__wrapped__'):
+        try:
+            hook = signature(native_report, follow_wrapped=False).parameters.get('verified_assessment_report')
+            if hook is not None and hook.kind is Parameter.KEYWORD_ONLY and hook.default is None:
+                source_sha = sha256(getsource(native_report).encode()).hexdigest()
+        except (OSError, TypeError, ValueError):
+            pass
+    composition._verified_assessment_report_sink = (
+        native_report if source_sha == _VERIFIED_ASSESSMENT_REPORT_SINK_SHA256 else None)
 
     def client(*args, **kwargs):
         return _LinearClient(original_client(*args, **kwargs), composition)
@@ -1730,7 +1780,7 @@ def install_sinks(orchestration, composition):
                 execution = composition._fresh_assessment.get()
                 if execution is not None:
                     if name == '_publish_run_report':
-                        return await publish_fresh(*args, **kwargs)
+                        return await publish_fresh(native, execution, *args, **kwargs)
                     if name == '_announce_state':
                         return await announce_fresh(native, execution, *args, **kwargs)
                 return await native(*args, **kwargs)
@@ -1747,13 +1797,16 @@ def install_sinks(orchestration, composition):
             return None
         return await native(native_owner, issue, state, run)
 
-    async def publish_fresh(native_owner, issue, attempt, workspace_path, state_name):
-        execution = composition._fresh_assessment.get()
+    async def publish_fresh(native, execution, native_owner, issue, attempt, workspace_path, state_name):
         require(native_owner.project_name == 'OffMenu'
                 and asyncio.current_task() is execution.permit.winner,
                 'authority_assessment_report_owner')
-        return await asyncio.to_thread(composition.publish_fresh_assessment_report,
-                                       issue, attempt, workspace_path, state_name)
+        require(composition._verified_assessment_report_sink is native, 'authority_assessment_native_report_sink')
+        if attempt.status != 'succeeded':
+            return None
+        verified = composition.verified_fresh_assessment_report(issue, attempt, workspace_path, state_name)
+        return await native(native_owner, issue, attempt, workspace_path, state_name,
+                            verified_assessment_report=verified)
 
     @wraps(original_settle)
     async def settle(native_owner, issue, attempt):
@@ -1766,6 +1819,22 @@ def install_sinks(orchestration, composition):
 
     async def settle_bound(native_owner, issue, attempt):
         with composition.settlement_context(native_owner, issue, attempt) as (grant, original):
+            record = attempt.settlement_record
+            if attempt.state_name == 'assess' and record.get('phase') in {'report-unknown', 'transition'}:
+                execution = composition._fresh_assessment.get()
+                mark = composition.installation()['assignments'][issue.id].get('fresh_assessment')
+                if ((execution is not None and execution.claim == original)
+                        or (mark is not None and mark['attempt_id'] == original.attempt_id)):
+                    # Native marks a transition attempted before entering it. Keep
+                    # its original untouched until successor effects have authority.
+                    if record['phase'] == 'report-unknown':
+                        body = record.get('expected_report_body')
+                        require(type(body) is str and bool(body), 'authority_assessment_report_unfrozen')
+                        receipt = await asyncio.to_thread(composition.observe_stage_report,
+                            original.lease.fence, original.attempt_id, body)
+                        require(receipt is not None, 'authority_assessment_report_outcome_unknown')
+                    attempt.error = 'Original assessment report awaits authorized native continuation'
+                    return False
             result = await original_settle(native_owner, issue, attempt)
             if result is not True or attempt.settlement_record.get('phase') != 'complete':
                 return result

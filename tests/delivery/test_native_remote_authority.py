@@ -628,6 +628,16 @@ class RealCheckoutTest(unittest.TestCase):
         native.running = {ISSUE: attempt}
         self.c._seen_fences[ISSUE] = lease.fence
         self.c._running.set((grant, claim))
+        before = record.copy()
+        self.assertFalse(asyncio.run(native._resume_settlement(issue, attempt)))
+        self.assertEqual(record, before)
+        record.update(phase='report-unknown', expected_report_body='exact original body')
+        before = record.copy()
+        with patch.object(self.c, 'observe_stage_report', return_value=('comment', object())) as observe:
+            self.assertFalse(asyncio.run(native._resume_settlement(issue, attempt)))
+        observe.assert_called_once_with(lease.fence, previous, 'exact original body')
+        self.assertEqual(record, before)
+        record['phase'] = 'complete'  # Previously settled native original.
         self.assertTrue(asyncio.run(native._resume_settlement(issue, attempt)))
         self.c._running.set(None)
 
@@ -1029,13 +1039,21 @@ class RealCheckoutTest(unittest.TestCase):
         finish = self.c.fresh_assessment_finisher(self.issue, record, 1)
         state = SimpleNamespace(status='succeeded', session_id=attempt, state_name='assess',
                                 result_text='untrusted fallback not used')
-        self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        with self.assertRaisesRegex(Hold, 'assessment_report_original'):
+            self.c.verified_fresh_assessment_report(self.issue, state, self.path, 'assess')
         self.assertEqual(self.worker.calls, [])
         finish(first, raw.decode())
         expected = render_fresh_assessment(raw, issue=self.issue, run=1,
             scope_sha256=record['scope_sha256'], attempt_id=attempt)
         expected_op = self.c._linear_operation(fence, attempt, '_publish_run_report', 'comment',
                                               {'body': expected})
+        proof = self.c.verified_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        from uif.stokowski_cloudflare.native import _native_report
+        self.assertEqual(proof(self.issue.id, attempt, 1), (_native_report(raw.decode()), decode(raw), expected))
+        with self.assertRaisesRegex(Hold, 'assessment_report_binding'):
+            proof(self.issue.id, attempt, 2)
+        with self.assertRaisesRegex(Hold, 'assessment_report_only_effect'):
+            self.c.linear('comment', self.issue.id, {'body': 'substituted'})
         post = self.r.transport.request
 
         def lose_comment_ack(path, data=None, **opts):
@@ -1050,11 +1068,11 @@ class RealCheckoutTest(unittest.TestCase):
         wrong = replace(claim, lease=replace(claim.lease, fence=replace(fence, generation=2)))
         self.r.read_claim.return_value = wrong
         with self.assertRaises(Hold):
-            self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+            self.c.linear('comment', self.issue.id, {'body': expected})
         self.assertEqual(self.worker.calls, [])
         self.r.read_claim.return_value = claim
-        self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
-        self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        self.assertTrue(self.c.linear('comment', self.issue.id, {'body': expected}))
+        self.assertTrue(self.c.linear('comment', self.issue.id, {'body': expected}))
         self.assertEqual([call[0] for call in self.worker.calls].count('/v1/linear/comment'), 1)
         self.assertNotIn('/v1/linear/upload', [call[0] for call in self.worker.calls])
         self.assertNotIn('private fixture', expected)
