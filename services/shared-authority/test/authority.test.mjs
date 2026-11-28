@@ -3100,3 +3100,114 @@ test('blocked or unknown report cannot produce an assess successor', async () =>
     assert.equal(f.calls.length,2);
   }
 });
+
+async function investigatedReport(f, content = canonical({summary:'Résumé 😀 ` <b> @owner',verdict:'blocked'})) {
+  const a = await adjudicatedAssessment(f,'approve');
+  const {original,advance} = await assessmentTransition(a,await postExactAssessment(f,a));
+  await f.call('control','attempt/attest',original);
+  await f.call('native','claim/attempt',advance);
+  const {permit} = await f.call('native','attempt/successor/enter',{current:a.current,advance});
+  const attempt = a.successor;
+  const send = await f.request(a.current,await f.quota(),{
+    attempt,id:await digestBytes(Buffer.from(attempt + ':1')),reportOnly:true,
+  });
+  f.respond = async () => Response.json({model:route.model,choices:[{message:{content}}],usage:{neurons:0.007}},
+    {headers:{'cf-aig-log-id':'fixture-investigation'}});
+  await f.call('native','send',send,permit);
+  const parsed = JSON.parse(content);
+  const witness = {attempt_id:attempt,issue:'OFF-37',run:1,state:'investigate',scope_sha256:hex('1'),
+    report_sha256:await digestBytes(Buffer.from(content)),summary:parsed.summary,verdict:parsed.verdict};
+  const binding = JSON.stringify(witness,Object.keys(witness).sort()).replace(/[`<>@]/g,
+    c => '\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'));
+  const body = '<!-- stokowski:report -->\n\n### Native routing evidence\n\n```json\n' + binding +
+    '\n```\n\n## investigate — OFF-37\n\nInvestigation report indicates blocked work.' +
+    '\n\nIndependent review is required before a workflow transition.';
+  const operation = {fence:a.current.fence,
+    original_id:await digest({attempt,slot:'_publish_run_report',kind:'comment',issue:scope.key.issue_id}),
+    payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id:attempt,issue_id:scope.key.issue_id,body})};
+  return {a,permit,send,input:{operation,attempt_id:attempt,body}};
+}
+
+test('marked investigation posts only one exact retained author report and reads original after cold reopen', async () => {
+  const f = fixture(), {a,permit,send,input} = await investigatedReport(f);
+  const before = f.calls.length;
+  const changed = {...input,body:input.body + 'changed'};
+  changed.operation = {...input.operation,payload_sha256:await digest({kind:'uif.linear-comment/1',
+    attempt_id:input.attempt_id,issue_id:scope.key.issue_id,body:changed.body})};
+  await assert.rejects(f.call('native','linear/comment',changed,permit),/investigation_report_original_changed/);
+  await assert.rejects(f.call('native','linear/comment',input),/native_recovery_permit_required/);
+  assert.equal(f.calls.length,before);
+  f.respond = async req => {
+    const {variables:{input:posted}} = await req.json();
+    assert.equal(posted.body,input.body);
+    return Response.json({data:{commentCreate:{success:true,comment:{id:posted.id,body:posted.body,issue:{id:posted.issueId}}}}});
+  };
+  const posted = await f.call('native','linear/comment',input,permit);
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','linear/receipt',{operation:input.operation}),posted);
+  await assert.rejects(f.call('native','linear/comment',input,permit),/original_already_recorded/);
+  await assert.rejects(f.call('native','send',send,permit),/original_already_recorded/);
+  assert.equal(f.calls.length,before+1);
+  assert.equal((await f.call('native','original',{operation:input.operation})).terminal.status,'verified');
+});
+
+test('marked investigation report holds changed retained evidence, old comments and lost original effects', async () => {
+  for (const mode of ['bytes','provider-state','old-comment','lost-reply']) {
+    const f = fixture(), {permit,send,input} = await investigatedReport(f);
+    const before = f.calls.length;
+    if (mode === 'bytes') f.a.put('UPDATE provider_results SET body_sha=? WHERE id=?',hex('a'),send.intent.operation.original_id);
+    if (mode === 'provider-state') f.a.put("UPDATE effects SET state='sending' WHERE id=?",send.intent.operation.original_id);
+    if (mode === 'old-comment') {
+      const op = {...input.operation,original_id:hex('c')};
+      f.a.put("INSERT INTO effects VALUES (?,?,?,?,NULL,0,'verified',?,?)",op.original_id,
+        scope.key.workspace_id+':'+scope.key.issue_id,canonical(op),input.attempt_id,hex('d'),start);
+    }
+    f.respond = async () => {throw Error('lost report result');};
+    await assert.rejects(f.call('native','linear/comment',input,permit),
+      /assessment_report_provider_receipt|investigation_report_result_unavailable|investigation_effect_original_changed|original_external_effect_unknown/);
+    if (mode === 'lost-reply') {
+      f.a = f.restart();
+      await assert.rejects(f.call('native','linear/comment',input,permit),/original_already_recorded/);
+      assert.equal(f.calls.length,before+1);
+      assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',input.operation.original_id).state,'sending');
+      assert.equal((await f.call('native','original',{operation:input.operation})).terminal,null);
+    } else assert.equal(f.calls.length,before);
+  }
+});
+
+test('marked author report coexists only with the canonical tracking slot', async () => {
+  const f = fixture(), {permit,input} = await investigatedReport(f);
+  const attempt = input.attempt_id, issue = scope.key.issue_id;
+  const body = '<!-- stokowski:state {"state": "investigate", "run": 1, "timestamp": "2026-11-28T13:00:00+00:00"} -->\n\n' +
+    '**[Stokowski]** Entering state: **investigate** (run 1)';
+  const tracking = {body,attempt_id:attempt,operation:{fence:input.operation.fence,
+    original_id:await digest({attempt,slot:'_announce_state',kind:'comment',issue}),
+    payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id:attempt,issue_id:issue,body})}};
+  f.respond = async req => {
+    const {variables:{input:posted}} = await req.json();
+    return Response.json({data:{commentCreate:{success:true,comment:{id:posted.id,body:posted.body,issue:{id:posted.issueId}}}}});
+  };
+  await f.call('native','linear/comment',tracking,permit);
+  await f.call('native','linear/comment',input,permit);
+  const after = f.calls.length;
+  await assert.rejects(f.call('native','linear/comment',tracking,permit),/original_already_recorded/);
+  await assert.rejects(f.call('native','linear/comment',input,permit),/original_already_recorded/);
+  assert.equal(f.calls.length,after);
+});
+
+test('marked report rechecks exact retained evidence and owner after durable reservation', async () => {
+  for (const mode of ['bytes','revoked','expired']) {
+    const f = fixture(), {a,permit,send,input} = await investigatedReport(f);
+    const before = f.calls.length;
+    f.storage.sync = async () => {
+      if (mode === 'bytes') f.a.put('UPDATE provider_results SET response=? WHERE id=?',
+        new TextEncoder().encode('{}'),send.intent.operation.original_id);
+      if (mode === 'revoked') await f.call('control','revoke',{request_id:'revoke-report',fence:a.current.fence});
+      if (mode === 'expired') f.setTime(a.current.expires_at);
+    };
+    await assert.rejects(f.call('native','linear/comment',input,permit),
+      /assessment_dispatch_report_evidence_changed|stopped_expired_or_superseded|owner|lease|claim|fence/);
+    assert.equal(f.calls.length,before);
+    assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',input.operation.original_id).state,'denied');
+  }
+});

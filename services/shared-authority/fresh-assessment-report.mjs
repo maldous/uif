@@ -111,10 +111,10 @@ function nativeFence(config, fence) {
   'assessment_report_current_fence', 403);
 }
 
-export async function deriveFreshAssessmentCommentFromVerifiedOriginal({
+async function deriveCommentFromVerifiedOriginal({
   config, currentFence, ownerBinding, ownerBindingSha256, attempt_id, sealedProviderOperation,
   providerEffect, retainedResponse, responseBytes,
-}) {
+}, investigation = false) {
   // Private join only. The real authority must first authenticate the caller,
   // verify the current native fence and resolve the protected owner binding
   // and both original provider records from its own custody. No HTTP inputs
@@ -144,10 +144,55 @@ export async function deriveFreshAssessmentCommentFromVerifiedOriginal({
       operation, body_sha256: retained.body_sha256, gateway_receipt: retained.gateway_receipt, status: 'verified',
     }) === effect.receipt_sha256, 'assessment_report_provider_receipt', 403);
   const response = strictJson(text);
+  if (investigation) need(Array.isArray(response?.choices) && response.choices.length === 1,
+    'investigation_report_provider_content', 400);
   const message = response?.choices?.[0]?.message;
   need(object(message) && (message.tool_calls == null ||
     Array.isArray(message.tool_calls) && message.tool_calls.length === 0) &&
     typeof message.content === 'string' && !/[\uD800-\uDFFF]/u.test(message.content),
   'assessment_report_provider_content', 400);
-  return renderFreshAssessmentComment(utf8.encode(message.content), {fence, attempt_id, ownerBinding: binding});
+  return investigation
+    ? renderInvestigationComment(utf8.encode(message.content), {fence, attempt_id, ownerBinding: binding})
+    : renderFreshAssessmentComment(utf8.encode(message.content), {fence, attempt_id, ownerBinding: binding});
+}
+
+
+export const deriveFreshAssessmentCommentFromVerifiedOriginal = (input) => deriveCommentFromVerifiedOriginal(input);
+export const deriveInvestigationCommentFromVerifiedOriginal = (input) => deriveCommentFromVerifiedOriginal(input, true);
+
+async function renderInvestigationComment(raw, {fence, attempt_id, ownerBinding}) {
+  const {issue_identifier, run, scope_sha256} = ownerBinding;
+  const issue_id = fence?.scope?.key?.issue_id;
+  need(uuid(issue_id) && typeof issue_identifier === 'string' && /^[A-Z][A-Z0-9]*-[0-9]+$/.test(issue_identifier)
+    && uint(run) && run > 0 && sha(scope_sha256), 'investigation_report_owner_binding', 400);
+  const attemptDigest = await digestBytes(utf8.encode(
+    '[' + ['OffMenu', issue_id, scope_sha256, run].map((item) => JSON.stringify(item)).join(', ') + ']',
+  ));
+  need(attempt_id === 'cf-intake-' + attemptDigest + '-investigate', 'investigation_report_attempt', 400);
+  let text = strictText(raw, limit);
+  const fenceMatch = /^[ \t\r\n\v\f]*```json[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t\r\n\v\f]*$/i.exec(text);
+  text = fenceMatch?.[1] ?? text.replace(/^\uFEFF/, '');
+  const parsed = strictJson(text, true);
+  need(object(parsed) && typeof parsed.summary === 'string' && !/^[\x09-\x0d\x20]*$/.test(parsed.summary)
+    && utf8.encode(parsed.summary).length <= 2048 && !/[\uD800-\uDFFF]/u.test(parsed.summary)
+    && typeof parsed.verdict === 'string' && Object.hasOwn(labels, parsed.verdict),
+    'investigation_report_verdict', 400);
+  if (Object.hasOwn(parsed, 'routing')) {
+    need(object(parsed.routing) && parsed.routing.issue === issue_identifier && parsed.routing.state === 'investigate'
+      && uint(parsed.routing.run) && parsed.routing.run === run, 'investigation_report_binding', 400);
+  }
+  const report_sha256 = await digestBytes(raw);
+  const witness = {attempt_id, issue:issue_identifier, run, state:'investigate', scope_sha256,
+    report_sha256, summary:parsed.summary, verdict:parsed.verdict};
+  const binding = JSON.stringify(witness, Object.keys(witness).sort()).replace(/[`<>@]/g,
+    (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+  const label = {approve:'Investigation report indicates proposed completion.',
+    blocked:'Investigation report indicates blocked work.', deferred:'Investigation report indicates deferred work.'}[parsed.verdict];
+  const body = '<!-- stokowski:report -->\n\n### Native routing evidence\n\n```json\n' + binding +
+    '\n```\n\n## investigate — ' + issue_identifier + '\n\n' + label +
+    '\n\nIndependent review is required before a workflow transition.';
+  return {body, report_sha256, operation:{fence,
+    original_id:await digest({attempt:attempt_id,slot:'_publish_run_report',kind:'comment',issue:issue_id}),
+    payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id,issue_id,body}),
+  }};
 }
