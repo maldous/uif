@@ -2452,6 +2452,41 @@ async function assessmentTransition(a, posted = {id:crypto.randomUUID(),receipt_
   };
 }
 
+test('native reads the consumed fresh assessment edge after CAS reply loss with no new effect', async () => {
+  const f = fixture();
+  const a = await adjudicatedAssessment(f, 'approve');
+  const posted = await postExactAssessment(f, a);
+  const {original, advance} = await assessmentTransition(a, posted);
+  const request = {current: a.current, original, advance};
+  const observe = (body = request) => f.call('native', 'attempt/successor/read', body);
+  await f.call('control', 'attempt/attest', original);
+  assert.deepEqual(await observe(), {matches: false});
+  await f.call('native', 'claim/attempt', advance); // The claimant loses the successful CAS reply.
+  f.a = f.restart();
+  const totalChanges = () => f.a.row('SELECT total_changes() AS n').n;
+  const before = totalChanges();
+  assert.deepEqual(await observe(), {matches: true});
+  for (const changed of [
+    {...request, original:{...original,request_id:'other-control-original'}},
+    {...request, original:{...original,terminal_receipt_sha256:hex('0')}},
+    {...request, advance:{...advance,request_id:'other-native-original'}},
+    {...request, advance:{...advance,current:{...a.current,expires_at:a.current.expires_at+1}}},
+    {...request, advance:{...advance,expected_attempt_id:'some-other-attempt'}},
+    {...request, current:{...a.current,expires_at:a.current.expires_at+1}},
+  ]) assert.deepEqual(await observe(changed), {matches: false});
+  for (const other of ['morgan', 'control'])
+    await assert.rejects(f.call(other,'attempt/successor/read',request), /peer_role_not_granted/);
+  assert.deepEqual(await f.call('native','attempt/attest/native',{current:a.current,original}), {matches:false});
+  assert.equal(totalChanges(), before);
+  assert.equal(f.calls.length, 2);
+  f.setTime(start + 10);
+  const renewed = await f.call('native', 'renew', {request_id:'renew-successor', current:a.current});
+  assert.deepEqual(await observe(), {matches:false});
+  assert.deepEqual(await observe({...request,current:renewed.lease}), {matches:true});
+  await f.call('control','revoke',{request_id:'revoke-successor',fence:a.current.fence});
+  assert.deepEqual(await observe({...request,current:renewed.lease}), {matches:false});
+});
+
 test('only exact independently attested posted ready report allows investigate after reopen', async () => {
   const f = fixture();
   const a = await adjudicatedAssessment(f,'approve');

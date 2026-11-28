@@ -462,12 +462,13 @@ export class Authority {
         throw error;
       }
     }
-    if (path === '/v1/attempt/attest/native') {
+    if (path === '/v1/attempt/attest/native' || path === '/v1/attempt/successor/read') {
+      const consumed = path === '/v1/attempt/successor/read';
       only(peer, 'native');
       need(Object.values(this.c.peers).some((x) => x.role === 'native' &&
         x.session_id === peer.session_id), 'peer_role_not_granted', 403);
-      fields(body, 'current', 'original');
-      const { current, original } = body;
+      fields(body, 'current', 'original', ...(consumed ? ['advance'] : []));
+      const { current, original, advance } = body;
       fields(current, 'fence', 'expires_at');
       fields(original, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
       fenceShape(this.c, current.fence, true);
@@ -477,16 +478,36 @@ export class Authority {
       'invalid_stage_transition', 400);
       if (!equal(current.fence, original.fence)) return { matches: false };
       const expected = await digest({ path: '/v1/attempt/attest', body: original });
+      let advanceFingerprint;
+      if (consumed) {
+        fields(advance, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
+        fields(advance.current, 'fence', 'expires_at');
+        need(token(advance.request_id) && uint(advance.current.expires_at), 'invalid_stage_transition', 400);
+        if (!equal(advance.current.fence, current.fence) || advance.expected_attempt_id !== original.previous ||
+            advance.attempt_id !== original.successor) return { matches: false };
+        advanceFingerprint = await digest({path: '/v1/claim/attempt', body: advance});
+      }
       // No asynchronous boundary after the live owner/lease/grant recheck.
       // The tuple alone may come from another path and cannot prove this hash.
       this.live(peer);
       try {
         const { row, lease } = this.owner(peer, current.fence);
-        if (!equal(lease, current) || row.attempt !== original.previous ||
-            !this.grant(lease.fence.scope, lease.fence.source, peer).attempt_ids.includes(original.successor) ||
-            this.row('SELECT 1 FROM attempts WHERE id=?', original.successor) ||
+        const grant = this.grant(lease.fence.scope, lease.fence.source, peer);
+        if (!equal(lease, current) || !grant.attempt_ids.includes(original.successor) ||
             !this.row('SELECT 1 FROM next_attempts WHERE fence=? AND previous=? AND successor=?',
               canonical(lease.fence), original.previous, original.successor)) return { matches: false };
+        const successor = this.row('SELECT issue FROM attempts WHERE id=?', original.successor);
+        if (consumed) {
+          // After consumption, only the exact native CAS receipt for the same
+          // control-attested edge proves how this still-current successor entered.
+          if (row.attempt !== original.successor || successor?.issue !== issueKey(current.fence.scope) ||
+              grant.fresh_assessment?.attempt_id !== original.previous ||
+              !grant.fresh_assessment.report_binding) return { matches: false };
+          const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
+            this.peerKey(peer), advance.request_id);
+          if (receipt?.fingerprint !== advanceFingerprint || !equal(JSON.parse(receipt.result),
+              {project: 'OffMenu', attempt_id: original.successor, lease: advance.current})) return { matches: false };
+        } else if (row.attempt !== original.previous || successor) return { matches: false };
         const control = Object.values(this.c.peers).filter((x) => x.role === 'control');
         if (control.length !== 1) return { matches: false };
         const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
