@@ -432,40 +432,12 @@ class NativeComposition:
 
     def startup(self, unit, stage):
         """Fresh TLS receipt for one exact launcher challenge, never a lease."""
-        config = self.installation()
-        expected = (unit, stage, self.remote.identity.authority_id, self.remote.identity.session_id,
-                    config['coordinator_epoch'], self.remote.identity.deployment_sha256,
-                    self.remote.identity.policy_sha256)
-        require((unit, stage) == (config['unit'], config['stage']), 'authority_start_target')
-        challenge = token_hex(24)
-        start = time.monotonic()
-        receipt = self.remote.transport.request('/v1/startup/read', {'unit': unit, 'stage': stage,
-                                                'nonce': challenge}, timeout=4)
-        fields = ('unit','stage','authority_id','session_id','coordinator_epoch',
-                  'deployment_sha256','policy_sha256')
-        now = self.remote.clock().timestamp()
-        require(tuple(receipt.get(k) for k in fields) == expected and receipt.get('nonce') == challenge
-                and type(receipt.get('expires_at')) is int and now < receipt['expires_at'] <= now + 5
-                and time.monotonic() - start < 5, 'authority_start_receipt')
-        return expected, receipt['expires_at']
+        return _mounted_startup_receipt(self.installation(), self.remote.identity,
+                                        self.remote.transport, self.remote.clock, unit, stage)
 
     def startup_arguments(self):
-        conf = self.installation()
-        unit, stage = conf['unit'], conf['stage']
-        binding = (unit, stage, self.remote.identity.authority_id, self.remote.identity.session_id,
-                   conf['coordinator_epoch'], self.remote.identity.deployment_sha256,
-                   self.remote.identity.policy_sha256)
-
-        def verifier(request):
-            schema, wanted, deadline = request
-            require(schema == 'uif.stokowski.native-start/1' and wanted == binding
-                    and time.monotonic_ns() < deadline, 'authority_start_challenge')
-            verified, expires = self.startup(unit, stage)
-            remaining = expires - self.remote.clock().timestamp()
-            valid_until = min(deadline, time.monotonic_ns() + int(remaining * 1_000_000_000))
-            require(time.monotonic_ns() < valid_until and verified == wanted, 'authority_start_expired')
-            return request, verified, 'mounted', valid_until
-        return dict(startup_binding=binding, startup_verifier=verifier)
+        return _mounted_startup_arguments(self.installation(), self.remote.identity,
+                                          self.remote.clock, self.startup)
 
     def assignment(self, project, issue_id, scope_sha):
         if project != 'OffMenu':
@@ -2027,9 +1999,66 @@ class _LinearClient:
         return await asyncio.to_thread(self._composition.upload, filename, content_type, data)
 
 
+def _mounted_startup_binding(config, identity, unit, stage):
+    require((unit, stage) == (config['unit'], config['stage']), 'authority_start_target')
+    return (unit, stage, identity.authority_id, identity.session_id, config['coordinator_epoch'],
+            identity.deployment_sha256, identity.policy_sha256)
+
+
+def _mounted_startup_receipt(config, identity, transport, clock, unit, stage):
+    expected = _mounted_startup_binding(config, identity, unit, stage)
+    challenge = token_hex(24)
+    start = time.monotonic()
+    receipt = transport.request('/v1/startup/read', {'unit': unit, 'stage': stage,
+                                'nonce': challenge}, timeout=4)
+    fields = ('unit', 'stage', 'authority_id', 'session_id', 'coordinator_epoch',
+              'deployment_sha256', 'policy_sha256')
+    now = clock().timestamp()
+    require(tuple(receipt.get(k) for k in fields) == expected and receipt.get('nonce') == challenge
+            and type(receipt.get('expires_at')) is int and now < receipt['expires_at'] <= now + 5
+            and time.monotonic() - start < 5, 'authority_start_receipt')
+    return expected, receipt['expires_at']
+
+
+def _mounted_startup_arguments(config, identity, clock, observe):
+    unit, stage = config['unit'], config['stage']
+    binding = _mounted_startup_binding(config, identity, unit, stage)
+
+    def verifier(request):
+        schema, wanted, deadline = request
+        require(schema == 'uif.stokowski.native-start/1' and wanted == binding
+                and time.monotonic_ns() < deadline, 'authority_start_challenge')
+        verified, expires = observe(unit, stage)
+        remaining = expires - clock().timestamp()
+        valid_until = min(deadline, time.monotonic_ns() + int(remaining * 1_000_000_000))
+        require(time.monotonic_ns() < valid_until and verified == wanted, 'authority_start_expired')
+        return request, verified, 'mounted', valid_until
+
+    return dict(startup_binding=binding, startup_verifier=verifier)
+
+
 def load_guarded_startup(path, unit, stage):
-    """Select normal startup or the explicitly installed, status-only hold."""
+    """Select routed, commissioned no-route or explicitly stopped startup."""
     data = protected_record(path)
+    if data.get('schema') == 'uif.stokowski-remote-authority/1' and 'route' in data and data['route'] is None:
+        require((data.get('unit'), data.get('stage')) == (unit, stage)
+                and type(data.get('coordinator_epoch')) is int and data['coordinator_epoch'] > 0
+                and data.get('reviewer_route') is None and 'hold_reason' not in data,
+                'authority_no_route_installation')
+        identity = AuthorityIdentity(**data['native_identity'])
+        transport = AccessTransport(data['origin'], data['access_credential'])
+
+        def clock():
+            return datetime.now(UTC)
+
+        def observe(unit, stage):
+            require(protected_record(path) == data, 'authority_installation_changed')
+            receipt = _mounted_startup_receipt(data, identity, transport, clock, unit, stage)
+            require(protected_record(path) == data, 'authority_installation_changed')
+            return receipt
+
+        arguments = _mounted_startup_arguments(data, identity, clock, observe)
+        return None, dict(arguments, commissioned_no_route=True)
     if data.get('schema') != 'uif.stokowski-remote-idle/1':
         composition = load_composition(path)
         return composition, composition.startup_arguments()

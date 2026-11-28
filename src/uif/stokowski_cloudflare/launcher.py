@@ -113,7 +113,19 @@ def serve_supervised_idle(reason):
     """Keep the guarded service PID alive without constructing a scheduler."""
     if reason not in ('free_route_unavailable', 'free_quota_unavailable'):
         raise ValueError('Unknown stopped idle reason')
+    return _serve_idle(f'Stokowski idle: {reason}; admissions and effects closed')
 
+
+_COMMISSIONED_IDLE_POLL_SECONDS = 5
+
+
+def serve_commissioned_no_route_idle(verify):
+    """Supervise an authenticated mount without an installed provider route."""
+    return _serve_idle('Stokowski commissioned idle: free_route_unavailable; '
+                       'verified mounted route required; admissions and effects closed', verify=verify)
+
+
+def _serve_idle(status, *, verify=None):
     async def wait_for_stop():
         loop = asyncio.get_running_loop()
         stopped = asyncio.Event()
@@ -121,10 +133,23 @@ def serve_supervised_idle(reason):
         for sig in signals:
             loop.add_signal_handler(sig, stopped.set)
         try:
-            status = f'Stokowski idle: {reason}; admissions and effects closed'
             print(status, flush=True)
             _idle_notify(f'READY=1\nSTATUS={status}')
-            await stopped.wait()
+            if verify is None:
+                await stopped.wait()
+            else:
+                last_status = status
+                while not stopped.is_set():
+                    try:
+                        await asyncio.wait_for(stopped.wait(), _COMMISSIONED_IDLE_POLL_SECONDS)
+                    except TimeoutError:
+                        mounted = await asyncio.to_thread(verify)
+                        current = (status if mounted is True else
+                                   'Stokowski blocked: authority_unavailable; admissions and effects closed')
+                        if current != last_status and not stopped.is_set():
+                            print(current, flush=True)
+                            _idle_notify(f'STATUS={current}')
+                            last_status = current
             _idle_notify('STOPPING=1\nSTATUS=Stokowski idle shutdown')
             print('Stokowski idle shutdown', flush=True)
         finally:
