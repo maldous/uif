@@ -409,10 +409,48 @@ class NativeComposition:
         data = installation['assignments'].get(issue_id)
         if data is None or data['scope_sha256'] != scope_sha:
             return None
+        if 'recipient_original' in data or 'original_transition' in data.get('workspace_binding', {}):
+            # Initial-claim dispatch and its local journal use a different original.
+            return None
+        return self._assignment_grant(issue_id, scope_sha, installation, data)
+
+    def _assignment_grant(self, issue_id, scope_sha, installation, data):
         key = LinearKey(self.remote.workspace_id, self.remote.project_id, issue_id)
         return NativeAssignment(Scope(self.remote.repository_id, key), SourcePin(**data['source']),
              data['reconstruction_sha256'], scope_sha, installation['coordinator_epoch'], tuple(data['attempts']),
              _lease(data['previous']) if data.get('previous') else None, data.get('previous_completion_sha256'))
+
+    def observe_unstarted_assignment(self, owner, issue, scope_sha):
+        """Verify the installed recipient's clean pre-dispatch workspace and original."""
+        require(owner.project_name == 'OffMenu', 'authority_recovery_workspace_project')
+        installation = self.installation()
+        data = installation['assignments'].get(issue.id)
+        require(type(data) is dict and data.get('scope_sha256') == scope_sha
+                and 'recipient_original' in data, 'authority_recovery_workspace_assignment')
+        grant = self._assignment_grant(issue.id, scope_sha, installation, data)
+        binding = data['workspace_binding']
+        require(type(binding) is dict and binding.keys() == {'original_transition', 'path', 'device', 'inode'}
+                and type(binding['original_transition']) is dict, 'authority_recovery_workspace_transition')
+        require(type(issue.identifier) is str and issue.identifier not in ('', '.', '..')
+                and Path(issue.identifier).name == issue.identifier, 'authority_isolated_claim_workspace')
+        root = owner.cfg.workspace.resolved_root().resolve(strict=True)
+        path = root / issue.identifier
+        require(root == Path(installation['workspace_root']) and path.parent == root and path == Path(binding['path']),
+                'authority_isolated_claim_workspace')
+        observed = observe_clean_assignment_workspace(path, grant.source, data['git_config_sha256'])
+        require(observed == {**{k: binding[k] for k in ('path', 'device', 'inode')},
+                'git_config_sha256': data['git_config_sha256'], 'prepared_tree_sha256': data['prepared_tree_sha256']},
+                'authority_recovery_workspace_changed')
+        current = self.remote._observe_unstarted_binding(grant, data['recipient_original'],
+                        workspace_transition=binding['original_transition'])
+        latest = self.installation()
+        require(latest['coordinator_epoch'] == installation['coordinator_epoch']
+                and latest['workspace_root'] == installation['workspace_root']
+                and latest['assignments'].get(issue.id) == data
+                and observe_clean_assignment_workspace(path, grant.source, data['git_config_sha256']) == observed
+                and self.remote.clock().timestamp() < current.lease.expires_at,
+                'authority_recovery_workspace_assignment_changed')
+        return current
 
     def selected(self, project, issue, scope_sha):
         return self.assignment(project, issue.id, scope_sha) is not None
@@ -1005,6 +1043,8 @@ class NativeComposition:
                 continue
             try:
                 grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
+                if grant is None:
+                    continue
                 path = Path(item['workspace_binding']['path'])
                 key = grant.claim(self.remote.identity).request_id
                 directory = path / '.git/uif-original-effects'
@@ -1104,6 +1144,8 @@ class NativeComposition:
                 continue
             try:
                 grant = self.assignment('OffMenu', issue_id, item['scope_sha256'])
+                if grant is None:
+                    continue
                 candidate = Path(item['workspace_binding']['path'])
                 require(candidate.parent == Path(config['workspace_root']) and candidate == candidate.resolve(),
                         'authority_completion_workspace')
