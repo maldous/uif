@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 import re
 import stat
+from tempfile import TemporaryDirectory
 
 import commissioned_normal_service as normal
 import commit_commissioned_normal_selection as transaction
@@ -16,10 +17,11 @@ import guarded_service_upgrade as guard
 import observe_guarded_normal_preimage as guarded
 import read_normal_effective_state as effective
 import stage_commissioned_normal_runtime as staging
-from install_guarded_idle_bootstrap import _publish_once, _sync_parent
+from install_guarded_idle_bootstrap import _publish_once, _rename_noreplace, _sync_parent
 
 
 _ROOT_UID = 0
+_UNOBSERVED = object()
 
 
 def _snapshot(path, modes):
@@ -46,6 +48,7 @@ class _FixedOwner:
         self.original = original
         self.members = staging._members(archive, original.staged)
         self.stream = None
+        self._selector_parent_pin = _UNOBSERVED
         self.selector = Path(normal.SELECTION)
         self.dropin = guard.DROPIN.with_name(normal.DROPIN)
 
@@ -64,6 +67,7 @@ class _FixedOwner:
                 self._locked()
             finally:
                 self.stream = None
+                self._selector_parent_pin = _UNOBSERVED
 
     def _read(self, path, modes):
         self._locked()
@@ -77,7 +81,29 @@ class _FixedOwner:
     def read_guarded_selector(self):
         return self._read(guard.SELECTOR, (0o444, 0o644))
 
+    def _selector_parent_absent(self):
+        self._locked()
+        parent = self.selector.parent
+        guard.protected_parents(parent)
+        try:
+            info = parent.lstat()
+        except FileNotFoundError:
+            guard.require(self.read_disk_receipt(self.original.operation_id) is None,
+                          'normal selector directory missing after recorded disk commit')
+            pin = None
+        else:
+            guard.require(stat.S_ISDIR(info.st_mode) and info.st_uid == _ROOT_UID
+                          and not info.st_mode & 0o022, 'normal selector directory is not protected')
+            pin = guard.lock_identity(info)
+        guard.require(self._selector_parent_pin is _UNOBSERVED or self._selector_parent_pin == pin,
+                      'normal selector directory changed during locked selection')
+        self._selector_parent_pin = pin
+        self._locked()
+        return pin is None
+
     def read_selector(self):
+        if self._selector_parent_absent():
+            return None
         return self._read(self.selector, (0o444,))
 
     def read_normal_dropin(self):
@@ -91,7 +117,26 @@ class _FixedOwner:
         self._locked()
 
     def publish_selector(self, prior, raw):
-        self._publish_absent(self.selector, prior, raw, 0o444)
+        if not self._selector_parent_absent():
+            self._publish_absent(self.selector, prior, raw, 0o444)
+            return
+        guard.require(prior is None and self.original.prior_selector_sha256 is None,
+                      'normal selector directory is not an absent first-install preimage')
+        # The transaction has persisted its intent and verified the guarded manager.
+        # Publish the complete directory and selector together without replacement.
+        parent = self.selector.parent
+        with TemporaryDirectory(prefix='.normal-selector-', dir=parent.parent) as temporary:
+            directory = Path(temporary)
+            selector = directory / self.selector.name
+            _publish_once(selector, 0o444, lambda out: out.write(raw))
+            # The service opens each ancestor as a read-only directory.
+            directory.chmod(0o755)
+            _sync_parent(selector)
+            self._locked()
+            pin = guard.lock_identity(directory.lstat())
+            _rename_noreplace(directory, parent)
+            self._selector_parent_pin = pin
+        self._locked()
 
     def publish_normal_dropin(self, prior, raw):
         self._publish_absent(self.dropin, prior, raw, 0o444)
@@ -127,19 +172,26 @@ class _FixedOwner:
 
     def sync_selector_parent(self):
         self._sync(self.selector)
+        # A lost acknowledgement can leave the directory visible before its
+        # own parent was synced. Commit that entry before publishing the drop-in.
+        self._sync(self.selector.parent)
 
     def sync_target_parents(self):
         self.sync_selector_parent()
         self._sync(self.dropin)
 
-    def verify_staged(self, receipt, selected):
-        self._locked()
+    def verify_archive_target(self, selected):
         stage = guard.STAGES / self.original.staged.stage_leaf
         guard.require(selected['stage'] == str(stage)
                       and all(selected[key] == guard.digest(self.members[name][0]) for key, name in (
                           ('launcher_sha256', 'launch.py'), ('interpreter_sha256', guard.INTERPRETER),
                           ('authority_config_sha256', guard.IDLE_CONFIG))),
                       'normal selector pins differ from accepted archive bytes')
+        return stage
+
+    def verify_staged(self, receipt, selected):
+        self._locked()
+        stage = self.verify_archive_target(selected)
         staging._verify_directory(stage, {**self.members, staging.RECEIPT: (receipt, 0o400)})
         self._locked()
         return True
@@ -154,13 +206,7 @@ class _FixedOwner:
         return effective.observe_normal_effective(original)
 
 
-def _install_from_trusted_owner(resolve_protected_original):
-    """Private composition seam; resolver must be supplied by protected code.
-
-    Resolves the exact normal transaction original, matching archive, rendered
-    bytes, and independently retained typed guarded manager pins. Root transport
-    alone is not that resolver. No host binding is installed by this module.
-    """
+def _resolve_exact_owner_original(resolve_protected_original):
     guard.require(guard._private_webhook_root(), 'requires existing root maintenance owner context')
     original, archive, selector, dropin = resolve_protected_original()
     guard.require(type(original) is transaction.SelectionOriginal
@@ -169,5 +215,52 @@ def _install_from_trusted_owner(resolve_protected_original):
                   and original.prior_normal_dropin_sha256 is None
                   and type(original.staged.stage_leaf) is str
                   and re.fullmatch(r'uif1313-normal-[a-z0-9][a-z0-9.-]{1,65}', original.staged.stage_leaf), 'not a first fixed normal selection original')
+    return original, archive, selector, dropin
+
+
+def _install_from_trusted_owner(resolve_protected_original):
+    """Private composition seam; resolver must be supplied by protected code.
+
+    Resolves the exact normal transaction original, matching archive, rendered
+    bytes, and independently retained typed guarded manager pins. Root transport
+    alone is not that resolver. No host binding is installed by this module.
+    """
+    original, archive, selector, dropin = _resolve_exact_owner_original(resolve_protected_original)
     return transaction.commit_normal_selection(
         original, selector, dropin, _FixedOwner(original, archive))
+
+
+_MANAGER_RESULTS = frozenset({
+    'disk_release_differs', 'manager_observation_changed', 'manager_readback_unavailable',
+    'disk_matches_manager_reload_needed', 'disk_matches_effective_manager_differs',
+    'effective_normal_not_stopped', 'effective_normal_start_history_changed',
+    'effective_normal_stopped_same_original_observation',
+})
+
+
+def _stage_and_select_from_trusted_owner(resolve_protected_original):
+    """Owner-bound fixed install action. No arguments from a remote request.
+
+    Both existing stages retain their own immutable same-original receipts.
+    A crash between them leaves an exact inspectable stage, not a live start.
+    The selection step rechecks the full protected stage and guarded preimage.
+    The authenticated owner resolver and any later manager action are external.
+    """
+    original, archive, selector, dropin = _resolve_exact_owner_original(resolve_protected_original)
+    selected = transaction._validated_target(original, selector, dropin)
+    owner = _FixedOwner(original, archive)
+    owner.verify_archive_target(selected)
+    staged = staging.stage_normal_runtime(original.staged, archive)
+    committed = transaction.commit_normal_selection(original, selector, dropin, owner)
+    manager = committed['manager']['status']
+    guard.require(manager in _MANAGER_RESULTS
+                  and staged['status'] == 'normal_stage_materialized_not_selected'
+                  and staged['release_sha256'] == original.staged.members_sha256
+                  and committed['status'] == 'normal_pair_committed_on_disk'
+                  and all(guard.hash_pin(x) for x in
+                          (staged['receipt_sha256'], committed['receipt_sha256'])),
+                  'unexpected normal installer receipt')
+    return {'status': 'normal_pair_committed_on_disk', 'operation_id': original.operation_id,
+            'release_sha256': staged['release_sha256'], 'staging_receipt_sha256': staged['receipt_sha256'],
+            'selection_receipt_sha256': committed['receipt_sha256'], 'manager_status': manager,
+            'installation_accepted': False, 'native_startup_verified': False}

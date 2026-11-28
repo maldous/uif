@@ -14,6 +14,7 @@ from uif.stokowski_cloudflare.fresh_assessment_dispatch import retain_fresh_asse
 from uif.stokowski_cloudflare.fresh_assessment_phase import project_fresh_assessment_phase
 from uif.stokowski_cloudflare.intake import intake_stages
 import test_native_remote_authority as fixture
+from test_fresh_assessment_dispatch import enroll
 
 
 class FreshAssessmentPhaseTest(unittest.TestCase):
@@ -32,6 +33,7 @@ class FreshAssessmentPhaseTest(unittest.TestCase):
         claim = replace(fixture.RECORD, attempt_id=previous, lease=lease)
         claim_original = grant.claim(fixture.OWNER)
         case.item['workspace_binding']['original_claim_id'] = claim_original.request_id
+        grant = enroll(grant, case.item, issue, 1, previous, successor)
         stored_claim = {'request_id': claim_original.request_id, 'request_kind': claim_original.kind,
                         'request_sha256': transition_request_sha256(claim_original), 'lease': asdict(lease)}
         raw_report = wire(dict(summary='Ready', verdict='approve', routing=dict(

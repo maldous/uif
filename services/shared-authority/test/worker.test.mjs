@@ -5,11 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Miniflare } from 'miniflare';
-import { canonical, digest, digestBytes, wire, models, day } from '../protocol.mjs';
+import { canonical, digest, digestBytes, wire, models, day, identity } from '../protocol.mjs';
 
 // Real local workerd + SQLite DO. JWKS, quota and physical provider routing use isolated fixtures. All
 // network egress is intercepted; no provider, Access or production calls occur.
-test('workerd enforces signed Access app identity, issue claim CAS, and durable stop across restart', async () => {
+for (const fresh of [false, true]) test(fresh
+  ? 'workerd permits one fresh native dispatch and exact provider send across restart'
+  : 'workerd enforces signed Access app identity, issue claim CAS, and durable stop across restart', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'uif-authority-test-')),
     root = fileURLToPath(new URL('../', import.meta.url));
   const rsa = await crypto.subtle.generateKey(
@@ -104,6 +106,10 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       outboundService: async (req) => {
         if (req.url === 'https://api.cloudflare.com' + wire(route).path) {
           physical++;
+          if (fresh) {
+            assert.equal(req.headers.get('uif-dispatch-permit'), null);
+            assert.equal(req.headers.get('CF-Access-Jwt-Assertion'), null);
+          }
           assert.equal(req.headers.get('authorization'), 'Bearer worker-test');
           return Response.json(
             {
@@ -143,10 +149,11 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       );
     };
     const tokens = Object.fromEntries(await Promise.all(roles.map(async (r) => [r, await sign(r)])));
-    const call = (jwt, path, body) =>
+    const call = (jwt, path, body, permit) =>
       instance.dispatchFetch('https://fixture.test/v1/' + path, {
         method: body ? 'POST' : 'GET',
-        headers: { 'CF-Access-Jwt-Assertion': jwt, 'content-type': 'application/json' },
+        headers: { 'CF-Access-Jwt-Assertion': jwt, 'content-type': 'application/json',
+          ...(permit === undefined ? {} : { 'uif-dispatch-permit': permit }) },
         body: body && JSON.stringify(body),
       });
     assert.equal(
@@ -192,9 +199,17 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     let r = await call(tokens.native, 'status');
     assert.equal(r.status, 200);
     assert.equal((await r.json()).stopped, true);
-    const ctl = { request_id: 'go', expected_coordinator_epoch: 1, stopped: false };
+    const stage = 'uif1313-normal-fixture';
+    const ctl = { request_id: 'go', expected_coordinator_epoch: 1, stopped: false,
+      startup: { stage, session_id: peers[clients[0]].session_id, evidence_sha256: '8'.repeat(64),
+        coordinator_epoch: 2, previous_request_id: null } };
+    const challenge = { unit: 'stokowski-foo.service', stage, nonce: 'fixture-restart' };
     assert.equal((await call(tokens.native, 'control', ctl)).status, 403);
     assert.equal((await call(tokens.control, 'control', ctl)).status, 200);
+    const startup = await call(tokens.native, 'startup/read', challenge);
+    assert.equal(startup.status, 200);
+    assert.equal((await startup.json()).nonce, challenge.nonce);
+    assert.equal((await call(tokens.morgan, 'startup/read', challenge)).status, 403);
     const scope = {
       repository_id: c.repository_id,
       key: { workspace_id: c.workspace_id, project_id: c.project_id, issue_id: crypto.randomUUID() },
@@ -206,13 +221,16 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       head: '2'.repeat(40),
       tree: '3'.repeat(40),
     };
+    const attempt = fresh ? 'cf-intake-' + 'c'.repeat(64) + '-assess' : 'one';
+    const firstIntent = 'a'.repeat(64);
     const grant = {
       scope,
       source,
       reconstruction_sha256: 'c'.repeat(64),
       valid_until: t + 500,
-      attempt_ids: ['one'],
-      sessions: ['native-s', 'morgan-s'],
+      attempt_ids: [attempt],
+      sessions: fresh ? ['native-s'] : ['native-s', 'morgan-s'],
+      ...(fresh ? {fresh_assessment: {attempt_id: attempt, first_intent_sha256: firstIntent}} : {}),
       allow_provider: true,
       result_retention: {
         max_response_bytes: 65536,
@@ -234,13 +252,72 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       scope,
       source,
       expected_coordinator_epoch: 2,
-      attempt_id: 'one',
+      attempt_id: attempt,
       reconstruction_sha256: grant.reconstruction_sha256,
     };
+    // Separate Linear issue; no native call after the initial claim.
+    const recoveryScope = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
+    const priorRole = fresh ? 'morgan' : 'native', recipient = fresh ? 'native' : 'morgan';
+    const recoveryGrant = { ...grant, scope: recoveryScope, attempt_ids: ['unstarted','unstarted-next'],
+      sessions: ['native-s', 'morgan-s'] };
+    delete recoveryGrant.fresh_assessment;
+    assert.equal((await call(tokens.control, 'grant', { request_id: 'grant-unstarted',
+      previous_sha256: null, grant: recoveryGrant })).status, 200);
+    const claimResponse = await call(tokens[priorRole], 'claim', { ...claim, request_id: 'claim-unstarted',
+      scope: recoveryScope, attempt_id: 'unstarted' });
+    assert.equal(claimResponse.status, 200);
+    const { lease: current } = await claimResponse.json();
+    const revoke = { request_id: 'revoke-unstarted', fence: current.fence, unstarted_attempt_id: 'unstarted' };
+    assert.equal((await call(tokens.morgan, 'revoke', revoke)).status, 403);
+    assert.equal((await call(tokens.control, 'revoke', revoke)).status, 200);
+    const handoff = { current, successor_session: recipient + '-s', expected_coordinator_epoch: 2,
+      quiesced_sha256: '8'.repeat(64), reconstruction_sha256: recoveryGrant.reconstruction_sha256,
+      recovery: { revocation_id: revoke.request_id, attempt_id: 'unstarted' } };
+    assert.equal((await call(tokens.control, 'attest', { request_id: 'witness-unstarted',
+      fact: { kind: 'handoff', ...handoff } })).status, 200);
+    const recoveryResponse = await call(tokens[recipient], 'handoff', { request_id: 'receive-unstarted', ...handoff });
+    assert.equal(recoveryResponse.status, 200);
+    const assignment = await recoveryResponse.json();
+    assert.equal(assignment.attempt_id, 'unstarted');
+    assert.equal(assignment.lease.fence.owner_session, recipient + '-s');
+    assert.equal(assignment.lease.fence.generation, 2);
+    assert.equal(physical, 0);
+
+    if (recipient === 'native') {
+      const status = await (await call(tokens.native,'status')).json();
+      const entry = {current:assignment.lease, attempt_id:assignment.attempt_id, original:{
+        installation_sha256:status.installation_sha256, session_id:'native-s',
+        request_id:assignment.request_id, request_sha256:assignment.request_sha256}};
+      assert.equal((await call(tokens.morgan,'recovery/enter',entry)).status,403);
+      assert.deepEqual(await (await call(tokens.native,'recovery/observe',entry)).json(),{entered:false});
+      const {permit} = await (await call(tokens.native,'recovery/enter',entry)).json();
+      assert.match(permit,/^[0-9a-f]{64}$/);
+      await instance.dispose();
+      instance = make();
+      assert.deepEqual(await (await call(tokens.native,'recovery/observe',entry)).json(),{entered:true});
+      assert.deepEqual(await (await call(tokens.native,'recovery/enter',entry)).json(),{entered:false});
+      const advance = {request_id:'recover-advance', current:assignment.lease,
+        expected_attempt_id:assignment.attempt_id,attempt_id:'unstarted-next'};
+      assert.equal((await call(tokens.control,'attempt/attest',{request_id:'approve-recovered-next',
+        fence:assignment.lease.fence,previous:advance.expected_attempt_id,successor:advance.attempt_id,
+        terminal_receipt_sha256:'a'.repeat(64)})).status,200);
+      assert.equal((await call(tokens.native,'claim/attempt',advance)).status,403);
+      assert.equal((await call(tokens.native,'claim/attempt',advance,permit)).status,200);
+    }
+
+    const freshId = (scope) => digest({claim:scope, recovery:grant.reconstruction_sha256,
+      authority:identity(c, peers[clients[0]]), epoch:2});
+    if (fresh) {
+      assert.equal((await call(tokens.native, 'claim', claim)).status, 409);
+      claim.request_id = await freshId(scope);
+      claim.first_intent_sha256 = firstIntent;
+      assert.equal((await call(tokens.morgan, 'claim', claim)).status, 403);
+      assert.equal((await call(tokens.native, 'claim/observe', claim)).status, 404);
+    }
     const race = await Promise.all(
-      ['native', 'morgan'].map((role) => call(tokens[role], 'claim', claim)),
+      (fresh ? ['native'] : ['native', 'morgan']).map((role) => call(tokens[role], 'claim', claim)),
     );
-    assert.deepEqual(race.map((x) => x.status).sort(), [200, 409]);
+    assert.deepEqual(race.map((x) => x.status).sort(), fresh ? [200] : [200, 409]);
     const i = race.findIndex((x) => x.status === 200),
       jwt = tokens[['native', 'morgan'][i]],
       original = await race[i].json();
@@ -259,6 +336,14 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
           stream: false,
         }),
       );
+    assert.equal((await call(tokens.control, 'usage/read', { route })).status, 403);
+    const usageRead = await call(jwt, 'usage/read', { route });
+    assert.equal(usageRead.status, 200);
+    const { reservation_snapshot: snapshot } = await usageRead.json();
+    assert.ok(Number.isInteger(snapshot.observed_at) && t <= snapshot.observed_at);
+    assert.deepEqual(snapshot, { receipt_sha256: quota, observed_at: snapshot.observed_at,
+      debt_millineurons: 0, ceiling_breached: false });
+    assert.equal(physical, 0);
     const request_sha256 = await digestBytes(raw),
       maximum_millineurons = models.get(route.model),
       end = t + 60;
@@ -268,7 +353,7 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       payload_sha256: await digest({
         kind: 'uif.workers-ai-free-send/1',
         route,
-        attempt: 'one',
+        attempt,
         request_sha256,
         quota,
         not_after: end,
@@ -280,7 +365,7 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       intent: {
         operation,
         route,
-        attempt_id: 'one',
+        attempt_id: attempt,
         request_sha256,
         quota_receipt_sha256: quota,
         request_not_after: end,
@@ -288,6 +373,68 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
       },
       body_base64: raw.toString('base64'),
     };
+    if (fresh) {
+      const entry = {current: original.lease, attempt_id: attempt, first_intent_sha256: firstIntent};
+      const entrants = await Promise.all([call(jwt, 'dispatch/enter', entry), call(jwt, 'dispatch/enter', entry)]);
+      assert.deepEqual(entrants.map((r) => r.status), [200, 200]);
+      const decisions = await Promise.all(entrants.map((r) => r.json()));
+      const winners = decisions.filter((x) => x.entered === true);
+      assert.equal(winners.length, 1);
+      assert.match(winners[0].permit, /^[0-9a-f]{64}$/);
+      assert.deepEqual(decisions.find((x) => x.entered === false), {entered: false});
+      assert.equal((await call(jwt, 'send', send)).status, 403);
+      assert.equal((await call(jwt, 'send', send, '0'.repeat(64))).status, 403);
+      assert.equal(physical, 0);
+      const other = structuredClone(send);
+      other.intent.operation.original_id = '9'.repeat(64);
+      const competing = await Promise.all(
+        [send, other].map((x) => call(jwt, 'send', x, winners[0].permit))
+      );
+      assert.equal(competing.filter((x) => x.status === 200).length, 1);
+      const chosen = competing.findIndex((x) => x.status === 200);
+      const receipt = competing[chosen].headers.get('uif-receipt-sha256');
+      assert.match(receipt, /^[0-9a-f]{64}$/);
+      assert.equal(physical, 1);
+      // Do not read the winning provider reply. Also discard an independent
+      // fresh issue's first dispatch reply: its permit must not survive as a read.
+      const lostScope = {...scope, key: {...scope.key, issue_id: crypto.randomUUID()}};
+      const lostAttempt = 'cf-intake-' + 'd'.repeat(64) + '-assess';
+      const lostIntent = 'b'.repeat(64);
+      const lostGrant = {...grant, scope: lostScope, attempt_ids: [lostAttempt],
+        fresh_assessment: {attempt_id: lostAttempt, first_intent_sha256: lostIntent}};
+      assert.equal((await call(tokens.control, 'grant', {request_id:'grant-uncertain', previous_sha256:null, grant:lostGrant})).status, 200);
+      const lostOriginal = {...claim, request_id:await freshId(lostScope),
+        scope:lostScope, attempt_id:lostAttempt, first_intent_sha256:lostIntent};
+      const lostClaim = await call(jwt, 'claim', lostOriginal);
+      assert.equal(lostClaim.status, 200);
+      const lostEntry = {current: (await lostClaim.json()).lease, attempt_id: lostAttempt, first_intent_sha256: lostIntent};
+      assert.equal((await call(jwt, 'dispatch/enter', lostEntry)).status, 200);
+      await instance.dispose();
+      instance = make();
+      assert.deepEqual((await (await call(jwt, 'claim/observe', lostOriginal)).json()).lease, lostEntry.current);
+      const {first_intent_sha256, ...plainOriginal} = lostOriginal;
+      assert.equal((await call(jwt, 'claim/observe', plainOriginal)).status, 409);
+      assert.equal((await call(tokens.morgan, 'dispatch/enter', lostEntry)).status, 403);
+      assert.deepEqual(await (await call(jwt, 'dispatch/observe', entry)).json(), {entered: true});
+      assert.deepEqual(await (await call(jwt, 'dispatch/enter', entry)).json(), {entered: false});
+      assert.deepEqual(await (await call(jwt, 'dispatch/observe', lostEntry)).json(), {entered: true});
+      assert.deepEqual(await (await call(jwt, 'dispatch/enter', lostEntry)).json(), {entered: false});
+      const lostSend = structuredClone(send);
+      lostSend.intent.attempt_id = lostAttempt;
+      lostSend.intent.operation.fence = lostEntry.current.fence;
+      lostSend.intent.operation.original_id = '7'.repeat(64);
+      lostSend.intent.operation.payload_sha256 = await digest({
+        kind:'uif.workers-ai-free-send/1', route, attempt:lostAttempt, request_sha256, quota,
+        not_after:end, maximum_millineurons, ...wire(route),
+      });
+      assert.equal((await call(jwt, 'send', lostSend)).status, 403);
+      const saved = [send, other][chosen];
+      const recovered = await call(jwt, 'provider/receipt', {operation: saved.intent.operation});
+      assert.equal(recovered.status, 200);
+      assert.equal(recovered.headers.get('uif-receipt-sha256'), receipt);
+      assert.equal(physical, 1);
+      return;
+    }
     const first = await call(jwt, 'send', send);
     const sent = await first.text();
     assert.equal(first.status, 200, sent);
@@ -356,6 +503,8 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     await instance.dispose();
     instance = make();
     assert.equal((await (await call(jwt, 'status')).json()).stopped, true);
+    assert.equal((await call(tokens.native, 'startup/read', challenge)).status, 409);
+    assert.equal((await (await call(tokens.control, 'status')).json()).normal_startup_request_id, ctl.request_id);
     const read = {
       fence: original.lease.fence,
       attempt_id: 'one',

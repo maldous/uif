@@ -45,6 +45,7 @@ class NativeShelfCompare(unittest.TestCase):
             root = Path(t)
             member = root / 'member.py'
             member.write_bytes(b'raise AssertionError("not executed")')
+            member.chmod(0o644)
             fd = os.open(root, compare.OPEN_DIR)
             try:
                 self.assertEqual(compare.capture_role(fd, uid=os.geteuid()),
@@ -65,10 +66,21 @@ class NativeShelfCompare(unittest.TestCase):
             earlier, later = root / 'a.py', root / 'z.py'
             earlier.write_bytes(b'old')
             later.write_bytes(b'end')
+            earlier.chmod(0o644)
+            later.chmod(0o644)
             fd = os.open(root, compare.OPEN_DIR)
             directory_identity = compare.identity(os.fstat(fd))
+            before = compare.identity(earlier.stat())
+            original_identity = compare.identity
             original_sha = compare.sha256
             num = 0
+
+            def coarse_identity(st):
+                current = original_identity(st)
+                if current[:2] == before[:2]:
+                    return (*current[:-2], *before[-2:])
+                return current
+
             def overwrite_during_later_hash():
                 nonlocal num
                 num += 1
@@ -77,12 +89,14 @@ class NativeShelfCompare(unittest.TestCase):
                 return original_sha()
             try:
                 ids = {}
-                with patch.object(compare, 'sha256', side_effect=overwrite_during_later_hash):
-                    result = compare.capture_role(fd, uid=os.geteuid(), identities=ids)
-                self.assertEqual(result['a.py'], compare.hash_bytes(b'old'))
-                self.assertEqual(compare.identity(os.fstat(fd)), directory_identity)
-                with self.assertRaisesRegex(ValueError, 'inventory_changed'):
-                    compare._revalidate_role(fd, ids)
+                with patch.object(compare, 'identity', side_effect=coarse_identity):
+                    with patch.object(compare, 'sha256', side_effect=overwrite_during_later_hash):
+                        result = compare.capture_role(fd, uid=os.geteuid(), identities=ids)
+                    self.assertEqual(result['a.py'], compare.hash_bytes(b'old'))
+                    self.assertEqual(compare.identity(os.fstat(fd)), directory_identity)
+                    self.assertEqual(compare.identity(earlier.stat()), before)
+                    with self.assertRaisesRegex(ValueError, 'inventory_changed'):
+                        compare._revalidate_role(fd, ids, result, uid=os.geteuid())
             finally:
                 os.close(fd)
 

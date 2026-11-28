@@ -358,6 +358,31 @@ class NativeRemoteTest(unittest.TestCase):
             self.assertIsNone(transport.request('/v1/claim/read',{},allow_absent=True))
             self.assertEqual(http.call_count,3)
 
+    def test_usage_cooldown_preserves_valid_http_hints_without_retrying_any_request(self):
+        from uif.provider_discovery import ProviderReadCooldown
+
+        with patch('uif.stokowski_cloudflare.remote_authority.HTTPSConnection') as http, \
+             patch('uif.stokowski_cloudflare.remote_authority.protected_record', return_value={
+                 'client_id': 'fixture', 'client_secret': 'fixture-value'}), \
+             patch('uif.stokowski_cloudflare.remote_authority.datetime') as clock:
+            clock.now.return_value = datetime(2026, 11, 28, 10, tzinfo=timezone.utc)
+            reply = http.return_value.getresponse.return_value
+            transport = AccessTransport('https://authority.example', '/unused')
+            for status, header, seconds in ((429, '600', 600),
+                    (503, 'Sat, 28 Nov 2026 10:02:00 GMT', 120)):
+                reply.status, reply.getheader.return_value = status, header
+                with self.assertRaises(ProviderReadCooldown) as cooldown:
+                    transport.request('/v1/usage/read', {})
+                self.assertEqual(cooldown.exception.delay_seconds, seconds)
+            reply.status, reply.getheader.return_value = 429, '1, 300'
+            with self.assertRaisesRegex(Hold, 'authority_http_429'):
+                transport.request('/v1/usage/read', {})
+            reply.getheader.return_value = '600'
+            with self.assertRaisesRegex(Hold, 'authority_http_429'):
+                transport.request('/v1/send', {}, provider=True)
+            self.assertEqual(http.return_value.request.call_count, 4)
+            reply.read.assert_not_called()
+
     def test_raw_recovery_digest_detects_untracked_retained_and_index_changes(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)
@@ -588,6 +613,75 @@ class RealCheckoutTest(unittest.TestCase):
         with self.assertRaisesRegex(Hold, 'dirty_workspace_needs_original_reconstruction'):
             with self.c.settlement_context(self.owner, self.issue, attempt):
                 self.fail('A modified candidate is unavailable for original settlement')
+
+    def test_marked_assess_settlement_keeps_original_claim_for_investigation(self):
+        from uif.stokowski_cloudflare.intake import intake_stages
+
+        issue = SimpleNamespace(**vars(self.issue), title='Example', description='Bound work')
+        stages = intake_stages({}, 'OffMenu', issue, self.grant.scope_sha256, 1)
+        previous = stages['assess']['attempt']
+        successor = stages['investigate']['attempt']
+        grant = replace(self.grant, attempts=(previous, successor))
+        request = grant.claim(OWNER)
+        self.c.assignment = lambda *args: grant
+        self.item['workspace_binding']['original_claim_id'] = request.request_id
+        self.item['fresh_assessment'] = {'attempt_id': previous, 'first_intent_sha256': 'e' * 64}
+        lease = replace(RECORD.lease, fence=replace(FENCE, source=grant.source))
+        claim = NativeClaim('OffMenu', previous, lease)
+        self.worker.claim = claim
+        self.worker.original = {'request_id': request.request_id, 'request_kind': request.kind,
+                                'request_sha256': transition_request_sha256(request), 'lease': asdict(lease)}
+
+        class Native:
+            async def _resume_settlement(owner, issue, attempt):
+                attempt.settlement_record['phase'] = 'complete'
+                return True
+
+            def _settlement_path(owner, issue):
+                return self.path
+
+        for name in (*_COMMENT_SLOTS, '_reconcile'):
+            setattr(Native, name, AsyncMock())
+        install_sinks(SimpleNamespace(Orchestrator=Native, LinearClient=object, logger=Mock()), self.c)
+        native = Native()
+        native.project_name, native.cfg = self.owner.project_name, self.owner.cfg
+        native._issue_state_runs = {ISSUE: 1}
+        record = {'issue_id': ISSUE, 'run': 1, 'state': 'assess', 'session_id': previous,
+                  'scope_sha256': grant.scope_sha256, 'report_posted': True, 'event': 'complete',
+                  'target': 'investigate', 'phase': 'transition'}
+        attempt = SimpleNamespace(state_name='assess', session_id=previous, settlement_record=record)
+        native.running = {ISSUE: attempt}
+        self.c._seen_fences[ISSUE] = lease.fence
+        self.c._running.set((grant, claim))
+        before = record.copy()
+        self.assertFalse(asyncio.run(native._resume_settlement(issue, attempt)))
+        self.assertEqual(record, before)
+        record.update(phase='report-unknown', expected_report_body='exact original body')
+        before = record.copy()
+        with patch.object(self.c, 'observe_stage_report', return_value=('comment', object())) as observe:
+            self.assertFalse(asyncio.run(native._resume_settlement(issue, attempt)))
+        observe.assert_called_once_with(lease.fence, previous, 'exact original body')
+        self.assertEqual(record, before)
+        record['phase'] = 'complete'  # Previously settled native original.
+        self.assertTrue(asyncio.run(native._resume_settlement(issue, attempt)))
+        self.c._running.set(None)
+
+        def transition(path, body=None, **options):
+            if path == '/v1/claim/attempt' and not attested:
+                raise Hold('independent_original_evidence_missing')
+            return self.worker.request(path, body, **options)
+
+        self.r.transport = SimpleNamespace(request=transition)
+        attested = False
+        with self.assertRaisesRegex(Hold, 'independent_original_evidence_missing'):
+            with self.c.bind_dispatch(native, issue, grant.scope_sha256, stages['investigate'], stage='investigate'):
+                self.fail('Investigation requires the independent attestation')
+        attested = True
+        with self.c.bind_dispatch(native, issue, grant.scope_sha256, stages['investigate'], stage='investigate'):
+            self.assertEqual(self.c.current(ISSUE), NativeClaim('OffMenu', successor, lease))
+        paths = [path for path, _, _ in self.worker.calls]
+        self.assertEqual(paths.count('/v1/claim/attempt'), 1)
+        self.assertFalse(set(paths) & {'/v1/claim', '/v1/completion/read', '/v1/release'})
 
     def test_completed_native_callback_preserves_success_after_receiving_failure(self):
         class Native:
@@ -949,3 +1043,61 @@ class RealCheckoutTest(unittest.TestCase):
         self.assertEqual(evidence.stat().st_ino,before)
         self.assertNotIn(raw,evidence.read_bytes())
         self.assertEqual(self.worker.calls,[])
+
+        # Fresh runtime handoff uses the ordinal-1 native provider original,
+        # then existing comment and terminal receipt, not Attempt.result_text.
+        from types import SimpleNamespace
+        from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
+        from uif.stokowski_cloudflare.native_composition import _FreshAssessmentExecution
+        from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
+        execution = _FreshAssessmentExecution(claim, self.path)
+        self.c._fresh_assessment.set(execution)
+        self.c._slot.set('_publish_run_report')
+        with self.assertRaisesRegex(Hold, 'fresh_provider_original'):
+            callback(request_id, raw.decode())
+        evidence.unlink()  # isolate this second, independently bound fixture
+        first = sha256(f'{attempt}:1'.encode()).hexdigest()
+        first_intent = directory / (first + '.json')
+        first_intent.write_bytes(wire({'operation': operation | {'original_id': first},
+                                      'attempt_id': attempt, 'route': asdict(self.r.routes['OffMenu'])}))
+        first_intent.chmod(0o600)
+        finish = self.c.fresh_assessment_finisher(self.issue, record, 1)
+        state = SimpleNamespace(status='succeeded', session_id=attempt, state_name='assess',
+                                result_text='untrusted fallback not used')
+        with self.assertRaisesRegex(Hold, 'assessment_report_original'):
+            self.c.verified_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        self.assertEqual(self.worker.calls, [])
+        finish(first, raw.decode())
+        expected = render_fresh_assessment(raw, issue=self.issue, run=1,
+            scope_sha256=record['scope_sha256'], attempt_id=attempt)
+        expected_op = self.c._linear_operation(fence, attempt, '_publish_run_report', 'comment',
+                                              {'body': expected})
+        proof = self.c.verified_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        from uif.stokowski_cloudflare.native import _native_report
+        self.assertEqual(proof(self.issue.id, attempt, 1), (_native_report(raw.decode()), decode(raw), expected))
+        with self.assertRaisesRegex(Hold, 'assessment_report_binding'):
+            proof(self.issue.id, attempt, 2)
+        with self.assertRaisesRegex(Hold, 'assessment_report_only_effect'):
+            self.c.linear('comment', self.issue.id, {'body': 'substituted'})
+        post = self.r.transport.request
+
+        def lose_comment_ack(path, data=None, **opts):
+            result = post(path, data, **opts)
+            if path == '/v1/linear/comment':
+                self.assertEqual(data, {'operation': asdict(expected_op), 'attempt_id': attempt,
+                                        'body': expected})
+                raise AuthorityUnavailable('fixture lost reply')
+            return result
+
+        self.r.transport.request = lose_comment_ack
+        wrong = replace(claim, lease=replace(claim.lease, fence=replace(fence, generation=2)))
+        self.r.read_claim.return_value = wrong
+        with self.assertRaises(Hold):
+            self.c.linear('comment', self.issue.id, {'body': expected})
+        self.assertEqual(self.worker.calls, [])
+        self.r.read_claim.return_value = claim
+        self.assertTrue(self.c.linear('comment', self.issue.id, {'body': expected}))
+        self.assertTrue(self.c.linear('comment', self.issue.id, {'body': expected}))
+        self.assertEqual([call[0] for call in self.worker.calls].count('/v1/linear/comment'), 1)
+        self.assertNotIn('/v1/linear/upload', [call[0] for call in self.worker.calls])
+        self.assertNotIn('private fixture', expected)

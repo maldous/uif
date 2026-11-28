@@ -3,8 +3,10 @@
 import asyncio
 from contextlib import nullcontext
 from contextvars import ContextVar
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
+from inspect import getclosurevars, getsource
 import json
 import os
 from pathlib import Path
@@ -24,6 +26,60 @@ from .intake import READY_STATES, intake_profile, intake_stages
 from .native import NativeTurnBinding, install_native_runner
 from .review import prepare_review
 from .turn import Attempt
+
+
+@dataclass
+class _RecipientDispatch:
+    owner: object
+    issue: object
+    record: dict
+    claim: object
+    attempt: object = None
+    started: bool = False
+
+
+def _recipient_native_prologue(orchestration, dispatch, worker, authority):
+    """Qualify the native prologue and the reconciliation it relies on."""
+    native = orchestration.Orchestrator
+    reconcile = getattr(native, '_reconcile', None)
+    terminal = getattr(native, '_observe_terminal', None)
+    original_reconcile = getattr(reconcile, '__wrapped__', None)
+    workspace = getattr(orchestration, 'ensure_workspace', None)
+    globals_ = getattr(workspace, '__globals__', {})
+    result = globals_.get('WorkspaceResult')
+    reviewed = (
+        (dispatch, 'da63ce2fe67723fe9e362cd8eb9c4eed5d69b7267ffffc42e625228c2392cc29'),
+        (worker, '47a49c4930cf8a0faf670b6def7326f4f0982de7b8f9b548045899753a0c6482'),
+        (original_reconcile, 'd6b4da1c014f6442e8805b7f82834c356696697490a60908a7fbabccfbd7af2d'),
+        (terminal, '7a4d04b5824ea78596adc52a2eb9ada05aa9b05c464fba47fc59c5ba642672e9'),
+        (workspace, '647eacc835b9c1b2698c6990cc3168ef35db379a1263f969ea1f02192f80c6be'),
+        (result, '336dbd12bfcdc495bf9e7840f6a738ba8a64f88a5a2008c229b2cff5e8fbf9b3'),
+    )
+    if any(getattr(value, '__globals__', None) is not vars(orchestration)
+           for value in (dispatch, worker, original_reconcile, terminal)):
+        return None
+    try:
+        # The same native file also guards retained workspaces at startup
+        # and at terminal transitions, outside the running worker.
+        source = Path(worker.__code__.co_filename)
+        if (source != Path(orchestration.__file__) or sha256(source.read_bytes()).hexdigest()
+                != 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'):
+            return None
+        # getsource(function) unwraps decorators. Review the actual composition
+        # shim and verify its closed-over native callable before unwrapping it.
+        if (sha256(getsource(reconcile.__code__).encode()).hexdigest()
+                != '2e3d003b006b5259e9ee6793c3815cfdaf665768003863e6060c64347d085ba3'
+                or getclosurevars(reconcile).nonlocals != {
+                    'composition': authority, 'orchestration': orchestration,
+                    'original_reconcile': original_reconcile,
+                }):
+            return None
+        if all(not hasattr(value, '__wrapped__') and sha256(getsource(value).encode()).hexdigest() == pin
+               for value, pin in reviewed):
+            return workspace, result, reconcile, terminal
+    except (AttributeError, OSError, TypeError, ValueError):
+        pass
+    return None
 
 
 def _idle_notify(message):
@@ -217,9 +273,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                     or (current.get('gateways') or {}) != dict(client.gateways)):
                 return False
             if authority_lifecycle is not None:
-                if selecting:
-                    return authority_lifecycle.selected(owner.project_name, issue, publication.scope(issue))
-                return authority_lifecycle.current(issue.id) is not None
+                return selecting or authority_lifecycle.current(issue.id) is not None
             return allows_native_dispatch(owner.project_name, issue.id) is True
         except (OSError, ValueError):
             return False
@@ -239,6 +293,33 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
     original_eligible = orchestration.Orchestrator._is_eligible
     original_start = orchestration.MultiOrchestrator.start
     logger = orchestration.logger
+    recipient = ContextVar('native_recipient_dispatch', default=None)
+    recipient_prologue = None
+    if (authority_lifecycle is not None and 'prepare_turn_thread' in NativeTurnBinding.__dataclass_fields__
+            and all(callable(getattr(authority_lifecycle, name, None)) for name in (
+                'recipient_assignment', 'recipient_first_entry', 'recipient_workspace_for_prologue',
+                'recipient_task_active', 'verify_recipient_workspace', 'prepare_recipient_turn_thread',
+                'recipient_assessment_finisher',
+            ))):
+        recipient_prologue = _recipient_native_prologue(
+            orchestration, original_dispatch, original_worker, authority_lifecycle)
+    if recipient_prologue is not None:
+        original_workspace, workspace_result, _, _ = recipient_prologue
+
+        async def existing_recipient_workspace(workspace_root, issue_identifier, hooks):
+            selected = recipient.get()
+            if selected is None:
+                return await original_workspace(workspace_root, issue_identifier, hooks)
+            if (selected.attempt is None or issue_identifier != selected.issue.identifier
+                    or not recipient_stage_allowed(selected.owner, selected.issue, selected.record)):
+                raise ValueError('Recovered native workspace input changed')
+            path = authority_lifecycle.recipient_workspace_for_prologue(
+                selected.owner, selected.issue, selected.record['scope_sha256'], selected.attempt)
+            if path != workspace_root / issue_identifier:
+                raise ValueError('Recovered native workspace path changed')
+            return workspace_result(path, issue_identifier, False)
+
+        orchestration.ensure_workspace = existing_recipient_workspace
 
     def explicit_admissions(current, owner, issue):
         stages = current['admissions'].get(issue.id)
@@ -418,6 +499,38 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             stage = owner._states_for(issue).get(state)
         return state, stage
 
+    def recipient_stage_allowed(owner, issue, record):
+        stage = owner._states_for(issue).get('assess')
+        return (recipient_prologue is not None
+                and getattr(getattr(owner, '_reconcile', None), '__func__', None) is recipient_prologue[2]
+                and getattr(getattr(owner, '_observe_terminal', None), '__func__', None) is recipient_prologue[3]
+                and owner.project_name == 'OffMenu' and owner._issue_current_state.get(issue.id) == 'assess'
+                and record and 'project_intake' in record and not record['read_paths'] and not record['write_roots']
+                and stage is not None and stage.type == 'agent' and stage.admission_review is True
+                and not stage.publication and stage.session == 'fresh' and stage.permission_mode == 'plan'
+                and stage.runner in {'codex', 'cloudflare'} and not getattr(stage.hooks, 'on_stage_enter', None))
+
+    def select_native(owner, issue, state, stage, record):
+        if authority_lifecycle is None:
+            return True, None
+        try:
+            scope = publication.scope(issue)
+            if authority_lifecycle.selected(owner.project_name, issue, scope):
+                return True, None
+            if (recipient_prologue is None or state != 'assess' or stage is None
+                    or issue.id in owner.retry_attempts or issue.id in owner.running
+                    or issue.id in owner.claimed or issue.id in owner._pending_gates
+                    or asyncio.get_running_loop().get_task_factory() is not None
+                    or not recipient_stage_allowed(owner, issue, record)):
+                return False, None
+            claim = authority_lifecycle.recipient_assignment(
+                owner, issue, scope, state, owner._issue_state_runs.get(issue.id, 1))
+            if claim is not None and claim.attempt_id == record['attempt']:
+                return True, _RecipientDispatch(owner, issue, record, claim)
+        except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError):
+            pass
+        return False, None
+
     def eligible(owner, issue, **kwargs):
         if (owner.project_name not in projects or not native_allowed(owner, issue, selecting=True)
                 or not original_eligible(owner, issue, **kwargs)):
@@ -425,14 +538,18 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         stages = admissions(owner, issue)
         assess = stages.get('assess', {})
         if 'project_intake' in assess:
-            state, _ = dispatch_stage(owner, issue)
+            state, stage = dispatch_stage(owner, issue)
+            allowed, _ = select_native(owner, issue, state, stage, stages.get(state))
+            if not allowed:
+                return False
             if state == 'independent-review':
                 return True
             return (state in stages
                     and automatic_stage_allowed(owner, issue, state, stages[state], stages))
-        return any(record['project'] == owner.project_name
-                   and record['scope_sha256'] == publication.scope(issue)
-                   for record in stages.values())
+        allowed, _ = select_native(owner, issue, None, None, None)
+        return allowed and any(record['project'] == owner.project_name
+                               and record['scope_sha256'] == publication.scope(issue)
+                               for record in stages.values())
 
     def dispatch(owner, issue, attempt_num=None):
         if (owner.project_name not in projects or owner.pool is None
@@ -445,7 +562,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             return None
         state, stage = dispatch_stage(owner, issue)
         record = stages.get(state)
-        if (record and 'project_intake' in record
+        allowed, selected_recipient = select_native(owner, issue, state, stage, record)
+        if (not allowed or record and 'project_intake' in record
                 and not automatic_stage_allowed(owner, issue, state, record, stages)):
             owner._release_slot(issue.id)
             return None
@@ -532,10 +650,11 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 owner._release_slot(issue.id)
                 return None
         previous = owner.running.get(issue.id)
-        binding = (authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record)
-                   if authority_lifecycle is not None else nullcontext())
+        binding = (authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record, stage=state)
+                   if authority_lifecycle is not None and selected_recipient is None else nullcontext())
         # Enter before native dispatch consumes the retry or acquires custody.
         # The task it creates inherits the bound original via contextvars.
+        recipient_token = recipient.set(selected_recipient)
         try:
             with binding:
                 if authority_lifecycle is not None and record.get('write_roots'):
@@ -543,6 +662,20 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                     if source.list()['sealed']:
                         raise ValueError('Original source candidate already checkpointed')
                 result = original_dispatch(owner, issue, attempt_num)
+                if selected_recipient is not None:
+                    current = owner.running.get(issue.id)
+                    task = owner._tasks.get(issue.id)
+                    if current is not None and current is not previous and isinstance(task, asyncio.Task):
+                        current._uif_retained_recipient = True
+                        selected_recipient.attempt = current
+
+                        def release_unentered(done):
+                            if not selected_recipient.started:
+                                retire_unentered_worker(owner, issue, current, done)
+
+                        task.add_done_callback(release_unentered)
+                elif authority_lifecycle is not None:
+                    authority_lifecycle.attach_fresh_assessment_winner(owner, issue, previous)
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
             if authority_lifecycle is None or owner.running.get(issue.id) is not previous:
                 raise
@@ -550,30 +683,64 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             logger.warning('Native authority admission held for %s (%s)', issue.identifier, type(error).__name__)
             owner._release_slot(issue.id)
             return None
+        finally:
+            recipient.reset(recipient_token)
         current = owner.running.get(issue.id)
         if current is not None and current is not previous and record.get('automatic_author'):
             current.workers_ai_review = record
         return result
 
     async def worker(owner, issue, attempt):
+        selected = recipient.get()
+        if selected is not None:
+            bound = False
+            try:
+                if (selected.owner is not owner or selected.issue is not issue or selected.attempt is not attempt
+                        or owner.running.get(issue.id) is not attempt or attempt.state_name != 'assess'
+                        or owner._tasks.get(issue.id) is not asyncio.current_task()
+                        or attempt.session_id is not None or not native_allowed(owner, issue, selecting=True)
+                        or not recipient_stage_allowed(owner, issue, selected.record)
+                        or not current_admission(owner, issue, attempt.state_name, selected.record)):
+                    raise ValueError('Recovered native task registration changed')
+                attempt.session_id = selected.claim.attempt_id
+                with authority_lifecycle.recipient_first_entry(
+                        owner, issue, selected.record['scope_sha256'], attempt, expected=selected.claim):
+                    bound = True
+                    return await run_native_worker(owner, issue, attempt)
+            except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+                if bound:
+                    raise
+                logger.warning('Recovered native entry held for %s (%s)', issue.identifier, type(error).__name__)
+                return None
+        binding = (authority_lifecycle.fresh_assessment_worker(owner, issue, attempt)
+                   if authority_lifecycle is not None else nullcontext())
+        with binding:
+            return await run_native_worker(owner, issue, attempt)
+
+    def retire_unentered_worker(owner, issue, attempt, task):
+        issue_id = issue.id
+        if (owner.running.get(issue_id) is attempt and owner._tasks.get(issue_id) is task
+                and not getattr(attempt, 'settlement_record', None)):
+            owner.running.pop(issue_id)
+            owner._tasks.pop(issue_id)
+            owner._release_slot(issue_id)
+            if issue_id not in owner.retry_attempts and issue_id not in owner._pending_gates:
+                owner.claimed.discard(issue_id)
+
+    async def run_native_worker(owner, issue, attempt):
         if not native_allowed(owner, issue):
             # Native dispatch already registered this task and acquired its
             # local slot. It installs no independent done/cleanup callback.
             # The native worker/exit path can publish or retry; do not enter
             # it under revoked authority or discard an unresolved original.
-            issue_id = issue.id
-            if (owner.running.get(issue_id) is attempt
-                    and owner._tasks.get(issue_id) is asyncio.current_task()
-                    and not getattr(attempt, 'settlement_record', None)):
-                owner.running.pop(issue_id)
-                owner._tasks.pop(issue_id)
-                owner._release_slot(issue_id)
-                if issue_id not in owner.retry_attempts and issue_id not in owner._pending_gates:
-                    owner.claimed.discard(issue_id)
+            retire_unentered_worker(owner, issue, attempt, asyncio.current_task())
             return None
         context_token = context.set(owner)
         authorization_token = authorized.set(None)
         try:
+            selected = recipient.get()
+            if selected is not None:
+                selected.started = True
             return await original_worker(owner, issue, attempt)
         finally:
             authorized.reset(authorization_token)
@@ -613,6 +780,13 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         workspace = workspace.resolve(strict=True)
         if workspace != owner.cfg.workspace.resolved_root().resolve() / issue.identifier:
             raise ValueError('Workers AI workspace is outside native custody')
+        selected_recipient = recipient.get()
+        if selected_recipient is not None:
+            if (record != selected_recipient.record or attempt is not selected_recipient.attempt
+                    or not authority_lifecycle.recipient_task_active(issue.id, record['attempt'])
+                    or authority_lifecycle.verify_recipient_workspace(
+                        owner, issue, record['scope_sha256'], record['attempt']) != workspace):
+                raise ValueError('Original authority recipient workspace is unavailable')
         selected = record
         if 'project_intake' in record and attempt.state_name != 'independent-review':
             if not automatic_stage_allowed(owner, issue, attempt.state_name, record, stages):
@@ -689,7 +863,7 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if authority_lifecycle is not None:
             if review_binding is not None:
                 authority_lifecycle.review_candidate(issue.id, record, prompt)
-            else:
+            elif selected_recipient is None:
                 grant = authority_lifecycle.assignment(owner.project_name, issue.id, record['scope_sha256'])
                 if grant is None:
                     raise ValueError('Original authority source assignment is unavailable')
@@ -702,17 +876,29 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
                for root in roots):
             raise ValueError('Invalid Workers AI write scope')
-        finish_original = None
+        fresh_finisher = (authority_lifecycle.fresh_assessment_finisher(
+            issue, record, owner._issue_state_runs.get(issue.id, 1))
+            if authority_lifecycle is not None and selected_recipient is None
+            and attempt.state_name == 'assess' else None)
+        finish_original = fresh_finisher
+        if selected_recipient is not None:
+            finish_original = authority_lifecycle.recipient_assessment_finisher(
+                issue, record, owner._issue_state_runs.get(issue.id, 1))
+            if not callable(finish_original):
+                raise ValueError('Original authority recipient assessment evidence is unavailable')
         if remote_tools is not None:
             finish_original = authority_lifecycle.retain_source_checkpoint(issue.id, record)
         elif authority_lifecycle is not None and record.get('source_candidate_sha256'):
             finish_original = authority_lifecycle.retain_final_review
         authorized.set((issue, attempt.state_name, attempt, record))
+        thread_binding = ({'prepare_turn_thread': authority_lifecycle.prepare_recipient_turn_thread}
+                          if selected_recipient is not None else {})
         return NativeTurnBinding(issue.id, workspace,
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
                     record.get('reviewer_project')), paths, roots, prompt,
             structured_report='project_intake' in record or 'automatic_author' in record,
-            remote_tools=remote_tools, finish_original=finish_original)
+            remote_tools=remote_tools, finish_original=finish_original,
+            one_shot_report=selected_recipient is not None or fresh_finisher is not None, **thread_binding)
 
     install_native_runner(runner, orchestration, mode=mode, client=client,
                           authorize_turn=authorize, codex_available=codex_available,
@@ -725,16 +911,25 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if provider_discovery is None:
             return await _start_with_shutdown(owner, original_start)
         # The advisory hook exists only in this configured service lifecycle.
-        selection_hook = staticmethod(provider_discovery.select)
         runtime = orchestration.MultiOrchestrator
-        if 'uif_select_provider' in vars(runtime):
+        hooks = {
+            'uif_select_provider': staticmethod(provider_discovery.select),
+            'uif_provider_roster': staticmethod(provider_discovery.roster),
+        }
+        if any(name in vars(runtime) for name in hooks):
             raise RuntimeError('Provider discovery launcher already installed')
-        runtime.uif_select_provider = selection_hook
+        for name, hook in hooks.items():
+            setattr(runtime, name, hook)
         try:
+            roster = provider_discovery.roster()
+            logger.info('Stokowski provider roster configured: %s',
+                        tuple(route_id for route_id, _ in roster['route_readers'])
+                        + tuple(item['route_id'] for item in roster['metadata_candidates']))
             return await _start_with_shutdown(
                 owner, lambda _: provider_discovery.run(lambda: original_start(owner)))
         finally:
-            if vars(runtime).get('uif_select_provider') is selection_hook:
-                del runtime.uif_select_provider
+            for name, hook in hooks.items():
+                if vars(runtime).get(name) is hook:
+                    delattr(runtime, name)
 
     orchestration.MultiOrchestrator.start = start

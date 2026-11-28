@@ -4,7 +4,8 @@ from unittest.mock import Mock, call
 from uif.handoff_store import Hold, digest
 from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
 from uif.stokowski_cloudflare.startup_control_original import (
-    STARTUP_BIND, TRANSITION_ORIGINAL, StartupBindOriginal, observe_original, submit_original_attempt,
+    CONTROL, STARTUP_BIND, TRANSITION_ORIGINAL, NormalActivationOriginal,
+    StartupBindOriginal, observe_original, submit_original_attempt,
 )
 
 
@@ -89,3 +90,37 @@ class StartupControlOriginalTests(unittest.TestCase):
         with self.assertRaisesRegex(Hold, 'retained_startup_original_required'):
             self._submit()
         self.read.assert_not_called()
+
+    def test_normal_activation_uses_same_original_after_lost_reply(self):
+        original = NormalActivationOriginal('activate-installed', 4, 'uif1313-normal-installed',
+                                            'native-session', 'a'*64, 5, 'prior-activation')
+        body = dict(request_id='activate-installed', expected_coordinator_epoch=4, stopped=False,
+                    startup=dict(stage='uif1313-normal-installed', session_id='native-session',
+                                 evidence_sha256='a'*64, coordinator_epoch=5,
+                                 previous_request_id='prior-activation'))
+        self.assertEqual(original.body(), body)
+        self.assertEqual(original.fingerprint(), digest(dict(path=CONTROL, body=body)))
+        ack = dict(stopped=False, coordinator_epoch=5, expected_coordinator_epoch=4,
+                   startup=dict(body['startup'], unit='stokowski-foo.service'))
+        self.read.side_effect = [AuthorityUnavailable('unknown'), ack]
+        args = dict(recorded_fingerprint=original.fingerprint(),
+                    installation_sha256='b'*64, control_session_id='control-session')
+        self.assertEqual(submit_original_attempt(original, **args, request=self.read), dict(
+            ack, request_id='activate-installed', status='original_acknowledged',
+            native_startup_verified=False))
+        self.assertEqual(self.read.call_args_list, [
+            call(CONTROL, body),
+            call(TRANSITION_ORIGINAL, dict(installation_sha256='b'*64,
+                                           session_id='control-session', request_id='activate-installed')),
+        ])
+        self.read.reset_mock(side_effect=True)
+        self.read.return_value = dict(ack, startup=dict(ack['startup'], stage='other-release'))
+        with self.assertRaisesRegex(Hold, 'startup_original_acknowledgement_unverified'):
+            observe_original(original, **args, read=self.read)
+        self.read.assert_called_once()
+        self.read.reset_mock()
+        self.read.return_value = ack
+        changed = replace(original, expected_coordinator_epoch=5)
+        with self.assertRaisesRegex(Hold, 'startup_original_acknowledgement_unverified'):
+            observe_original(changed, **(args | {'recorded_fingerprint': changed.fingerprint()}), read=self.read)
+        self.read.assert_called_once()

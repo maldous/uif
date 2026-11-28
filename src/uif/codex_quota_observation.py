@@ -8,6 +8,7 @@ be bound independently by the eventual installed adapter.
 
 from dataclasses import dataclass
 import json
+import re
 
 
 @dataclass(frozen=True)
@@ -19,10 +20,19 @@ class QuotaWindow:
 
 
 @dataclass(frozen=True)
+class CreditObservation:
+    has_credits: bool
+    unlimited: bool
+    reported_balance: str | None
+
+
+@dataclass(frozen=True)
 class AccountRateLimitObservation:
     windows: tuple[QuotaWindow, ...]
     ordinary_usage_allowed: bool | None
     spend_control_reached: bool | None
+    observed_at_epoch_seconds: int | None = None
+    credits: CreditObservation | None = None
 
 
 def _unique(pairs):
@@ -40,6 +50,17 @@ def _invalid_constant(_):
 
 def _iso_epoch(value):
     return type(value) is int and 0 < value <= 253402300799
+
+
+def _credits(value):
+    if (type(value) is not dict or type(value.get("hasCredits")) is not bool
+            or type(value.get("unlimited")) is not bool or "balance" not in value):
+        return None
+    balance = value["balance"]
+    if balance is not None and (type(balance) is not str or len(balance) > 32
+                                or re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", balance) is None):
+        return None
+    return CreditObservation(value["hasCredits"], value["unlimited"], balance)
 
 
 def parse_account_rate_limits(raw, *, account, limit_id, now_epoch_seconds):
@@ -83,4 +104,5 @@ def parse_account_rate_limits(raw, *, account, limit_id, now_epoch_seconds):
                 or not _iso_epoch(reset) or reset <= now_epoch_seconds):
             return None
         windows.append(QuotaWindow(name, used, duration, reset))
-    return AccountRateLimitObservation(tuple(windows), allowed, reached)
+    return AccountRateLimitObservation(tuple(windows), allowed, reached,
+                                       now_epoch_seconds, _credits(bucket.get("credits")))

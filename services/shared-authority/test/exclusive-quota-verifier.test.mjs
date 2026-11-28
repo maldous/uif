@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createPrivateKey, createPublicKey, sign } from 'node:crypto';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { Miniflare } from 'miniflare';
 import { prepareExclusiveQuotaCheckpoint, verifyExclusiveQuotaCurrent } from '../exclusive-quota-proof.mjs';
 import { resolveObservation } from '../exclusive-quota-verifier.mjs';
 import { canonical, digest, digestBytes } from '../protocol.mjs';
@@ -11,7 +13,7 @@ const enc = new TextEncoder();
 const url = 'https://quota.internal/v1/observation/read';
 const route = {
   account_id: 'a'.repeat(32),
-  model: '@cf/openai/gpt-oss-20b',
+  model: '@cf/zai-org/glm-4.7-flash',
   gateway_id: 'fixture',
   credential_epoch_sha256: h('b'),
 };
@@ -32,21 +34,26 @@ const binding = {
 
 async function fixture(modify = (proof) => proof, handler = (blob) => new Response(blob, {
   headers: { 'content-type': 'application/octet-stream' },
-}), headOptions = {}) {
+}), headOptions = {}, now = epoch + 60) {
+  const midnight = Math.floor(now / 86400) * 86400;
+  const watermark = now - 10;
+  const validUntil = Math.min(now + 60, midnight + 86399);
   const opening = {
     schema: 'uif.exclusive-quota.opening/1', binding_sha256: await digest(binding),
     outside_carryover_upper: 150,
   };
   const closure = {
     schema: 'uif.exclusive-quota.closure/1',
-    binding_sha256: await digest(binding), route, utc_day: '2026-11-25', covered_from: epoch,
-    valid_until: epoch + 200, inventory_sha256: h('d'), egress_enforcement_sha256: h('e'),
+    binding_sha256: await digest(binding), route,
+    utc_day: new Date(midnight * 1000).toISOString().slice(0, 10), covered_from: midnight,
+    valid_until: Math.min(now + 140, midnight + 86399),
+    inventory_sha256: h('d'), egress_enforcement_sha256: h('e'),
     carryover_sha256: await digest(opening), outside_gap_upper: 100, outside_carryover_upper: 150,
     billing_mode: 'workers-free-standard-no-fallback',
   };
   const ledger = {
     schema: 'uif.exclusive-quota.ledger/1', closure_sha256: await digest(closure),
-    chain_sha256: h('3'), covered_through: epoch + 50, valid_until: epoch + 120,
+    chain_sha256: h('3'), covered_through: watermark, valid_until: validUntil,
     account_usage_upper: 1_200, outside_unresolved_upper: 300,
   };
   const original = enc.encode(canonical(modify({
@@ -58,8 +65,8 @@ async function fixture(modify = (proof) => proof, handler = (blob) => new Respon
     binding_sha256: closure.binding_sha256, opening_sha256: closure.carryover_sha256,
     source_receipt_sha256: originalSha, ledger_chain_sha256: ledger.chain_sha256,
     utc_day: closure.utc_day, valid_until: ledger.valid_until,
-    windows: [{ from: epoch, through: epoch + 20, usage_upper: 400 },
-      { from: epoch + 20, through: epoch + 50, usage_upper: 800 }],
+    windows: [{ from: midnight, through: midnight + 20, usage_upper: 400 },
+      { from: midnight + 20, through: watermark, usage_upper: 800 }],
     outside_unresolved_upper: ledger.outside_unresolved_upper, ...headOptions.fields,
   };
   const head = enc.encode(canonical({
@@ -85,7 +92,7 @@ async function fixture(modify = (proof) => proof, handler = (blob) => new Respon
   const submit = (body = lookup, endpoint = url, additional = {}, deadlineMs) => resolveObservation(
     new Request(endpoint, { method: 'POST', headers: {
       'content-type': 'application/json', 'authorization': 'external-ignored',
-    }, body: JSON.stringify(body), ...additional }), env, () => epoch + 60, deadlineMs,
+    }, body: JSON.stringify(body), ...additional }), env, () => now, deadlineMs,
   );
   return { env, lookup, calls, submit, original, opening, checkpoint, head };
 }
@@ -112,6 +119,56 @@ test('exact request joins independent original bytes to the private account curr
   assert.equal(result.projection.completeness_verified, true);
   assert.equal(result.checkpoint.opening_sha256, f.env.EXCLUSIVE_QUOTA_OPENING_SHA256);
   assert.equal(result.checkpoint.unresolved_upper, 300);
+});
+
+test('workerd verifies the signed current checkpoint through the private evidence binding', async (t) => {
+  const now = Math.floor(Date.now() / 1000);
+  if (now % 86400 < 31 || now % 86400 > 86339) {
+    t.skip('requires an open UTC window for the real Worker clock');
+    return;
+  }
+  const f = await fixture(undefined, undefined, undefined, now);
+  const { QUOTA_EVIDENCE, ...bindings } = f.env;
+  const root = new URL('../', import.meta.url);
+  let outboundRequests = 0;
+  const instance = new Miniflare({
+    modules: true,
+    scriptPath: fileURLToPath(new URL('exclusive-quota-verifier.mjs', root)),
+    modulesRoot: fileURLToPath(root),
+    compatibilityDate: '2026-07-30',
+    bindings,
+    serviceBindings: { QUOTA_EVIDENCE: QUOTA_EVIDENCE.fetch },
+    outboundService: async () => {
+      outboundRequests++;
+      return new Response(null, { status: 500 });
+    },
+  });
+  try {
+    const response = await instance.dispatchFetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'external-ignored' },
+      body: JSON.stringify(f.lookup),
+    });
+    const result = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(result));
+    assert.equal(result.coverage, 'entire-account-all-routes-from-utc-midnight');
+    assert.deepEqual(result.checkpoint, {
+      sha256: await digestBytes(f.head),
+      opening_sha256: bindings.EXCLUSIVE_QUOTA_OPENING_SHA256,
+      unresolved_upper: 300,
+      opening_upper: 150,
+    });
+    assert.equal(result.projection.upper, 1_650);
+    assert.equal(result.projection.gap_upper, 100);
+    assert.deepEqual(f.calls.map((request) => request.url), [
+      'https://quota-evidence.internal/v1/original/' + f.lookup.source_receipt_sha256,
+      'https://quota-evidence.internal/v1/checkpoint/current/' + route.account_id,
+    ]);
+    assert.ok(f.calls.every((request) => !request.headers.has('authorization')));
+    assert.equal(outboundRequests, 0);
+  } finally {
+    await instance.dispose();
+  }
 });
 
 test('missing current head or opening pin fail closed', async () => {

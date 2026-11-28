@@ -1,0 +1,685 @@
+"""Offline report-boundary reproduction against explicitly selected Foo source."""
+import ast
+import asyncio
+from copy import deepcopy
+from dataclasses import asdict, replace
+from datetime import datetime, timezone
+from functools import wraps
+import hashlib
+from hashlib import sha256
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+from tempfile import TemporaryDirectory
+from threading import Event
+from types import SimpleNamespace
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock, Mock, patch
+
+from uif.handoff_store import Hold, digest, wire
+from uif.stokowski_cloudflare.assessment_readiness import project_assessment_readiness
+from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
+from uif.stokowski_cloudflare.intake import intake_stages
+from uif.stokowski_cloudflare.native import NativeTurnBinding, _native_report, install_native_runner
+from uif.stokowski_cloudflare.turn import Attempt
+from uif.stokowski_cloudflare.native_composition import (
+    NativeComposition, _COMMENT_SLOTS, _FreshAssessmentExecution, _LinearClient,
+    _VerifiedAssessmentReport, install_sinks,
+)
+
+
+PINS = {
+    'orchestrator.py': '610cbf97a5f36c9dd305cfe456245a9efc29625287b44211adbd5cea77c3511f',
+    'report.py': '6f72f4cc2e39f92e4da6a44d5240ec7ba44f9f8fd94d611271ca8be905eb0fe6',
+    'publication.py': '7d2007cc7993e496e11a0da30152278951b31f2c4f42c9dcacd0582619aca48b',
+    'dependencies.py': '298694e9b728041716843a6f99a43671dbc0c6a75e3f67a25c9c4ca6aef36d06',
+    'workspace.py': '9ddb0ad8a1d5d43b54663aab14351fb70b07b13ffd6c76af99016fc6c7d28936',
+}
+PATCH = Path(__file__).resolve().parents[2] / 'tools/delivery/stokowski-verified-assessment-report.patch'
+PATCHED_ORCHESTRATOR_SHA256 = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
+
+
+class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
+    def source(self, name, bindings=(), *, owner=None, patched=False, **namespace):
+        source_path = self.root / name
+        raw = source_path.read_bytes()
+        self.assertEqual(sha256(raw).hexdigest(), PINS[name])
+        if patched:
+            self.assertEqual(name, 'orchestrator.py')
+            scratch = TemporaryDirectory()
+            self.addCleanup(scratch.cleanup)
+            source_path = Path(scratch.name) / 'stokowski' / name
+            source_path.parent.mkdir()
+            source_path.write_bytes(raw)
+            result = subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-i', str(PATCH)],
+                                    cwd=scratch.name, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertNotIn('offset', result.stdout)
+            raw = source_path.read_bytes()
+            self.assertEqual(sha256(raw).hexdigest(), PATCHED_ORCHESTRATOR_SHA256)
+        parsed = ast.parse(raw)
+        if bindings:
+            nodes = parsed.body if owner is None else next(
+                node.body for node in parsed.body
+                if isinstance(node, ast.ClassDef) and node.name == owner
+            )
+            selected = [node for node in nodes
+                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and node.name in bindings]
+            self.assertEqual(len(selected), len(bindings))
+            parsed.body = [ast.ImportFrom(module='__future__',
+                           names=[ast.alias(name='annotations')], level=0), *selected]
+            ast.fix_missing_locations(parsed)
+        exec(compile(parsed, str(source_path), 'exec'), namespace)
+        return SimpleNamespace(**namespace)
+
+    def setUp(self):
+        root = os.environ.get('UIF_PINNED_STOKOWSKI_ASSESSMENT_SOURCE')
+        if root is None:
+            self.skipTest('set UIF_PINNED_STOKOWSKI_ASSESSMENT_SOURCE to the selected Foo native source')
+        self.root = Path(root)
+        self.report = self.source('report.py', __name__='native_report_fixture')
+        self.publication = self.source('publication.py', ('scope', 'human_context'),
+            hashlib=hashlib, json=json,
+            INTENT_MARKER='<!-- stokowski:publication-intent -->\n')
+        self.publication.retain_stage_evidence = Mock(return_value='.stokowski/private-retention')
+        dependencies = self.source('dependencies.py')
+        methods = ('_publication_current_issue', '_publication_comments',
+                   '_publish_run_report', '_completion_event', '_resume_settlement')
+        self.native_bindings = dict(
+            report_mod=self.report, publication_mod=self.publication, dependencies_mod=dependencies,
+            artifacts_mod=SimpleNamespace(collect=Mock(return_value=[]), MAX_ARTIFACT_BYTES=1),
+            state_key=str.casefold, datetime=datetime, timezone=timezone,
+            asyncio=asyncio, logger=Mock(), Path=Path, RunAttempt=SimpleNamespace)
+        methods = self.source('orchestrator.py', methods, owner='Orchestrator', **self.native_bindings)
+        self.owner = type('NativeReportFixture', (), {
+            name: method for name, method in vars(methods).items() if name.startswith('_')
+            and callable(method)
+        })()
+        temp = TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.workspace = Path(temp.name)
+        self.issue = SimpleNamespace(id='11111111-2222-4333-8444-555555555555',
+            identifier='OFF-1', title='Fixture issue', description=None, state='Active', blocked_by=[])
+        self.raw = wire(dict(summary='Private provider text', verdict='approve', routing=dict(
+            issue=self.issue.identifier, state='assess', run=1, actionable=True, ownership_clear=True,
+            deferred=False, owner_pause=False, uncertain_effects=False, missing_inputs=[])))
+        self.reader = Mock(fetch_issue=AsyncMock(return_value=self.issue), _graphql=AsyncMock(
+            return_value={'issue': {'comments': {'nodes': [], 'pageInfo': {'hasNextPage': False}}}}))
+        self.owner.cfg = SimpleNamespace(active_linear_states=lambda: ['Active'],
+            terminal_linear_states=lambda: ['Done'], tracker=SimpleNamespace(project_slug='offmenu'))
+        self.owner._ensure_linear_client = lambda: self.reader
+        self.owner._states_for = lambda issue: {'assess': SimpleNamespace(
+            transitions={'complete': 'investigate', 'report-blocked': 'review'},
+            publication=None, admission_review=True)}
+        self.owner._issue_state_runs = {self.issue.id: 1}
+        self.owner._issue_current_state = {self.issue.id: 'assess'}
+        self.owner._publication_receipts = {}
+        self.owner._workflow_name_for = lambda issue: 'fixture'
+        self.owner.ledger = Mock()
+        self.owner.project_name = 'OffMenu'
+        self.owner._apply_classification_label = AsyncMock()
+        self.owner._transition = AsyncMock(return_value=True)
+        self.owner._finish_worker_bookkeeping = Mock()
+        self.owner._settlement_path = lambda issue: self.workspace
+        self.owner._save_settlement = Mock(side_effect=lambda issue, data: self.saved.append(deepcopy(data)))
+
+    def reconcile_owner(self, issue, attempt, task, state_reader, remove_workspace):
+        names = ('_reconcile', '_observe_terminal', '_on_worker_exit', '_finish_worker_bookkeeping',
+                 '_retains_recipient_entry')
+        methods = self.source('orchestrator.py', names, owner='Orchestrator', patched=True,
+                              **dict(self.native_bindings, replace=replace, Issue=SimpleNamespace,
+                                     remove_workspace=remove_workspace, os=os, sanitize_key=lambda issue: issue))
+        owner = type('RecipientNativeFixture', (), {name: getattr(methods, name) for name in names})()
+        owner.running = {issue.id: attempt}
+        owner._tasks = {issue.id: task}
+        owner.claimed = {issue.id}
+        owner._last_issues = {issue.id: issue}
+        owner.cfg = SimpleNamespace(
+            terminal_linear_states=lambda: ['Done'], active_linear_states=lambda: ['Active'],
+            linear_states=SimpleNamespace(review='Review'),
+            workspace=SimpleNamespace(resolved_root=lambda: self.workspace.parent),
+            hooks=SimpleNamespace(),
+        )
+        owner._ensure_linear_client = lambda: SimpleNamespace(fetch_issue_states_by_ids=state_reader)
+        owner._release_slot = Mock()
+        owner._states_for = lambda _: {}
+        owner._resume_settlement = AsyncMock()
+        owner._issue_current_state = {issue.id: 'assess'}
+        owner._issue_state_runs = {issue.id: 1}
+        owner._pending_gates = {}
+        owner._last_session_ids = {}
+        owner._last_completed_at = {}
+        owner._consume_retry = Mock()
+        owner._announced_states = set()
+        for field in ('input_tokens', 'output_tokens', 'cache_creation_tokens',
+                      'cache_read_tokens', 'tokens', 'cost_usd', 'tool_calls'):
+            setattr(owner, 'total_' + field, 0)
+        return owner
+
+    async def test_patched_reconcile_keeps_recipient_workspace_until_actual_executor_returns(self):
+        issue = self.issue
+        attempt = SimpleNamespace(
+            issue_id=issue.id, issue_identifier=issue.identifier, state_name='assess',
+            status='pending', _uif_retained_recipient=True, turn_count=0, started_at=None,
+            input_tokens=0, output_tokens=0, cache_creation_tokens=0, cache_read_tokens=0,
+            total_tokens=0, cost_usd=0, tool_call_count=0,
+        )
+        original_receipt = self.workspace / 'original-receipt'
+        original_receipt.write_bytes(b'original')
+        original_runner = AsyncMock(side_effect=AssertionError('Codex must remain unused'))
+        runner = SimpleNamespace(run_turn=original_runner)
+        orchestration = SimpleNamespace(run_turn=original_runner)
+        binding = NativeTurnBinding(
+            issue.id, self.workspace, Attempt('OffMenu', 'recipient'), (), (),
+            prepare_turn_thread=lambda bound, check: bound,
+        )
+        install_native_runner(
+            runner, orchestration, mode='cloudflare', client=Mock(),
+            authorize_turn=lambda *_: binding, codex_available=lambda _: False,
+            active_projects=lambda: {'OffMenu'},
+        )
+        ready = asyncio.Event()
+        ended = Event()
+        release = Event()
+        loop = asyncio.get_running_loop()
+        stop = {}
+
+        def physical_turn(*args, cancelled, **kwargs):
+            stop['active'] = cancelled
+            loop.call_soon_threadsafe(ready.set)
+            self.assertTrue(release.wait(2))
+            ended.set()
+            return 'original result'
+
+        async def worker():
+            try:
+                await runner.run_turn('cloudflare',
+                    SimpleNamespace(permission_mode='plan', turn_timeout_ms=5000),
+                    None, 'fixture', self.workspace, issue, attempt)
+            except asyncio.CancelledError:
+                attempt.status = 'canceled'
+                await owner._on_worker_exit(issue, attempt)
+
+        state_reader = AsyncMock(return_value={issue.id: 'Active'})
+        remove = AsyncMock()
+        with patch('uif.stokowski_cloudflare.native.run_turn', side_effect=physical_turn) as physical:
+            selected = asyncio.create_task(worker())
+            owner = self.reconcile_owner(issue, attempt, selected, state_reader, remove)
+            try:
+                await asyncio.wait_for(ready.wait(), 2)
+                await owner._reconcile()
+                self.assertEqual(attempt.status, 'running')
+                self.assertEqual(selected.cancelling(), 0)
+                terminal = SimpleNamespace(id=issue.id, state='Done')
+                self.assertFalse(owner._observe_terminal(issue, terminal, expected_attempt=attempt))
+
+                state_reader.return_value = {issue.id: 'Done'}
+                await owner._reconcile()
+                async with asyncio.timeout(2):
+                    while not stop['active']():
+                        await asyncio.sleep(0)
+                await owner._reconcile()
+                self.assertEqual(selected.cancelling(), 1)
+                self.assertIs(owner.running[issue.id], attempt)
+                self.assertIs(owner._tasks[issue.id], selected)
+                self.assertIn(issue.id, owner.claimed)
+                self.assertFalse(ended.is_set())
+                owner._release_slot.assert_not_called()
+                remove.assert_not_awaited()
+                self.assertEqual(original_receipt.read_bytes(), b'original')
+            finally:
+                release.set()
+                await asyncio.wait_for(selected, 2)
+            physical.assert_called_once()
+        self.assertTrue(ended.is_set())
+        self.assertNotIn(issue.id, owner.running)
+        self.assertNotIn(issue.id, owner._tasks)
+        self.assertNotIn(issue.id, owner.claimed)
+        owner._release_slot.assert_called_once_with(issue.id)
+        remove.assert_not_awaited()
+        self.assertEqual(original_receipt.read_bytes(), b'original')
+
+    async def test_patched_reconcile_cannot_apply_a_stale_terminal_read_to_replacement(self):
+        issue = self.issue
+        old = SimpleNamespace(status='running', _uif_retained_recipient=True)
+        replacement = SimpleNamespace(status='running', _uif_retained_recipient=True)
+        let_tasks_end = asyncio.Event()
+        old_task = asyncio.create_task(let_tasks_end.wait())
+        new_task = asyncio.create_task(let_tasks_end.wait())
+        reading = asyncio.Event()
+        allow_state = asyncio.Event()
+
+        async def state_read(ids):
+            self.assertEqual(ids, [issue.id])
+            reading.set()
+            await allow_state.wait()
+            return {issue.id: 'Done'}
+
+        remove = AsyncMock()
+        owner = self.reconcile_owner(issue, old, old_task, state_read, remove)
+        reconcile = asyncio.create_task(owner._reconcile())
+        try:
+            await asyncio.wait_for(reading.wait(), 2)
+            owner.running[issue.id] = replacement
+            owner._tasks[issue.id] = new_task
+            allow_state.set()
+            await asyncio.wait_for(reconcile, 2)
+            self.assertIs(owner.running[issue.id], replacement)
+            self.assertIs(owner._tasks[issue.id], new_task)
+            self.assertEqual(new_task.cancelling(), 0)
+            owner._release_slot.assert_not_called()
+            remove.assert_not_awaited()
+        finally:
+            let_tasks_end.set()
+            allow_state.set()
+            await asyncio.gather(old_task, new_task, reconcile, return_exceptions=True)
+
+    async def test_patched_reconcile_preserves_ordinary_terminal_cleanup(self):
+        issue = self.issue
+        attempt = SimpleNamespace(status='running', issue_identifier=issue.identifier)
+        task = asyncio.create_task(asyncio.sleep(0))
+        await task
+        remove = AsyncMock()
+        owner = self.reconcile_owner(
+            issue, attempt, task, AsyncMock(return_value={issue.id: 'Done'}), remove,
+        )
+        await owner._reconcile()
+        remove.assert_awaited_once_with(self.workspace.parent, issue.identifier, owner.cfg.hooks)
+        owner._release_slot.assert_called_once_with(issue.id)
+        self.assertNotIn(issue.id, owner.running)
+
+    def terminal_cleanup_owner(self, root, terminal, *, patched=True):
+        hook = AsyncMock()
+        workspace = self.source('workspace.py', ('remove_workspace', 'sanitize_key'),
+                                re=re, shutil=shutil, run_hook=hook, logger=Mock())
+        names = ('_retains_recipient_entry', '_startup_cleanup', '_transition') if patched else (
+            '_startup_cleanup', '_transition',
+        )
+        methods = self.source('orchestrator.py', names, owner='Orchestrator', patched=patched,
+                              os=os, sanitize_key=workspace.sanitize_key,
+                              remove_workspace=workspace.remove_workspace, logger=Mock())
+        owner = type('RestartedNativeFixture', (), {name: getattr(methods, name) for name in names})()
+        owner.cfg = SimpleNamespace(
+            tracker=SimpleNamespace(project_slug='OffMenu'),
+            terminal_linear_states=lambda: ['Done'],
+            workspace=SimpleNamespace(resolved_root=lambda: root),
+            hooks=SimpleNamespace(before_remove='fixture hook', timeout_ms=100),
+        )
+        owner._ensure_linear_client = lambda: SimpleNamespace(
+            fetch_issues_by_states=AsyncMock(return_value=terminal), update_issue_state=AsyncMock(return_value=True),
+        )
+        owner.project_name = 'OffMenu'
+        owner.ledger = Mock()
+        owner._states_for = lambda _: {
+            'publish': SimpleNamespace(transitions={'complete': 'end'}, publication=None),
+            'end': SimpleNamespace(type='terminal'),
+        }
+        owner._issue_current_state = {issue.id: 'publish' for issue in terminal}
+        owner._issue_state_runs = {}
+        owner._announced_states = set()
+        owner._pending_gates = {}
+        owner._last_session_ids = {}
+        owner.claimed = set()
+        owner.completed = set()
+        return owner, hook
+
+    async def test_patched_startup_and_transition_preserve_the_recipient_journal(self):
+        root = self.workspace
+        recovered = SimpleNamespace(id='recovered', identifier='OFF-1')
+        ordinary = SimpleNamespace(id='ordinary', identifier='OFF-2')
+        terminal = [recovered, ordinary]
+        path = root / recovered.identifier
+        journal = path / '.git/uif-original-effects'
+        journal.mkdir(parents=True, mode=0o700)
+        original = {'installation_sha256': 'a' * 64, 'session_id': 'morgan',
+                    'request_id': 'handoff', 'request_sha256': 'b' * 64}
+        record = wire({
+            'schema': 'uif.native-recipient-entry/1', 'original': original, 'fence': {},
+            'attempt_id': 'recipient', 'stage': 'assess', 'run': 1, 'scope_sha256': 'c' * 64,
+            'workspace_binding': {'path': str(path), 'original_transition': original},
+        })
+        receipt = journal / (digest(original) + '.recipient-entry')
+        receipt.write_bytes(record)
+        receipt.chmod(0o600)
+        ordinary_path = root / ordinary.identifier
+
+        for origin in ('restart', 'transition'):
+            with self.subTest(origin=origin):
+                ordinary_path.mkdir()
+                owner, hook = self.terminal_cleanup_owner(root, terminal)
+                if origin == 'restart':
+                    await owner._startup_cleanup()
+                else:
+                    self.assertTrue(await owner._transition(recovered, 'complete'))
+                    self.assertTrue(await owner._transition(ordinary, 'complete'))
+                    self.assertEqual(owner.completed, {recovered.id, ordinary.id})
+                self.assertEqual(receipt.read_bytes(), record)
+                self.assertFalse(ordinary_path.exists())
+                hook.assert_awaited_once_with('fixture hook', ordinary_path, 100, 'before_remove')
+
+        # A later native worker may have no in-memory recipient marker.
+        attempt = SimpleNamespace(status='running', issue_identifier=recovered.identifier)
+        task = asyncio.create_task(asyncio.sleep(0))
+        await task
+        remove = AsyncMock()
+        owner = self.reconcile_owner(
+            recovered, attempt, task, AsyncMock(return_value={recovered.id: 'Done'}), remove,
+        )
+        owner.cfg.workspace.resolved_root = lambda: root
+        await owner._reconcile()
+        remove.assert_not_awaited()
+        self.assertEqual(receipt.read_bytes(), record)
+        owner._release_slot.assert_called_once_with(recovered.id)
+
+    def prepared_attempt(self, raw):
+        record = dict(phase='report-unknown', state='assess', run=1, kind='worker',
+                      issue_id=self.issue.id, session_id='fixture', scope_sha256=self.publication.scope(self.issue))
+        attempt = SimpleNamespace(status='succeeded', state_name='assess', attempt=0, session_id='fixture',
+            result_text=_native_report(raw.decode()), started_at=None, model='fixture',
+            total_tokens=0, cost_usd=0, tool_call_count=0, tool_error_count=0, artifacts=[],
+            publication_event=None, error=None, report_posted=False, settlement_record=record,
+            admission_context=self.publication.human_context([]), admission_state='active')
+        self.owner.running = {self.issue.id: attempt}
+        self.owner._tasks = {self.issue.id: asyncio.current_task()}
+        self.saved = []
+        return attempt
+
+    def deterministic_body(self, raw):
+        scope = self.publication.scope(self.issue)
+        attempt = intake_stages({}, 'OffMenu', self.issue, scope, 1)['assess']['attempt']
+        return render_fresh_assessment(raw, issue=self.issue, run=1, scope_sha256=scope, attempt_id=attempt)
+
+    async def test_composition_preserves_native_pagination_and_restricts_transport(self):
+        client = _LinearClient(self.reader, None)
+        self.owner._ensure_linear_client = lambda: client
+        first = dict(id='first', body='first page', createdAt='a', updatedAt='a')
+        second = dict(id='second', body='second page', createdAt='b', updatedAt='b')
+
+        def page(node, cursor=None):
+            return {'issue': {'comments': {
+                'nodes': [node], 'pageInfo': dict(hasNextPage=cursor is not None, endCursor=cursor)}}}
+
+        self.reader._graphql.side_effect = [page(second, 'next'), page(first)]
+        self.assertEqual(await self.owner._publication_comments(self.issue.id), [first, second])
+        first_read, second_read = self.reader._graphql.await_args_list
+        query, variables = first_read.args
+        self.assertEqual(variables, dict(issueId=self.issue.id, after=None))
+        self.assertEqual(second_read.args, (query, dict(issueId=self.issue.id, after='next')))
+
+        with self.assertRaisesRegex(Hold, 'publication_comments_query'):
+            await client._graphql(query + '\nmutation { commentCreate(input:{}) { success } }', variables)
+        with self.assertRaisesRegex(Hold, 'publication_comments_variables'):
+            await client._graphql(query, variables | {'extra': 'unapproved'})
+        with self.assertRaisesRegex(Hold, 'publication_comments_variables'):
+            await client._graphql(query, variables | {'after': []})
+        self.assertEqual(self.reader._graphql.await_count, 2)
+
+        self.reader._graphql.side_effect = [page(first, 'next'), page(first)]
+        with self.assertRaisesRegex(RuntimeError, 'changed or is incomplete'):
+            await self.owner._publication_comments(self.issue.id)
+
+    async def test_provider_ready_projection_requires_native_substantive_evidence(self):
+        thin = self.prepared_attempt(self.raw)
+        self.assertEqual(project_assessment_readiness(self.raw, issue='OFF-1', run=1).readiness,
+                         'reported-ready')
+        self.reader.post_comment = AsyncMock(return_value=False)
+        await self.owner._publish_run_report(self.issue, thin, self.workspace, 'assess')
+        self.assertEqual(self.saved[0]['post_disposition']['event'], 'report-blocked')
+        self.assertNotEqual(self.saved[0]['expected_report_body'], self.deterministic_body(self.raw))
+
+    async def test_native_lost_ack_reconciles_exact_frozen_body_and_disposition(self):
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        attempt = self.prepared_attempt(raw)
+        sent = []
+
+        async def lose_ack(issue_id, body):
+            self.assertEqual(issue_id, self.issue.id)
+            self.assertEqual(self.saved[-1]['expected_report_body'], body)
+            self.assertEqual(self.saved[-1]['post_disposition']['event'], 'complete')
+            sent.append(body)
+            raise OSError('fixture lost acknowledgement')
+
+        self.reader.post_comment = AsyncMock(side_effect=lose_ack)
+        with self.assertRaisesRegex(OSError, 'lost acknowledgement'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        self.reader.fetch_issue.assert_awaited_once()
+        self.reader._graphql.assert_awaited_once()
+        self.assertIn('### Retained original stage evidence', sent[0])
+        self.assertIn('Private provider text', sent[0])
+        self.assertNotEqual(sent[0], self.deterministic_body(raw))
+        attempt.status = 'settling'
+
+        def visible(body):
+            self.reader._graphql.return_value['issue']['comments']['nodes'] = [
+                dict(id='fixture-report', body=body, createdAt='a', updatedAt='a')]
+
+        visible(self.deterministic_body(raw))
+        self.assertFalse(await self.owner._resume_settlement(self.issue, attempt))
+        self.owner._transition.assert_not_awaited()
+        visible(sent[0])
+        self.assertTrue(await self.owner._resume_settlement(self.issue, attempt))
+        self.assertEqual(attempt.settlement_record['phase'], 'complete')
+        self.owner._transition.assert_awaited_once()
+        self.reader.post_comment.assert_awaited_once()
+
+    async def test_native_disposition_holds_changed_qualified_inputs(self):
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        human = dict(id='owner', body='Scope changed', createdAt='a', updatedAt='a')
+        for changed, error in (
+                ('scope', 'Original issue scope/state changed'),
+                ('human', 'Intake ownership/input/dependency context changed'),
+                ('blocker', 'Intake ownership/input/dependency context changed'),
+                ('dependency', 'Explicit dependency input unavailable')):
+            with self.subTest(changed=changed):
+                attempt = self.prepared_attempt(raw)
+                current = deepcopy(self.issue)
+                if changed == 'scope':
+                    current.title = 'Changed issue'
+                if changed == 'blocker':
+                    current.blocked_by = [SimpleNamespace(state='Active')]
+                self.reader.fetch_issue.return_value = current
+                nodes = self.reader._graphql.return_value['issue']['comments']
+                nodes['nodes'] = [human] if changed == 'human' else []
+                attempt.assessed_input = {'dependency_sources': [], 'dependency_observations': []}
+                self.owner._dependency_input_snapshot = AsyncMock(
+                    return_value=([{'known': False}] if changed == 'dependency' else [], []))
+                self.reader.post_comment = AsyncMock(return_value=False)
+                await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+                disposition = self.saved[0]['post_disposition']
+                self.assertEqual(disposition['event'], 'report-blocked')
+                self.assertIn(error, disposition['error'])
+
+    def use_patched_report(self):
+        method = self.source('orchestrator.py', ('_publish_run_report',), owner='Orchestrator',
+                             patched=True, **self.native_bindings)._publish_run_report
+        self.owner._publish_run_report = method.__get__(self.owner)
+
+    def prepared_verified_attempt(self, raw):
+        attempt = self.prepared_attempt(raw)
+        attempt.assessed_input = {'dependency_sources': [], 'dependency_observations': []}
+        self.owner._dependency_input_snapshot = AsyncMock(return_value=([], []))
+        callback = Mock(return_value=(_native_report(raw.decode()), json.loads(raw),
+                                      self.deterministic_body(raw)))
+        return attempt, callback
+
+    async def test_patched_report_preserves_the_default_native_body(self):
+        attempt = self.prepared_attempt(self.raw)
+        self.reader.post_comment = AsyncMock(return_value=False)
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        original = self.saved[0]
+
+        self.use_patched_report()
+        attempt = self.prepared_attempt(self.raw)
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        self.assertEqual(self.saved[0], original)
+        self.assertEqual(self.reader.post_comment.await_args_list[0],
+                         self.reader.post_comment.await_args_list[1])
+        self.assertEqual(self.owner._apply_classification_label.await_count, 2)
+
+    async def test_patched_report_freezes_approved_body_and_recovers_once(self):
+        self.use_patched_report()
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        attempt, callback = self.prepared_verified_attempt(raw)
+        body = self.deterministic_body(raw)
+
+        def lose_ack(kind, issue_id, payload):
+            self.assertEqual((kind, issue_id, payload), ('comment', self.issue.id, {'body': body}))
+            self.assertEqual(self.saved[-1]['expected_report_body'], body)
+            self.assertEqual(self.saved[-1]['post_disposition']['event'], 'complete')
+            raise OSError('fixture lost acknowledgement')
+
+        composition = Mock(linear=Mock(side_effect=lose_ack))
+        composition._recipient_execution.get.return_value = None
+        self.owner._ensure_linear_client = lambda: _LinearClient(self.reader, composition)
+        with self.assertRaisesRegex(OSError, 'lost acknowledgement'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        callback.assert_called_once_with(self.issue.id, attempt.session_id, 1)
+        self.owner._apply_classification_label.assert_not_awaited()
+        with self.assertRaisesRegex(RuntimeError, 'unfrozen native'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        attempt.status = 'settling'
+        posted = dict(id='receipt', body=body, createdAt='a', updatedAt='a')
+        self.reader._graphql.return_value['issue']['comments']['nodes'] = [posted]
+        self.assertTrue(await self.owner._resume_settlement(self.issue, attempt))
+        self.assertEqual(attempt.settlement_record['phase'], 'complete')
+        self.owner._transition.assert_awaited_once()
+        composition.linear.assert_called_once()
+        callback.assert_called_once()
+
+    async def test_patched_report_refuses_native_holds_and_provider_mismatch(self):
+        self.use_patched_report()
+        self.reader.post_comment = AsyncMock(return_value=False)
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        for changed in ('thin', 'blocker', 'result-envelope', 'workspace-report', 'settlement-custody'):
+            with self.subTest(changed=changed):
+                attempt, callback = self.prepared_verified_attempt(self.raw if changed == 'thin' else raw)
+                current = deepcopy(self.issue)
+                self.reader.fetch_issue.return_value = current
+                if changed == 'blocker':
+                    current.blocked_by = [SimpleNamespace(state='Active')]
+                if changed == 'result-envelope':
+                    attempt.result_text += '\n'
+                if changed == 'workspace-report':
+                    shadow = self.workspace / '.stokowski' / 'report.json'
+                    shadow.parent.mkdir()
+                    shadow.write_bytes(wire(json.loads(raw) | {'summary': 'Unverified local shadow'}))
+                if changed == 'settlement-custody':
+                    async def replaced_settlement(*args):
+                        attempt.settlement_record = None
+                        return current
+                    self.reader.fetch_issue.side_effect = replaced_settlement
+                with self.assertRaisesRegex(RuntimeError, 'Verified assessment'):
+                    await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                         verified_assessment_report=callback)
+                self.assertEqual(self.saved, [])
+                if changed == 'workspace-report':
+                    shadow.unlink()
+        self.reader.post_comment.assert_not_awaited()
+
+    async def test_patched_report_keeps_the_existing_report_only_effect_scope(self):
+        self.use_patched_report()
+        self.reader.post_comment = AsyncMock(return_value=True)
+        self.reader.upload_file = AsyncMock()
+        self.publication.retain_working_source = Mock()
+        self.publication.verified_stage_evidence = Mock(return_value={'artifacts': []})
+        artifacts = self.native_bindings['artifacts_mod']
+        artifacts.clear = Mock()
+
+        blocked = wire(json.loads(self.raw) | {'verdict': 'blocked', 'classification': 'chore'})
+        attempt, callback = self.prepared_verified_attempt(blocked)
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                             verified_assessment_report=callback)
+        self.assertTrue(attempt.report_posted)
+        self.assertEqual(self.saved[0]['post_disposition']['event'], 'report-blocked')
+        self.reader.post_comment.assert_awaited_once_with(self.issue.id, self.deterministic_body(blocked))
+        self.reader.post_comment.reset_mock()
+        self.owner._apply_classification_label.assert_not_awaited()
+
+        raw = json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]}
+        raw['routing']['working_source'] = {'ref': 'unapproved'}
+        attempt, callback = self.prepared_verified_attempt(wire(raw))
+        with self.assertRaisesRegex(RuntimeError, 'lacks current native admission evidence'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        self.publication.retain_working_source.assert_not_called()
+        callback.assert_not_called()
+
+        artifacts.collect.return_value = [self.workspace / 'artifact.txt']
+        attempt, callback = self.prepared_verified_attempt(blocked)
+        with self.assertRaisesRegex(RuntimeError, 'cannot upload artifacts'):
+            await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
+                                                 verified_assessment_report=callback)
+        self.reader.upload_file.assert_not_awaited()
+        self.reader.post_comment.assert_not_awaited()
+
+    async def test_composed_report_uses_only_the_qualified_native_entry_point(self):
+        from test_native_remote_authority import RECORD, make
+
+        fixture, remote = make()
+        composition = NativeComposition(remote, self.workspace / 'unused')
+        claim = RECORD
+        self.issue.id = claim.lease.fence.scope.key.issue_id
+        self.owner._issue_state_runs = {self.issue.id: 1}
+        self.owner._issue_current_state = {self.issue.id: 'assess'}
+        self.publication.verified_stage_evidence = Mock(return_value={'artifacts': []})
+        self.native_bindings['artifacts_mod'].clear = Mock()
+        self.reader.post_comment = AsyncMock(return_value=False)
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        attempt, _ = self.prepared_verified_attempt(raw)
+        attempt.session_id = claim.attempt_id
+        attempt.settlement_record['session_id'] = claim.attempt_id
+        body = self.deterministic_body(raw)
+        execution = _FreshAssessmentExecution(claim, self.workspace, SimpleNamespace(winner=asyncio.current_task()),
+                                              _VerifiedAssessmentReport(1, raw, body))
+        composition._fresh_assessment.set(execution)
+        composition._running.set((None, claim))
+
+        native_cls = type(self.owner)
+        for name in (*_COMMENT_SLOTS, '_reconcile'):
+            if not hasattr(native_cls, name):
+                setattr(native_cls, name, AsyncMock())
+
+        def install(owner_type):
+            module = SimpleNamespace(Orchestrator=owner_type, LinearClient=lambda: self.reader, logger=Mock())
+            install_sinks(module, composition)
+            self.owner._ensure_linear_client = module.LinearClient
+
+        unpatched = type('Unpatched', (native_cls,), {})
+        install(unpatched)
+        with self.assertRaisesRegex(Hold, 'assessment_native_report_sink'):
+            await unpatched._publish_run_report(self.owner, self.issue, attempt, self.workspace, 'assess')
+        self.assertEqual(self.saved, [])
+        self.reader.post_comment.assert_not_awaited()
+
+        self.use_patched_report()
+        patched_method = self.owner._publish_run_report.__func__
+        del self.owner._publish_run_report
+        @wraps(patched_method)
+        async def incompatible(*args, **kwargs):
+            self.fail('Composed marked report reached a different callable')
+        lookalike = type('Lookalike', (native_cls,), {'_publish_run_report': incompatible})
+        install(lookalike)
+        with self.assertRaisesRegex(Hold, 'assessment_native_report_sink'):
+            await lookalike._publish_run_report(self.owner, self.issue, attempt, self.workspace, 'assess')
+        self.assertEqual(self.saved, [])
+        native_cls._publish_run_report = patched_method
+        install(native_cls)
+        self.assertIsNotNone(composition._verified_assessment_report_sink)
+
+        fixture.claim = claim
+        composition.current = Mock(return_value=claim)
+        composition.retained_linear = Mock()
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        self.assertTrue(attempt.report_posted)
+        self.assertEqual(self.saved[0]['expected_report_body'], body)
+        self.assertEqual(self.saved[0]['post_disposition']['event'], 'complete')
+        op = composition._linear_operation(claim.lease.fence, claim.attempt_id, '_publish_run_report',
+                                           'comment', {'body': body})
+        self.assertEqual([data for path, data, _ in fixture.calls if path == '/v1/linear/comment'],
+                         [{'operation': asdict(op), 'attempt_id': claim.attempt_id, 'body': body}])

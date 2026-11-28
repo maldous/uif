@@ -14,13 +14,15 @@ const checked = (condition) => need(condition, 'chat_tool_envelope_invalid', 400
 function pinRoute(route) {
   fields(route, 'provider', 'model', 'upstream', 'account', 'credentialEpoch');
   checked(token(route.account) && sha(route.credentialEpoch) && string(route.model, 128));
+  checked(!['auto', 'default', 'latest'].includes(route.model.toLowerCase().split('/').at(-1).split(':')[0]));
   if (route.provider === 'openrouter') {
-    checked(typeof route.upstream === 'string' && /^[a-z0-9_.-]{1,64}$/.test(route.upstream) &&
-      /^[a-z0-9_.-]+\/[a-z0-9_.-]+:free$/.test(route.model));
+    checked(typeof route.upstream === 'string' && route.upstream.length <= 64 &&
+      /^[a-z0-9_.-]+(?:\/[a-z0-9_.-]+){0,3}(?![\s\S])/.test(route.upstream) &&
+      /^[a-z0-9_.-]+\/[a-z0-9_.-]+:free(?![\s\S])/.test(route.model));
     return 'https://openrouter.ai/api/v1/chat/completions';
   }
   checked(route.provider === 'groq' && route.upstream === null &&
-    /^[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)?$/.test(route.model));
+    /^[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)?(?![\s\S])/.test(route.model));
   return 'https://api.groq.com/openai/v1/chat/completions';
 }
 
@@ -45,7 +47,8 @@ function base({ route, attempt, originalId, deadline, maxOutputTokens }) {
     Number.isSafeInteger(maxOutputTokens) && maxOutputTokens > 0 && maxOutputTokens <= 4096);
   const body = { model: route.model, stream: false, max_completion_tokens: maxOutputTokens };
   if (route.provider === 'openrouter') {
-    body.provider = { only: [route.upstream], allow_fallbacks: false, max_price: { prompt: 0, completion: 0 } };
+    body.provider = { only: [route.upstream], allow_fallbacks: false, require_parameters: true,
+      max_price: { prompt: 0, completion: 0, request: 0 } };
   }
   return { url, body };
 }

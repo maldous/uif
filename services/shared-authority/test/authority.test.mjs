@@ -97,19 +97,21 @@ function fixture() {
   };
   ctx.restart = () => new Authority(storage, config, options);
   ctx.a = ctx.restart();
-  ctx.call = (role, path, body) => ctx.a.handle('/v1/' + path, body, peers[role]);
+  ctx.call = (role, path, body, permit) => ctx.a.handle('/v1/' + path, body, peers[role], permit);
   ctx.resume = () =>
     ctx.call('control', 'control', {
       request_id: 'resume',
       expected_coordinator_epoch: 1,
       stopped: false,
     });
-  ctx.addGrant = async (s = scope, attempt = 'attempt', until = time + 800, review_of = {}) => {
+  ctx.addGrant = async (s = scope, attempt = 'attempt', until = time + 800, review_of = {},
+                        fresh_assessment) => {
     const grant = {
       scope: s,
       source,
       sessions: [peers.native.session_id, peers.morgan.session_id],
-      attempt_ids: [attempt, attempt + '-next'],
+      attempt_ids: [attempt, fresh_assessment?.report_binding ?
+        attempt.slice(0,-'assess'.length) + 'investigate' : attempt + '-next'],
       reconstruction_sha256: hex('c'),
       valid_until: until,
       allow_comments: true,
@@ -123,11 +125,14 @@ function fixture() {
         evidence_sha256: 'a'.repeat(64),
       },
     };
+    if (fresh_assessment !== undefined) grant.fresh_assessment = fresh_assessment;
     await ctx.call('control', 'grant', { request_id: 'g-' + attempt, grant, previous_sha256: null });
     return {
       scope: s,
       source,
-      request_id: 'claim-' + attempt,
+      request_id: fresh_assessment ? await digest({claim:s, recovery:grant.reconstruction_sha256,
+        authority:identity(config, peers.native), epoch:2}) : 'claim-' + attempt,
+      ...(fresh_assessment ? {first_intent_sha256:fresh_assessment.first_intent_sha256} : {}),
       attempt_id: attempt,
       expected_coordinator_epoch: 2,
       reconstruction_sha256: hex('c'),
@@ -283,6 +288,120 @@ test('distinct peer claims survive scoped expiry and fence a same-issue race', a
   assert.equal((await f.call('morgan', 'status', {})).coordinator_epoch, 2);
   assert.equal(f.calls.length, 0);
 });
+
+test('two qualified account sends overlap a Morgan original and fence a competing claim',
+  { timeout: 5000 }, async () => {
+    const f = fixture();
+    const reviewRoute = { ...route, account_id: 'b'.repeat(32), credential_epoch_sha256: hex('7') };
+    f.config.reviewer_route = reviewRoute;
+    f.config.reviewer_opening_liability = {
+      original_id: 'fixture-opening', millineurons: 2489344, receipt_sha256: hex('4'),
+    };
+    f.a = f.restart();
+    await f.resume();
+
+    const newIssue = () => ({ ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } });
+    const authorClaim = await f.addGrant(scope, 'raced-author');
+    const otherClaim = { ...authorClaim, request_id: 'competing-author' };
+    const movedClaim = { ...authorClaim, request_id: 'moved-author',
+      scope: { ...scope, key: { ...scope.key, project_id: crypto.randomUUID() } } };
+    const races = await Promise.allSettled([
+      f.call('native', 'claim', authorClaim), f.call('morgan', 'claim', otherClaim),
+      f.call('morgan', 'claim', movedClaim),
+    ]);
+    assert.equal(races[2].status, 'rejected');
+    assert.match(races[2].reason.message, /scope_or_source_unbound/);
+    const winners = races.slice(0, 2).map((result, index) => result.status === 'fulfilled' ? index : -1)
+      .filter((index) => index !== -1);
+    assert.equal(winners.length, 1);
+    const [winner] = winners, loser = 1 - winner;
+    const roles = ['native', 'morgan'], original = [authorClaim, otherClaim][winner];
+    const authorLease = races[winner].value.lease;
+    assert.match(races[loser].reason.message, /issue_or_attempt_already_claimed/);
+    assert.deepEqual(await f.call(roles[winner], 'claim/observe', original), races[winner].value);
+
+    const reviewScope = newIssue(), reviewPeer = roles[loser];
+    const reviewClaim = await f.addGrant(reviewScope, 'review-author', start + 600,
+      { 'review-author-next': 'review-author' });
+    const { lease: reviewLease } = await f.call(reviewPeer, 'claim', reviewClaim);
+    const authorQuota = await f.quota();
+    const preparation = await f.request(reviewLease, authorQuota,
+      { attempt: 'review-author', id: hex('8') });
+    await f.call(reviewPeer, 'send', preparation);
+    const authorReceipt = await f.call(reviewPeer, 'original', { operation: preparation.intent.operation });
+    const prompt = 'exact independent synthetic review';
+    await f.call('control', 'review/bind', {
+      request_id: 'fixture-review-bind', current: reviewLease,
+      candidate: { kind: 'uif.native-review-candidate/1', issue_id: reviewScope.key.issue_id,
+        scope_sha256: hex('c'), author_attempt_id: 'review-author', review_attempt_id: 'review-author-next',
+        source, candidate_tree: null, review_prompt_sha256: await digestBytes(Buffer.from('prepared review')) },
+      author_operation: preparation.intent.operation, author_receipt_sha256: authorReceipt.terminal.receipt_sha256,
+      checkpoint_receipt_sha256: hex('d'), send_prompt_sha256: await digestBytes(Buffer.from(prompt)),
+    });
+    await f.call(reviewPeer, 'claim/attempt', { request_id: 'fixture-review-advance', current: reviewLease,
+      expected_attempt_id: 'review-author', attempt_id: 'review-author-next' });
+    const reviewerQuota = await f.quota(0, reviewRoute);
+    const author = await f.request(authorLease, authorQuota, { attempt: 'raced-author', id: hex('1') });
+    const reviewer = await f.request(reviewLease, reviewerQuota,
+      { attempt: 'review-author-next', id: hex('2'), selectedRoute: reviewRoute, prompt });
+
+    const morganScope = newIssue(), morganAttempt = 'morgan-independent';
+    const morganClaim = await f.addGrant(morganScope, morganAttempt);
+    const { lease: morganLease } = await f.call('morgan', 'claim', morganClaim);
+    const report = 'synthetic deterministic check result';
+    const comment = { operation: { fence: morganLease.fence, original_id: 'fixture-morgan-comment',
+      payload_sha256: await digest({ kind: 'uif.linear-comment/1', attempt_id: morganAttempt,
+        issue_id: morganScope.key.issue_id, body: report }) }, attempt_id: morganAttempt, body: report };
+
+    const bothEntered = Promise.withResolvers(), finish = Promise.withResolvers(), accounts = new Set();
+    f.respond = async (outgoing) => {
+      if (outgoing.url === 'https://api.linear.app/graphql') {
+        assert.equal(accounts.size, 2);
+        const { variables: { input } } = await outgoing.json();
+        assert.deepEqual([input.issueId, input.body], [morganScope.key.issue_id, report]);
+        return Response.json({ data: { commentCreate: { success: true,
+          comment: { id: input.id, body: input.body, issue: { id: input.issueId } } } } });
+      }
+      const account = new URL(outgoing.url).pathname.split('/')[4];
+      assert.ok([route.account_id, reviewRoute.account_id].includes(account));
+      assert.ok(!accounts.has(account));
+      accounts.add(account);
+      if (accounts.size === 2) bothEntered.resolve();
+      await finish.promise;
+      return Response.json({ model: route.model, choices: [{}], usage: { neurons: 0.007 } },
+        { headers: { 'cf-aig-log-id': 'fixture-' + account } });
+    };
+
+    const sends = Promise.all([
+      f.call(roles[winner], 'send', author), f.call(reviewPeer, 'send', reviewer),
+    ]);
+    try {
+      await Promise.race([bothEntered.promise, sends]);
+      assert.equal(accounts.size, 2);
+      await assert.rejects(f.call(roles[loser], 'send', author), /original_in_flight/);
+      const duplicate = await f.request(authorLease, authorQuota, { attempt: 'raced-author', id: hex('3') });
+      duplicate.intent.operation.fence = { ...authorLease.fence, owner_session: f.peers[roles[loser]].session_id };
+      await assert.rejects(f.call(roles[loser], 'send', duplicate), /claim_fence_changed/);
+      for (const { intent } of [author, reviewer]) {
+        assert.deepEqual({ ...f.a.row('SELECT account,amount,state FROM effects WHERE id=?',
+          intent.operation.original_id) }, { account: intent.route.account_id,
+          amount: intent.maximum_millineurons, state: 'sending' });
+      }
+      const racerKey = `${scope.key.workspace_id}:${scope.key.issue_id}`;
+      assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claims WHERE issue=?', racerKey).n, 1);
+      assert.equal(f.a.row('SELECT COUNT(*) AS n FROM effects WHERE issue=? AND account IS NOT NULL', racerKey).n, 1);
+      const result = await f.call('morgan', 'linear/comment', comment);
+      assert.deepEqual(await f.call('morgan', 'linear/receipt', { operation: comment.operation }), result);
+    } finally {
+      finish.resolve();
+      await sends;
+    }
+    for (const [peer, body] of [[roles[winner], author], [reviewPeer, reviewer]]) {
+      const settled = await f.call(peer, 'original', { operation: body.intent.operation });
+      assert.equal(settled.terminal.status, 'verified');
+    }
+    assert.equal(f.calls.length, 4);  // prerequisite author, two overlapping sends, Morgan comment
+  });
 
 test('durable stop survives reconstruction, original claim is observable, no recovered permission', async () => {
   const f = fixture();
@@ -506,6 +625,56 @@ test('checkpoint survives reconstruction, preserves opening and unknown debt, an
   assert.equal(f.calls.length, 0);
 });
 
+test('quota read reports only current account reservation debt without altering its durable receipt', async () => {
+  const f = fixture();
+  const review = { ...route, account_id: 'b'.repeat(32), credential_epoch_sha256: hex('7') };
+  const opening = 2489344;
+  f.config.reviewer_route = review;
+  f.config.reviewer_opening_liability = { original_id: 'opening', millineurons: opening,
+    receipt_sha256: hex('4') };
+  f.a = f.restart();
+  const first = await admitted(f);
+  const authorQuota = await f.quota(500);
+  const reviewQuota = await f.quota(500, review);
+  const original = f.a.usage(route);
+  const firstRead = (peer, exact = route) => f.call(peer, 'usage/read', { route: exact });
+  for (const role of ['native', 'morgan', 'quota']) {
+    assert.deepEqual(await firstRead(role), { ...original, reservation_snapshot: {
+      receipt_sha256: authorQuota.receipt_sha256, observed_at: start,
+      debt_millineurons: 0, ceiling_breached: false,
+    } });
+  }
+  await assert.rejects(firstRead('control'), /peer_role_not_granted/);
+  await assert.rejects(firstRead('native', { ...route, gateway_id: 'wrong' }), /usage_unavailable/);
+
+  f.setTime(start + 1);
+  await f.call('native', 'send', await f.request(first, authorQuota));
+  const scope2 = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
+  const second = (await f.call('native', 'claim', await f.addGrant(scope2, 'two'))).lease;
+  f.respond = async () => { throw new Error('fixture lost reply'); };
+  await assert.rejects(f.call('native', 'send', await f.request(second, authorQuota,
+    { id: hex('2'), attempt: 'two' })), /original_external_effect_unknown/);
+  f.a = f.restart();
+  assert.deepEqual((await firstRead('native')).reservation_snapshot, {
+    receipt_sha256: authorQuota.receipt_sha256, observed_at: start + 1,
+    debt_millineurons: 2 * models.get(route.model), ceiling_breached: false,
+  });
+  assert.deepEqual((await firstRead('native', review)).reservation_snapshot, {
+    receipt_sha256: reviewQuota.receipt_sha256, observed_at: start + 1,
+    debt_millineurons: opening, ceiling_breached: false,
+  });
+  assert.deepEqual(f.a.usage(route), original);
+  f.setTime(start + 2);
+  const refreshed = await f.quota(501);
+  assert.deepEqual((await firstRead('native')).reservation_snapshot, {
+    receipt_sha256: refreshed.receipt_sha256, observed_at: start + 2,
+    debt_millineurons: models.get(route.model), ceiling_breached: false,
+  });
+  f.setTime(start + 93);
+  assert.deepEqual(await firstRead('native'), f.a.usage(route));
+  assert.equal(f.calls.length, 2);
+});
+
 test('reported reservation overrun freezes account including unrelated issue and restart', async () => {
   const f = fixture(),
     lease = await admitted(f),
@@ -518,6 +687,10 @@ test('reported reservation overrun freezes account including unrelated issue and
     );
   await assert.rejects(f.call('native', 'send', body), /maximum_breached/);
   f.a = f.restart();
+  assert.deepEqual((await f.call('native', 'usage/read', { route })).reservation_snapshot, {
+    receipt_sha256: q.receipt_sha256, observed_at: start,
+    debt_millineurons: models.get(route.model) + 1000, ceiling_breached: true,
+  });
   const scope2 = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
   const lease2 = (await f.call('native', 'claim', await f.addGrant(scope2, 'two'))).lease;
   await assert.rejects(
@@ -1539,6 +1712,116 @@ test('normal startup bind reconciles the same authenticated original without reb
   assert.equal(reply.expires_at, start + 5);
 });
 
+test('a later explicit stop fences a prepared normal activation when already stopped', async () => {
+  const f = fixture();
+  const activate = {
+    request_id: 'prepared-normal', expected_coordinator_epoch: 1, stopped: false,
+    startup: { stage: 'uif1313-normal-fixture', session_id: f.peers.native.session_id,
+      evidence_sha256: hex('3'), coordinator_epoch: 2, previous_request_id: null },
+  };
+  const stop = {request_id: 'operator-stop', expected_coordinator_epoch: 1, stopped: true};
+  const stopped = await f.call('control', 'control', stop);
+  f.a = f.restart();
+  await assert.rejects(f.call('control', 'control', activate), /control_epoch_changed/);
+  assert.deepEqual(stopped, {coordinator_epoch: 2, stopped: true});
+  assert.deepEqual(await f.call('control', 'control', stop), stopped);
+  const challenge = {unit: 'stokowski-foo.service', stage: activate.startup.stage, nonce: 'cold-start'};
+  await assert.rejects(f.call('native', 'startup/read', challenge), /startup_not_bound/);
+
+  const again = {...stop, request_id: 'operator-stop-again', expected_coordinator_epoch: 2};
+  assert.deepEqual(await f.call('control', 'control', again), {coordinator_epoch: 3, stopped: true});
+  assert.deepEqual(await f.call('control', 'control', stop), stopped);
+  const state = await f.call('control', 'status', {});
+  assert.equal(state.coordinator_epoch, 3);
+  assert.equal(state.stopped, true);
+  assert.equal(state.normal_startup_request_id, null);
+
+  const current = {...activate, request_id: 'new-normal-activation', expected_coordinator_epoch: 3,
+    startup: {...activate.startup, coordinator_epoch: 4}};
+  const started = await f.call('control', 'control', current);
+  assert.equal(started.coordinator_epoch, 4);
+  // Reading the historical stop receipt never stops the new commissioned run.
+  assert.deepEqual(await f.call('control', 'control', again), {coordinator_epoch: 3, stopped: true});
+  f.a = f.restart();
+  assert.equal((await f.call('native', 'startup/read', challenge)).coordinator_epoch, 4);
+});
+
+test('one control action activates the installed normal release for unattended restarts', async () => {
+  const f = fixture();
+  const unit = 'stokowski-foo.service';
+  const startup = {
+    stage: 'uif1313-normal-fixture',
+    session_id: f.peers.native.session_id,
+    evidence_sha256: hex('3'),
+    coordinator_epoch: 2,
+    previous_request_id: null,
+  };
+  const activate = {
+    request_id: 'activate-installed-release',
+    expected_coordinator_epoch: 1,
+    stopped: false,
+    startup,
+  };
+  const challenge = { unit, stage: startup.stage, nonce: 'native-restart' };
+  await assert.rejects(f.call('native', 'control', activate), /peer_role_not_granted/);
+  await assert.rejects(f.call('control', 'control', { ...activate, stopped: true }), /invalid_startup_binding/);
+  await assert.rejects(f.call('control', 'control', {
+    ...activate, startup: { ...startup, session_id: f.peers.morgan.session_id },
+  }), /invalid_startup_binding/);
+  await assert.rejects(f.call('control', 'control', {
+    ...activate, startup: { ...startup, stage: 'uif1313-idle-a22fbb2' },
+  }), /invalid_startup_binding/);
+  await assert.rejects(f.call('control', 'control', {
+    ...activate, startup: { ...startup, coordinator_epoch: 1 },
+  }), /normal_startup_selection_changed/);
+  await assert.rejects(f.call('control', 'control', { ...activate, expected_coordinator_epoch: 2 }), /control_epoch_changed/);
+  assert.equal((await f.call('control', 'status', {})).stopped, true);
+
+  const result = await f.call('control', 'control', activate);
+  assert.deepEqual(result, { coordinator_epoch: 2, stopped: false, expected_coordinator_epoch: 1,
+    startup: { ...startup, unit } });
+  f.a = f.restart();
+  assert.deepEqual(await f.call('control', 'control', activate), result);
+  f.setTime(start + 86_400);
+  const proof = await f.call('native', 'startup/read', challenge);
+  assert.equal(proof.coordinator_epoch, 2);
+  assert.equal(proof.expires_at, f.clock() + 5);
+  assert.equal((await f.call('control', 'status', {})).normal_startup_request_id, activate.request_id);
+  await assert.rejects(f.call('control', 'startup/bind', {
+    request_id: 'old-binder', unit, stage: startup.stage, session_id: startup.session_id,
+    coordinator_epoch: 2, valid_until: f.clock() + 300, evidence_sha256: hex('3'),
+  }), /normal_startup_already_selected/);
+  await assert.rejects(f.call('native', 'startup/read', { ...challenge, stage: 'other-release' }), /startup_not_bound/);
+  await assert.rejects(f.call('morgan', 'startup/read', challenge), /peer_role_not_granted/);
+
+  const replacement = { ...startup, stage: 'uif1313-normal-replacement',
+    previous_request_id: activate.request_id };
+  const replace = { ...activate, request_id: 'activate-replacement',
+    expected_coordinator_epoch: 2, startup: replacement };
+  await f.call('control', 'control', replace);
+  await assert.rejects(f.call('control', 'control', {
+    ...replace, request_id: 'delayed-old-release', startup: { ...replacement, stage: startup.stage },
+  }), /normal_startup_selection_changed/);
+  await assert.rejects(f.call('native', 'startup/read', challenge), /startup_not_bound/);
+  const replacementChallenge = { ...challenge, stage: replacement.stage };
+  assert.equal((await f.call('native', 'startup/read', replacementChallenge)).coordinator_epoch, 2);
+
+  await f.call('control', 'control', {
+    request_id: 'operator-stop', expected_coordinator_epoch: 2, stopped: true,
+  });
+  f.a = f.restart();
+  await assert.rejects(f.call('native', 'startup/read', replacementChallenge), /startup_not_bound/);
+  assert.deepEqual(await f.call('control', 'control', activate), result);
+  assert.equal((await f.call('control', 'status', {})).stopped, true);
+  await f.call('control', 'control', {
+    ...replace, request_id: 'resume-installed', expected_coordinator_epoch: 3,
+    startup: { ...replacement, coordinator_epoch: 4, previous_request_id: replace.request_id },
+  });
+  assert.equal((await f.call('native', 'startup/read', replacementChallenge)).coordinator_epoch, 4);
+  f.setTime(f.peers.native.expires_at);
+  await assert.rejects(f.call('native', 'startup/read', replacementChallenge), /access_assertion_expired/);
+});
+
 test('peer transfer and return keep one claim; an independent hold does not stop refill', async () => {
   const f = fixture(), first = await admitted(f);
   const nextScope = () => ({ ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } });
@@ -1574,6 +1857,363 @@ test('peer transfer and return keep one claim; an independent hold does not stop
   assert.deepEqual(await f.call('morgan', 'claim/observe', refillReq), refill);
   assert.deepEqual((await f.call('native', 'claim/observe', heldReq)).lease, held);
   assert.equal(f.calls.length, 0);
+});
+
+test('ordinary handoff preserves predecessor work and its original stays with the submitting peer', async () => {
+  for (const effect of ['absent', 'verified', 'sending']) {
+    const f = fixture();
+    await f.resume();
+    const claim = await f.addGrant();
+    const prior = (await f.call('morgan', 'claim', claim)).lease;
+    if (effect !== 'absent') {
+      const request = await f.request(prior, await f.quota(), { attempt: claim.attempt_id });
+      if (effect === 'sending') {
+        f.respond = async () => { throw new Error('simulated destination response loss'); };
+        await assert.rejects(f.call('morgan', 'send', request), /external_effect_unknown/);
+      } else {
+        await f.call('morgan', 'send', request);
+      }
+    }
+    const handoff = {current: prior, successor_session: f.peers.native.session_id,
+      expected_coordinator_epoch: prior.fence.coordinator_epoch,
+      quiesced_sha256: hex('7'), reconstruction_sha256: claim.reconstruction_sha256};
+    const fact = {kind: 'handoff', ...handoff};
+    await assert.rejects(f.call('control', 'attest', {request_id: 'invented-purpose',
+      fact: {...fact, first_dispatch_purpose: 'continue'}}), /invalid_fields/);
+    await f.call('control', 'attest', {request_id: 'witness-transfer', fact});
+    const body = {...handoff, request_id: 'peer-transfer'};
+    const {installation_sha256} = await f.call('native', 'status', {});
+    const lookup = {installation_sha256, session_id: f.peers.morgan.session_id, request_id: body.request_id};
+    await assert.rejects(f.call('native', 'handoff', body), /original_owner_required/);
+    if (effect === 'sending') {
+      await assert.rejects(f.call('morgan', 'handoff', body), /uncertain_original_effect/);
+      await assert.rejects(f.call('control', 'transition/original', lookup), /original_transition_absent/);
+    } else {
+      const moved = await f.call('morgan', 'handoff', body);
+      f.a = f.restart();
+      assert.equal(moved.request_kind, 'uif.shared-lease.handoff/3');
+      assert.deepEqual(Object.keys(moved).sort(), ['lease', 'request_id', 'request_kind', 'request_sha256']);
+      assert.deepEqual(await f.call('control', 'transition/original', lookup), moved);
+      assert.deepEqual(await f.call('morgan', 'transition/original', lookup), moved);
+      await assert.rejects(f.call('native', 'transition/original', lookup), /original_owner_required/);
+      await assert.rejects(f.call('native', 'transition/original', {...lookup, session_id: f.peers.native.session_id}),
+        /original_transition_absent/);
+      assert.deepEqual(await f.call('native', 'claim/read', {
+        project: 'OffMenu', identifier: claim.attempt_id, by_attempt: true}),
+      {project: 'OffMenu', attempt_id: claim.attempt_id, lease: moved.lease});
+    }
+    assert.equal(f.calls.length, effect === 'absent' ? 0 : 1);
+  }
+});
+
+async function unstartedFixture(from = 'native') {
+  const f = fixture(), to = from === 'native' ? 'morgan' : 'native';
+  await f.resume();
+  const claim = await f.addGrant(), current = (await f.call(from, 'claim', claim)).lease;
+  const revoke = { request_id: 'freeze-original', fence: current.fence, unstarted_attempt_id: claim.attempt_id };
+  const handoff = {
+    current, successor_session: f.peers[to].session_id, expected_coordinator_epoch: 2,
+    quiesced_sha256: hex('7'), reconstruction_sha256: claim.reconstruction_sha256,
+    recovery: { attempt_id: claim.attempt_id, revocation_id: revoke.request_id },
+  };
+  const attest = { request_id: 'witness', fact: { kind: 'handoff', ...handoff } };
+  const accept = { request_id: 'accept', ...handoff };
+  return { f, from, to, claim, current, revoke, attest, accept };
+}
+
+for (const fromRole of ['native', 'morgan']) {
+  test('named successor recovers an unstarted assignment from an absent ' + fromRole, async () => {
+    const { f, to, claim, current, revoke, attest, accept } = await unstartedFixture(fromRole);
+    f.setTime(current.expires_at + 1);
+    await assert.rejects(f.call(to, 'handoff', accept), /exact_unstarted_revocation_required/);
+    await assert.rejects(f.call('control', 'attest', attest), /exact_unstarted_revocation_required/);
+    const revoked = await f.call('control', 'revoke', revoke);
+    f.a = f.restart();
+    assert.deepEqual(await f.call('control', 'revoke', revoke), revoked);
+    await assert.rejects(f.call(to, 'handoff', accept), /independent_original_evidence_missing/);
+    await assert.rejects(f.call('control', 'attest', { ...attest,
+      fact: { ...attest.fact, recovery: { ...accept.recovery, revocation_id: 'another-revocation' } } }),
+      /exact_unstarted_revocation_required/);
+    await f.call('control', 'attest', attest);
+    await assert.rejects(f.call('quota', 'handoff', accept), /peer_role_not_granted/);
+    await assert.rejects(f.call(to, 'handoff', { ...accept, successor_session: f.peers[fromRole].session_id }),
+      /named_successor_required/);
+    await assert.rejects(f.call(to, 'handoff', { ...accept, quiesced_sha256: hex('8') }),
+      /independent_original_evidence_missing/);
+    const races = await Promise.allSettled([accept, { ...accept, request_id: 'competing-accept' }]
+      .map((request) => f.call(to, 'handoff', request)));
+    assert.equal(races.filter((r) => r.status === 'fulfilled').length, 1);
+    const moved = races.find((r) => r.status === 'fulfilled').value;
+    assert.equal(moved.request_kind, 'uif.shared-lease.recover-unstarted/1');
+    assert.equal(moved.attempt_id, claim.attempt_id);
+    assert.equal(moved.lease.fence.generation, 2);
+    assert.equal(moved.lease.fence.owner_session, f.peers[to].session_id);
+    assert.notEqual(moved.lease.fence.lease_id, current.fence.lease_id);
+    f.a = f.restart();
+    const status = await f.call(to, 'status', {});
+    const lookup = { session_id: f.peers[to].session_id, request_id: moved.request_id,
+      installation_sha256: status.installation_sha256 };
+    assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);
+    assert.deepEqual(await f.call(to, 'handoff', { ...accept, request_id: moved.request_id }), moved);
+    assert.deepEqual(await f.call(to, 'claim/read', { project: 'OffMenu', by_attempt: true,
+      identifier: claim.attempt_id }), { project: 'OffMenu', attempt_id: claim.attempt_id, lease: moved.lease });
+    // No predecessor call was needed after its original claim.
+    await assert.rejects(f.call(fromRole, 'renew', { current, request_id: 'late' }), /claim_fence_changed/);
+    assert.equal(f.calls.length, 0);
+  });
+}
+
+test('a recovered native recipient cannot borrow the marked assessment entry mechanism', async () => {
+  const { f, to, claim, revoke, attest, accept } = await unstartedFixture('morgan');
+  await f.call('control', 'revoke', revoke);
+  await f.call('control', 'attest', attest);
+  const moved = await f.call(to, 'handoff', accept);
+  f.a = f.restart();
+  const current = await f.call(to, 'claim/read', {
+    project: 'OffMenu', identifier: claim.attempt_id, by_attempt: true,
+  });
+  assert.deepEqual(current.lease, moved.lease);
+  const input = {current: current.lease, attempt_id: current.attempt_id, first_intent_sha256: moved.request_sha256};
+  await assert.rejects(f.call(to, 'dispatch/observe', input), /assessment_dispatch_not_selected/);
+  await assert.rejects(f.call(to, 'dispatch/enter', input), /assessment_dispatch_not_selected/);
+  assert.equal(f.a.row('SELECT count(*) AS n FROM assessment_dispatch').n, 0);
+  assert.equal(f.calls.length, 0);
+});
+
+async function recoveredNative() {
+  const { f, revoke, attest, accept } = await unstartedFixture('morgan');
+  await f.call('control','revoke',revoke);
+  await f.call('control','attest',attest);
+  const moved = await f.call('native','handoff',accept);
+  return {f, moved, input:{current:moved.lease,attempt_id:moved.attempt_id,original:{
+    installation_sha256:f.a.realm,session_id:f.peers.native.session_id,
+    request_id:moved.request_id,request_sha256:moved.request_sha256,
+  }}};
+}
+
+test('only the new native recovery entrant receives permission; an uncertain reply is observe-only', async () => {
+  const { f, input, moved } = await recoveredNative();
+  const enter = value => f.call('native','recovery/enter',value);
+  const observe = () => f.call('native','recovery/observe',input);
+  await assert.rejects(f.call('morgan','recovery/enter',input), /peer_role_not_granted/);
+  for (const key of Object.keys(input.original)) {
+    await assert.rejects(enter({...input, original:{...input.original, [key]:hex('e')}}), /native_recovery_original_not_current/);
+  }
+  await assert.rejects(enter({...input,attempt_id:'other'}), /native_recovery_original_not_current/);
+  assert.deepEqual(await observe(), {entered:false});
+  const oldLease = input.current;
+  f.setTime(start + 1);
+  input.current = (await f.call('native','renew',{current:oldLease,request_id:'extend'})).lease;
+  await assert.rejects(enter({...input,current:oldLease}), /native_recovery_original_not_current/);
+  const entrants = await Promise.all([enter(input),enter(input)]);
+  assert.equal(entrants.filter(r => r.entered).length, 1);
+  assert.deepEqual(entrants.find(r => !r.entered), {entered:false});
+  const {permit} = entrants.find(r => r.entered);
+  assert.match(permit,/^[0-9a-f]{64}$/);
+  assert.equal(f.a.row('SELECT permit_sha FROM recovery_entries').permit_sha,await digest(permit));
+  f.a = f.restart();
+  assert.deepEqual(await observe(), {entered:true});
+  assert.deepEqual(await enter(input), {entered:false});
+  const {request_sha256, ...lookup} = input.original;
+  assert.deepEqual(await f.call('native','transition/original',lookup),moved);
+  const request = await f.request(input.current, await f.quota());
+  for (const token of [undefined, hex('9'), request_sha256])
+    await assert.rejects(f.call('native','send',request,token), /native_recovery_permit_required/);
+  assert.equal(f.calls.length, 0);
+  await f.call('native','send',request,permit);
+  assert.equal(f.calls.length, 1);
+});
+
+test('lost durable recovery entry acknowledgment never issues a replacement capability', async () => {
+  const {f,input} = await recoveredNative();
+  f.storage.sync = async () => {throw new Error('lost reply');};
+  await assert.rejects(f.call('native','recovery/enter',input), /lost reply/);
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','recovery/observe',input),{entered:true});
+  assert.deepEqual(await f.call('native','recovery/enter',input),{entered:false});
+  const upload = await uploadInput(f,input.current);
+  await assert.rejects(f.call('native','linear/upload',upload), /native_recovery_permit_required/);
+  assert.equal(f.calls.length, 0);
+});
+
+test('recovered native upload rechecks the winner before PUT and retains the uncertain allocation', async () => {
+  const {f,input} = await recoveredNative();
+  const upload = await uploadInput(f,input.current);
+  const {permit} = await f.call('native','recovery/enter',input);
+  f.respond = async req => {
+    assert.equal(req.method,'POST');
+    await f.call('control','revoke',{request_id:'stop-upload',fence:input.current.fence});
+    return presign();
+  };
+  await assert.rejects(f.call('native','linear/upload',upload,permit), /owner_not_current/);
+  assert.equal(f.calls.length,1);
+  assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',upload.operation.original_id).state,'sending');
+});
+
+test('recovery cannot open an older generation, spend on a detached route, or advance without the winner', async () => {
+  const {f,input} = await recoveredNative();
+  const {fence} = input.current;
+  const op = {fence,original_id:'prepared',payload_sha256:hex('f')};
+  for (const submit of ['dispatchGemmaPrepared','dispatchIncludedResponsesPrepared'])
+    await assert.rejects(f.a[submit]({operation:op,attempt:input.attempt_id},f.peers.native), /native_recovery_permit_required/);
+  await assert.rejects(f.call('native','linear/comment',{attempt_id:input.attempt_id,operation:op}), /native_recovery_permit_required/);
+  const advance = {request_id:'next',current:input.current,expected_attempt_id:input.attempt_id,attempt_id:'attempt-next'};
+  await f.call('control','attempt/attest',{request_id:'attest-next',fence,previous:input.attempt_id,
+    successor:advance.attempt_id,terminal_receipt_sha256:hex('6')});
+  await assert.rejects(f.call('native','claim/attempt',advance), /native_recovery_permit_required/);
+  const {permit} = await f.call('native','recovery/enter',input);
+  assert.equal((await f.call('native','claim/attempt',advance,permit)).attempt_id,advance.attempt_id);
+  assert.equal((await f.call('native','claim/attempt',advance)).attempt_id,advance.attempt_id);
+  await assert.rejects(f.call('native','recovery/enter',input), /native_recovery_original_not_current/);
+  const other = await recoveredNative();
+  // Previous versions recorded only the exact handoff+lease. A new process may
+  // still read them, but a migration must never create first-entry permission.
+  other.f.a.put('DELETE FROM recovery_entries');
+  other.f.a = other.f.restart();
+  await assert.rejects(other.f.call('native','recovery/enter',other.input), /native_recovery_original_not_current/);
+  const oldSend = await other.f.request(other.input.current, await other.f.quota());
+  await assert.rejects(other.f.call('native','send',oldSend), /native_recovery_permit_required/);
+  assert.equal(other.f.calls.length,0);
+});
+
+test('independently attested release and revoked handoff can settle a recovered fence without a lost permit', async () => {
+  for (const action of ['release', 'handoff']) {
+    const {f,input} = await recoveredNative();
+    const {current} = input, {fence} = current;
+    const completion = {fence,accepted:false,receipt_sha256:hex('7')};
+    const handoff = {current,expected_coordinator_epoch:fence.coordinator_epoch,successor_session:f.peers.morgan.session_id,
+      reconstruction_sha256:hex('c'),quiesced_sha256:hex('b')};
+    const body = {request_id:'settle',...(action === 'release' ? {completion} : handoff)};
+    if (action === 'handoff') await assert.rejects(f.call('native', action, body), /native_recovery_permit_required/);
+    await f.call('control','revoke',{request_id:'revoke-return',fence});
+    await assert.rejects(f.call('native',action,body), /independent_original_evidence_missing/);
+    const fact = action === 'release' ? {kind:'completion',completion} : {kind:'handoff',...handoff};
+    await f.call('control','attest',{request_id:'approved-release-or-move',fact});
+    const result = await f.call('native',action,body);
+    if (action === 'release') assert.deepEqual(result.completion,completion);
+    else assert.equal(result.lease.fence.owner_session,f.peers.morgan.session_id);
+    assert.deepEqual(await f.call('native',action,body),result);
+    await assert.rejects(f.call('native','recovery/enter',input), /owner_not_current|claim_fence_changed/);
+  }
+});
+
+test('retained handoff and live recipient claim do not distinguish first entry from an interrupted recipient', async () => {
+  for (const uncertain of [false, true]) {
+    const { f, to, claim, revoke, attest, accept } = await unstartedFixture('morgan');
+    await f.call('control', 'revoke', revoke);
+    await f.call('control', 'attest', attest);
+    const moved = await f.call(to, 'handoff', accept);
+    const status = await f.call(to, 'status', {});
+    const lookup = { installation_sha256: status.installation_sha256,
+      session_id: f.peers[to].session_id, request_id: accept.request_id };
+    const entry = {current:moved.lease, attempt_id:claim.attempt_id,
+      original:{...lookup, request_sha256:moved.request_sha256}};
+    const {permit} = await f.call(to, 'recovery/enter', entry);
+    const claimLookup = { project: 'OffMenu', by_attempt: true, identifier: claim.attempt_id };
+    const current = await f.call(to, 'claim/read', claimLookup);
+    const request = await f.request(current.lease, await f.quota(), { attempt: claim.attempt_id });
+    const operation = { operation: request.intent.operation };
+    assert.equal((await f.call(to, 'original', operation)).state, 'unknown');
+    if (uncertain) {
+      f.respond = async () => { throw new Error('simulated destination response loss'); };
+      await assert.rejects(f.call(to, 'send', request, permit), /external_effect_unknown/);
+    } else {
+      await f.call(to, 'send', request, permit);
+    }
+    f.a = f.restart();
+    assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);
+    assert.deepEqual(await f.call(to, 'claim/read', claimLookup), current);
+    assert.equal(f.a.row('SELECT state FROM effects WHERE id=?', operation.operation.original_id).state,
+      uncertain ? 'sending' : 'verified');
+    assert.equal((await f.call(to, 'original', operation)).state, uncertain ? 'unknown' : 'terminal');
+    assert.equal(f.calls.length, 1);
+    await f.call('control', 'revoke', { request_id: 'hold-recipient', fence: current.lease.fence });
+    assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);
+    await assert.rejects(f.call(to, 'claim/read', claimLookup), /owner_not_current/);
+    assert.equal(f.calls.length, 1);
+  }
+});
+
+test('ordinary revocation, new hold, same-epoch grant replacement and stop exclude unstarted recovery', async () => {
+  for (const reason of ['ordinary', 'explicit-hold', 'grant-replaced-restored', 'stop']) {
+    const { f, to, current, revoke, attest, accept } = await unstartedFixture();
+    if (reason === 'ordinary') {
+      await f.call('control', 'revoke', { request_id: revoke.request_id, fence: current.fence });
+      await assert.rejects(f.call('control', 'attest', attest), /exact_unstarted_revocation_required/);
+      continue;
+    }
+    await f.call('control', 'revoke', revoke);
+    await f.call('control', 'attest', attest);
+    if (reason === 'explicit-hold') {
+      await f.call('control', 'revoke', { request_id: 'hold', fence: current.fence });
+    } else if (reason === 'grant-replaced-restored') {
+      const original = f.a.grant(scope, source, f.peers.native);
+      const changed = { ...original, allow_uploads: false };
+      for (const [id, previous, grant] of [['replace', original, changed], ['restore', changed, original]]) {
+        await f.call('control', 'grant', { request_id: id, previous_sha256: await digest(previous), grant });
+      }
+    } else {
+      await f.call('control', 'control', { request_id: 'stop', expected_coordinator_epoch: 2, stopped: true });
+    }
+    f.a = f.restart();
+    await assert.rejects(f.call(to, 'handoff', accept),
+      /exact_unstarted_revocation_required|unstarted_initial_claim_changed/);
+  }
+});
+
+test('unstarted recovery preserves ambiguous effects, terminal effects and source or stage evidence', async () => {
+  for (const state of ['unknown', 'terminal', 'source', 'stage', 'completion', 'renewed']) {
+    const { f, current, revoke } = await unstartedFixture();
+    if (state === 'unknown' || state === 'terminal') {
+      const request = await f.request(current, await f.quota());
+      if (state === 'unknown') {
+        f.respond = async () => { throw Error('fixture-lost-response'); };
+        await assert.rejects(f.call('native', 'send', request));
+      } else {
+        await f.call('native', 'send', request);
+      }
+      const before = await f.call('native', 'original', { operation: request.intent.operation });
+      assert.equal(before.state, state);
+      await assert.rejects(f.call('control', 'revoke', revoke), /attempt_already_started_or_unreconciled/);
+      assert.deepEqual(await f.call('native', 'original', { operation: request.intent.operation }), before);
+      assert.equal(f.calls.length, 1);
+      continue;
+    }
+    if (state === 'source') {
+      await f.call('control', 'source/bind', {
+        request_id: 'bind-source', current, attempt_id: 'attempt', public_source_receipt_sha256: hex('2'),
+        paths: [{ path: 'work.py', writable: true, mode: null,
+          base_sha256: null, base_base64: null, base_git_blob: null }],
+      });
+    } else if (state === 'completion') {
+      await f.call('control', 'attest', { request_id: 'completion', fact: { kind: 'completion',
+        completion: { fence: current.fence, accepted: true, receipt_sha256: hex('3') } } });
+    } else if (state === 'stage') {
+      await f.call('control', 'attempt/attest', { request_id: 'next', fence: current.fence,
+        previous: 'attempt', successor: 'attempt-next', terminal_receipt_sha256: hex('3') });
+    } else {
+      f.setTime(start + 10);
+      await f.call('native', 'renew', { request_id: 'renew', current });
+    }
+    await assert.rejects(f.call('control', 'revoke', revoke),
+      /attempt_already_started_or_unreconciled|unstarted_initial_claim_changed/);
+    assert.equal(f.calls.length, 0);
+  }
+});
+
+test('a grant restricted to one peer cannot enter unstarted recovery', async () => {
+  const f = fixture();
+  await f.resume();
+  const claim = await f.addGrant();
+  const grant = f.a.grant(scope, source, f.peers.native);
+  await f.call('control', 'grant', { request_id: 'native-only', previous_sha256: await digest(grant),
+    grant: { ...grant, sessions: [f.peers.native.session_id] } });
+  const { lease } = await f.call('native', 'claim', claim);
+  await assert.rejects(f.call('control', 'revoke', { request_id: 'transfer-native-only',
+    fence: lease.fence, unstarted_attempt_id: 'attempt' }), /unstarted_initial_claim_changed/);
+  assert.deepEqual((await f.call('native', 'claim/read', {
+    project: 'OffMenu', identifier: 'attempt', by_attempt: true,
+  })).lease, lease);
 });
 
 test('publication completion hashes the protected outcome, not the observer receipt', async () => {
@@ -1737,4 +2377,567 @@ test('native reads only its live exact existing control attempt original', async
   await f.call('native','claim/attempt',
     {current,expected_attempt_id:'assess',attempt_id:'assess-next',request_id:'native-successor'});
   assert.deepEqual(await read(), {matches:false}, 'consumed attestation is historical only');
+});
+
+test('only the exact enrolled native first-claim original can acquire a marked issue', async () => {
+  const f = fixture();
+  await f.resume();
+  const attempt_id = 'cf-intake-' + hex('1') + '-assess', first_intent_sha256 = hex('d');
+  const marked = await f.addGrant(scope, attempt_id, start + 800, {}, {attempt_id, first_intent_sha256});
+  const {first_intent_sha256: marker, ...plain} = marked;
+  const deny = (patch) => f.call('native', 'claim', {...marked, ...patch});
+  await assert.rejects(f.call('native', 'claim', plain), /assessment_first_claim_original_required/);
+  await assert.rejects(deny({first_intent_sha256:hex('b')}), /assessment_first_claim_original_required/);
+  await assert.rejects(deny({request_id:'other-original'}), /assessment_first_claim_original_required/);
+  await assert.rejects(f.call('morgan', 'claim', marked), /peer_role_not_granted/);
+  await assert.rejects(f.a.handle('/v1/claim', marked, {...f.peers.native, session_id:'other'}),
+    /peer_role_not_granted/);
+  await assert.rejects(f.call('native', 'claim/observe', marked), /original_claim_not_found/);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claims').n, 0);
+  const results = await Promise.all([f.call('native','claim',marked), f.call('native','claim',marked)]);
+  assert.deepEqual(results[0], results[1]);
+  const {attempt_id: attempt, ...typed} = plain;
+  assert.equal(results[0].request_sha256, await digest({kind:'uif.shared-lease.claim/3',
+    request:{...typed, authority:identity(f.config,f.peers.native)}}));
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','claim/observe',marked), results[0]);
+  for (const path of ['claim', 'claim/observe']) {
+    await assert.rejects(f.call('native',path,plain), /original_request_changed/);
+    await assert.rejects(f.call('native',path,{...marked,first_intent_sha256:hex('c')}), /original_request_changed/);
+  }
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 1);
+  assert.equal(f.a.row('SELECT fence FROM assessment_dispatch WHERE attempt=?', attempt_id).fence, null);
+  const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
+  const reconstruction = hex('f');
+  await f.call('control','grant',{request_id:'rotate-active-original',previous_sha256:await digest(grant),
+    grant:{...grant,reconstruction_sha256:reconstruction}});
+  const rotated = {...marked, reconstruction_sha256:reconstruction, request_id:await digest({
+    claim:scope,recovery:reconstruction,authority:identity(f.config,f.peers.native),epoch:2})};
+  await assert.rejects(f.call('native','claim',rotated), /issue_or_attempt_already_claimed/);
+  assert.deepEqual(await f.call('native','claim/observe',marked),results[0]);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 1);
+  const otherScope = {...scope,key:{...scope.key,issue_id:crypto.randomUUID()}};
+  const other = await f.addGrant(otherScope, 'unmarked');
+  await assert.rejects(f.call('native','claim',{...other, first_intent_sha256:marker}), /assessment_first_claim_not_enrolled/);
+  const existing = await f.call('morgan','claim',other);
+  const {attempt_id: unmarkedAttempt, ...ordinary} = other;
+  assert.equal(existing.request_sha256, await digest({kind:'uif.shared-lease.claim/3',
+    request:{...ordinary, authority:identity(f.config,f.peers.morgan)}}));
+});
+
+test('a waiting marked claim sees a changed control epoch or grant at commit', async () => {
+  for (const change of ['stop', 'rotate']) {
+    const f = fixture();
+    await f.resume();
+    const attempt_id = 'cf-intake-' + hex('3') + '-assess';
+    const claim = await f.addGrant(scope, attempt_id, start + 800, {},
+      {attempt_id, first_intent_sha256:hex('a')});
+    const receipt = f.a.receipt.bind(f.a);
+    f.a.receipt = async (...args) => {
+      if (args[2] === '/v1/claim') {
+        if (change === 'stop') {
+          await f.call('control','control',{request_id:'stop', expected_coordinator_epoch:2, stopped:true});
+          await f.call('control','control',{request_id:'resume-later', expected_coordinator_epoch:3, stopped:false});
+          assert.deepEqual({...f.a.control()}, {epoch:4, stopped:0});
+        } else {
+          const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
+          await f.call('control','grant',{request_id:'rotate',previous_sha256:await digest(grant),
+            grant:{...grant,reconstruction_sha256:hex('d')}});
+        }
+      }
+      return receipt(...args);
+    };
+    await assert.rejects(f.call('native','claim',claim),
+      change === 'stop' ? /admission_stopped_or_epoch_changed/ : /reconstruction_or_attempt_unverified/);
+    await assert.rejects(f.call('native','claim/observe',claim), /original_claim_not_found/);
+    assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 0);
+  }
+});
+
+test('pre-upgrade plain marked claim remains observable without acquiring first-entry provenance', async () => {
+  const f = fixture();
+  await f.resume();
+  const attempt_id = 'cf-intake-' + hex('2') + '-assess', first_intent_sha256 = hex('a');
+  const marked = await f.addGrant(scope, attempt_id, start + 800, {}, {attempt_id, first_intent_sha256});
+  const {first_intent_sha256: marker, ...plain} = marked;
+  const old = await f.call('native', 'claim', marked);
+  // Reopen the exact pre-upgrade on-disk shapes: plain full request fingerprint,
+  // and a generation record containing the enrolled grant, lease and request ID.
+  const priorGeneration = JSON.parse(f.a.row('SELECT record FROM claim_generations').record);
+  delete priorGeneration.first_intent_sha256;
+  f.a.put('UPDATE claim_generations SET record=?', canonical(priorGeneration));
+  f.a.put('UPDATE receipts SET fingerprint=? WHERE peer=? AND id=?',
+    await digest({path:'/v1/claim', body:plain}), f.a.peerKey(f.peers.native), plain.request_id);
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','claim/observe',plain), old);
+  for (const path of ['claim','claim/observe'])
+    await assert.rejects(f.call('native',path,marked), /original_request_changed/);
+  const entry = {current:old.lease,attempt_id,first_intent_sha256:marker};
+  assert.deepEqual(await f.call('native','dispatch/observe',entry), {entered:false});
+  await assert.rejects(f.call('native','dispatch/enter',entry), /assessment_first_claim_original_required/);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM claim_generations').n, 1);
+});
+
+async function freshAssessment(f, attempt_id, first_intent_sha256 = hex('a')) {
+  const original = await f.addGrant(scope, attempt_id, start + 800, {}, {attempt_id, first_intent_sha256});
+  return {
+    current: (await f.call('native', 'claim', original)).lease, attempt_id, first_intent_sha256,
+  };
+}
+
+test('fresh assessment emits only from the winning scoped dispatch; duplicate is observe-only', async () => {
+  const f = fixture();
+  await f.resume();
+  const original = await freshAssessment(f, 'cf-intake-' + hex('e') + '-assess');
+  assert.deepEqual(await f.call('native', 'dispatch/observe', original), {entered:false});
+  await assert.rejects(f.call('native', 'dispatch/enter', {...original, first_intent_sha256:hex('b')}),
+    /assessment_dispatch_not_selected/);
+  await assert.rejects(f.call('native', 'dispatch/enter', {...original, current: {
+    ...original.current, fence: {...original.current.fence, generation:2},
+  }}), /claim_fence_changed/);
+  for (const role of ['control','morgan','quota']) {
+    await assert.rejects(f.call(role, 'dispatch/enter', original), /peer_role_not_granted/);
+  }
+  const admitted = await Promise.all(Array.from({length: 5}, () =>
+    f.call('native', 'dispatch/enter', original)));
+  const winners = admitted.filter((x) => x.entered);
+  assert.equal(winners.length, 1);
+  assert.equal(admitted.filter((x) => Object.hasOwn(x, 'permit')).length, 1);
+  const {permit} = winners[0];
+  assert.match(permit, /^[a-f0-9]{64}$/);
+  const stored = f.a.row('SELECT * FROM assessment_dispatch WHERE attempt=?', original.attempt_id);
+  assert.equal(stored.permit_sha, await digest(permit));
+  assert.ok(!canonical(stored).includes(permit));
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native', 'dispatch/enter', original), {entered:false});
+  assert.deepEqual(await f.call('native', 'dispatch/observe', original), {entered:true});
+
+  const quota = await f.quota();
+  const send = await f.request(original.current, quota, {attempt: original.attempt_id});
+  for (const p of [undefined, hex('f')]) {
+    await assert.rejects(f.call('native', 'send', send, p), /assessment_dispatch_permit_required/);
+  }
+  for (const path of ['linear/comment','linear/upload']) {
+    for (const input of [undefined, permit]) {
+      await assert.rejects(f.call('native', path, {
+        operation: send.intent.operation, attempt_id: original.attempt_id,
+      }, input), /assessment_dispatch_linear_original_unbound/);
+    }
+  }
+  assert.equal(f.calls.length, 0);
+  const wrongAttempt = await f.request(original.current, quota, {attempt: original.attempt_id + '-next'});
+  await assert.rejects(f.call('native', 'send', wrongAttempt, permit), /attempt_or_deadline_not_current/);
+  assert.equal(f.calls.length, 0);
+  const alternate = await f.request(original.current, quota, {
+    attempt: original.attempt_id, id: hex('a'), prompt: 'different valid provider original',
+  });
+  const races = await Promise.allSettled([send, alternate].map((input) =>
+    f.call('native','send',input,permit)));
+  const winnerIndex = races.findIndex((result) => result.status === 'fulfilled');
+  assert.ok(winnerIndex >= 0);
+  assert.equal(races[winnerIndex].value.status, 200);
+  assert.equal(races[1 - winnerIndex].status, 'rejected');
+  assert.match(races[1 - winnerIndex].reason.message, /assessment_dispatch_provider_original_changed/);
+  const first = [send, alternate][winnerIndex];
+  assert.equal(f.a.row('SELECT provider_op FROM assessment_dispatch WHERE attempt=?',
+    original.attempt_id).provider_op, canonical(first.intent.operation));
+  assert.equal(f.calls.length, 1);
+  assert.equal(f.calls[0].headers.get('uif-dispatch-permit'), null);
+  await assert.rejects(f.call('native','send',first,permit), /original_already_recorded/);
+  const changedBody = await f.request(original.current,quota,{
+    attempt:original.attempt_id,id:first.intent.operation.original_id,prompt:'changed bytes',
+  });
+  await assert.rejects(f.call('native','send',changedBody,permit), /provider_original_changed/);
+  const wrongRoute = await f.request(original.current,quota,{attempt:original.attempt_id,
+    selectedRoute:{...route,gateway_id:'other-route'}});
+  await assert.rejects(f.call('native','send',wrongRoute,permit), /send_intent_not_bound/);
+  assert.equal(f.calls.length, 1);
+  assert.ok(!JSON.stringify([...f.storage.sql.exec('SELECT * FROM receipts')]).includes(permit));
+
+  // Provider-only marking is not a report or an independently admitted
+  // investigate successor, and cannot advance via the control effect.
+  const successor = original.attempt_id + '-next';
+  await assert.rejects(f.call('control', 'attempt/attest', {request_id:'dispatch-existing-successor',
+    fence:original.current.fence, previous:original.attempt_id, successor, terminal_receipt_sha256:hex('f')}),
+    /assessment_successor_not_admitted/);
+  assert.equal(f.calls.length,1);
+});
+
+test('lost or unconfirmed dispatch acknowledgement never reissues permit', async () => {
+  const f = fixture();
+  await f.resume();
+  const original = await freshAssessment(f, 'cf-intake-' + hex('d') + '-assess');
+  const sync = f.storage.sync;
+  f.storage.sync = async () => { throw new Error('synthetic lost durability acknowledgement'); };
+  await assert.rejects(f.call('native','dispatch/enter',original), /lost durability acknowledgement/);
+  f.storage.sync = sync;
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','dispatch/observe',original), {entered:true});
+  assert.deepEqual(await f.call('native','dispatch/enter',original), {entered:false});
+  const quota = await f.quota();
+  const send = await f.request(original.current,quota,{attempt:original.attempt_id});
+  await assert.rejects(f.call('native','send',send), /assessment_dispatch_permit_required/);
+  const stop = {request_id:'dispatch-stop', expected_coordinator_epoch:2, stopped:true};
+  await f.call('control','control',stop);
+  await assert.rejects(f.call('native','dispatch/observe',original), /stopped_expired_or_superseded/);
+  assert.equal(f.calls.length, 0);
+});
+
+
+test('fresh dispatch policy cannot be retrofitted onto an existing claim or other project', async () => {
+  const f = fixture();
+  await f.resume();
+  const attempt_id = 'cf-intake-' + hex('b') + '-assess';
+  const original = await f.addGrant(scope, attempt_id);
+  await f.call('native', 'claim', original);
+  const old = JSON.parse(f.a.row('SELECT body FROM grants').body);
+  const grant = {...old, fresh_assessment:{attempt_id,first_intent_sha256:hex('a')}};
+  await assert.rejects(f.call('control','grant', {
+    request_id:'retrofit-fresh-dispatch', previous_sha256:await digest(old), grant,
+  }), /assessment_dispatch_not_fresh/);
+  await assert.rejects(f.call('control','grant', {
+    request_id:'outside-offmenu-dispatch', previous_sha256:null,
+    grant:{...grant,source:{...source,repository:'maldous/circular-quay'}},
+  }), /scope_or_source_unbound/);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM assessment_dispatch').n,0);
+});
+
+
+test('fresh assessed provider seal is rechecked after reservation durability and before fetch', async () => {
+  const f = fixture();
+  await f.resume();
+  const original = await freshAssessment(f, 'cf-intake-' + hex('c') + '-assess');
+  const {permit} = await f.call('native','dispatch/enter',original);
+  const quota = await f.quota();
+  const send = await f.request(original.current,quota,{attempt:original.attempt_id});
+  const sync = f.storage.sync;
+  f.storage.sync = async () => {
+    await sync();
+    f.a.put('UPDATE assessment_dispatch SET provider_op=? WHERE attempt=?',
+      canonical({...send.intent.operation,original_id:hex('d')}), original.attempt_id);
+  };
+  await assert.rejects(f.call('native','send',send,permit), /assessment_dispatch_provider_original_changed/);
+  assert.equal(f.calls.length,0);
+  assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',send.intent.operation.original_id).state,
+    'denied');
+});
+
+async function adjudicatedAssessment(f, verdict = 'blocked') {
+  await f.resume();
+  const report_binding = {scope, issue_identifier:'OFF-37', run:1, scope_sha256:hex('1')};
+  const attempt = 'cf-intake-' + await digestBytes(Buffer.from(
+    `["OffMenu", "${scope.key.issue_id}", "${report_binding.scope_sha256}", 1]`)) + '-assess';
+  const claim = await f.addGrant(scope, attempt, start + 800, {}, {
+    attempt_id:attempt, first_intent_sha256:hex('a'), report_binding,
+  });
+  const successor = attempt.slice(0,-'assess'.length) + 'investigate';
+  await assert.rejects(f.call('native','claim',{...claim,attempt_id:successor}),
+    /assessment_initial_attempt_required/);
+  const current = (await f.call('native','claim',claim)).lease;
+  const {permit} = await f.call('native','dispatch/enter',{
+    attempt_id:attempt, first_intent_sha256:hex('a'), current,
+  });
+  const send = await f.request(current, await f.quota(), {attempt});
+  const raw = canonical({summary:'fixture private raw text', verdict,
+    routing:{issue:'OFF-37',run:1,state:'assess',actionable:true,ownership_clear:true,deferred:false,
+      owner_pause:false,uncertain_effects:false,missing_inputs:[]}});
+  f.respond = async req => {
+    assert.notEqual(new URL(req.url).hostname, 'api.linear.app');
+    return Response.json({model:route.model,choices:[{message:{content:raw}}],
+      usage:{neurons:0.007}}, {headers:{'cf-aig-log-id':'fixture-result'}});
+  };
+  await f.call('native','send',send,permit);
+  const witness = canonical({attempt_id:attempt, issue:'OFF-37', run:1,state:'assess',
+    scope_sha256:hex('1'),report_sha256:await digestBytes(Buffer.from(raw))});
+  const body = '<!-- stokowski:report -->\n\n### Native routing evidence\n\n```json\n' + witness +
+    '\n```\n\n## assess — OFF-37\n\nAssessment report indicates ' +
+    (verdict === 'approve' ? 'readiness for bounded work.' : 'blocked work.') +
+    '\n\nThis report does not authorize a workflow transition.';
+  const op = async (text, id) => ({
+    fence:current.fence,
+    original_id:id ?? await digest({attempt,slot:'_publish_run_report',kind:'comment',issue:scope.key.issue_id}),
+    payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id:attempt,issue_id:scope.key.issue_id,body:text}),
+  });
+  return {permit, current, attempt, send, op, successor, sha:await digestBytes(Buffer.from(raw)),
+    canonicalInput:{operation:await op(body),attempt_id:attempt,body}};
+}
+
+test('control-bound fresh assessment reserves and posts exactly the authority-derived retained report', async () => {
+  const f = fixture();
+  const {permit,attempt,op,canonicalInput} = await adjudicatedAssessment(f);
+  const wrong = canonicalInput.body + ' arbitrary unbound text';
+  for (const invalid of [
+    {...canonicalInput, body:wrong, operation:await op(wrong)},
+    {...canonicalInput, operation:await op(canonicalInput.body,hex('9'))},
+    {...canonicalInput, operation:{...canonicalInput.operation,
+      fence:{...canonicalInput.operation.fence,generation:2}}},
+  ]) await assert.rejects(f.call('native','linear/comment',invalid,permit),
+    /assessment_dispatch_report_original_changed|assessment_dispatch_permit_required/);
+  await assert.rejects(f.call('native','linear/comment',canonicalInput), /assessment_dispatch_permit_required/);
+  await assert.rejects(f.call('native','linear/upload',{
+    operation:canonicalInput.operation,attempt_id:attempt,
+  },permit), /assessment_dispatch_linear_original_unbound/);
+  assert.equal(f.calls.length,1);
+  f.respond = async req => {
+    assert.equal(req.url,'https://api.linear.app/graphql');
+    assert.equal(req.headers.has('uif-dispatch-permit'),false);
+    const { variables:{input} } = await req.json();
+    assert.equal(input.issueId,scope.key.issue_id);
+    assert.equal(input.body,canonicalInput.body);
+    assert.doesNotMatch(input.body,/fixture private raw text/);
+    return Response.json({data:{commentCreate:{success:true,
+      comment:{id:input.id,body:input.body,issue:{id:input.issueId}}}}});
+  };
+  const result = await f.call('native','linear/comment',canonicalInput,permit);
+  f.a = f.restart();
+  await assert.rejects(f.call('native','linear/comment',canonicalInput,permit), /original_already_recorded/);
+  assert.deepEqual(await f.call('native','linear/receipt',{operation:canonicalInput.operation}), result);
+  const observed = await f.call('native','original',{operation:canonicalInput.operation});
+  assert.equal(observed.state,'terminal');
+  assert.equal(observed.terminal.status,'verified');
+  assert.equal(observed.terminal.receipt_sha256,result.receipt_sha256);
+  assert.equal(f.calls.length,2);
+});
+
+test('fresh report refuses missing, changed, or expired retained evidence without physical comment', async () => {
+  for (const loss of ['missing', 'tamper', 'expire']) {
+    const f = fixture();
+    const {permit,current,send,canonicalInput} = await adjudicatedAssessment(f);
+    if (loss === 'missing')
+      f.storage.sql.exec('DELETE FROM provider_results WHERE id=?', send.intent.operation.original_id);
+    if (loss === 'tamper')
+      f.storage.sync = async () => {
+        f.storage.sql.exec('UPDATE provider_results SET response=? WHERE id=?',
+          Buffer.from('{"fixture":"changed after reservation"}'), send.intent.operation.original_id);
+      };
+    if (loss === 'expire') f.storage.sync = async () => { f.setTime(current.expires_at); };
+    await assert.rejects(f.call('native','linear/comment',canonicalInput,permit),
+      /assessment_dispatch_report_result_unavailable|assessment_dispatch_report_evidence_changed|stopped_expired_or_superseded/);
+    assert.equal(f.calls.length,1);
+  }
+});
+
+test('fresh report unknown GraphQL result remains one physical original across restart', async () => {
+  const f = fixture();
+  const {permit,canonicalInput} = await adjudicatedAssessment(f);
+  f.respond = async () => { throw Error('synthetic ambiguous response'); };
+  await assert.rejects(f.call('native','linear/comment',canonicalInput,permit),
+    /original_external_effect_unknown/);
+  f.a = f.restart();
+  const original = await f.call('native','original',{operation:canonicalInput.operation});
+  assert.equal(original.state,'unknown');
+  await assert.rejects(f.call('native','linear/comment',canonicalInput,permit), /original_already_recorded/);
+  assert.equal(f.calls.length,2);
+});
+
+test('only the configured control original can create an exact same-scope report binding', async () => {
+  const f = fixture();
+  await f.resume();
+  const scope_sha256 = hex('1');
+  const attempt_id = 'cf-intake-' + await digestBytes(Buffer.from(
+    `["OffMenu", "${scope.key.issue_id}", "${scope_sha256}", 1]`)) + '-assess';
+  const report_binding = {scope,issue_identifier:'OFF-37',run:1,scope_sha256};
+  const fresh = {attempt_id,first_intent_sha256:hex('a'),report_binding};
+  const other = {...scope,key:{...scope.key,issue_id:crypto.randomUUID()}};
+  for (const delta of [{scope:other},{run:2},{scope_sha256:hex('2')}])
+    await assert.rejects(f.addGrant(scope,attempt_id,start+800,{},{
+      ...fresh,report_binding:{...report_binding,...delta},
+    }), /invalid_fresh_assessment_report_binding/);
+  await f.addGrant(scope,attempt_id,start+800,{},fresh);
+  const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
+  const input = {request_id:'rebind-first-assessment',previous_sha256:await digest(grant),
+    grant:{...grant,fresh_assessment:{...fresh,report_binding:{...report_binding,issue_identifier:'OFF-99'}}}};
+  await assert.rejects(f.call('native','grant',input), /peer_role_not_granted/);
+  await assert.rejects(f.call('control','grant',input), /assessment_dispatch_original_changed/);
+  assert.equal(f.calls.length,0);
+});
+
+async function postExactAssessment(f, a) {
+  f.respond = async req => {
+    assert.equal(req.url, 'https://api.linear.app/graphql');
+    const {variables:{input}} = await req.json();
+    return Response.json({data:{commentCreate:{success:true,
+      comment:{id:input.id,body:input.body,issue:{id:input.issueId}}}}});
+  };
+  return f.call('native','linear/comment',a.canonicalInput,a.permit);
+}
+async function assessmentTransition(a, posted = {id:crypto.randomUUID(),receipt_sha256:hex('4')}) {
+  const fence = a.current.fence;
+  const terminal = {
+    schema:'uif.fresh-offmenu-assessment-terminal/1',
+    issue_id:fence.scope.key.issue_id,issue_identifier:'OFF-37',run:1,state:'assess',
+    successor_state:'investigate',scope_sha256:hex('1'),previous:a.attempt,successor:a.successor,
+    report_sha256:a.sha,posted_comment_id:posted.id,
+    posted_effect:{operation:a.canonicalInput.operation,status:'verified',receipt_sha256:posted.receipt_sha256},
+  };
+  return {
+    original:{request_id:'exact-assess-posted-attestation',fence,previous:a.attempt,successor:a.successor,
+      terminal_receipt_sha256:await digest(terminal)},
+    advance:{request_id:'exact-investigate-transition',current:a.current,expected_attempt_id:a.attempt,
+      attempt_id:a.successor},
+  };
+}
+
+test('native reads the consumed fresh assessment edge after CAS reply loss with no new effect', async () => {
+  const f = fixture();
+  const a = await adjudicatedAssessment(f, 'approve');
+  const posted = await postExactAssessment(f, a);
+  const {original, advance} = await assessmentTransition(a, posted);
+  const request = {current: a.current, original, advance};
+  const observe = (body = request) => f.call('native', 'attempt/successor/read', body);
+  await f.call('control', 'attempt/attest', original);
+  assert.deepEqual(await observe(), {matches: false});
+  await f.call('native', 'claim/attempt', advance); // The claimant loses the successful CAS reply.
+  f.a = f.restart();
+  const totalChanges = () => f.a.row('SELECT total_changes() AS n').n;
+  const before = totalChanges();
+  assert.deepEqual(await observe(), {matches: true});
+  for (const changed of [
+    {...request, original:{...original,request_id:'other-control-original'}},
+    {...request, original:{...original,terminal_receipt_sha256:hex('0')}},
+    {...request, advance:{...advance,request_id:'other-native-original'}},
+    {...request, advance:{...advance,current:{...a.current,expires_at:a.current.expires_at+1}}},
+    {...request, advance:{...advance,expected_attempt_id:'some-other-attempt'}},
+    {...request, current:{...a.current,expires_at:a.current.expires_at+1}},
+  ]) assert.deepEqual(await observe(changed), {matches: false});
+  for (const other of ['morgan', 'control'])
+    await assert.rejects(f.call(other,'attempt/successor/read',request), /peer_role_not_granted/);
+  assert.deepEqual(await f.call('native','attempt/attest/native',{current:a.current,original}), {matches:false});
+  assert.equal(totalChanges(), before);
+  assert.equal(f.calls.length, 2);
+  f.setTime(start + 10);
+  const renewed = await f.call('native', 'renew', {request_id:'renew-successor', current:a.current});
+  assert.deepEqual(await observe(), {matches:false});
+  assert.deepEqual(await observe({...request,current:renewed.lease}), {matches:true});
+  await f.call('control','revoke',{request_id:'revoke-successor',fence:a.current.fence});
+  assert.deepEqual(await observe({...request,current:renewed.lease}), {matches:false});
+});
+
+test('native recovers the consumed assessment edge using only its current lease and exact original CAS', async () => {
+  const f = fixture(), a = await adjudicatedAssessment(f, 'approve');
+  const posted = await postExactAssessment(f, a);
+  const {original, advance} = await assessmentTransition(a, posted);
+  const query = {current:a.current,advance};
+  const read = (input = query) => f.call('native','attempt/successor/read',input);
+  assert.deepEqual(await read(), {matches:false});
+  await f.call('control','attempt/attest',original); // control loses its first ACK
+  assert.deepEqual(await read(), {matches:false});
+  // A separately accepted equivalent original must not replace the first writer.
+  await f.call('control','attempt/attest',{...original,request_id:'second-independent-original'});
+  const record = f.a.row('SELECT issuer,body FROM assessment_attestations');
+  assert.equal(record.issuer,f.a.peerKey(f.peers.control));
+  assert.equal(record.body,canonical(original));
+  await f.call('native','claim/attempt',advance); // native loses its CAS ACK
+  f.a = f.restart();
+  assert.deepEqual(await f.call('control','attempt/attest',original),
+    {terminal_receipt_sha256:original.terminal_receipt_sha256});
+  const changes = () => f.a.row('SELECT total_changes() AS n').n;
+  const before = changes();
+  assert.deepEqual(await read(),{matches:true});
+  for (const other of ['morgan','control','quota'])
+    await assert.rejects(f.call(other,'attempt/successor/read',query),/peer_role_not_granted/);
+  await assert.rejects(f.a.handle('/v1/attempt/successor/read',query,{...f.peers.native,session_id:'retired'}),
+    /peer_role_not_granted/);
+  assert.deepEqual(await read({...query,advance:{...advance,request_id:'unknown-native-original'}}),{matches:false});
+  assert.deepEqual(await read({...query,advance:{...advance,expected_attempt_id:'other'}}),{matches:false});
+  assert.equal(changes(),before);
+  f.setTime(start + 10);
+  const renewed = (await f.call('native','renew',{request_id:'renew-owner',current:a.current})).lease;
+  assert.deepEqual(await read(),{matches:false});
+  assert.deepEqual(await read({current:renewed,advance}),{matches:true});
+  const onward = {current:renewed,expected_coordinator_epoch:renewed.fence.coordinator_epoch,
+    successor_session:f.peers.morgan.session_id,quiesced_sha256:hex('7'),reconstruction_sha256:hex('c')};
+  await f.call('control','attest',{request_id:'witness-onward',fact:{kind:'handoff',...onward}});
+  const moved = (await f.call('native','handoff',{request_id:'handoff-onward',...onward})).lease;
+  assert.deepEqual(await read({current:renewed,advance}),{matches:false});
+  assert.deepEqual(await read({current:moved,advance}),{matches:false});
+  assert.equal(f.calls.length,2);
+});
+
+test('historical edge, mismatched control original and next-epoch owner cannot supply marked attestation custody', async () => {
+  for (const mode of ['historical','stop','changed-issuer','changed-hash']) {
+    const f = fixture(), a = await adjudicatedAssessment(f, 'approve');
+    const {original,advance} = await assessmentTransition(a,await postExactAssessment(f,a));
+    await f.call('control','attempt/attest',original);
+    if (mode === 'historical') {
+      // Older releases retained the edge and original control receipt only.
+      f.a.put('DELETE FROM assessment_attestations');
+      await f.call('control','attempt/attest',original);
+      await f.call('control','attempt/attest',{...original,request_id:'later-attestation'});
+      assert.equal(f.a.row('SELECT COUNT(*) AS n FROM assessment_attestations').n,0);
+    } else if (mode === 'changed-issuer') {
+      f.a.put('UPDATE assessment_attestations SET issuer=?',f.a.peerKey(f.peers.native));
+    } else if (mode === 'changed-hash') {
+      f.a.put('UPDATE assessment_attestations SET body=?',canonical({...original,terminal_receipt_sha256:hex('e')}));
+    }
+    await f.call('native','claim/attempt',advance);
+    if (mode === 'stop') {
+      await f.call('control','control',{request_id:'stop',stopped:true,expected_coordinator_epoch:2});
+      await f.call('control','control',{request_id:'resume-later',stopped:false,expected_coordinator_epoch:3});
+    }
+    f.a = f.restart();
+    const input = {current:a.current,advance};
+    assert.deepEqual(await f.call('native','attempt/successor/read',input),{matches:false});
+    if (mode === 'historical')
+      assert.deepEqual(await f.call('native','attempt/successor/read',{...input,original}),{matches:true});
+  }
+});
+
+test('only exact independently attested posted ready report allows investigate after reopen', async () => {
+  const f = fixture();
+  const a = await adjudicatedAssessment(f,'approve');
+  const before = await assessmentTransition(a);
+  await assert.rejects(f.call('control','attempt/attest',before.original), /assessment_terminal_report_unverified/);
+  await assert.rejects(f.call('native','claim/attempt',before.advance), /prior_attempt_terminal_unverified/);
+  await postExactAssessment(f,a); // ignore returned result; read after cold reopen.
+  f.a = f.restart();
+  const observed = await f.call('native','linear/receipt',{operation:a.canonicalInput.operation});
+  const {original,advance} = await assessmentTransition(a,observed);
+  await assert.rejects(f.call('native','attempt/attest',original), /peer_role_not_granted/);
+  await assert.rejects(f.call('control','attempt/attest',{...original,terminal_receipt_sha256:hex('5')}),
+    /assessment_terminal_digest_changed/);
+  await assert.rejects(f.call('control','attempt/attest',{...original,successor:a.attempt+'-next'}),
+    /assessment_successor_not_admitted/);
+  await assert.rejects(f.call('native','claim/attempt',advance), /prior_attempt_terminal_unverified/);
+  assert.deepEqual(await f.call('control','attempt/attest',original),
+    {terminal_receipt_sha256:original.terminal_receipt_sha256});
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','attempt/attest/native',{current:a.current,original}), {matches:true});
+  const consumed = await f.call('native','claim/attempt',advance);
+  assert.equal(await f.call('native','claim/read',{project:'OffMenu',identifier:a.successor,by_attempt:true})
+    .then(x=>x.attempt_id),a.successor);
+  assert.deepEqual(await f.call('native','attempt/attest/native',{current:a.current,original}), {matches:false});
+  assert.deepEqual(await f.call('native','claim/attempt',advance),consumed);
+  assert.deepEqual(await f.call('control','attempt/attest',original),
+    {terminal_receipt_sha256:original.terminal_receipt_sha256});
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM attempts WHERE id=?',a.successor).n,1);
+  // Ordinary provider edge for later, newly admitted investigate is unchanged.
+  const next = await f.request(a.current,await f.quota(),{attempt:a.successor,id:hex('b')});
+  f.respond = async () => Response.json({model:route.model,choices:[{}],usage:{neurons:0.007}},
+    {headers:{'cf-aig-log-id':'fixture-follow-on'}});
+  assert.equal((await f.call('native','send',next)).status,200);
+  assert.equal(f.calls.length,3);
+});
+
+test('blocked or unknown report cannot produce an assess successor', async () => {
+  for (const mode of ['blocked','unknown']) {
+    const f = fixture();
+    const a = await adjudicatedAssessment(f,mode === 'blocked' ? 'blocked' : 'approve');
+    if (mode === 'blocked') {
+      const posted = await postExactAssessment(f,a);
+      const {original} = await assessmentTransition(a,posted);
+      await assert.rejects(f.call('control','attempt/attest',original),/assessment_terminal_report_not_ready/);
+    } else {
+      f.respond = async () => { throw Error('synthetic lost response after external accept'); };
+      await assert.rejects(f.call('native','linear/comment',a.canonicalInput,a.permit),/original_external_effect_unknown/);
+      f.a = f.restart();
+      const {original} = await assessmentTransition(a);
+      await assert.rejects(f.call('control','attempt/attest',original),/assessment_terminal_report_unverified/);
+    }
+    const {advance} = await assessmentTransition(a);
+    await assert.rejects(f.call('native','claim/attempt',advance),
+      /prior_attempt_terminal_unverified|uncertain_original_effect/);
+    assert.equal(f.a.row('SELECT COUNT(*) AS n FROM next_attempts').n,0);
+    assert.equal(f.calls.length,2);
+  }
 });

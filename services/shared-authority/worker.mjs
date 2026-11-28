@@ -22,10 +22,14 @@ export default {
         'unknown_route',
         404,
       );
-      // Forward only the Access-signed assertion to exactly one private object.
+      // Forward the Access-signed assertion and any scoped dispatch permit to one private object.
       // Never forward the Access client secret, cookie or caller-chosen principal.
       const headers = new Headers();
-      for (const name of ['cf-access-jwt-assertion', 'content-type']) {
+      const forwarded = ['cf-access-jwt-assertion', 'content-type'];
+      if (['/v1/send', '/v1/linear/comment', '/v1/linear/upload', '/v1/source/write', '/v1/source/checkpoint',
+        '/v1/claim/attempt', '/v1/handoff'].includes(url.pathname))
+        forwarded.push('uif-dispatch-permit');
+      for (const name of forwarded) {
         if (request.headers.has(name)) headers.set(name, request.headers.get(name));
       }
       need(headers.has('cf-access-jwt-assertion'), 'access_assertion_required', 401);
@@ -100,7 +104,8 @@ export class SharedAuthority extends DurableObject {
           ),
         );
       }
-      const value = await this.authority.handle(path, body, peer);
+      const value = await this.authority.handle(path, body, peer,
+        request.headers.get('uif-dispatch-permit'));
       return value instanceof Response ? value : reply(value);
     } catch (e) {
       return error(e);

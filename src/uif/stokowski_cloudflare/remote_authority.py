@@ -5,11 +5,15 @@ are expected pins checked against the receiver, never caller authentication.
 There is no redirect, provider fallback, request retry or local claim store.
 """
 from base64 import b64encode
+import asyncio
+from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from http.client import HTTPException, HTTPSConnection
 from io import BytesIO
+from math import ceil
 import os
 from pathlib import Path
 import re
@@ -22,11 +26,12 @@ from ..effect_authority import (
     _lease_reply, _release_reply, pinned_sha, wire_seconds,
 )
 from ..handoff_store import Hold, decode, digest, require, wire
+from ..provider_discovery import ProviderReadCooldown
 from ..quota_handoff import LinearKey, token
 from ..shared_issue_coordinator import _lease
-from .account_admission import AccountUsageEvidence, FreeRoute
+from .account_admission import MAX_EVIDENCE_AGE, AccountUsageEvidence, FreeRoute
 from .client import GLM_MODEL, MAX_RESPONSE_BYTES
-from .shared_admission import AccountUsageReceipt, NativeClaim, SharedFreePorts
+from .shared_admission import AccountReservationSnapshot, AccountUsageReceipt, NativeClaim, SharedFreePorts
 
 
 class AuthorityUnavailable(Hold):
@@ -69,12 +74,59 @@ def _origin(value):
     return parsed.hostname
 
 
+class _DispatchPermit:
+    """Copied task contexts share this object, never an independent token."""
+
+    def __init__(self, claim, secret):
+        self.claim = claim
+        self._secret = secret
+        self.winner = None
+
+    def attach(self, task):
+        require(self.winner is None and self._secret is not None and not task.done(),
+                'authority_dispatch_winner')
+        self.winner = task
+        task.add_done_callback(self.revoke)
+
+    def revoke(self, _task=None):
+        self._secret = None
+        self.winner = None
+
+    def for_effect(self):
+        secret, winner = self._secret, self.winner
+        require(secret is not None and winner is not None and not winner.done(),
+                'authority_dispatch_permit_revoked')
+        return secret
+
+
+def _metadata_retry_delay(header):
+    if type(header) is not str or not 0 < len(header) <= 48:
+        return None
+    if re.fullmatch(r'[0-9]{1,10}', header):
+        delay = int(header)
+    else:
+        try:
+            deadline = parsedate_to_datetime(header)
+            if deadline.utcoffset() is None:
+                return None
+            delay = max(0, ceil((deadline - datetime.now(timezone.utc)).total_seconds()))
+        except (TypeError, ValueError, OverflowError):
+            return None
+    return delay if delay <= 2**31 - 1 else None
+
+
 class AccessTransport:
     def __init__(self, origin, credential_file):
         self.host = _origin(origin)
         self._credential_file = Path(credential_file)
+        self._dispatch_permit = ContextVar("fresh_assessment_dispatch_permit", default=None)
+        self._recipient_permit = ContextVar('recipient_recovery_permit', default=None)
 
     def request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
+        require(path != '/v1/recovery/enter', 'authority_recovery_journal_required')
+        return self._request(path, data, timeout=timeout, allow_absent=allow_absent, provider=provider)
+
+    def _request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
         require(path.startswith('/v1/') and re.fullmatch(r'/v1/[a-z/]+', path),
                 'authority_route')
         record = protected_record(self._credential_file, secret=True)
@@ -85,11 +137,27 @@ class AccessTransport:
         headers = {'CF-Access-Client-Id': record['client_id'],
                    'CF-Access-Client-Secret': record['client_secret'],
                    'Accept': 'application/json', 'Content-Type': 'application/json'}
+        permit = self._dispatch_permit.get()
+        if permit is not None and path in {'/v1/send', '/v1/linear/comment'}:
+            claim = permit.claim
+            request = (data.get('intent') if path == '/v1/send' and type(data) is dict else data)
+            operation = request.get('operation') if type(request) is dict else None
+            require(type(operation) is dict and operation.get('fence') == asdict(claim.lease.fence)
+                    and request.get('attempt_id') == claim.attempt_id,
+                    'authority_dispatch_egress_scope')
+            headers['uif-dispatch-permit'] = permit.for_effect()
+        recipient = self._recipient_permit.get()
+        if recipient is not None:
+            recipient.authorize(path, data, headers)
         conn = HTTPSConnection(self.host, timeout=timeout)
         try:
             conn.request('GET' if data is None else 'POST', path,
                          body=None if data is None else wire(data), headers=headers)
             reply = conn.getresponse()
+            if path == '/v1/usage/read' and reply.status in (429, 503):
+                delay = _metadata_retry_delay(reply.getheader('Retry-After'))
+                if delay is not None:
+                    raise ProviderReadCooldown(delay)
             if allow_absent and reply.status == 404:
                 # An Access login page, unknown Worker route or intermediary
                 # 404 never proves absence of the original operation.
@@ -117,6 +185,86 @@ class AccessTransport:
             conn.close()
 
 
+    def observe_fresh_assessment_permission(self, claim, admission):
+        observed = self.request('/v1/dispatch/observe', {'current': asdict(claim.lease), **admission})
+        require(type(observed) is dict and observed.keys() == {'entered'}
+                and type(observed['entered']) is bool, 'authority_dispatch_observation_shape')
+        return observed['entered']
+
+    def observe_recipient_entry(self, body):
+        result = self.request('/v1/recovery/observe', body)
+        require(type(result) is dict and result.keys() == {'entered'} and type(result['entered']) is bool,
+                'authority_recovery_observation_shape')
+        return result['entered']
+
+    @contextmanager
+    def _enter_journaled_recipient(self, body, claim, route, selected_task, verify_owner):
+        from .recipient_entry import _RecipientPermit
+        require(type(claim) is NativeClaim and claim.project == 'OffMenu' and claim.lease.fence.generation == 2
+                and type(body) is dict and body.keys() == {'current', 'attempt_id', 'original'}
+                and body['current'] == asdict(claim.lease) and body['attempt_id'] == claim.attempt_id
+                and type(body['original']) is dict and body['original'].keys() ==
+                    {'installation_sha256', 'session_id', 'request_id', 'request_sha256'}
+                and body['original']['session_id'] == claim.lease.fence.owner_session,
+                'authority_recovery_entry_scope')
+        pinned_sha(body['original']['installation_sha256'])
+        pinned_sha(body['original']['request_sha256'])
+        token(body['original']['request_id'])
+        require(isinstance(selected_task, asyncio.Task) and asyncio.current_task() is selected_task
+                and self._dispatch_permit.get() is None and self._recipient_permit.get() is None,
+                'authority_recovery_selected_task')
+        verify_owner()
+        try:
+            result = self._request('/v1/recovery/enter', body)
+        except AuthorityUnavailable as uncertain:
+            try:
+                self.observe_recipient_entry(body)
+            except (Hold, OSError):
+                pass
+            raise uncertain from None
+        require(type(result) is dict and result.keys() == {'entered', 'permit'} and result['entered'] is True
+                and type(result['permit']) is str and re.fullmatch(r'[0-9a-f]{64}', result['permit']),
+                'authority_recovery_first_entry_not_won')
+        permit = _RecipientPermit(claim, route, selected_task, verify_owner, result.pop('permit'))
+        binding = self._recipient_permit.set(permit)
+        try:
+            verify_owner()
+            yield
+        finally:
+            permit.revoke()
+            self._recipient_permit.reset(binding)
+
+    @contextmanager
+    def fresh_assessment_permission(self, claim, admission):
+        """Bind a first affirmative reply to this native task; never retry entry."""
+        require(type(claim) is NativeClaim and claim.project == 'OffMenu'
+                and type(admission) is dict and admission.keys() == {'attempt_id', 'first_intent_sha256'}
+                and admission['attempt_id'] == claim.attempt_id and self._dispatch_permit.get() is None
+                and self._recipient_permit.get() is None,
+                'authority_dispatch_scope')
+        pinned_sha(admission['first_intent_sha256'])
+        body = {'current': asdict(claim.lease), **admission}
+        try:
+            result = self.request('/v1/dispatch/enter', body)
+        except AuthorityUnavailable:
+            # Neither a verified observation nor a still-live lease can recover
+            # a capability whose first reply was lost.
+            self.observe_fresh_assessment_permission(claim, admission)
+            raise AuthorityUnavailable('authority_dispatch_entry_outcome_unknown') from None
+        require(type(result) is dict and result.keys() == {'entered', 'permit'}
+                and result['entered'] is True and type(result['permit']) is str
+                and re.fullmatch(r'[a-f0-9]{64}', result['permit']) is not None,
+                'authority_dispatch_entry_not_first_confirmed')
+        holder = _DispatchPermit(claim, result['permit'])
+        binding = self._dispatch_permit.set(holder)
+        try:
+            yield holder
+        finally:
+            if holder.winner is None:
+                holder.revoke()
+            self._dispatch_permit.reset(binding)
+
+
 class ProviderReply(BytesIO):
     status = 200
 
@@ -139,6 +287,7 @@ class NativeAssignment:
     attempts: tuple[str, ...]
     previous: Lease | None = None
     previous_completion_sha256: str | None = None
+    first_intent_sha256: str | None = None
 
     def __post_init__(self):
         require(type(self.scope) is Scope and type(self.source) is SourcePin
@@ -147,6 +296,10 @@ class NativeAssignment:
                 and len(set(self.attempts)) == len(self.attempts), 'authority_native_assignment')
         pinned_sha(self.reconstruction_sha256)
         pinned_sha(self.scope_sha256)
+        if self.first_intent_sha256 is not None:
+            pinned_sha(self.first_intent_sha256)
+            require(self.previous is None and self.previous_completion_sha256 is None,
+                    'authority_marked_initial_claim_only')
         if self.previous is not None or self.previous_completion_sha256 is not None:
             require(type(self.previous) is Lease and self.previous.fence.scope.key.claim_identity ==
                     self.scope.key.claim_identity, 'authority_previous_claim_scope')
@@ -175,6 +328,44 @@ def _receipt(value):
 
 def _native_claim(value):
     return NativeClaim(value['project'], value['attempt_id'], _lease(value['lease']))
+
+
+def _recovery_lease(value):
+    try:
+        lease = _lease(value)
+    except (KeyError, TypeError, ValueError):
+        raise Hold('authority_recovery_lease') from None
+    require(asdict(lease) == value, 'authority_recovery_lease')
+    return lease
+
+
+def unstarted_transition(grant, identity, realm, body):
+    """Validate and fingerprint a retained recipient request, without authenticating it."""
+    pinned_sha(realm)
+    require(type(body) is dict and body.keys() == {'request_id', 'current', 'successor_session',
+            'expected_coordinator_epoch', 'quiesced_sha256', 'reconstruction_sha256', 'recovery'},
+            'authority_recovery_request')
+    request_id = token(body['request_id'])
+    pinned_sha(body['quiesced_sha256'])
+    recovery = body['recovery']
+    require(type(recovery) is dict and recovery.keys() == {'attempt_id', 'revocation_id'},
+            'authority_recovery_originals')
+    token(recovery['revocation_id'])
+    fence = _recovery_lease(body['current']).fence
+    require(type(grant) is NativeAssignment and grant.previous is None and grant.first_intent_sha256 is None
+            and fence.scope == grant.scope and fence.source == grant.source and fence.generation == 1
+            and (fence.authority_id, fence.deployment_sha256, fence.policy_sha256)
+                == (identity.authority_id, identity.deployment_sha256, identity.policy_sha256)
+            and fence.owner_session != body['successor_session'] == identity.session_id
+            and type(body['expected_coordinator_epoch']) is int
+            and fence.coordinator_epoch == body['expected_coordinator_epoch'] == grant.expected_coordinator_epoch
+            and body['reconstruction_sha256'] == grant.reconstruction_sha256
+            and recovery['attempt_id'] == grant.attempts[0], 'authority_recovery_assignment')
+    kind = 'uif.shared-lease.recover-unstarted/1'
+    return fence, {
+        'installation_sha256': realm, 'session_id': identity.session_id, 'request_id': request_id,
+        'request_kind': kind, 'request_sha256': digest({'kind': kind, 'request': dict(body, authority=asdict(identity))}),
+    }
 
 
 class RemoteAuthority:
@@ -252,33 +443,94 @@ class RemoteAuthority:
             return datetime.fromtimestamp(wire_seconds(p[name]), timezone.utc)
         pinned_sha(raw['source_receipt_sha256'])
         pinned_sha(raw['admission_binding_sha256'])
-        record = AccountUsageReceipt(self.quota_issuer, pinned_sha(raw['receipt_sha256']),
-            AccountUsageEvidence(route, p['utc_day'], utc('covered_through'), utc('valid_until'),
-                                 p['upper'], p['gap_upper'], p['free_standard_no_fallback'],
-                                 p['completeness_verified']))
+        receipt_sha = pinned_sha(raw['receipt_sha256'])
+        projection = AccountUsageEvidence(route, p['utc_day'], utc('covered_through'), utc('valid_until'),
+            p['upper'], p['gap_upper'], p['free_standard_no_fallback'], p['completeness_verified'])
+        snapshot = None
+        if 'reservation_snapshot' in raw:
+            value = raw['reservation_snapshot']
+            require(type(value) is dict and value.keys() == {
+                        'receipt_sha256', 'observed_at', 'debt_millineurons', 'ceiling_breached'}
+                    and value['receipt_sha256'] == receipt_sha
+                    and type(value['observed_at']) is int
+                    and p['covered_through'] <= value['observed_at'] < p['valid_until']
+                    and type(value['debt_millineurons']) is int
+                    and 0 <= value['debt_millineurons'] < 2**53
+                    and type(value['ceiling_breached']) is bool, 'authority_quota_reservation_binding')
+            observed = datetime.fromtimestamp(value['observed_at'], timezone.utc)
+            require(observed.date().isoformat() == projection.utc_day
+                    and observed - projection.covered_through <= MAX_EVIDENCE_AGE,
+                    'authority_quota_reservation_binding')
+            snapshot = AccountReservationSnapshot(**value)
+        record = AccountUsageReceipt(self.quota_issuer, receipt_sha, projection, snapshot)
         self._verified_usage.set(record)
         return record
 
     def verify_usage(self, issuer, receipt):
         return issuer == self.quota_issuer and receipt is self._verified_usage.get()
 
-    def _submit_initial_claim_once(self, grant):
-        """Single old claim endpoint call for an already retained first-dispatch original."""
-        require(type(grant) is NativeAssignment and grant.previous is None and
+    def _submit_initial_claim_once(self, grant, retained_intent_sha256):
+        """The marked journal winner submits the independently enrolled digest."""
+        require(type(grant) is NativeAssignment and grant.previous is None
+                and grant.first_intent_sha256 == pinned_sha(retained_intent_sha256) and
                 (grant.scope.repository_id, grant.scope.key.workspace_id, grant.scope.key.project_id)
                 == (self.repository_id, self.workspace_id, self.project_id),
                 'authority_native_initial_scope')
         request = grant.claim(self.identity)
-        body = dict(_mutation_body(request), attempt_id=grant.attempts[0])
+        body = dict(_mutation_body(request), attempt_id=grant.attempts[0], first_intent_sha256=retained_intent_sha256)
         return _lease_reply(request, _receipt(self.transport.request('/v1/claim', body))).lease
+
+    def observe_unstarted_recovery(self, grant, binding_path):
+        """Observe a recipient's protected original handoff input and current claim.
+
+        The producer must retain the commissioned installation digest and the
+        exact submitted handoff body together. This readback cannot prepare a
+        workspace, issue a claim, or recreate a missing transition.
+        """
+        return self._observe_unstarted_binding(grant, protected_record(binding_path))
+
+    def _observe_unstarted_binding(self, grant, binding, *, workspace_transition=None):
+        """Caller loads both inputs through the protected installation reader."""
+        require(type(binding) is dict and binding.keys() == {'installation_sha256', 'handoff'},
+                'authority_recovery_binding')
+        realm = binding['installation_sha256']
+        body = binding['handoff']
+        identity = self.identity
+        fence, transition = unstarted_transition(grant, identity, realm, body)
+        if workspace_transition is not None:
+            require(transition == workspace_transition, 'authority_recovery_workspace_transition')
+        attempt = body['recovery']['attempt_id']
+        require((fence.scope.repository_id, fence.scope.key.workspace_id, fence.scope.key.project_id)
+                == (self.repository_id, self.workspace_id, self.project_id), 'authority_recovery_assignment')
+        status = self.status()
+        require(status.get('installation_sha256') == status.get('commissioned_sha256') == realm
+                and not status['stopped'] and status['coordinator_epoch'] == fence.coordinator_epoch,
+                'authority_recovery_realm_or_epoch')
+        lookup = {k: transition[k] for k in ('installation_sha256', 'session_id', 'request_id')}
+        reply = self.transport.request('/v1/transition/original', lookup, allow_absent=True)
+        require(type(reply) is dict and reply.keys() ==
+                {'request_id', 'request_kind', 'request_sha256', 'attempt_id', 'lease'}
+                and all(reply[k] == transition[k] for k in ('request_kind', 'request_id', 'request_sha256'))
+                and reply['attempt_id'] == attempt, 'authority_recovery_receipt')
+        moved = _recovery_lease(reply['lease'])
+        require(moved.fence.lease_id != fence.lease_id
+                and moved.fence == replace(fence, owner_session=identity.session_id,
+                    generation=fence.generation + 1, lease_id=moved.fence.lease_id), 'authority_recovery_fence')
+        current = self.read_claim('OffMenu', attempt, True)
+        require(current is not None and current.lease.fence == moved.fence
+                and current.lease.expires_at >= moved.expires_at
+                and self.clock().timestamp() < current.lease.expires_at, 'authority_recovery_not_current')
+        return current
 
     def original_lease(self, grant, *, allow_acquire=False):
         request = grant.claim(self.identity)
         if grant.previous is None:
             body = dict(_mutation_body(request), attempt_id=grant.attempts[0])
+            if grant.first_intent_sha256 is not None:
+                body['first_intent_sha256'] = grant.first_intent_sha256
             raw = self.transport.request('/v1/claim/observe', body, allow_absent=True)
             if raw is None:
-                require(allow_acquire, 'authority_original_claim_unverified')
+                require(allow_acquire and grant.first_intent_sha256 is None, 'authority_original_claim_unverified')
                 raw = self.transport.request('/v1/claim', body)
             return _lease_reply(request, _receipt(raw)).lease
         kind = 'uif.shared-lease.reclaim/1'
@@ -306,6 +558,8 @@ class RemoteAuthority:
                 and (grant.scope.repository_id, grant.scope.key.workspace_id, grant.scope.key.project_id)
                     == (self.repository_id, self.workspace_id, self.project_id), 'authority_native_scope')
         status = self.status()
+        require(grant.first_intent_sha256 is None or attempt != grant.attempts[0],
+                'authority_marked_first_dispatch_required')
         require(not status['stopped'] and status['coordinator_epoch'] == grant.expected_coordinator_epoch,
                 'authority_paused_or_epoch')
         issue_id = grant.scope.key.issue_id

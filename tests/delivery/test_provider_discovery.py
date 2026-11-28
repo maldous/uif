@@ -1,13 +1,116 @@
 import asyncio
 from dataclasses import replace
 import unittest
+from unittest.mock import AsyncMock, patch
 
-from uif.provider_discovery import Adapter, NormalProviderDiscovery
+from uif.provider_discovery import Adapter, NormalProviderDiscovery, ProviderReadCooldown
 from uif.provider_pool import PoolRequest, ProviderRoute, RouteAvailability
 from uif.quota_handoff import LinearKey
 
 
 class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
+    async def test_unavailable_metadata_backs_off_and_fresh_evidence_resets_delay(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        route = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                              "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                              frozenset({"author"}))
+        read = AsyncMock(side_effect=[RuntimeError()] * 4 + [None, "fresh", RuntimeError(), None])
+        adapter = Adapter(route, read, lambda evidence, request: None)
+        discovery = NormalProviderDiscovery((adapter,), clock=lambda: 100, interval=30, timeout=8)
+        delays = []
+        evidence = []
+
+        async def sleep(delay):
+            delays.append(delay)
+            evidence.append(discovery._evidence.get(route.route_id))
+            if len(delays) == 8:
+                raise asyncio.CancelledError
+
+        with patch('uif.provider_discovery.asyncio.sleep', side_effect=sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                await discovery._poll(adapter)
+
+        self.assertEqual(delays, [30, 60, 120, 240, 300, 30, 30, 60])
+        self.assertEqual(evidence, [None] * 5 + ["fresh", None, None])
+
+    async def test_metadata_retry_after_can_extend_backoff_and_clears_old_evidence(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        route = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                              "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                              frozenset({"author"}))
+        read = AsyncMock(side_effect=["fresh", ProviderReadCooldown(600),
+                                      ProviderReadCooldown(1), "recovered"])
+        adapter = Adapter(route, read, lambda evidence, request: None)
+        discovery = NormalProviderDiscovery((adapter,), clock=lambda: 100, interval=30, timeout=8)
+        polls = []
+
+        async def sleep(delay):
+            polls.append((delay, discovery.status(), route.route_id in discovery._evidence))
+            if len(polls) == 4:
+                raise asyncio.CancelledError
+
+        with patch('uif.provider_discovery.asyncio.sleep', side_effect=sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                await discovery._poll(adapter)
+
+        self.assertEqual(polls, [
+            (30, (("codex", "observed"),), True),
+            (600, (("codex", "reader-throttled"),), False),
+            (60, (("codex", "reader-throttled"),), False),
+            (30, (("codex", "observed"),), True),
+        ])
+
+    async def test_authenticated_but_stale_account_receipts_do_not_reset_polling(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from uif.stokowski_cloudflare.account_admission import AccountUsageEvidence, FreeRoute
+        from uif.stokowski_cloudflare.client import GLM_MODEL
+        from uif.stokowski_cloudflare.native_composition import NativeComposition
+        from uif.stokowski_cloudflare.shared_admission import AccountUsageReceipt
+
+        now = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        route = FreeRoute('a' * 32, GLM_MODEL, None, 'b' * 64)
+        current = AccountUsageEvidence(route, '2026-11-25', now,
+                                      now + timedelta(seconds=120), 0, 0, True, True)
+        stale = replace(current, covered_through=now - timedelta(seconds=91))
+        expired = replace(current, valid_until=now)
+        partial = replace(current, completeness_verified=False)
+        exhausted = replace(current, upper=7_499_999)
+        issuer = object()
+        receipts = [AccountUsageReceipt(issuer, digit * 64, projection)
+                    for digit, projection in zip('cdef01', (current, stale, expired, partial, exhausted, current))]
+        remote = SimpleNamespace(
+            routes={'OffMenu': route}, clock=lambda: now,
+            workspace_id='00000000-0000-0000-0000-000000000001',
+            project_id='00000000-0000-0000-0000-000000000002',
+            read_usage=Mock(side_effect=receipts), verify_usage=Mock(return_value=True),
+            quota_issuer=issuer,
+        )
+        composition = NativeComposition(remote, "/not/read")
+        discovery = composition._installed_provider_discovery()
+        polls = []
+
+        async def sleep(delay):
+            polls.append((delay, discovery.status()))
+            if len(polls) in (2, 3, 4, 5):
+                self.assertIsNone(composition._discovered_preview('OffMenu', 10))
+            if len(polls) == len(receipts):
+                raise asyncio.CancelledError
+
+        with patch('uif.provider_discovery.asyncio.sleep', side_effect=sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                await discovery._poll(discovery.adapters[0])
+
+        self.assertEqual(polls, [
+            (delay, (('workers-ai-offmenu', state),))
+            for delay, state in (
+                (20, 'observed'), (20, 'evidence-missing'), (40, 'evidence-missing'),
+                (80, 'evidence-missing'), (20, 'observed'), (20, 'observed'),
+            )
+        ])
+        self.assertEqual(remote.verify_usage.call_count, len(receipts))
+
     async def test_normal_runtime_refresh_resumes_independently(self):
         key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
         a = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
@@ -51,6 +154,9 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
                     break
                 await asyncio.sleep(.001)
             self.assertEqual(select().route, b)
+            needs_tools = select(required_capabilities=frozenset({"tool-calls"}))
+            self.assertIsNone(needs_tools.route)
+            self.assertIn(("groq", "capability-unproved"), needs_tools.rejected)
             projected.clear()
             self.assertIsNone(select(pending_original=True).route)
             self.assertIsNone(select(owner_paused=True).route)
@@ -66,6 +172,76 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(await d.run(normal_start), "stopped")
         d.clock = lambda: 100
+        self.assertIsNone(select().route)
+
+    async def test_task_capabilities_follow_latest_route_evidence(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        primary = ProviderRoute("primary", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                                "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                                frozenset({"author"}))
+        secondary = replace(primary, route_id="secondary", provider="groq", client="opencode",
+                            model="exact-groq", account_sha256="e"*64)
+        request = PoolRequest(key, "owner/repo", "a"*64, "b"*64, "original",
+                              "ordinary-software", "author", "new", ("primary", "secondary"))
+        tools = frozenset({"tool-calls"})
+        rich = (frozenset({"structured-reports", "tool-calls"}), 109)
+        report_only = (frozenset({"structured-reports"}), 109)
+        unavailable = (None, 109)
+        latest = {"primary": rich, "secondary": rich}
+        now = 100
+
+        def adapter(route):
+            async def read():
+                return latest[route.route_id]
+
+            def project(observation, asked):
+                _, until = observation
+                return RouteAvailability(route, asked, "available", 99, until, "f"*64,
+                                         True, True, True)
+
+            return Adapter(route, read, project, lambda observation, _: observation[0])
+
+        discovery = NormalProviderDiscovery(
+            (adapter(primary), adapter(secondary)),
+            clock=lambda: now, interval=.01, timeout=.005,
+        )
+
+        async def refreshed():
+            for _ in range(100):
+                if all(discovery.observed(name) is snapshot for name, snapshot in latest.items()):
+                    return
+                await asyncio.sleep(.001)
+            self.fail("discovery did not observe the expected capability update")
+
+        def select(required=tools):
+            return discovery.select(request, owner_paused=False, pending_original=False,
+                                    required_capabilities=required)
+
+        async def normal_start():
+            nonlocal now
+            await refreshed()
+            self.assertEqual(select().route, primary)
+            latest["primary"] = report_only
+            await refreshed()
+            decision = select()
+            self.assertEqual(decision.route, secondary)
+            self.assertIn(("primary", "capability-unproved"), decision.rejected)
+            self.assertEqual(select(frozenset({"structured-reports"})).route, primary)
+
+            latest["secondary"] = unavailable
+            await refreshed()
+            self.assertIsNone(select().route)
+            self.assertIn(("secondary", "capability-unproved"), select().rejected)
+            self.assertEqual(select("tool-calls").hold, "required-capabilities-invalid")
+
+            latest["primary"] = rich
+            await refreshed()
+            self.assertEqual(select().route, primary)
+            now = 109
+            self.assertIsNone(select().route)
+            self.assertIn(("primary", "evidence-stale"), select().rejected)
+
+        await discovery.run(normal_start)
         self.assertIsNone(select().route)
 
     async def test_cancel_resistant_reader_does_not_hold_other_route_or_shutdown(self):
@@ -186,6 +362,128 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
             direct.assert_called_once()
         await discovery.run(normal)
         remote.verify_usage.assert_called_once_with(proof.issuer, proof)
+
+    async def test_workers_roster_reports_fresh_coverage_and_expires_without_another_read(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from uif.stokowski_cloudflare.account_admission import (
+            LIMIT_MILLINEURONS, AccountUsageEvidence, FreeRoute,
+        )
+        from uif.stokowski_cloudflare.client import GLM_MODEL
+        from uif.stokowski_cloudflare.native_composition import NativeComposition
+        from uif.stokowski_cloudflare.shared_admission import AccountReservationSnapshot, AccountUsageReceipt
+
+        covered = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        now = covered + timedelta(seconds=10)
+        route = FreeRoute('a' * 32, GLM_MODEL, 'fixture-gateway', 'b' * 64)
+        proof = AccountUsageEvidence(route, '2026-11-25', covered, covered + timedelta(minutes=2),
+                                     20, 30, True, True)
+        snapshot = AccountReservationSnapshot(receipt_sha256='c' * 64,
+            observed_at=int(now.timestamp()), debt_millineurons=100, ceiling_breached=False)
+        receipt = AccountUsageReceipt(object(), 'c' * 64, proof, reservation_snapshot=snapshot)
+        remote = SimpleNamespace(
+            routes={'OffMenu': route}, clock=lambda: now,
+            workspace_id='00000000-0000-0000-0000-000000000001',
+            project_id='00000000-0000-0000-0000-000000000002',
+            read_usage=Mock(return_value=receipt), verify_usage=Mock(return_value=True),
+            quota_issuer=receipt.issuer,
+        )
+        discovery = NativeComposition(remote, '/unread-roster-fixture')._installed_provider_discovery()
+
+        async def normal_start():
+            nonlocal now
+            async with asyncio.timeout(2):
+                while discovery.observed('workers-ai-offmenu') is None:
+                    await asyncio.sleep(.002)
+            roster = discovery.roster()
+            self.assertEqual(roster['route_readers'], (('workers-ai-offmenu', 'observed'),))
+            row, = roster['routes']
+            self.assertEqual(row['model'], GLM_MODEL)
+            self.assertEqual(row['account_sha256'], discovery.adapters[0].route.account_sha256)
+            self.assertNotIn(route.account_id, repr(row))
+            self.assertNotIn(route.credential_epoch_sha256, repr(row))
+            self.assertEqual(row['dispatch_hold'], 'task-admission-unchecked')
+            self.assertEqual(row['headroom']['amount'], LIMIT_MILLINEURONS - 1 - 150)
+            self.assertEqual(row['reservations']['amount'], 100)
+            observation = row['account_observation']
+            self.assertEqual(observation['metadata_state'], 'current')
+            self.assertEqual(observation['coverage_age_seconds'], 10)
+            self.assertEqual(observation['expires_at_epoch_seconds'], covered.timestamp() + 90)
+            self.assertEqual(observation['resets_at_epoch_seconds'], covered.timestamp() + 12 * 3600)
+            self.assertEqual(observation['account_usage_upper_millineurons'], 20)
+            self.assertEqual(observation['outside_gap_upper_millineurons'], 30)
+
+            now = covered + timedelta(seconds=91)
+            stale, = discovery.roster()['routes']
+            self.assertEqual(stale['dispatch_hold'], 'quota-evidence-stale')
+            self.assertIsNone(stale['headroom'])
+            self.assertIsNone(stale['reservations'])
+            self.assertEqual(stale['account_observation']['coverage_age_seconds'], 91)
+            self.assertNotIn('account_usage_upper_millineurons', stale['account_observation'])
+            remote.read_usage.assert_called_once_with(route)
+            remote.verify_usage.assert_called_once_with(receipt.issuer, receipt)
+
+        await discovery.run(normal_start)
+
+    def test_workers_roster_counts_only_exact_current_authority_reservations(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from uif.stokowski_cloudflare.account_admission import (
+            LIMIT_MILLINEURONS, AccountUsageEvidence, FreeRoute,
+        )
+        from uif.stokowski_cloudflare.client import GLM_MODEL, MODEL_RESERVATIONS
+        from uif.stokowski_cloudflare.native_composition import NativeComposition
+        from uif.stokowski_cloudflare.shared_admission import (
+            AccountReservationSnapshot, AccountUsageReceipt,
+        )
+
+        covered = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        now = int(covered.timestamp()) + 15
+        route = FreeRoute('a' * 32, GLM_MODEL, None, 'b' * 64)
+        proof = AccountUsageEvidence(
+            route, '2026-11-25', covered, covered + timedelta(minutes=2), 20, 30, True, True,
+        )
+        receipt = AccountUsageReceipt(object(), 'c' * 64, proof)
+        valid = AccountReservationSnapshot(
+            receipt_sha256=receipt.receipt_sha256, observed_at=now - 5,
+            debt_millineurons=100, ceiling_breached=False,
+        )
+        remote = SimpleNamespace(
+            routes={'OffMenu': route}, clock=lambda: datetime.fromtimestamp(now, timezone.utc),
+            workspace_id='00000000-0000-0000-0000-000000000001',
+            project_id='00000000-0000-0000-0000-000000000002',
+            read_usage=Mock(),
+        )
+        discovery = NativeComposition(remote, '/unread-roster-fixture')._installed_provider_discovery()
+        adapter, = discovery.adapters
+
+        def describe(reported):
+            return adapter.describe(replace(receipt, reservation_snapshot=reported), now=now)
+
+        _, hold, headroom, debt = describe(valid)
+        self.assertEqual(hold, 'task-admission-unchecked')
+        self.assertEqual(debt, {'unit': 'millineurons', 'amount': 100,
+                                'observed_at_epoch_seconds': now - 5})
+        self.assertEqual(headroom['amount'], LIMIT_MILLINEURONS - 1 - 150)
+        for invalid in (None, replace(valid, receipt_sha256='d' * 64),
+                        replace(valid, observed_at=int(covered.timestamp()) - 1),
+                        replace(valid, observed_at=now + 1),
+                        replace(valid, debt_millineurons=True),
+                        replace(valid, ceiling_breached=1)):
+            _, hold, headroom, debt = describe(invalid)
+            self.assertEqual(hold, 'reservation-headroom-unverified')
+            self.assertIsNone(headroom)
+            self.assertIsNone(debt)
+        maximum = MODEL_RESERVATIONS[GLM_MODEL]
+        _, hold, headroom, _ = describe(replace(valid, debt_millineurons=LIMIT_MILLINEURONS - 50 - maximum))
+        self.assertEqual(hold, 'quota-ceiling')
+        self.assertEqual(headroom['amount'], maximum - 1)
+        _, hold, headroom, _ = describe(replace(valid, ceiling_breached=True))
+        self.assertEqual(hold, 'budget-ceiling-breached')
+        self.assertEqual(headroom['amount'], 0)
+        remote.read_usage.assert_not_called()
 
     async def test_composed_worker_thread_remains_accountable_until_transport_finishes(self):
         from datetime import datetime, timedelta, timezone

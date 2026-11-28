@@ -117,15 +117,28 @@ Use the existing release handoff, recording its current callable actions and rec
    Verify the installed stage and effective service profile, including any
    inherited hooks, credential input, and service identity. The generic Foo
    transport and the OffMenu verifier shelf do not qualify this action.
+   The offline [fixed receiver renderer](../../tools/delivery/render_normal_install_receiver.py)
+   pins the reviewed installer siblings and the independently retained digest
+   of the canonical selection original. The protected release layout uses
+   `/var/lib/uif-stokowski/idle-upgrade/normal-install-v1` with its reviewed
+   Python source siblings, `selection-original.json`, `bundle.tar`,
+   `selection.json`, and `90-uif-commissioned-normal.conf`. This directory
+   and its contents require root custody with no group or world write access.
+   The mounted receiver uses `/usr/bin/python3` with isolated flags
+   `-I -S -B` and takes no caller arguments. The original pins all three
+   artifacts. A detached receiver proves prepared source only. The owner
+   must verify the mounted action and retain its same-original result before
+   moving to the manager and authority operations.
 3. **Shared authority control.** Identify the existing authenticated
    `control` caller for
-   [`/v1/startup/bind`](../../services/shared-authority/README.md#wire-contract).
-   Bind the installed unit, stage, native session and epoch to the original
-   commissioning evidence and validity. Record the original receipt. An
-   Access identity in policy is not a verified callable control runtime.
-   While the binding is current, unexpired and not stopped, subsequent starts
-   obtain fresh native receipts without new manual authorization or reuse of
-   the consumed guarded-idle marker.
+   [`/v1/control`](../../services/shared-authority/README.md#wire-contract).
+   When normal activation is intended, use that action to bind the installed
+   stage, native session and commissioning evidence at the resulting epoch.
+   Compare the epoch with the installed authority configuration and take the
+   prior activation ID from the authenticated control readback.
+   Retain the original receipt. The commissioned selection stays eligible for
+   routine restarts at that epoch. Each start obtains its own fresh native
+   receipt and respects the durable stop state.
 4. **Read back normal operation.** Verify the installed revision, process and
    authenticated startup result, then exercise unattended restart and the
    separately authorized work lifecycle. A running process without
@@ -139,16 +152,14 @@ When the installer returns its verified terminal result, the installation owner
 hands the exact release, unit and stage plus the original install receipt and
 effective unit readback to the existing control owner. The
 [`render_normal_selection`](../../tools/delivery/commissioned_normal_service.py)
-output is the on-host selector input, not that receipt or a startup-bind
-request. The selector records the absolute stage path. The startup bind names
-the stage basename and the native runtime session, not the operator's control
-session. The control owner uses the existing commissioning evidence to prepare
-the [immutable startup-bind original](../../src/uif/stokowski_cloudflare/startup_control_original.py);
-do not substitute a selector hash for that evidence. If the supported action
-and its inputs are ready, advance the handoff in the same work cycle instead
+output is the on-host selector input. The selector records the absolute stage
+path. The normal activation names the stage basename and native runtime session.
+The control owner uses the full commissioning evidence to prepare the
+[immutable normal activation original](../../src/uif/stokowski_cloudflare/startup_control_original.py).
+If the action and its inputs are ready, advance the handoff in the same work cycle instead
 of waiting for another status poll. If a separate owner holds the next action,
 deliver the exact evidence through the existing release handoff and track the
-same original to its terminal result. Neither step lifts an existing stop.
+same original to its terminal result. The installer itself never lifts a stop.
 
 ### Fix forward when a retained release cannot be reused
 

@@ -162,20 +162,13 @@ def compare_to_historical_role(role, candidate_raw, *, prior):
             'production_acceptance': 'not_evaluated'}
 
 
-def _revalidate_role(dirfd, identities):
-    """Reopen only through retained same-role descriptors, without following links."""
-    for parts, prior in identities.items():
-        parent = os.dup(dirfd)
-        try:
-            for name in parts[:-1]:
-                child = os.open(name, OPEN_DIR, dir_fd=parent)
-                os.close(parent)
-                parent = child
-            current = (os.stat(parts[-1], dir_fd=parent, follow_symlinks=False)
-                       if parts else os.fstat(parent))
-            need(identity(current) == prior, 'installed_native_inventory_changed')
-        finally:
-            os.close(parent)
+def _revalidate_role(dirfd, identities, hashes, *, uid):
+    """Recheck members through the retained descriptor, including their bytes."""
+    current_identities = {}
+    current_hashes = capture_role(dirfd, uid=uid, identities=current_identities)
+    # An in-place, same-size edit can share the original filesystem timestamps.
+    need(current_identities == identities and current_hashes == hashes,
+         'installed_native_inventory_changed')
 
 
 def _capture_fixed():
@@ -196,11 +189,12 @@ def _capture_fixed():
         for role, leaf in ROLES.items():
             linked = os.stat(leaf, dir_fd=fd, follow_symlinks=False)
             child = os.open(leaf, OPEN_DIR, dir_fd=fd)
-            role_handles.append((leaf, child, identity(linked), {}))
+            identities = {}
+            role_handles.append((role, leaf, child, identity(linked), identities))
             need(identity(os.fstat(child)) == identity(linked), 'installed_native_role_changed')
-            out[role] = capture_role(child, uid=0, identities=role_handles[-1][3])
-        for leaf, child, prior, identities in role_handles:
-            _revalidate_role(child, identities)
+            out[role] = capture_role(child, uid=0, identities=identities)
+        for role, leaf, child, prior, identities in role_handles:
+            _revalidate_role(child, identities, out[role], uid=0)
             need(identity(os.stat(leaf, dir_fd=fd, follow_symlinks=False)) == prior,
                  'installed_native_role_changed')
         for parent, name, prior in reversed(chain):
@@ -208,7 +202,7 @@ def _capture_fixed():
                  'installed_native_root_changed')
         return out
     finally:
-        for _, child, _, _ in role_handles:
+        for _, _, child, _, _ in role_handles:
             os.close(child)
         os.close(fd)
         for parent, _, _ in reversed(chain):

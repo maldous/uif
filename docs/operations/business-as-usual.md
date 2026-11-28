@@ -22,15 +22,21 @@ implementation, evidence and the applicable authorization boundaries.
   model also need proof. Listing a candidate is not permission to configure,
   enable or spend on it. Follow the [pool selection contract](provider-pool-selection.md)
   and current route and account controls.
-- **Shared coordination** uses native Linear as the sole intake and status
-  system. One issue has one active writer at a time. Both runtimes use the
-  same durable election and claim authority. Bind the original claim to the
+- **Shared coordination** uses native Linear for issue intake and issue
+  status. The existing Cloudflare SQLite-backed Durable Object holds the
+  shared runtime claims, generations, operation receipts and reservations.
+  Both runtimes must use that authority to recover state and maintain one
+  active writer per issue. Bind the original claim to the
   immutable Linear issue ID and its repository/workspace/project scope; pin
   the source for each admitted generation. Enforce the current owner, epoch
   and generation at every shared effect. Reconcile the same original
   operation and receipt before a retry or transfer; stale ownership cannot
   write. Acknowledgment alone is not a claim. Independent review, existing
   publisher custody and required project checks still apply.
+  Preserve Stokowski's configured `workflow.yaml` transitions and its existing
+  `stokowski:state` and `stokowski:gate` Linear comments for native workflow
+  recovery. Both peers reconcile those milestones with the shared claim and
+  use the original checkpoint or artifact reference for unfinished work.
 - **Closed-loop delivery** means automatic intake, claim, execution, required
   checks and independent review, authorized publication and destination
   readback, durable terminal outcome, and automatic refill. Progress and the

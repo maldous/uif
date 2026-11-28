@@ -1,17 +1,19 @@
+import ast
 from contextlib import contextmanager
 from dataclasses import replace
 import fcntl
-from io import BytesIO
 import os
 from pathlib import Path
+import stat
 import sys
-import tarfile
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parents[2] / 'tools/delivery'))
 import install_commissioned_normal_selection as install
+from render_detached_normal_stage import render_detached_normal_stage
 
 g = install.guard
 s = install.staging
@@ -28,6 +30,8 @@ class FixedNormalSelection(unittest.TestCase):
         old, old_selector, lock = self.dropin.with_name('legacy'), root/'guarded', root/'lock'
         old.write_bytes(g.selector_dropin())
         old_selector.write_bytes(b'old')
+        old.chmod(0o644)
+        old_selector.chmod(0o644)
         lock.write_bytes(b'lock')
         self.lock_held = False
 
@@ -55,20 +59,13 @@ class FixedNormalSelection(unittest.TestCase):
         self.leaf = root/'uif1313-normal-fixture'
         self.enterContext(patch.object(install.normal, 'check_normal_stage',
                          side_effect=lambda stage: stage if stage == str(self.leaf) else check(stage)))
-        self.enterContext(patch.object(install.guarded, 'observe_guarded_preimage',
-                                        side_effect=self.observe_guarded))
-        self.enterContext(patch.object(install.effective, 'observe_normal_effective',
-                                        side_effect=self.observe_normal))
+        self.enterContext(patch.object(install.effective, 'check_normal_stage', install.normal.check_normal_stage))
+        self.enterContext(patch.object(install.guarded, 'observe_retained_idle_start', return_value='consumed'))
+        self.enterContext(patch.object(install.effective, '_get', side_effect=self.manager_property))
         values = {p: (p.encode(), 0o555 if p == g.INTERPRETER else 0o444) for p in s.REQUIRED}
-        buf = BytesIO()
-        with tarfile.open(fileobj=buf, mode='w') as tar:
-            for name, (raw, mode) in values.items():
-                info = tarfile.TarInfo(name)
-                info.size, info.mode = len(raw), mode
-                tar.addfile(info, BytesIO(raw))
-        self.archive = buf.getvalue()
-        self.staged = s.NormalRuntimeStageApproval('b'*64, self.leaf.name, g.digest(self.archive),
-            g.plan_digest(s._project_member_map(values)), g.digest(old.read_bytes()), g.digest(b'old'))
+        self.archive, projection = render_detached_normal_stage(values)
+        self.staged = s.NormalRuntimeStageApproval('b'*64, self.leaf.name, projection['archive_sha256'],
+            projection['members_sha256'], g.digest(old.read_bytes()), g.digest(b'old'))
         s.stage_normal_runtime(self.staged, self.archive)
         args = {key: g.digest(values[name][0]) for key, name in (
                  ('launcher_sha256','launch.py'), ('interpreter_sha256',g.INTERPRETER),
@@ -81,16 +78,17 @@ class FixedNormalSelection(unittest.TestCase):
         self.original = install.transaction.SelectionOriginal('a'*64, self.staged, None, None,
             self.staged.prior_dropin_sha256, g.digest(self.bytes), unit_pin, manager)
 
-    def observe_guarded(self, stream, prior, *, conditions, asserts):
+    def manager_property(self, interface, name, signature):
         self.assertTrue(self.lock_held)
-        self.assertEqual(prior.selector_sha256, self.staged.prior_selection_sha256)
-        return True  # Actual retained/typed-manager proof tested in separate observer tests.
-
-    def observe_normal(self, original):
-        self.assertTrue(self.lock_held)
-        self.assertEqual(self.selector.read_bytes(), self.bytes)
-        self.assertEqual(self.dropin.read_bytes(), self.unit)
-        return {'status': 'disk_matches_manager_reload_needed', 'installation_accepted': False}
+        exe = '/usr/bin/python3'
+        args = [exe, '-I', '-S', '-B', str(g.TOOL_PATH), '--profile', 'uif-idle',
+                '--stage', g.FIXED_STAGE, '--action', 'serve']
+        # No reload is performed. Once the normal drop-in exists on fixture
+        # disk, the manager still reports the old command and a pending reload.
+        return {'Id': install.normal.UNIT, 'NeedDaemonReload': self.dropin.exists(),
+                'ActiveState': 'inactive', 'SubState': 'dead', 'MainPID': 0, 'ControlPID': 0,
+                'Job': [0, '/'], 'NRestarts': 0, 'ExecMainStartTimestampMonotonic': 0,
+                'Conditions': [], 'Asserts': [], 'ExecStart': [[exe, args, False, 0, 0, 0, 0, 0, 0, 0]]}[name]
 
     def run_original(self):
         return install._install_from_trusted_owner(
@@ -184,3 +182,190 @@ class FixedNormalSelection(unittest.TestCase):
                 txn.decode_selection_original(alternate, g.digest(alternate))
         self.assertFalse(list(self.receipts.iterdir()))
         self.assertFalse(self.selector.exists())
+
+    def test_fixed_action_materializes_then_reconciles_verified_same_original(self):
+        import shutil
+        from unittest.mock import Mock
+        shutil.rmtree(self.leaf)
+        # Original and bytes come from a detached owner fixture. No installed
+        # Windmill binding, host paths, or manager are used.
+        retained = self.leaf.parent/'retained-original'
+        wire = install.transaction.encode_selection_original(self.original)
+        original_pin = g.digest(wire)
+        retained.write_bytes(wire)
+        retained.chmod(0o400)
+
+        def resolve_retained():
+            raw = install._snapshot(retained, (0o400,))
+            return (install.transaction.decode_selection_original(raw, original_pin),
+                    self.archive, self.bytes, self.unit)
+
+        resolve = Mock(side_effect=resolve_retained)
+        previous = install.transaction.commit_normal_selection
+
+        def lose_ack(*args):
+            committed = previous(*args)
+            self.assertEqual(committed['status'], 'normal_pair_committed_on_disk')
+            raise OSError('terminal reply lost')
+
+        with patch.object(install.transaction, 'commit_normal_selection', side_effect=lose_ack):
+            with self.assertRaisesRegex(OSError, 'terminal reply lost'):
+                install._stage_and_select_from_trusted_owner(resolve)
+        self.assertEqual(resolve.call_count, 1)
+        selected = [self.leaf, self.selector, self.dropin, *sorted(self.receipts.iterdir())]
+        before = [p.stat().st_ino for p in selected]
+        result = install._stage_and_select_from_trusted_owner(resolve)
+        self.assertEqual(resolve.call_count, 2)
+        self.assertEqual([p.stat().st_ino for p in selected], before)
+        self.assertEqual(result['operation_id'], self.original.operation_id)
+        self.assertEqual(result['release_sha256'], self.staged.members_sha256)
+        intent = self.receipts/(self.original.operation_id + '.normal-select-intent.json')
+        receipt = self.receipts/(self.original.operation_id + '.normal-select-committed.json')
+        self.assertEqual(intent.read_bytes(), wire)
+        self.assertEqual(result['staging_receipt_sha256'], g.digest((self.leaf/s.RECEIPT).read_bytes()))
+        self.assertEqual(result['selection_receipt_sha256'], g.digest(receipt.read_bytes()))
+        self.assertEqual(result['manager_status'], 'disk_matches_manager_reload_needed')
+        self.assertFalse(result['installation_accepted'])
+        self.assertFalse(result['native_startup_verified'])
+        self.assertNotIn('manager', result)
+
+    def test_invalid_retained_manager_history_fails_before_staging(self):
+        import shutil
+        shutil.rmtree(self.leaf)
+        for field in ('before_start_monotonic', 'before_restarts'):
+            for invalid in (False, -1, '0'):
+                with self.subTest(field=field, value=invalid):
+                    manager = replace(self.original.effective_original, **{field: invalid})
+                    wire = install.transaction.encode_selection_original(
+                        replace(self.original, effective_original=manager))
+                    restored = install.transaction.decode_selection_original(wire, g.digest(wire))
+                    with self.assertRaisesRegex(g.Held, 'exact normal observation inputs'):
+                        install._stage_and_select_from_trusted_owner(
+                            lambda: (restored, self.archive, self.bytes, self.unit))
+                    self.assertFalse(self.leaf.exists())
+                    self.assertFalse(self.selector.exists())
+                    self.assertFalse(self.dropin.exists())
+                    self.assertFalse(list(self.receipts.iterdir()))
+
+    def test_fixed_action_rejects_target_before_stage_creation(self):
+        import shutil
+        shutil.rmtree(self.leaf)
+        with self.assertRaisesRegex(g.Held, 'target bytes changed'):
+            install._stage_and_select_from_trusted_owner(
+                lambda: (self.original, self.archive, self.bytes + b'x', self.unit))
+        self.assertFalse(self.leaf.exists())
+        self.assertFalse(self.selector.exists())
+        self.assertFalse(self.dropin.exists())
+        self.assertFalse(list(self.receipts.iterdir()))
+
+    def test_first_install_publishes_complete_selector_directory_and_reconciles(self):
+        parent = self.selector.parent
+        parent.rmdir()
+        rename = install._rename_noreplace
+
+        def lose_reply(source, target):
+            self.assertTrue(self.lock_held)
+            self.assertEqual(target, parent)
+            self.assertEqual((source/self.selector.name).read_bytes(), self.bytes)
+            self.assertEqual(stat.S_IMODE(source.stat().st_mode), 0o755)
+            self.assertEqual(len(list(self.receipts.iterdir())), 1)
+            self.assertFalse(self.dropin.exists())
+            rename(source, target)
+            raise OSError('selector directory acknowledgement lost')
+
+        with patch.object(install, '_rename_noreplace', side_effect=lose_reply):
+            with self.assertRaisesRegex(OSError, 'acknowledgement lost'):
+                self.run_original()
+        self.assertEqual(self.selector.read_bytes(), self.bytes)
+        self.assertEqual(parent.stat().st_uid, os.getuid())
+        self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o755)
+        self.assertEqual(stat.S_IMODE(self.selector.stat().st_mode), 0o444)
+        inode = parent.stat().st_ino
+        with patch.object(install, '_sync_parent', wraps=install._sync_parent) as sync:
+            result = self.run_original()
+        self.assertEqual(result['status'], 'normal_pair_committed_on_disk')
+        self.assertEqual(parent.stat().st_ino, inode)
+        self.assertEqual(self.run_original(), result)
+        sync.assert_any_call(parent)
+
+        # Exercise the emitted startup reader on the actual published bytes.
+        # The fixture's effective UID stands in for root and its temporary
+        # parent stands in for the trusted production root.
+        pins = ast.parse('if True:\n' + install.normal.normal_entry_pins(str(self.leaf), '1'*40, '2'*40))
+        reader = next(node for node in pins.body[0].body
+                      if isinstance(node, ast.FunctionDef) and node.name == '_CRaw')
+
+        def open_fixture(path, flags, **kwargs):
+            return os.open(parent.parent if path == '/' else path, flags, **kwargs)
+
+        def root_metadata(fd):
+            info = os.fstat(fd)
+            self.assertEqual(info.st_uid, os.getuid())
+            return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_nlink=info.st_nlink,
+                                   st_size=info.st_size, st_mtime_ns=info.st_mtime_ns,
+                                   st_ctime_ns=info.st_ctime_ns)
+
+        mounted_os = SimpleNamespace(open=open_fixture, close=os.close, fstat=root_metadata,
+                                     fdopen=os.fdopen, O_RDONLY=os.O_RDONLY, O_DIRECTORY=os.O_DIRECTORY,
+                                     O_NOFOLLOW=os.O_NOFOLLOW, O_NONBLOCK=os.O_NONBLOCK)
+        namespace = {'_COs': mounted_os, '_CStat': stat}
+        exec(compile(ast.Module(body=[reader], type_ignores=[]), 'commissioned-selector-reader', 'exec'), namespace)
+        self.assertEqual(namespace['_CRaw'](Path('/')/parent.name/self.selector.name, 16384), self.bytes)
+
+    def test_missing_selector_directory_requires_current_guarded_manager(self):
+        self.selector.parent.rmdir()
+        with patch.object(install.guarded, 'observe_guarded_preimage', return_value=False):
+            with self.assertRaisesRegex(g.Held, 'legacy effective preimage not verified'):
+                self.run_original()
+        self.assertFalse(self.selector.parent.exists())
+        self.assertFalse(self.dropin.exists())
+        self.assertFalse(list(self.receipts.iterdir()))
+
+    def test_selector_directory_race_and_unsafe_existing_parent_are_refused(self):
+        parent = self.selector.parent
+        parent.rmdir()
+        foreign = parent.with_name('foreign')
+        foreign.mkdir(mode=0o700)
+        rename = install._rename_noreplace
+
+        def race(source, target):
+            target.symlink_to(foreign, target_is_directory=True)
+            rename(source, target)
+
+        with patch.object(install, '_rename_noreplace', side_effect=race), self.assertRaises(FileExistsError):
+            self.run_original()
+        self.assertTrue(parent.is_symlink())
+        with self.assertRaisesRegex(g.Held, 'normal selector directory is not protected'):
+            self.run_original()
+        self.assertFalse(list(foreign.iterdir()))
+        parent.unlink()
+        parent.mkdir()
+        parent.chmod(0o775)
+        with self.assertRaisesRegex(g.Held, 'normal selector directory is not protected'):
+            self.run_original()
+        self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o775)
+        self.assertFalse(self.dropin.exists())
+
+    def test_selector_directory_appearance_after_prior_read_is_refused(self):
+        parent = self.selector.parent
+        parent.rmdir()
+        publish = install._FixedOwner.publish_selector
+
+        def race(owner, prior, raw):
+            parent.mkdir(mode=0o755)
+            publish(owner, prior, raw)
+
+        with patch.object(install._FixedOwner, 'publish_selector', race):
+            with self.assertRaisesRegex(g.Held, 'normal selector directory changed during locked selection'):
+                self.run_original()
+        self.assertTrue(parent.is_dir())
+        self.assertFalse(list(parent.iterdir()))
+        self.assertFalse(self.dropin.exists())
+
+    def test_missing_selector_directory_with_committed_receipt_is_not_recreated(self):
+        self.run_original()
+        self.selector.unlink()
+        self.selector.parent.rmdir()
+        with self.assertRaisesRegex(g.Held, 'normal selector directory missing after recorded disk commit'):
+            self.run_original()
+        self.assertFalse(self.selector.parent.exists())

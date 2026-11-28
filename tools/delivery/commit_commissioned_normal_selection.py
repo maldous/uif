@@ -44,12 +44,6 @@ class GuardedEffectivePrior:
     asserts: tuple = ()
 
 
-def _guarded_predicates(rows):
-    return (type(rows) is tuple and len(rows) <= 64
-            and all(type(row) is tuple and tuple(map(type, row)) == (str, bool, bool, str)
-                    for row in rows))
-
-
 def encode_selection_original(original):
     """Canonical bytes of the existing original wire format, not authority."""
     guard.require(type(original) is SelectionOriginal, 'expected typed normal selection original')
@@ -78,7 +72,7 @@ def decode_selection_original(raw, expected_sha256):
         guard.require(type(rows) is list and len(rows) <= 64 and all(type(row) is list for row in rows),
                       'unexpected retained systemd predicate list')
         projected = tuple(map(tuple, rows))
-        guard.require(_guarded_predicates(projected), 'unexpected retained systemd predicate shape')
+        guard.require(effective.valid_predicate_pins(projected), 'unexpected retained systemd predicate shape')
         return projected
 
     top = values(wire['original'], SelectionOriginal)
@@ -100,11 +94,10 @@ def _pin(raw):
     return None if raw is None else guard.digest(raw)
 
 
-def commit_normal_selection(original, selector, dropin, owner):
-    """Replay only the same journaled original; never repairs unknown disk state."""
+def _validated_target(original, selector, dropin):
+    """Shared exact original/target validation without any host effects."""
     guard.require(type(original) is SelectionOriginal
                   and type(original.staged) is NormalRuntimeStageApproval
-                  and type(original.effective_original) is effective.NormalEffectiveOriginal
                   and all(guard.hash_pin(value) for value in
                           (original.operation_id, original.staged.operation_id,
                            original.approved_normal_selector_sha256,
@@ -117,9 +110,10 @@ def commit_normal_selection(original, selector, dropin, owner):
                   and original.prior_guarded_dropin_sha256 == guard.digest(guard.selector_dropin())
                   and original.staged.prior_dropin_sha256 == original.prior_guarded_dropin_sha256
                   and guard.hash_pin(original.staged.prior_selection_sha256)
-                  and _guarded_predicates(original.prior_guarded_conditions)
-                  and _guarded_predicates(original.prior_guarded_asserts),
+                  and effective.valid_predicate_pins(original.prior_guarded_conditions)
+                  and effective.valid_predicate_pins(original.prior_guarded_asserts),
                   'normal selection first-transition source or authority pins changed')
+    effective.validate_observation_original(original.effective_original)
     stage = normal.check_normal_stage(original.effective_original.stage)
     guard.require(stage == str(guard.STAGES / original.staged.stage_leaf)
                   and _pin(selector) == original.approved_normal_selector_sha256
@@ -136,6 +130,12 @@ def commit_normal_selection(original, selector, dropin, owner):
     guard.require(selector == normal.render_normal_selection(stage, **{x: selected[x] for x in fields[4:]})
                   and selected['release_sha256'] == original.staged.members_sha256,
                   'normal selector not bound to staged exact release')
+    return selected
+
+
+def commit_normal_selection(original, selector, dropin, owner):
+    """Replay only the same journaled original; never repairs unknown disk state."""
+    selected = _validated_target(original, selector, dropin)
     staging = guard.encode({'schema': 'uif.foo-normal-runtime-staged/1', **vars(original.staged)})
     intent = encode_selection_original(original)
     receipt = guard.encode({'schema': 'uif.foo-normal-selection-disk-commit/1',
