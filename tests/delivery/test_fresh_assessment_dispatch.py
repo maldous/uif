@@ -127,21 +127,26 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
                         raise AuthorityUnavailable('lost fixture reply')
                     yield
                 permit.side_effect = entered
+                if permission != 'unpatched':
+                    case.c._verified_assessment_report_sink = object()  # Qualified in the pinned native test.
                 with patch.object(case.r, 'acquire', side_effect=AssertionError('must only read retained claim')):
                     if permission == 'first':
                         with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
                             launch.append(case.c._running.get()[1])
                         self.assertEqual(launch, [claim])
                     else:
-                        with self.assertRaisesRegex(Hold, 'authority_intent' if permission == 'pin' else 'lost'):
+                        failure = {'pin': 'authority_intent', 'unpatched': 'native_report_sink', 'lost': 'lost'}
+                        with self.assertRaisesRegex(Hold, failure[permission]):
                             with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
                                 self.fail('native dispatch launched')
-                    if permission != 'pin':
+                    if permission not in {'pin', 'unpatched'}:
                         with self.assertRaisesRegex(Hold, 'already_attempted'):
                             with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
                                 self.fail('observed transport attempt launched')
                         observe_permit.assert_called_once_with(claim, selected)
-                self.assertEqual(entries, [] if permission == 'pin' else [(claim, selected)])
+                self.assertEqual(entries, [] if permission in {'pin', 'unpatched'} else [(claim, selected)])
+                if permission == 'unpatched':
+                    self.assertFalse((journal / (original.request_id + '.assessment-dispatch-enter')).exists())
                 self.assertIsNone(case.c._running.get())
                 self.assertEqual(tuple(path.read_bytes() for path in markers), before)
                 return
@@ -201,3 +206,6 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
 
     def test_marked_uncertain_permission_never_enables_dispatch(self):
         self.exercise(admitted=True, permission='lost')
+
+    def test_incompatible_native_does_not_consume_marked_dispatch(self):
+        self.exercise(admitted=True, permission='unpatched')

@@ -2,7 +2,9 @@
 import ast
 import asyncio
 from copy import deepcopy
+from dataclasses import asdict
 from datetime import datetime, timezone
+from functools import wraps
 import hashlib
 from hashlib import sha256
 import json
@@ -19,7 +21,10 @@ from uif.stokowski_cloudflare.assessment_readiness import project_assessment_rea
 from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
 from uif.stokowski_cloudflare.intake import intake_stages
 from uif.stokowski_cloudflare.native import _native_report
-from uif.stokowski_cloudflare.native_composition import _LinearClient
+from uif.stokowski_cloudflare.native_composition import (
+    NativeComposition, _COMMENT_SLOTS, _FreshAssessmentExecution, _LinearClient,
+    _VerifiedAssessmentReport, install_sinks,
+)
 
 
 PINS = {
@@ -34,20 +39,22 @@ PATCHED_ORCHESTRATOR_SHA256 = '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf54600682
 
 class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
     def source(self, name, bindings=(), *, owner=None, patched=False, **namespace):
-        raw = (self.root / name).read_bytes()
+        source_path = self.root / name
+        raw = source_path.read_bytes()
         self.assertEqual(sha256(raw).hexdigest(), PINS[name])
         if patched:
             self.assertEqual(name, 'orchestrator.py')
-            with TemporaryDirectory() as scratch:
-                target = Path(scratch) / 'stokowski' / name
-                target.parent.mkdir()
-                target.write_bytes(raw)
-                result = subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-i', str(PATCH)],
-                                        cwd=scratch, capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertNotIn('offset', result.stdout)
-                raw = target.read_bytes()
-                self.assertEqual(sha256(raw).hexdigest(), PATCHED_ORCHESTRATOR_SHA256)
+            scratch = TemporaryDirectory()
+            self.addCleanup(scratch.cleanup)
+            source_path = Path(scratch.name) / 'stokowski' / name
+            source_path.parent.mkdir()
+            source_path.write_bytes(raw)
+            result = subprocess.run(['patch', '--batch', '--fuzz=0', '-p1', '-i', str(PATCH)],
+                                    cwd=scratch.name, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertNotIn('offset', result.stdout)
+            raw = source_path.read_bytes()
+            self.assertEqual(sha256(raw).hexdigest(), PATCHED_ORCHESTRATOR_SHA256)
         parsed = ast.parse(raw)
         if bindings:
             nodes = parsed.body if owner is None else next(
@@ -61,7 +68,7 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
             parsed.body = [ast.ImportFrom(module='__future__',
                            names=[ast.alias(name='annotations')], level=0), *selected]
             ast.fix_missing_locations(parsed)
-        exec(compile(parsed, name, 'exec'), namespace)
+        exec(compile(parsed, str(source_path), 'exec'), namespace)
         return SimpleNamespace(**namespace)
 
     def setUp(self):
@@ -356,3 +363,69 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
                                                  verified_assessment_report=callback)
         self.reader.upload_file.assert_not_awaited()
         self.reader.post_comment.assert_not_awaited()
+
+    async def test_composed_report_uses_only_the_qualified_native_entry_point(self):
+        from test_native_remote_authority import RECORD, make
+
+        fixture, remote = make()
+        composition = NativeComposition(remote, self.workspace / 'unused')
+        claim = RECORD
+        self.issue.id = claim.lease.fence.scope.key.issue_id
+        self.owner._issue_state_runs = {self.issue.id: 1}
+        self.owner._issue_current_state = {self.issue.id: 'assess'}
+        self.publication.verified_stage_evidence = Mock(return_value={'artifacts': []})
+        self.native_bindings['artifacts_mod'].clear = Mock()
+        self.reader.post_comment = AsyncMock(return_value=False)
+        raw = wire(json.loads(self.raw) | {'data_sources': [{'name': 'fixture', 'how_verified': 'read'}]})
+        attempt, _ = self.prepared_verified_attempt(raw)
+        attempt.session_id = claim.attempt_id
+        attempt.settlement_record['session_id'] = claim.attempt_id
+        body = self.deterministic_body(raw)
+        execution = _FreshAssessmentExecution(claim, self.workspace, SimpleNamespace(winner=asyncio.current_task()),
+                                              _VerifiedAssessmentReport(1, raw, body))
+        composition._fresh_assessment.set(execution)
+        composition._running.set((None, claim))
+
+        native_cls = type(self.owner)
+        for name in (*_COMMENT_SLOTS, '_reconcile'):
+            if not hasattr(native_cls, name):
+                setattr(native_cls, name, AsyncMock())
+
+        def install(owner_type):
+            module = SimpleNamespace(Orchestrator=owner_type, LinearClient=lambda: self.reader, logger=Mock())
+            install_sinks(module, composition)
+            self.owner._ensure_linear_client = module.LinearClient
+
+        unpatched = type('Unpatched', (native_cls,), {})
+        install(unpatched)
+        with self.assertRaisesRegex(Hold, 'assessment_native_report_sink'):
+            await unpatched._publish_run_report(self.owner, self.issue, attempt, self.workspace, 'assess')
+        self.assertEqual(self.saved, [])
+        self.reader.post_comment.assert_not_awaited()
+
+        self.use_patched_report()
+        patched_method = self.owner._publish_run_report.__func__
+        del self.owner._publish_run_report
+        @wraps(patched_method)
+        async def incompatible(*args, **kwargs):
+            self.fail('Composed marked report reached a different callable')
+        lookalike = type('Lookalike', (native_cls,), {'_publish_run_report': incompatible})
+        install(lookalike)
+        with self.assertRaisesRegex(Hold, 'assessment_native_report_sink'):
+            await lookalike._publish_run_report(self.owner, self.issue, attempt, self.workspace, 'assess')
+        self.assertEqual(self.saved, [])
+        native_cls._publish_run_report = patched_method
+        install(native_cls)
+        self.assertIsNotNone(composition._verified_assessment_report_sink)
+
+        fixture.claim = claim
+        composition.current = Mock(return_value=claim)
+        composition.retained_linear = Mock()
+        await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess')
+        self.assertTrue(attempt.report_posted)
+        self.assertEqual(self.saved[0]['expected_report_body'], body)
+        self.assertEqual(self.saved[0]['post_disposition']['event'], 'complete')
+        op = composition._linear_operation(claim.lease.fence, claim.attempt_id, '_publish_run_report',
+                                           'comment', {'body': body})
+        self.assertEqual([data for path, data, _ in fixture.calls if path == '/v1/linear/comment'],
+                         [{'operation': asdict(op), 'attempt_id': claim.attempt_id, 'body': body}])
