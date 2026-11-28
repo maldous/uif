@@ -165,7 +165,7 @@ class NativeRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.original.assert_not_awaited()
         await asyncio.to_thread(substitute)
 
-    async def test_restricted_turn_drains_its_cancelled_invocation(self):
+    async def test_restricted_turn_drains_its_original_despite_repeated_cancellation(self):
         loop = asyncio.get_running_loop()
         ready = asyncio.Event()
         release = Event()
@@ -196,19 +196,27 @@ class NativeRunnerTests(unittest.IsolatedAsyncioTestCase):
             selected = asyncio.create_task(self.run_native())
             try:
                 await asyncio.wait_for(ready.wait(), 2)
-                selected.cancel()
+                selected.cancel('original cancellation')
                 async with asyncio.timeout(2):
                     while not gate['stop']():
                         await asyncio.sleep(0)
-                self.assertFalse(selected.done())
+                for message in ('second cancellation', 'third cancellation'):
+                    selected.cancel(message)
+                    done, pending = await asyncio.wait({selected}, timeout=.01)
+                    self.assertEqual((done, pending), (set(), {selected}))
+                    self.assertEqual(self.attempt.status, 'running')
+                    self.assertFalse(gate.get('finished', False))
+                    self.assertFalse(hasattr(self.attempt, 'completed_at'))
             finally:
                 release.set()
-                with self.assertRaises(asyncio.CancelledError):
+                with self.assertRaises(asyncio.CancelledError) as cancel:
                     await selected
             original.assert_called_once()
+        self.assertEqual(str(cancel.exception), 'original cancellation')
         self.assertTrue(gate['finished'])
         self.assertEqual(self.attempt.status, 'cancelled')
         self.assertIsNotNone(self.attempt.completed_at)
+        self.assertFalse(hasattr(self.attempt, 'result_text'))
 
     async def test_restricted_turn_cannot_fall_back_to_local_write_tools(self):
         prepare = Mock()

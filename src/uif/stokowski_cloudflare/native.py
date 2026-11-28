@@ -163,7 +163,14 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             attempt.status = 'succeeded'
         except asyncio.CancelledError:
             stop.set()
-            await asyncio.gather(task, return_exceptions=True)
+            # Cancelling the executor awaitable cannot stop its actual thread.
+            # Keep ownership and shield the same drain even if cancelled again.
+            drain = asyncio.gather(task, return_exceptions=True)
+            while not drain.done():
+                try:
+                    await asyncio.shield(drain)
+                except asyncio.CancelledError:
+                    continue
             attempt.status = 'cancelled'
             raise
         except (WorkersAIRequestError, BudgetRefused) as error:
