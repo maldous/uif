@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass, replace
+from hashlib import sha256
 from math import isfinite
 
 from .handoff_store import Hold
@@ -9,6 +10,24 @@ from .provider_pool import PoolSelection, ProviderRoute, RouteAvailability, sele
 from .quota_handoff import TOKEN
 
 _MAX_RETRY_DELAY_SECONDS = 300
+
+
+def neutral_route_order(route_ids, *, operation_id):
+    """Order permitted routes for a new operation without a provider priority.
+
+    The evaluation order is stable across refreshes and input ordering.
+    """
+    if (type(operation_id) is not str or not TOKEN.fullmatch(operation_id)
+            or type(route_ids) is not tuple
+            or any(type(route_id) is not str or not TOKEN.fullmatch(route_id)
+                   for route_id in route_ids)
+            or len(set(route_ids)) != len(route_ids)):
+        raise ValueError("Invalid operation or permitted provider route IDs")
+
+    def rank(route_id):
+        return sha256(f"{operation_id}\0{route_id}".encode()).digest(), route_id
+
+    return tuple(sorted(route_ids, key=rank))
 
 
 class ProviderReadCooldown(Hold):
@@ -131,6 +150,18 @@ class NormalProviderDiscovery:
         return tuple((a.route.route_id, self._state.get(a.route.route_id, "not-observed"))
                      for a in self.adapters)
 
+    def _metadata_row(self, adapter, now):
+        reader_status = ("reader-unmounted" if adapter.read is None
+                         else self._state.get(adapter.route_id, "not-observed"))
+        try:
+            description = adapter.describe(self.observed(adapter.route_id), now=now)
+            if type(description) is not dict:
+                raise ValueError("Invalid metadata diagnostics")
+        except Exception:
+            description = {"metadata_state": "unavailable", "account_observation": None,
+                           "dispatch_hold": "quota-diagnostics-unavailable"}
+        return {**description, "route_id": adapter.route_id, "reader_status": reader_status}
+
     def roster(self):
         """Report installed readers and diagnostics without granting eligibility."""
         now = self.clock()
@@ -157,12 +188,7 @@ class NormalProviderDiscovery:
         return {
             "route_readers": statuses,
             "routes": tuple(routes),
-            "metadata_candidates": tuple({
-                **a.describe(self.observed(a.route_id), now=now),
-                "route_id": a.route_id,
-                "reader_status": ("reader-unmounted" if a.read is None
-                                  else self._state.get(a.route_id, "not-observed")),
-            } for a in self.diagnostics),
+            "metadata_candidates": tuple(self._metadata_row(a, now) for a in self.diagnostics),
         }
 
     @property
@@ -173,8 +199,9 @@ class NormalProviderDiscovery:
         """Return only this lifecycle's latest owner adapter observation."""
         return self._evidence.get(route_id) if self._running else None
 
-    def select(self, request, *, owner_paused, pending_original, required_capabilities=frozenset()):
-        """Filter current observations for the task's explicitly required capabilities."""
+    def select(self, request, *, owner_paused, pending_original, required_capabilities=frozenset(),
+               owner_priority=False):
+        """Choose from current evidence with optional owner-supplied route priority."""
         routes = tuple(a.route for a in self.adapters)
         scoped = select_route(request, routes=routes, observations=(), now=self.clock(),
                               owner_paused=owner_paused, pending_original=pending_original)
@@ -183,6 +210,11 @@ class NormalProviderDiscovery:
             return scoped
         if not _capability_set(required_capabilities):
             return PoolSelection(None, None, "required-capabilities-invalid")
+        if type(owner_priority) is not bool:
+            return PoolSelection(None, None, "owner-route-priority-invalid")
+        route_order = None
+        if request.intent == "new" and not owner_priority:
+            route_order = neutral_route_order(request.route_ids, operation_id=request.operation_id)
         rows = []
         unsupported = set()
         for adapter in self.adapters:
@@ -209,7 +241,8 @@ class NormalProviderDiscovery:
                     continue
             rows.append(row)
         selection = select_route(request, routes=routes, observations=tuple(rows), now=self.clock(),
-                                 owner_paused=owner_paused, pending_original=pending_original)
+                                 owner_paused=owner_paused, pending_original=pending_original,
+                                 route_order=route_order)
         return replace(selection, rejected=tuple(
             (route_id, "capability-unproved"
              if route_id in unsupported and reason == "evidence-missing" else reason)

@@ -17,6 +17,12 @@ quota reads shared by the same account. Prioritize stale observations and use
 provider reset times or `Retry-After` with bounded backoff. Keep healthy routes
 available while another cools down. [Legacy ANQR availability and fallback evidence](stokowski-provider-readiness.md#reusable-offline-protocol-fixtures-from-anqr)
 
+Start the authorized normal lifecycle before checking whether any route can
+send. When quota or availability changes for an installed sender, fresh
+verified evidence should reopen admission in the running service. Keep
+metadata for a provider without a sender in the roster and commission the
+sender through its existing owner path.
+
 At dispatch, filter by the action's capabilities, current project permissions,
 fresh availability and headroom before selecting a route. Credential lifetime
 and model headroom are independent. If the roster has no eligible route, wait
@@ -40,17 +46,17 @@ original route before another model can handle the work.
   cannot reuse old readiness evidence; the selector verifies the binding shape,
   and the owner adapter and receiver verify its provenance.
 
-| Route family | Scope of this source | Production dispatch |
+| Route family | Readiness inputs | Native sender in current source |
 | --- | --- | --- |
-| Included Codex | Advisory candidate; account and window proof stays with its adapter | None |
-| Cloudflare Workers AI | Advisory candidate; account and reservation proof stays with its adapter | None |
-| Groq / OpenCode | Advisory candidate; exact client, tool and quota proof stays with its adapter | None |
-| OpenRouter / OpenCode | Advisory candidate with exact non-auto `vendor/model:free`; upstream, price and fallback proof stays with its adapter | None |
-| Included OpenAI Responses | Separate opt-in advisory candidate; requires the exact typed included-grant adapter and no-overage proof | None |
-| Metered or prepaid OpenAI API, Antigravity, all other families | Not allowlisted here | None |
+| Included Codex | Same account, client session, window, and included allowance | Requires a mounted fenced sender and quota reader |
+| Cloudflare Workers AI | Account-wide usage bound, exact Free route, and current reservations | Existing native authority receiver for a configured route |
+| Groq / OpenCode | Exact upstream client, tool, and quota proof | Requires a mounted fenced sender and quota reader |
+| OpenRouter / OpenCode | Exact non-auto `vendor/model:free`, upstream, price, and fallback proof | Requires a mounted fenced sender and quota reader |
+| Included OpenAI Responses | Per-request opt-in, typed included grant, and no-overage proof | Requires a mounted fenced sender and quota reader |
+| Antigravity and other families | Provider-specific account, client, capability, and funding qualification | Requires a qualified adapter |
 
-The selector configures or enables none of these routes. The table describes
-this source, not the state of a separate installed legacy runtime.
+Read the installed authority and current sender bindings to assess live
+availability. Keep metered and prepaid routes outside the included-only pool.
 - Normalize only already authenticated evidence from the applicable
   provider-specific adapter into `RouteAvailability`. Merely resolving an
   executable, key reference, model name or plan label does not establish
@@ -142,4 +148,8 @@ The deterministic tests include independently admitted tasks on two routes
 while one is throttled, fresh capacity readback, source/scope changes and
 binding drift, no paid/implicit fallback, and both legacy dispatch boundaries
 rejecting an advisory decision where a real reservation is required. These
-are synthetic controls, not live provider, fairness, quota or BAU proof.
+are detached controls. The exact native launch fixture also verifies that the
+same running discovery lifecycle closes admission without quota evidence and
+reopens it after the configured authority restores authenticated quota. It
+observes one provider fixture send and one verified Linear fixture report.
+Use the pinned native stage for this check. [Detached native launch tests](../../tests/delivery/test_detached_normal_launch_worker.py)

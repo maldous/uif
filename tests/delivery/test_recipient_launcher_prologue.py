@@ -21,8 +21,9 @@ from test_native_remote_authority import ISSUE, RECORD, ROUTE
 RECONCILE_PREIMAGES = {
     '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96',
     '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38',
+    'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431',
 }
-RECONCILE_POSTIMAGE = 'afdc9c589570edfb24d62ecb0e8caf8a3e5fe045230dc93e6225b33a2ccfe431'
+RECONCILE_POSTIMAGE = '59b063610dea19c18b736d3949607712f4c3ad0d8187c9956e5d6019b29d0352'
 
 
 class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
@@ -191,6 +192,165 @@ class RecipientLauncherPrologueTest(IsolatedAsyncioTestCase):
         self.require_turn_binding()
         if self.native_sha != RECONCILE_POSTIMAGE:
             self.skipTest('apply the reviewed native reconciliation patch')
+
+    def prepare_successor(self):
+        self.require_reconcile_patch()
+        self.issue.state = 'In Progress'
+        self.owner.workflow.config.active_linear_states = lambda: ['In Progress']
+        self.owner._issue_current_state[ISSUE] = 'investigate'
+        self.stage = replace(self.stage, name='investigate', admission_review=False)
+        self.owner._states_for = lambda _: {'investigate': self.stage}
+        scope = self.publication.scope(self.issue)
+        stages = intake_stages(self.config['project_intake']['OffMenu'], 'OffMenu', self.issue, scope, 1)
+        head = subprocess.check_output(['git', '-C', str(self.path), 'rev-parse', 'HEAD'], text=True).strip()
+        tree = subprocess.check_output(['git', '-C', str(self.path), 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+        source = replace(self.claim.lease.fence.source, branch='develop', base=head, head=head, tree=tree)
+        self.claim = replace(self.claim, attempt_id=stages['investigate']['attempt'],
+                             lease=replace(self.claim.lease, fence=replace(self.claim.lease.fence, source=source)))
+        self.publication.save(self.path, Path('.stokowski/settlement.json'), {
+            'issue_id': ISSUE, 'run': 1, 'scope_sha256': scope, 'state': 'assess',
+            'phase': 'complete', 'event': 'complete', 'target': 'investigate',
+            'session_id': stages['assess']['attempt'],
+        })
+        lifecycle = self.lifecycle
+        lifecycle.assignment = Mock(return_value=SimpleNamespace(first_intent_sha256='a' * 64))
+        lifecycle.selected.return_value = True  # An unsafe fallback would choose ordinary dispatch.
+        lifecycle.successor_assignment = Mock(return_value=self.claim)
+        lifecycle.successor_first_entry = self.enter_recipient
+        lifecycle.successor_workspace_for_prologue = Mock(side_effect=self.prologue)
+        lifecycle.successor_task_active = Mock(side_effect=lambda *args: self.active)
+        lifecycle.verify_successor_workspace = Mock(return_value=self.path)
+        lifecycle.prepare_successor_turn_thread = Mock()
+        lifecycle.successor_investigation_finisher = Mock(return_value=Mock())
+        self.configure()
+        return lifecycle
+
+    async def test_exact_consumed_successor_uses_native_investigation_without_source_tools(self):
+        native = self.prepare_successor()
+        self.assertTrue(native._successor_native_worker_qualified)
+        self.assertTrue(native._successor_stage_qualification(self.owner, self.issue, 1))
+        self.owner._issue_current_state[ISSUE] = 'assess'
+        self.assertTrue(native._successor_stage_qualification(self.owner, self.issue, 1))
+        self.owner._issue_current_state[ISSUE] = 'investigate'
+
+        self.assertTrue(self.owner._is_eligible(self.issue))
+        self.owner._dispatch(self.issue)
+        await self.owner._tasks[ISSUE]
+        self.assertEqual(len(self.entries), 1)
+        self.assertEqual(self.entries[0].state_name, 'investigate')
+        (binding,) = self.bindings
+        self.assertEqual(binding.attempt.id, self.claim.attempt_id)
+        self.assertEqual((binding.tracked_paths, binding.write_roots, binding.remote_tools), ((), (), None))
+        self.assertTrue(binding.one_shot_report)
+        self.assertIs(binding.finish_original, native.successor_investigation_finisher.return_value)
+        self.assertIs(binding.prepare_turn_thread, native.prepare_successor_turn_thread)
+        self.owner._announce_state.assert_awaited_once_with(self.issue, 'investigate', 1)
+        native.recipient_assignment.assert_not_called()
+        native.recipient_assessment_finisher.assert_not_called()
+        native.bind_dispatch.assert_not_called()
+        self.assertFalse(self.clone_marker.exists())
+
+    async def test_cold_active_resolver_restores_only_a_verified_unentered_successor(self):
+        native = self.prepare_successor()
+        from stokowski.tracking import make_state_comment
+
+        stages = {'assess': replace(self.stage, name='assess', admission_review=True),
+                  'investigate': self.stage}
+        self.owner._states_for = lambda _: stages
+        self.owner._entry_state_for = lambda _: 'assess'
+        self.owner._adopt_workflow_from_tracking = lambda *_: None
+        comments = [{'body': make_state_comment('assess', 1)}]
+        settlement = self.path / '.stokowski/settlement.json'
+        frozen = settlement.read_bytes()
+
+        async def restart():
+            self.owner._issue_current_state.clear()
+            self.owner._issue_state_runs.clear()
+            return await self.owner._resolve_current_state(self.issue, comments=comments)
+
+        self.assertEqual(await restart(), ('investigate', 1))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'investigate'})
+        native.successor_assignment.assert_called_once_with(
+            self.owner, self.issue, self.publication.scope(self.issue), 'investigate', 1)
+        self.assertEqual(settlement.read_bytes(), frozen)
+        self.assertEqual(self.owner._tasks, {})
+        self.owner._announce_state.assert_not_awaited()
+        self.fetch_issue.assert_not_awaited()
+
+        native.successor_assignment.side_effect = Hold('Consumed entry absence is unverified')
+        self.assertEqual(await restart(), ('assess', 1))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'assess'})
+        self.assertEqual(settlement.read_bytes(), frozen)
+        self.assertFalse(self.owner._is_eligible(self.issue))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'assess'})
+        native.successor_assignment.side_effect = None
+        self.assertTrue(self.owner._is_eligible(self.issue))  # No restart or state unset.
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'investigate'})
+        self.assertEqual(settlement.read_bytes(), frozen)
+        self.owner._announce_state.assert_not_awaited()
+        self.fetch_issue.assert_not_awaited()
+        title = self.issue.title
+
+        def scope_changed(*_):
+            self.issue.title = 'Changed while observing successor'
+            return self.claim
+
+        native.successor_assignment.side_effect = scope_changed
+        self.assertEqual(await restart(), ('assess', 1))
+        self.assertEqual(self.owner._issue_current_state, {ISSUE: 'assess'})
+        self.issue.title = title
+        native.successor_assignment.reset_mock(side_effect=True)
+        settlement.unlink()
+        self.assertEqual(await restart(), ('assess', 1))
+        native.successor_assignment.assert_not_called()
+        native.recipient_assignment.assert_not_called()
+        native.bind_dispatch.assert_not_called()
+        self.assertEqual(self.owner._tasks, {})
+
+    async def test_successor_with_bootstrap_or_unverified_original_does_not_dispatch(self):
+        native = self.prepare_successor()
+        node, package = self.path / '.node-version', self.path / 'package.json'
+        node.write_text('24.16.0\n')
+        package.write_text('{"packageManager":"npm@11.9.0"}\n')
+        self.assertFalse(self.owner._is_eligible(self.issue))
+        self.owner._dispatch(self.issue)
+        self.assertEqual(self.owner._tasks, {})
+        native.successor_assignment.assert_not_called()
+        node.unlink()
+        package.unlink()
+
+        self.owner._dispatch(self.issue, attempt_num=1)
+        self.assertEqual(self.owner._tasks, {})
+        native.successor_assignment.assert_not_called()
+        native.successor_assignment.side_effect = Hold('Original successor entry already attempted')
+        self.assertFalse(self.owner._is_eligible(self.issue))
+        self.owner._dispatch(self.issue)
+        native.bind_dispatch.assert_not_called()
+        self.assertEqual(self.owner._tasks, {})
+        self.assertEqual(self.entries, [])
+
+    async def test_successor_lost_entry_holds_without_another_worker_or_assessment(self):
+        native = self.prepare_successor()
+        first_entries = []
+
+        def lost(owner, issue, scope, attempt, *, expected):
+            first_entries.append(attempt)
+            self.assertIs(owner._tasks[ISSUE], asyncio.current_task())
+            self.assertIs(expected, self.claim)
+            native.successor_assignment.side_effect = Hold('Original successor entry already attempted')
+            raise Hold('Original successor acknowledgement lost')
+
+        native.successor_first_entry = lost
+        self.owner._dispatch(self.issue)
+        await self.owner._tasks[ISSUE]
+        self.assertFalse(self.owner._is_eligible(self.issue))
+        self.owner._dispatch(self.issue)
+        self.assertEqual(len(first_entries), 1)
+        self.assertEqual(self.owner._tasks, {})
+        self.assertFalse(self.bindings)
+        self.fetch_issue.assert_not_awaited()
+        native.recipient_assignment.assert_not_called()
+        native.bind_dispatch.assert_not_called()
 
     async def test_pins_native_prologue_and_uses_same_task_before_workspace_and_turn(self):
         self.require_reconcile_patch()

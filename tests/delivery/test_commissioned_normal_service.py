@@ -1,16 +1,30 @@
+import asyncio
+from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import io
 import json
 import os
 import pwd
 from pathlib import Path
+import socket
 import subprocess
 from tempfile import TemporaryDirectory
 import sys
+import time
 from types import ModuleType, SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
+from uif.effect_authority import AuthorityIdentity
+from uif.handoff_store import Hold
+from uif.provider_pool import PoolRequest
+from uif.quota_handoff import LinearKey
 from uif.stokowski_cloudflare import launcher
+from uif.stokowski_cloudflare import native_composition
+from uif.stokowski_cloudflare.account_admission import AccountUsageEvidence, FreeRoute
+from uif.stokowski_cloudflare.budget import BudgetRefused
+from uif.stokowski_cloudflare.client import GLM_MODEL
+from uif.stokowski_cloudflare.shared_admission import AccountUsageReceipt
 SOURCE = Path(__file__).resolve().parents[2] / "tools/delivery"
 with patch.object(sys, "path", [str(SOURCE), *sys.path]):
     import commissioned_normal_service as normal
@@ -266,6 +280,117 @@ class CommissionedServiceTest(unittest.TestCase):
             self.assertTrue(notify.call_args_list)
             self.assertTrue(all("READY=" not in call.args[0] for call in notify.call_args_list))
 
+    def test_commissioned_no_route_uses_fresh_mounted_challenge_before_idle(self):
+        unit, stage = normal.UNIT, Path(STAGE).name
+        identity = AuthorityIdentity('authority', 'a'*64, 'b'*64, 'installed-service')
+        data = dict(schema='uif.stokowski-remote-authority/1', unit=unit, stage=stage,
+                    route=None, origin='https://authority.example.test',
+                    access_credential='/etc/no-route-fixture.json', native_identity=asdict(identity),
+                    coordinator_epoch=1)
+        path = '/protected/remote-authority.json'
+        challenges = []
+
+        def reply(endpoint, body, *, timeout):
+            self.assertEqual((endpoint, timeout), ('/v1/startup/read', 4))
+            self.assertEqual(body, {'unit': unit, 'stage': stage, 'nonce': body['nonce']})
+            self.assertRegex(body['nonce'], '^[a-f0-9]{48}$')
+            challenges.append(body['nonce'])
+            return dict(body, **asdict(identity), coordinator_epoch=1, expires_at=int(time.time()) + 4)
+
+        with (patch.object(native_composition, 'protected_record', return_value=data) as local,
+              patch.object(native_composition, 'AccessTransport') as make_transport,
+              patch.object(native_composition, 'RemoteAuthority') as remote,
+              patch.object(launcher, 'serve_commissioned_no_route_idle') as idle):
+            transport = make_transport.return_value
+            transport.request.side_effect = reply
+            value, args = native_composition.load_guarded_startup(path, unit, stage)
+            self.assertIsNone(value)
+            self.assertIs(args['commissioned_no_route'], True)
+            self.assertNotIn('idle_reason', args)
+            verifier = args['startup_verifier']
+            binding = args['startup_binding']
+            request = ('uif.stokowski.native-start/1', binding, time.monotonic_ns()+5_000_000_000)
+            receipt = verifier(request)
+            self.assertIs(receipt[0], request)
+            self.assertEqual(receipt[1:3], (binding, 'mounted'))
+            self.assertLessEqual(receipt[3], request[2])
+            self.assertGreater(receipt[3], time.monotonic_ns())
+
+            drift = data | {'coordinator_epoch': 2}
+            local.return_value = drift
+            with self.assertRaisesRegex(Hold, 'authority_installation_changed'):
+                verifier(request)
+            self.assertEqual(transport.request.call_count, 1)
+            local.side_effect = [data, drift]
+            with self.assertRaisesRegex(Hold, 'authority_installation_changed'):
+                verifier(request)
+            local.side_effect = None
+            local.return_value = data
+
+            for invalid in ({'nonce': 'different'}, {'coordinator_epoch': 2}, {'expires_at': 0}):
+                transport.request.side_effect = lambda *a, **kw: reply(*a, **kw) | invalid
+                with self.assertRaisesRegex(Hold, 'authority_start_receipt'):
+                    verifier(request)
+            transport.request.side_effect = reply
+
+            configured = Mock()
+            install_sinks = Mock()
+            selected = Mock()
+            ns = {'__name__': 'test_commissioned_no_route', '_RemoteComposition': value,
+                  '_NativeSinks': install_sinks, 'configure': configured,
+                  '_VerifyCommissionedSelection': selected}
+            exec(compile(self.build((HEAD,TREE)), 'compiled', 'exec'), ns)
+
+            def guard(wanted, verifier, state):
+                self.assertEqual(state, 'mounted')
+                attempt = (request[0], wanted, time.monotonic_ns()+5_000_000_000)
+                observed = verifier(attempt)
+                self.assertIs(observed[0], attempt)
+                return observed[1:3] == (wanted, state)
+
+            ns['_guarded_startup_authorized'] = guard
+            idle.side_effect = lambda verify: self.assertIs(verify(), True)
+            ns['guarded_staged_entry'](**args)
+            selected.assert_called_once_with()
+            idle.assert_called_once()
+            configured.assert_not_called()
+            install_sinks.assert_not_called()
+            remote.assert_not_called()
+            self.assertEqual(len(challenges), 7)
+            self.assertEqual(len(set(challenges)), len(challenges))
+
+    def test_commissioned_no_route_remains_alive_and_reports_authority_recovery(self):
+        with TemporaryDirectory() as scratch, socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as notify:
+            address = str(Path(scratch) / 'notify')
+            notify.bind(address)
+            notify.settimeout(5)
+            env = os.environ | {'NOTIFY_SOCKET': address,
+                                'PYTHONPATH': str(SOURCE.parents[1] / 'src')}
+            code = '''
+from uif.stokowski_cloudflare import launcher
+launcher._COMMISSIONED_IDLE_POLL_SECONDS = .02
+answers = iter([False, True])
+launcher.serve_commissioned_no_route_idle(lambda: next(answers, True))
+'''
+            with subprocess.Popen([sys.executable, '-B', '-c', code], env=env, text=True,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+                try:
+                    ready = notify.recv(512).decode()
+                    expected = ('STATUS=Stokowski commissioned idle: free_route_unavailable; '
+                                'verified mounted route required; admissions and effects closed')
+                    self.assertEqual(ready, 'READY=1\n' + expected)
+                    self.assertEqual(notify.recv(512).decode(),
+                                     'STATUS=Stokowski blocked: authority_unavailable; admissions and effects closed')
+                    self.assertEqual(notify.recv(512).decode(), expected)
+                    self.assertIsNone(process.poll())
+                    process.terminate()
+                    self.assertEqual(notify.recv(512).decode(), 'STOPPING=1\nSTATUS=Stokowski idle shutdown')
+                    _, error = process.communicate(timeout=5)
+                    self.assertEqual(process.returncode, 0, error)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+
 
     def test_persisted_normal_record_checks_exact_members_and_mode(self):
         code=compile("if True:\n"+normal.normal_entry_pins(STAGE,HEAD,TREE),"selection","exec")
@@ -312,3 +437,76 @@ class CommissionedServiceTest(unittest.TestCase):
                     self.assertRaises(SystemExit) as held:
                 verify(candidate,tamper,writable)
             self.assertEqual(held.exception.code,78)
+
+
+class CommissionedSchedulerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_configured_scheduler_selects_newly_verified_route_without_restart(self):
+        key = LinearKey(*(f'00000000-0000-0000-0000-00000000000{i}' for i in (1, 2, 3)))
+        now = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        accounts = dict(zip(('UIF', 'OffMenu', 'ANQR', 'CIX', 'CQ'), (n*32 for n in 'abcde')))
+        exact = FreeRoute(accounts['OffMenu'], GLM_MODEL, None, 'f'*64)
+        evidence = AccountUsageEvidence(exact, '2026-11-25', now, now+timedelta(seconds=120),
+                                        0, 0, True, True)
+        receipt = AccountUsageReceipt(object(), 'd'*64, evidence)
+        port = SimpleNamespace(read_account_usage=Mock(), launcher_options=lambda: {})
+        authenticated = False
+        remote = SimpleNamespace(routes={'OffMenu': exact}, clock=lambda: now,
+                                 workspace_id=key.workspace_id, project_id=key.project_id,
+                                 read_usage=Mock(return_value=receipt), quota_issuer=receipt.issuer,
+                                 verify_usage=Mock(side_effect=lambda *_: authenticated),
+                                 ports=port, account_ports={'OffMenu': port})
+        options = native_composition.NativeComposition(remote, '/fixture').options()
+        discovery = options['provider_discovery']
+        discovery.interval, discovery.timeout = .01, .01
+        route = discovery.adapters[0].route
+        request = PoolRequest(key, 'maldous/offmenu', 'a'*64, 'b'*64, 'fresh-operation',
+                              'ordinary-software', 'author', 'new', (route.route_id,))
+        starts = []
+
+        async def normal_start(owner):
+            nonlocal authenticated
+            starts.append(owner)
+            self.assertTrue(discovery.active)
+
+            def select(**state):
+                return owner.uif_select_provider(request, **(
+                    dict(owner_paused=False, pending_original=False) | state))
+
+            self.assertIsNone(select().route)
+            with self.assertRaises(BudgetRefused):
+                options['read_account_usage'](10)
+            while dict(discovery.status())[route.route_id] != 'reader-unavailable':
+                await asyncio.sleep(.001)
+            self.assertIsNone(select().route)
+
+            authenticated = True
+            while select().route is None:
+                await asyncio.sleep(.001)
+            self.assertEqual(select().route, route)
+            self.assertIsNone(select(owner_paused=True).route)
+            self.assertIsNone(select(pending_original=True).route)
+            self.assertEqual(options['read_account_usage'](10).usage_snapshots, {'OffMenu': evidence})
+            return 'finished'
+
+        class IssueOwner:
+            _dispatch, _run_worker, _release_slot, _is_eligible = Mock(), AsyncMock(), Mock(), Mock()
+
+        scheduler = type('Multi', (), {'start': normal_start})
+        run_turn = Mock()
+        runner = SimpleNamespace(run_turn=run_turn)
+        native = SimpleNamespace(run_turn=runner.run_turn, Orchestrator=IssueOwner,
+                                 MultiOrchestrator=scheduler, logger=Mock())
+        policy = dict(accounts=accounts, projects=['OffMenu'], credentials='/etc/stokowski-fixture',
+                      model=GLM_MODEL, workers_ai_strict_free_routes={'OffMenu': exact.credential_epoch_sha256})
+        with (TemporaryDirectory() as scratch,
+              patch.object(launcher, '_protected_json', return_value=policy) as read_policy):
+            launcher.configure(runner, native, SimpleNamespace(), policy=Path('/etc/owner-fixture.json'),
+                               database=Path(scratch)/'budget.sqlite', **options)
+            owner = scheduler()
+            self.assertEqual(await asyncio.wait_for(owner.start(), 2), 'finished')
+        self.assertEqual(starts, [owner])
+        self.assertGreaterEqual(remote.read_usage.call_count, 2)
+        read_policy.assert_called_once_with(Path('/etc/owner-fixture.json'))
+        port.read_account_usage.assert_not_called()
+        run_turn.assert_not_called()
+        self.assertFalse(discovery.active)

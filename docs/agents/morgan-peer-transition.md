@@ -25,6 +25,33 @@ Only propose a scoped extension where evidence shows the supported native
 mechanism cannot meet the requirement. This is an engineering preference, not
 a new admission or deployment gate.
 
+## Verify provider recovery in the running service
+
+Start the commissioned runtime even when its authorized roster has no eligible
+route. Check that its provider readers keep running, report a separate hold for
+each unavailable route, and retry according to each route's reset or backoff.
+A healthy eligible route can take new work while other routes remain held.
+An uncertain original keeps its existing route and reservation.
+
+Use the roster and exact receipts to distinguish a listed model, an installed
+reader, a fresh account observation, and an authorized sender. Test recovery
+with an already installed sender by withholding its required evidence, restoring
+an authenticated observation, and verifying a new admissible dispatch in the
+same runtime. Capture the process, claim, original operation and effect
+receipts. Repeat with a stale observation and a held original.
+
+`Stokowski commissioned idle: free_route_unavailable` means the normal mount
+verified its authority and is waiting for an installed route. A configured
+route with unavailable quota is handled by the running discovery lifecycle.
+Record the effective installed configuration and the current authority receipt
+when interpreting either state.
+
+Cloudflare's daily reset and an empty adaptive analytics result can support the
+usage history. For Workers AI admission, verify the account-wide bound, the
+exact Free route and its sender in the active deployment. Record any alternate
+route whose reader or sender is unmounted. [Provider discovery and selection](../operations/provider-pool-selection.md)
+· [Workers AI readiness](../operations/stokowski-provider-readiness.md)
+
 ## Transition decisions
 
 | Trigger | Evidence to use | Morgan action or hold |
@@ -43,7 +70,10 @@ a new admission or deployment gate.
    [UIF-1313](https://linear.app/maldous/issue/UIF-1313). Trace that original to
    the retained archive, complete canonical
    manifest, artifact digest, source revision and evidence for those exact
-   bytes. The guarded-idle start receipt identifies the earlier trial. Use the
+   bytes. For a first normal install, use the exact source, tree, and private
+   archive locator in the active release handoff. Reconcile its recorded digest
+   and the owner's canonical selection original before use. The guarded-idle
+   start receipt identifies the earlier trial. Use the
    approved in-place comparison to verify reusable components against the
    independently retained manifest. Keep the archive, manifest, verification
    and original receipt together at a stable locator the installer can read.
@@ -52,8 +82,10 @@ a new admission or deployment gate.
    workspace, the role that can call it, the protected resolver that provides
    the retained release and original operation, and the actual target unit.
    Check the deployed Windmill action or owner interface and its original
-   status lookup. Carry the installer result for the exact release and the
-   effective systemd readback into the existing control action for normal
+   status lookup. Check effective privileges in the executing session. Morgan
+   can use the deployed Foo root-job interface for authorized host readback
+   when the checkout session cannot elevate. Carry the installer result for
+   the exact release and the effective systemd readback into the existing control action for normal
    activation. [Windmill routing](windmill-workspace.md)
    [Normal commissioning](../windmill/foo-installer-workflow.md#commission-the-normal-stokowski-release)
 3. Continue the first missing step with its existing owner. Use verified

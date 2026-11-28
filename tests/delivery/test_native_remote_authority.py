@@ -666,22 +666,11 @@ class RealCheckoutTest(unittest.TestCase):
         self.assertTrue(asyncio.run(native._resume_settlement(issue, attempt)))
         self.c._running.set(None)
 
-        def transition(path, body=None, **options):
-            if path == '/v1/claim/attempt' and not attested:
-                raise Hold('independent_original_evidence_missing')
-            return self.worker.request(path, body, **options)
-
-        self.r.transport = SimpleNamespace(request=transition)
-        attested = False
-        with self.assertRaisesRegex(Hold, 'independent_original_evidence_missing'):
+        with self.assertRaisesRegex(Hold, 'marked_successor_first_entry_required'):
             with self.c.bind_dispatch(native, issue, grant.scope_sha256, stages['investigate'], stage='investigate'):
-                self.fail('Investigation requires the independent attestation')
-        attested = True
-        with self.c.bind_dispatch(native, issue, grant.scope_sha256, stages['investigate'], stage='investigate'):
-            self.assertEqual(self.c.current(ISSUE), NativeClaim('OffMenu', successor, lease))
+                self.fail('The generic binding must not consume a marked successor')
         paths = [path for path, _, _ in self.worker.calls]
-        self.assertEqual(paths.count('/v1/claim/attempt'), 1)
-        self.assertFalse(set(paths) & {'/v1/claim', '/v1/completion/read', '/v1/release'})
+        self.assertFalse(set(paths) & {'/v1/claim/attempt', '/v1/claim', '/v1/completion/read', '/v1/release'})
 
     def test_completed_native_callback_preserves_success_after_receiving_failure(self):
         class Native:
