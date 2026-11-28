@@ -4,14 +4,11 @@ UIF owns shared infrastructure and cross-project operating controls. Linear is
 canonical for current work, scope, ownership, dependencies and acceptance.
 Historical README scopes are provenance, never another intake queue.
 
-For each collaborative subtask created after any future reboot, follow the owner's
-[current creation rule](docs/agents/startup-template.md#collaborative-subtask-creation):
-request `model: "gpt-6.2-astra"`, `reasoning_effort: "ultra"`. This later direction
-supersedes the earlier GPT-6.2 Sol and GPT-6.1 Sol preferences for this scope.
-If unavailable, disclose the actual limitation and ask Matthew before any fallback.
-Do not change the main model, existing workers or ordinary Foo/native session policy.
-Record requested versus actually observed settings; do not launch a worker just
-to prove the setting, reopen the canceled reboot plan or resume paused processing.
+Follow the owner's [current creation rule](docs/agents/startup-template.md#collaborative-subtask-creation)
+for the task's actual executor. Reserve GPT-6.2 Astra with ultra reasoning for
+Morgan Cloud Codex collaborators. Choose a token-conservative model and effort
+for each Foo-local Codex subtask. Record the requested and observed settings
+separately and preserve the coordinator and existing session settings.
 
 At startup read the [operating policy](docs/agents/uif-worker-policy.md),
 [version/digest manifest](docs/agents/uif-worker-policy.json) and your selected

@@ -46,30 +46,27 @@ provider or spending is implied.
 
 ## Collaborative subtask creation
 
-Latest owner direction, 18 November 2026: for **each collaborative subtask created
-after any future reboot**, request **GPT-6.2 Astra with reasoning effort ultra**.
-This explicitly supersedes the earlier same-day GPT-6.2 Sol selection. At the
-currently exposed `collaboration.spawn_agent` interface use this field selection,
-not a complete launch command:
+The owner reserves **GPT-6.2 Astra with ultra reasoning** for **Morgan Cloud
+Codex collaborative subagents**. For that executor, request the following
+fields at the current `collaboration.spawn_agent` boundary:
 
 ```json
 {"model": "gpt-6.2-astra", "reasoning_effort": "ultra", "fork_turns": "none"}
 ```
-The current interface accepts explicit model/effort overrides only with
-`fork_turns: "none"`. Therefore provide a self-contained task brief carrying the
-relevant source, instructions, ownership, evidence, constraints and latest user
-decisions; do not omit context merely to select the model. Recheck the actual
-supported schema after any future reboot. If the exact requested model or effort
-is unavailable, disclose the actual limitation and ask Matthew before any fallback.
-Do not silently substitute another model or lower effort.
+The current interface accepts explicit model and effort overrides with
+`fork_turns: "none"`. Provide a self-contained brief carrying the relevant
+source, instructions, ownership, evidence, constraints, and latest user
+decisions. If the exact Morgan Cloud setting is unavailable, report the
+limitation and get Matthew's direction before choosing a fallback for that
+role.
 
-This latest owner direction supersedes policy 2.0.1's economical GPT-6.1 Sol
-recommendation and the earlier GPT-6.2 Sol guidance **only for this collaborative
-subtask creation scope**. The
-policy bytes/digest, main model, existing agent sessions, ordinary Foo/native
-session policy and five product roles plus Cloud allocation are not changed.
-An existing-agent follow-up exposes no model-change control; do not claim it
-changed an existing worker's effective settings.
+For **Foo-local Codex collaborative subagents**, choose the least expensive
+supported model and effort appropriate to the task. The existing policy's
+GPT-6.1 Sol medium recommendation remains a starting point. Use lighter
+settings for bounded checks and increase effort when the task requires it.
+Verify the actual executor before selecting fields. Preserve the coordinator
+model, existing sessions and ordinary Foo/native policy. An existing-agent
+follow-up exposes no model-change control.
 
 Record requested model/effort separately from any effective settings attested by
 the actual creation receipt. If the receipt does not expose the effective
