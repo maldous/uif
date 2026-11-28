@@ -22,12 +22,13 @@ from unittest.mock import AsyncMock, Mock, patch
 from uif.handoff_store import Hold, digest, wire
 from uif.stokowski_cloudflare.assessment_readiness import project_assessment_readiness
 from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
+from uif.stokowski_cloudflare.fresh_assessment_terminal import _retain_first_request
 from uif.stokowski_cloudflare.intake import intake_stages
 from uif.stokowski_cloudflare.native import NativeTurnBinding, _native_report, install_native_runner
 from uif.stokowski_cloudflare.turn import Attempt
 from uif.stokowski_cloudflare.native_composition import (
     NativeComposition, _COMMENT_SLOTS, _FreshAssessmentExecution, _LinearClient,
-    _VerifiedAssessmentReport, install_sinks,
+    _VerifiedAssessmentReport, _retain_handoff_original, install_sinks,
 )
 
 
@@ -163,18 +164,23 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
     async def test_patched_reconcile_keeps_recipient_workspace_until_actual_executor_returns(self):
         issue = self.issue
         attempt = SimpleNamespace(
-            issue_id=issue.id, issue_identifier=issue.identifier, state_name='assess',
+            issue_id=issue.id, issue_identifier=issue.identifier, state_name='investigate',
             status='pending', _uif_retained_recipient=True, turn_count=0, started_at=None,
             input_tokens=0, output_tokens=0, cache_creation_tokens=0, cache_read_tokens=0,
             total_tokens=0, cost_usd=0, tool_call_count=0,
         )
-        original_receipt = self.workspace / 'original-receipt'
-        original_receipt.write_bytes(b'original')
+        journal = self.workspace / '.git/uif-original-effects'
+        journal.mkdir(parents=True, mode=0o700)
+        name = 'a' * 64 + '.successor-entry'
+        entry = {'schema': 'uif.marked-investigation-entry/1', 'run': 1,
+                 'advance': {'request_id': 'a' * 64}, 'assignment_sha256': 'b' * 64, 'scope_sha256': 'c' * 64}
+        self.assertEqual(_retain_first_request(journal, name, entry, lambda: None), (True, entry))
+        original_receipt = journal / name
         original_runner = AsyncMock(side_effect=AssertionError('Codex must remain unused'))
         runner = SimpleNamespace(run_turn=original_runner)
         orchestration = SimpleNamespace(run_turn=original_runner)
         binding = NativeTurnBinding(
-            issue.id, self.workspace, Attempt('OffMenu', 'recipient'), (), (),
+            issue.id, self.workspace, Attempt('OffMenu', 'investigation'), (), (),
             prepare_turn_thread=lambda bound, check: bound,
         )
         install_native_runner(
@@ -230,7 +236,7 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
                 self.assertFalse(ended.is_set())
                 owner._release_slot.assert_not_called()
                 remove.assert_not_awaited()
-                self.assertEqual(original_receipt.read_bytes(), b'original')
+                self.assertEqual(original_receipt.read_bytes(), wire(entry))
             finally:
                 release.set()
                 await asyncio.wait_for(selected, 2)
@@ -241,7 +247,7 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         self.assertNotIn(issue.id, owner.claimed)
         owner._release_slot.assert_called_once_with(issue.id)
         remove.assert_not_awaited()
-        self.assertEqual(original_receipt.read_bytes(), b'original')
+        self.assertEqual(original_receipt.read_bytes(), wire(entry))
 
     async def test_patched_reconcile_cannot_apply_a_stale_terminal_read_to_replacement(self):
         issue = self.issue
@@ -374,6 +380,65 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
         remove.assert_not_awaited()
         self.assertEqual(receipt.read_bytes(), record)
         owner._release_slot.assert_called_once_with(recovered.id)
+
+    async def test_patched_terminal_sweeps_retain_each_successor_checkpoint_in_isolation(self):
+        root = self.workspace
+        issue = SimpleNamespace(id='successor', identifier='OFF-1')
+        ordinary = SimpleNamespace(id='ordinary', identifier='OFF-2')
+        recovered_path = root / issue.identifier
+        ordinary_path = root / ordinary.identifier
+        journal = recovered_path / '.git/uif-original-effects'
+        journal.mkdir(parents=True, mode=0o700)
+        advance = {'request_id': 'a' * 64, 'current': {'fence': {'generation': 1}, 'expires_at': 9000},
+                   'expected_attempt_id': 'assessment', 'attempt_id': 'investigation'}
+        entries = {
+            '.successor-cas': advance,
+            '.successor-settlement': {'advance': advance, 'disposition_sha256': 'b' * 64},
+            '.successor-workspace': {'advance': advance, 'workspace_sha256': 'c' * 64},
+            '.successor-entry': {'schema': 'uif.marked-investigation-entry/1', 'advance': advance, 'run': 1,
+                                 'assignment_sha256': 'd' * 64, 'scope_sha256': 'e' * 64},
+            '.investigation-result': {'operation': {'original_id': 'f' * 64}, 'attempt_id': 'investigation',
+                                      'provider_receipt_sha256': '1' * 64, 'result_sha256': '2' * 64,
+                                      'content_sha256': '3' * 64},
+        }
+        for suffix, entry in entries.items():
+            with self.subTest(suffix=suffix):
+                # Each workspace contains only this journal from an interrupted original.
+                journal.mkdir(parents=True, mode=0o700, exist_ok=True)
+                name = ('f' * 64 if suffix == '.investigation-result' else advance['request_id']) + suffix
+                receipt = journal / name
+                if suffix in {'.successor-workspace', '.investigation-result'}:
+                    _retain_handoff_original(journal, name, wire(entry), 8192)
+                else:
+                    self.assertEqual(_retain_first_request(journal, name, entry, lambda: None), (True, entry))
+                for origin in ('restart', 'transition'):
+                    with self.subTest(origin=origin):
+                        ordinary_journal = ordinary_path / '.git/uif-original-effects'
+                        ordinary_journal.mkdir(parents=True, mode=0o700)
+                        (ordinary_journal / ('a' * 64 + '.successor-transition')).touch()
+                        (ordinary_journal / ('A' * 64 + suffix)).touch()
+                        owner, hook = self.terminal_cleanup_owner(root, [issue, ordinary])
+                        if origin == 'restart':
+                            await owner._startup_cleanup()
+                        else:
+                            self.assertTrue(await owner._transition(issue, 'complete'))
+                            self.assertTrue(await owner._transition(ordinary, 'complete'))
+                        self.assertEqual(receipt.read_bytes(), wire(entry))
+                        self.assertFalse(ordinary_path.exists())
+                        hook.assert_awaited_once_with('fixture hook', ordinary_path, 100, 'before_remove')
+                task = asyncio.create_task(asyncio.sleep(0))
+                await task
+                remove = AsyncMock()
+                owner = self.reconcile_owner(
+                    issue, SimpleNamespace(status='running', issue_identifier=issue.identifier), task,
+                    AsyncMock(return_value={issue.id: 'Done'}), remove,
+                )
+                owner.cfg.workspace.resolved_root = lambda: root
+                await owner._reconcile()
+                remove.assert_not_awaited()
+                owner._release_slot.assert_called_once_with(issue.id)
+                self.assertEqual(receipt.read_bytes(), wire(entry))
+                receipt.unlink(missing_ok=True)
 
     def prepared_attempt(self, raw):
         record = dict(phase='report-unknown', state='assess', run=1, kind='worker',
