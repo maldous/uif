@@ -2281,7 +2281,7 @@ def install_sinks(orchestration, composition):
 
     successor_methods = {
         '_resume_settlement': '24f961490789667df1544acc7fa075539cad5e3614cdff3f2a3df3bfb4458dd3',
-        '_transition': '19cff5898535fbde68e4867b22c4ecda1eb269cbc8805e693fface731377bb4b',
+        '_transition': 'f4751bef0f570130aa6c6669b4ea4fdb7f7713827c9ef908be43503dbf4a3d6b',
         '_announce_state': 'b7e170ac754ddce03bad4c1c7e0a7f7d29e313d6f3b2e0ae157ac4b395fd5a15',
         '_save_settlement': '5d971ceb3f2aa0877f8fffbc036998afd90b3afdcbd0e6b63f7f095cba2dad7d',
         '_schedule_retry': 'd4fb9d11370f173aaf31fcd71b8ef32042c21cbe4452a255721ce8da9c1a99a3',
