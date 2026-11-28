@@ -18,6 +18,7 @@ from inspect import Parameter, getsource, signature
 from pathlib import Path
 from secrets import token_hex
 from tempfile import NamedTemporaryFile
+from threading import Event, current_thread
 import subprocess
 import os
 import re
@@ -276,6 +277,14 @@ def _verify_source_checkout(path, source, git_config_sha256, review_postimage=No
                 'authority_source_changed')
     return path
 
+def _clean_git_environment():
+    # Ignore ambient Git config, object directories and SSH/git overrides.
+    # The local config itself is still the caller's independently reviewed pin.
+    return {'PATH': os.defpath, 'LC_ALL': 'C', 'GIT_CONFIG_NOSYSTEM': '1',
+           'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_NO_REPLACE_OBJECTS': '1',
+           'GIT_NO_LAZY_FETCH': '1', 'GIT_ALLOW_PROTOCOL': '', 'GIT_TERMINAL_PROMPT': '0'}
+
+
 def observe_clean_assignment_workspace(path: Path, source: SourcePin, git_config_sha256: str):
     """Sequential, non-atomic checkout observation under exclusive trusted custody.
 
@@ -288,11 +297,7 @@ def observe_clean_assignment_workspace(path: Path, source: SourcePin, git_config
     info = path.stat()
     require(not info.st_mode & 0o077, 'authority_isolated_claim_workspace')
 
-    # Ignore ambient Git config, object directories and SSH/git overrides.
-    # The local config itself is still the caller's independently reviewed pin.
-    env = {'PATH': os.defpath, 'LC_ALL': 'C', 'GIT_CONFIG_NOSYSTEM': '1',
-           'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_NO_REPLACE_OBJECTS': '1',
-           'GIT_NO_LAZY_FETCH': '1', 'GIT_ALLOW_PROTOCOL': '', 'GIT_TERMINAL_PROMPT': '0'}
+    env = _clean_git_environment()
 
     def observe():
         _verify_source_checkout(path, source, git_config_sha256, git_env=env)
@@ -401,6 +406,7 @@ class NativeComposition:
         self._codex_metadata = codex_metadata
         self._running = ContextVar('shared_native_effect_assignment', default=None)
         self._slot = ContextVar('native_original_linear_effect', default=None)
+        self._recipient_execution = ContextVar('native_recipient_first_entry', default=None)
         self._fresh_assessment = ContextVar('native_fresh_assessment_result', default=None)
         self._verified_assessment_report_sink = None
         self._seen_fences = {}
@@ -524,10 +530,71 @@ class NativeComposition:
         _require_unstarted_recipient_journals(path, marker)
         return current, grant, binding, digest(data)
 
-    def recipient_first_entry(self, owner, issue, scope_sha, attempt):
+    def recipient_assignment(self, owner, issue, scope_sha, stage, run):
+        if owner.project_name != 'OffMenu':
+            return None
+        item = self.installation()['assignments'].get(issue.id)
+        if item is None:
+            return None
+        binding = item.get('workspace_binding')
+        if 'recipient_original' not in item and not (isinstance(binding, dict) and 'original_transition' in binding):
+            return None
+        require(self._verified_assessment_report_sink is not None, 'authority_assessment_native_report_sink')
+        require(stage == 'assess' and owner._issue_current_state.get(issue.id) == stage
+                and type(run) is int and run > 0 and run == owner._issue_state_runs.get(issue.id, 1),
+                'authority_recovery_selected_stage')
+        from .recipient_entry import recipient_entry_body
+        claim, grant, binding, _ = self._recipient_workspace(owner, issue, scope_sha)
+        expected = 'cf-intake-' + intake_identity('OffMenu', issue.id, scope_sha, run) + '-' + stage
+        require(claim.attempt_id == grant.attempts[0] == expected, 'authority_recovery_selected_attempt')
+        observed = self.remote.transport.observe_recipient_entry(recipient_entry_body(claim, binding['original_transition']))
+        require(not observed, 'authority_recovery_entry_already_attempted')
+        return claim
+
+    def recipient_task_active(self, issue_id, attempt_id):
+        permit = self._recipient_execution.get()
+        if permit is None:
+            return False
+        permit.require_actor(owner_only=True)
+        require(permit.claim.attempt_id == attempt_id and permit.claim.lease.fence.scope.key.issue_id == issue_id,
+                'authority_recovery_native_attempt')
+        return True
+
+    def recipient_workspace_for_prologue(self, owner, issue, scope_sha, attempt):
+        require(self.recipient_task_active(issue.id, attempt.session_id)
+                and owner.running.get(issue.id) is attempt, 'authority_recovery_native_owner')
+        claim, _, binding, _ = self._recipient_workspace(owner, issue, scope_sha, for_entry=True)
+        permit = self._recipient_execution.get()
+        require(claim.lease.fence == permit.claim.lease.fence and claim.attempt_id == permit.claim.attempt_id,
+                'authority_recovery_selected_original_changed')
+        return Path(binding['path'])
+
+    def verify_recipient_workspace(self, owner, issue, scope_sha, attempt_id):
+        require(self.recipient_task_active(issue.id, attempt_id), 'authority_recovery_native_owner')
+        permit = self._recipient_execution.get()
+        grant, _ = self._running.get()
+        require(owner.project_name == 'OffMenu' and owner.running[issue.id].session_id == attempt_id
+                and grant.scope_sha256 == scope_sha, 'authority_recovery_workspace_assignment')
+        self.current(issue.id)
+        item = self.installation()['assignments'][issue.id]
+        path = Path(item['workspace_binding']['path'])
+        require(path == owner.cfg.workspace.resolved_root().resolve(strict=True) / issue.identifier,
+                'authority_recovery_workspace_changed')
+        env = _clean_git_environment()
+        _verify_source_checkout(path, grant.source, item['git_config_sha256'], git_env=env)
+        _verify_fresh_tree(path, grant.source.head, git_env=env)
+        permit.require_actor(owner_only=True)
+        return path
+
+    def prepare_recipient_turn_thread(self, bound_turn, require_turn_thread):
+        permit = self._recipient_execution.get()
+        require(permit is not None, 'authority_recovery_native_owner')
+        return permit.prepare_thread('turn', bound_turn, require_turn_thread)
+
+    def recipient_first_entry(self, owner, issue, scope_sha, attempt, *, expected=None):
         """Staged adapter for an already-selected native task under its original handoff."""
         from .recipient_entry import recipient_first_entry
-        return recipient_first_entry(self, owner, issue, scope_sha, attempt)
+        return recipient_first_entry(self, owner, issue, scope_sha, attempt, expected=expected)
 
     def selected(self, project, issue, scope_sha):
         return self.assignment(project, issue.id, scope_sha) is not None
@@ -743,6 +810,7 @@ class NativeComposition:
 
     @contextmanager
     def settlement_context(self, owner, issue, attempt):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         record = getattr(attempt, 'settlement_record', None)
         require(owner.running.get(issue.id) is attempt and isinstance(record, dict)
                 and record.get('issue_id') == issue.id and record.get('state') == attempt.state_name
@@ -836,6 +904,7 @@ class NativeComposition:
         return finish
 
     def prepare_source_review(self, issue_id, author, record):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         if not self.source_spec(issue_id, author['attempt']):
             return record
         checkpoint, diff = self.checkpoint_source(issue_id, author)
@@ -858,19 +927,27 @@ class NativeComposition:
 
         def finish(request_id, content):
             token(request_id)
-            execution = self._fresh_assessment.get()
+            recipient = self._recipient_execution.get()
+            execution = self._fresh_assessment.get() if recipient is None else recipient
+            if recipient is not None:
+                recipient.require_actor('turn', delegate_only=True)
             pair = self._running.get()
             require(pair is not None, 'authority_assessment_context')
             grant, original = pair
             fence = original.lease.fence
 
             def still_current():
-                current = self.remote.read_claim('OffMenu', attempt, True)
+                if recipient is None:
+                    require(grant == self.assignment('OffMenu', issue.id, record['scope_sha256']),
+                            'authority_assessment_claim_changed')
+                    current = self.remote.read_claim('OffMenu', attempt, True)
+                else:
+                    recipient.require_actor('turn', delegate_only=True)
+                    current = self.current(issue.id)
                 require(grant.previous is None and grant.attempts[0] == attempt
                         and original.attempt_id == attempt and grant.scope.key.issue_id == issue.id
                         and grant.scope == fence.scope and grant.source == fence.source
                         and grant.expected_coordinator_epoch == fence.coordinator_epoch
-                        and grant == self.assignment('OffMenu', issue.id, record['scope_sha256'])
                         and current is not None and current.attempt_id == attempt
                         and current.lease.fence == fence
                         and self.remote.clock().timestamp() < current.lease.expires_at,
@@ -887,12 +964,11 @@ class NativeComposition:
                 require(path.resolve(strict=True) == path and stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid()
                         and not info.st_mode & 0o077 and binding['device'] == info.st_dev
                         and binding['inode'] == info.st_ino
-                        and binding['original_claim_id'] == grant.claim(self.remote.identity).request_id,
+                        and (recipient is not None or
+                             binding['original_claim_id'] == grant.claim(self.remote.identity).request_id),
                         'authority_assessment_workspace_binding')
                 cfg = item['git_config_sha256']
-                git_env = {'PATH': os.defpath, 'LC_ALL': 'C', 'GIT_CONFIG_NOSYSTEM': '1',
-                           'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_NO_REPLACE_OBJECTS': '1',
-                           'GIT_NO_LAZY_FETCH': '1', 'GIT_ALLOW_PROTOCOL': '', 'GIT_TERMINAL_PROMPT': '0'}
+                git_env = _clean_git_environment()
                 _verify_source_checkout(path, grant.source, cfg, git_env=git_env)
                 return path, wire(binding), cfg, workspace_recovery_digest(path)
 
@@ -957,6 +1033,12 @@ class NativeComposition:
             return _RetainedHandoffOriginal(directory / name, pin)
         return finish
 
+    def recipient_assessment_finisher(self, issue, record, run):
+        require(self.recipient_task_active(issue.id, record['attempt'])
+                and self._verified_assessment_report_sink is not None,
+                'authority_recovery_assessment_finisher')
+        return self.retain_assessment_result(issue, record, run)
+
     def fresh_assessment_finisher(self, issue, record, run):
         execution = self._fresh_assessment.get()
         if execution is None:
@@ -968,6 +1050,13 @@ class NativeComposition:
 
     def verified_fresh_assessment_report(self, issue, attempt, workspace, state):
         execution = self._fresh_assessment.get()
+        return self._verified_assessment_report(execution, issue, attempt, workspace, state)
+
+    def _verified_assessment_report(self, execution, issue, attempt, workspace, state):
+        recipient = self._recipient_execution.get()
+        if recipient is not None:
+            require(execution is recipient, 'authority_recovery_assessment_report')
+            recipient.require_actor(owner_only=True)
         require(execution is not None and state == 'assess' and attempt.state_name == 'assess'
                 and execution.claim.lease.fence.scope.key.issue_id == issue.id
                 and Path(workspace) == execution.workspace,
@@ -979,7 +1068,10 @@ class NativeComposition:
                 'authority_assessment_report_original')
 
         def read_original(issue_id, session_id, run):
-            require(self._fresh_assessment.get() is execution and self._running.get() == pair
+            if recipient is not None:
+                recipient.require_actor(owner_only=True)
+            active = self._recipient_execution.get() if recipient is not None else self._fresh_assessment.get()
+            require(active is execution and self._running.get() == pair
                     and execution.report is report and (issue_id, session_id, run) ==
                     (issue.id, execution.claim.attempt_id, report.run),
                     'authority_assessment_report_binding')
@@ -987,6 +1079,7 @@ class NativeComposition:
         return read_original
 
     def retain_final_review(self, request_id, content):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         grant, original = self._running.get()
         config = self.installation()['assignments'][grant.scope.key.issue_id]
         author = config.get('review_of', {}).get(original.attempt_id)
@@ -1014,6 +1107,7 @@ class NativeComposition:
 
     def source_publisher_artifact(self, issue, record, path):
         """Bind a separately reviewed overlay to the existing sole publisher."""
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         grant, claim = self._running.get()
         spec = self.installation()['assignments'][issue.id]
         require(spec.get('publisher') == 'offmenu-cloud' and spec.get('publisher_target') ==
@@ -1066,6 +1160,7 @@ class NativeComposition:
         return _retain_handoff_original(directory, expected + '.json', wire(receipt), HANDOFF_RECEIPT_LIMIT)
 
     def review_candidate(self, issue_id, record, final_prompt):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         grant, _ = self._running.get()
         claim = self.current(issue_id)
         author, reviewer = record['review_of'], record['attempt']
@@ -1084,6 +1179,13 @@ class NativeComposition:
                 'authority_review_candidate_changed')
 
     def retain_intent(self, intent):
+        permit = self._recipient_execution.get()
+        if permit is not None:
+            permit.require_actor('turn', delegate_only=True)
+            if permit.stage == 'assess':
+                require(intent.route == permit.route and intent.operation.original_id ==
+                        sha256(f'{permit.claim.attempt_id}:1'.encode()).hexdigest(),
+                        'authority_recovery_provider_original')
         pair = self._running.get()
         require(pair is not None and pair[1].lease.fence == intent.operation.fence and
                 pair[1].attempt_id == intent.attempt_id, 'authority_provider_original_context')
@@ -1094,6 +1196,7 @@ class NativeComposition:
 
     def publisher_handoff(self, path, issue, record):
         """Export exactly one already accepted candidate for its existing sole publisher."""
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         claim = self.current(issue.id)
         binding = record['binding']
         grant, _ = self._running.get()
@@ -1185,6 +1288,7 @@ class NativeComposition:
         return False
 
     async def send_handoff(self, path, issue, reviewed):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         review_sha = reviewed['accepted_review'].get('routing', {}).get('source_candidate_sha256')
         if review_sha:
             receipt = await asyncio.to_thread(self.source_publisher_artifact, issue, reviewed, path)
@@ -1205,6 +1309,7 @@ class NativeComposition:
         return handoff_sha
 
     def prepare_handoff(self, path, grant, claim, settlement, destination):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         directory = path / '.git/uif-original-effects'
         name = grant.claim(self.remote.identity).request_id + '.receiving'
         intent = {'issue_id': grant.scope.key.issue_id, 'fence': asdict(claim.lease.fence),
@@ -1339,6 +1444,7 @@ class NativeComposition:
                 continue
 
     def record_settled(self, grant, claim, path):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         key = grant.claim(self.remote.identity).request_id
         original = self.remote.original_lease(grant)
         require(original.fence == claim.lease.fence, 'authority_original_settlement_fence')
@@ -1346,6 +1452,7 @@ class NativeComposition:
         self.try_release(grant, path)
 
     def try_release(self, grant, path):
+        require(self._recipient_execution.get() is None, 'authority_recovery_later_stage_held')
         key = grant.claim(self.remote.identity).request_id
         directory = path / '.git/uif-original-effects'
         pending = directory / (key + '.settled')
@@ -1390,11 +1497,20 @@ class NativeComposition:
         pair = self._running.get()
         require(pair is not None and pair[0].scope.key.issue_id == issue_id, 'authority_native_context')
         grant, original = pair
-        require(self.assignment('OffMenu', issue_id, grant.scope_sha256) == grant,
-                'authority_native_grant_changed')
+        recipient = self._recipient_execution.get()
+        if recipient is None:
+            require(self.assignment('OffMenu', issue_id, grant.scope_sha256) == grant,
+                    'authority_native_grant_changed')
+        else:
+            recipient.require_actor()
+            require(original == recipient.claim, 'authority_recovery_selected_original_changed')
         claim = self.remote.read_claim('OffMenu', original.attempt_id, True)
         require(claim is not None and claim.lease.fence == original.lease.fence
+                and (recipient is None or claim.attempt_id == original.attempt_id)
                 and self.remote.clock().timestamp() < claim.lease.expires_at, 'authority_original_lease_changed')
+        if recipient is not None:
+            # Initial recipient dispatch never extends its verified entry window.
+            return claim
         # Renew only the same still-live lease, under its original CAS request.
         # The receiver refuses release/replacement until earlier effects settle.
         remaining = claim.lease.expires_at - self.remote.clock().timestamp()
@@ -1528,6 +1644,9 @@ class NativeComposition:
         return FreeAdmissionWindow(deadline, {'OffMenu': proof})
 
     def usage(self, timeout):
+        permit = self._recipient_execution.get()
+        if permit is not None:
+            permit.require_actor('turn', delegate_only=True)
         # SharedFreePorts binds its request deadline to the current live lease
         # again at send. Never reserve a 600-second request on a 300-second lease.
         timeout = min(timeout, 90)
@@ -1562,6 +1681,9 @@ class NativeComposition:
         return 'OffMenu'
 
     def open_fenced(self, call):
+        permit = self._recipient_execution.get()
+        if permit is not None:
+            permit.require_actor('turn', delegate_only=True)
         pair = self._running.get()
         require(pair is not None and call.attempt_id == pair[1].attempt_id, 'authority_current_attempt')
         name = self.attempt_account(pair[0], call.attempt_id)
@@ -1672,6 +1794,13 @@ class NativeComposition:
     def retained_linear(self, operation):
         """Keep the original fingerprint before a possibly partial network effect."""
         issue_id = operation.fence.scope.key.issue_id
+        permit = self._recipient_execution.get()
+        if permit is not None:
+            permit.require_actor('comment', delegate_only=True)
+            require(permit.report is not None and self._slot.get() == '_publish_run_report'
+                    and operation == self._linear_operation(permit.claim.lease.fence, permit.claim.attempt_id,
+                        '_publish_run_report', 'comment', {'body': permit.report.body}),
+                    'authority_assessment_report_only_effect')
         item = self.installation()['assignments'][issue_id]
         directory = Path(item['workspace_binding']['path']) / '.git/uif-original-effects'
         destination = directory / (operation.original_id + '.linear')
@@ -1727,7 +1856,10 @@ class NativeComposition:
         slot = self._slot.get()
         require(slot is not None, 'authority_original_linear_slot_missing')
         body = payload.get('body')
-        fresh = self._fresh_assessment.get()
+        recipient = self._recipient_execution.get()
+        fresh = self._fresh_assessment.get() if recipient is None else recipient
+        if recipient is not None:
+            recipient.require_actor('comment', delegate_only=True)
         if fresh is not None:
             require(slot == '_publish_run_report' and kind == 'comment' and fresh.report is not None
                     and payload == {'body': fresh.report.body}
@@ -1791,6 +1923,7 @@ class NativeComposition:
         return observed.terminal
 
     def upload(self, filename, content_type, data):
+        require(self._recipient_execution.get() is None, 'authority_recovery_artifact_upload_held')
         pair = self._running.get()
         require(pair is not None and self._slot.get() == '_publish_run_report'
                 and type(data) is bytes and 0 < len(data) <= 8 * 1024 * 1024,
@@ -1838,7 +1971,46 @@ class _LinearClient:
         return await self._reader._graphql(query, {'issueId': issue_id, 'after': after})
 
     async def post_comment(self, issue_id, body):
-        return await asyncio.to_thread(self._composition.linear, 'comment', issue_id, {'body': body})
+        native = self._composition
+        permit = native._recipient_execution.get()
+        if permit is None:
+            return await asyncio.to_thread(native.linear, 'comment', issue_id, {'body': body})
+        permit.require_actor(owner_only=True)
+        require(native._slot.get() == '_publish_run_report' and permit.report is not None
+                and permit.report.body == body and issue_id == permit.claim.lease.fence.scope.key.issue_id,
+                'authority_assessment_report_only_effect')
+        cancelled = Event()
+        selected = None
+
+        def require_thread():
+            require(not cancelled.is_set() and current_thread() is selected, 'authority_recovery_comment_thread')
+
+        bound = permit.prepare_thread('comment', lambda: native.linear('comment', issue_id, {'body': body}),
+                                      require_thread)
+
+        def submit():
+            nonlocal selected
+            selected = current_thread()
+            try:
+                return bound()
+            finally:
+                selected = None
+
+        task = asyncio.create_task(asyncio.to_thread(submit))
+        try:
+            return await asyncio.shield(task)
+        except asyncio.CancelledError:
+            cancelled.set()
+            while not task.done():
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    continue
+                except Exception:
+                    break
+            if not task.cancelled():
+                task.exception()
+            raise
 
     async def update_issue_state(self, issue_id, state_name):
         # The installed Linear issueUpdate has no atomic match-on-current-state predicate.
@@ -1851,6 +2023,7 @@ class _LinearClient:
         raise Hold('authority_linear_label_receiver_unavailable')
 
     async def upload_file(self, filename, content_type, data):
+        require(self._composition._recipient_execution.get() is None, 'authority_recovery_artifact_upload_held')
         return await asyncio.to_thread(self._composition.upload, filename, content_type, data)
 
 
@@ -1944,6 +2117,25 @@ def install_sinks(orchestration, composition):
         async def with_original(*args, **kwargs):
             slot = composition._slot.set(name)
             try:
+                recipient = composition._recipient_execution.get()
+                if recipient is not None:
+                    recipient.require_actor(owner_only=True)
+                    if name == '_announce_state':
+                        native_owner, issue, state, run = args
+                        require(state == 'assess' and native_owner.project_name == 'OffMenu'
+                                and recipient.claim.lease.fence.scope.key.issue_id == issue.id
+                                and native_owner._issue_state_runs.get(issue.id, 1) == run,
+                                'authority_recovery_selected_stage')
+                        return None
+                    require(name == '_publish_run_report'
+                            and native is composition._verified_assessment_report_sink,
+                            'authority_recovery_later_stage_held')
+                    native_owner, issue, attempt, workspace, state = args
+                    if attempt.status != 'succeeded':
+                        return None
+                    verified = composition._verified_assessment_report(recipient, issue, attempt, workspace, state)
+                    return await native(native_owner, issue, attempt, workspace, state,
+                                        verified_assessment_report=verified)
                 execution = composition._fresh_assessment.get()
                 if execution is not None:
                     if name == '_publish_run_report':
