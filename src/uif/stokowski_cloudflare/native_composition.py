@@ -1731,6 +1731,14 @@ def install_sinks(orchestration, composition):
                             return result
                 composition._private_postimages[issue.id] = await asyncio.to_thread(
                     workspace_recovery_digest, path)
+                record = attempt.settlement_record
+                if (attempt.state_name == 'assess' and record.get('event') == 'complete'
+                        and record.get('target') == 'investigate' and record.get('report_posted') is True):
+                    fresh = composition.installation()['assignments'][issue.id].get('fresh_assessment')
+                    if fresh is not None and fresh['attempt_id'] == original.attempt_id:
+                        # Native completed this stage. Its admitted investigation still
+                        # needs the same issue claim and the authority's attempt CAS.
+                        return result
                 await asyncio.to_thread(composition.record_settled, grant, original, path)
             except (OSError, KeyError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
                 # The retained native candidate and the original operation stay

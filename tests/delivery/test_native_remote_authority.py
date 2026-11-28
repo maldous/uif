@@ -589,6 +589,65 @@ class RealCheckoutTest(unittest.TestCase):
             with self.c.settlement_context(self.owner, self.issue, attempt):
                 self.fail('A modified candidate is unavailable for original settlement')
 
+    def test_marked_assess_settlement_keeps_original_claim_for_investigation(self):
+        from uif.stokowski_cloudflare.intake import intake_stages
+
+        issue = SimpleNamespace(**vars(self.issue), title='Example', description='Bound work')
+        stages = intake_stages({}, 'OffMenu', issue, self.grant.scope_sha256, 1)
+        previous = stages['assess']['attempt']
+        successor = stages['investigate']['attempt']
+        grant = replace(self.grant, attempts=(previous, successor))
+        request = grant.claim(OWNER)
+        self.c.assignment = lambda *args: grant
+        self.item['workspace_binding']['original_claim_id'] = request.request_id
+        self.item['fresh_assessment'] = {'attempt_id': previous, 'first_intent_sha256': 'e' * 64}
+        lease = replace(RECORD.lease, fence=replace(FENCE, source=grant.source))
+        claim = NativeClaim('OffMenu', previous, lease)
+        self.worker.claim = claim
+        self.worker.original = {'request_id': request.request_id, 'request_kind': request.kind,
+                                'request_sha256': transition_request_sha256(request), 'lease': asdict(lease)}
+
+        class Native:
+            async def _resume_settlement(owner, issue, attempt):
+                attempt.settlement_record['phase'] = 'complete'
+                return True
+
+            def _settlement_path(owner, issue):
+                return self.path
+
+        for name in (*_COMMENT_SLOTS, '_reconcile'):
+            setattr(Native, name, AsyncMock())
+        install_sinks(SimpleNamespace(Orchestrator=Native, LinearClient=object, logger=Mock()), self.c)
+        native = Native()
+        native.project_name, native.cfg = self.owner.project_name, self.owner.cfg
+        native._issue_state_runs = {ISSUE: 1}
+        record = {'issue_id': ISSUE, 'run': 1, 'state': 'assess', 'session_id': previous,
+                  'scope_sha256': grant.scope_sha256, 'report_posted': True, 'event': 'complete',
+                  'target': 'investigate', 'phase': 'transition'}
+        attempt = SimpleNamespace(state_name='assess', session_id=previous, settlement_record=record)
+        native.running = {ISSUE: attempt}
+        self.c._seen_fences[ISSUE] = lease.fence
+        self.c._running.set((grant, claim))
+        self.assertTrue(asyncio.run(native._resume_settlement(issue, attempt)))
+        self.c._running.set(None)
+
+        def transition(path, body=None, **options):
+            if path == '/v1/claim/attempt' and not attested:
+                raise Hold('independent_original_evidence_missing')
+            return self.worker.request(path, body, **options)
+
+        self.r.transport = SimpleNamespace(request=transition)
+        attested = False
+        with self.assertRaisesRegex(Hold, 'independent_original_evidence_missing'):
+            with self.c.bind_dispatch(native, issue, grant.scope_sha256, stages['investigate'], stage='investigate'):
+                self.fail('Investigation requires the independent attestation')
+        attested = True
+        with self.c.bind_dispatch(native, issue, grant.scope_sha256, stages['investigate'], stage='investigate'):
+            self.assertEqual(self.c.current(ISSUE), NativeClaim('OffMenu', successor, lease))
+        paths = [path for path, _, _ in self.worker.calls]
+        self.assertEqual(paths.count('/v1/claim/attempt'), 1)
+        self.assertFalse(set(paths) & {'/v1/claim', '/v1/completion/read', '/v1/release'})
+
     def test_completed_native_callback_preserves_success_after_receiving_failure(self):
         class Native:
             async def _reconcile(self):
