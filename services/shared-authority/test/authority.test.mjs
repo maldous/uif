@@ -2246,6 +2246,8 @@ test('a waiting marked claim sees a changed control epoch or grant at commit', a
       if (args[2] === '/v1/claim') {
         if (change === 'stop') {
           await f.call('control','control',{request_id:'stop', expected_coordinator_epoch:2, stopped:true});
+          await f.call('control','control',{request_id:'resume-later', expected_coordinator_epoch:3, stopped:false});
+          assert.deepEqual({...f.a.control()}, {epoch:4, stopped:0});
         } else {
           const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
           await f.call('control','grant',{request_id:'rotate',previous_sha256:await digest(grant),
