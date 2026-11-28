@@ -34,8 +34,8 @@ class PermissionTest(IsolatedAsyncioTestCase):
         _, remote = fixture.make()
         from uif.stokowski_cloudflare.native_composition import NativeComposition
         composition = NativeComposition(remote, '/unused')
-        composition.publish_fresh_assessment_report = Mock(side_effect=lambda *args:
-            self.access.request('/v1/linear/comment', edge))
+        verified = Mock()
+        composition.verified_fresh_assessment_report = Mock(return_value=verified)
         class Owner:
             project_name = 'OffMenu'
         async def no_legacy(*args):
@@ -45,12 +45,17 @@ class PermissionTest(IsolatedAsyncioTestCase):
         announcement = Mock()
         async def ordinary_announcement(owner, issue, state, run):
             announcement(issue.id, state, run)
+        async def qualified_report(owner, issue, attempt, workspace, state, *, verified_assessment_report):
+            self.assertIs(verified_assessment_report, verified)
+            return await asyncio.to_thread(self.access.request, '/v1/linear/comment', edge)
         Owner._announce_state = ordinary_announcement
+        Owner._publish_run_report = qualified_report
         install_sinks(SimpleNamespace(LinearClient=type('FixtureLinear', (), {}),
                                       Orchestrator=Owner), composition)
+        composition._verified_assessment_report_sink = qualified_report  # Transport fixture only.
         owner = Owner()
         issue = SimpleNamespace(id=self.claim.lease.fence.scope.key.issue_id)
-        attempt = SimpleNamespace(state_name='assess')
+        attempt = SimpleNamespace(state_name='assess', status='succeeded')
         owner.running, owner._tasks = {issue.id: attempt}, {}
         delayed, release = [], asyncio.Event()
 
@@ -87,7 +92,7 @@ class PermissionTest(IsolatedAsyncioTestCase):
             release.set()
             await delayed[0]
             self.access.request('/v1/send', {'intent': edge})
-        composition.publish_fresh_assessment_report.assert_called_once()
+        composition.verified_fresh_assessment_report.assert_called_once()
         await owner._announce_state(issue, 'assess', 2)
         self.assertEqual([x.args for x in announcement.call_args_list],
                          [(issue.id, 'investigate', 1), (issue.id, 'assess', 2)])
