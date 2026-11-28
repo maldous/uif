@@ -1909,6 +1909,23 @@ for (const fromRole of ['native', 'morgan']) {
   });
 }
 
+test('a recovered native recipient cannot borrow the marked assessment entry mechanism', async () => {
+  const { f, to, claim, revoke, attest, accept } = await unstartedFixture('morgan');
+  await f.call('control', 'revoke', revoke);
+  await f.call('control', 'attest', attest);
+  const moved = await f.call(to, 'handoff', accept);
+  f.a = f.restart();
+  const current = await f.call(to, 'claim/read', {
+    project: 'OffMenu', identifier: claim.attempt_id, by_attempt: true,
+  });
+  assert.deepEqual(current.lease, moved.lease);
+  const input = {current: current.lease, attempt_id: current.attempt_id, first_intent_sha256: moved.request_sha256};
+  await assert.rejects(f.call(to, 'dispatch/observe', input), /assessment_dispatch_not_selected/);
+  await assert.rejects(f.call(to, 'dispatch/enter', input), /assessment_dispatch_not_selected/);
+  assert.equal(f.a.row('SELECT count(*) AS n FROM assessment_dispatch').n, 0);
+  assert.equal(f.calls.length, 0);
+});
+
 test('retained handoff and live recipient claim do not distinguish first entry from an interrupted recipient', async () => {
   for (const uncertain of [false, true]) {
     const { f, to, claim, revoke, attest, accept } = await unstartedFixture('morgan');
