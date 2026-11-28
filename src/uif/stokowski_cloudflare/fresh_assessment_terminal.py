@@ -2,8 +2,8 @@
 from dataclasses import asdict
 from hashlib import sha256
 
-from ..effect_authority import Lease, TerminalEffect
-from ..handoff_store import decode, require, wire
+from ..effect_authority import Lease, TerminalEffect, pinned_sha, wire_seconds
+from ..handoff_store import decode, digest, require, wire
 from ..quota_handoff import token
 from .assessment_readiness import project_assessment_readiness
 from .fresh_assessment_render import render_fresh_assessment
@@ -111,3 +111,53 @@ def observe_fresh_assessment_terminal(composition, issue, run, scope_sha256, lea
     require(_current_grant(composition, issue.id, scope_sha256, lease, previous, successor)
             == grant, 'assessment_terminal_grant_changed')
     return evidence
+
+
+def observe_consumed_fresh_assessment_successor(composition, issue, run, scope_sha256):
+    """Read the confirmed native assessment-to-investigation CAS, without entering the task."""
+    require(type(run) is int and run > 0, 'assessment_successor_run')
+    pinned_sha(scope_sha256)
+    stages = intake_stages({}, 'OffMenu', issue, scope_sha256, run)
+    previous, successor = stages['assess']['attempt'], stages['investigate']['attempt']
+    grant = composition.assignment('OffMenu', issue.id, scope_sha256)
+    require(grant is not None and grant.previous is None and grant.first_intent_sha256 is not None
+            and grant.scope.key.issue_id == issue.id and grant.scope_sha256 == scope_sha256
+            and grant.attempts[0] == previous and successor in grant.attempts,
+            'assessment_successor_grant')
+
+    remote = composition.remote
+    status = remote.status()
+    realm = pinned_sha(status.get('installation_sha256'))
+    require(not status['stopped'] and status['coordinator_epoch'] == grant.expected_coordinator_epoch,
+            'assessment_successor_not_current')
+    claim = remote.read_claim('OffMenu', successor, True)
+    require(claim is not None and claim.attempt_id == successor, 'assessment_successor_not_current')
+    lease = claim.lease
+    fence = lease.fence
+    require(fence.scope == grant.scope and fence.source == grant.source and fence.generation == 1
+            and fence.coordinator_epoch == grant.expected_coordinator_epoch
+            and remote.clock().timestamp() < lease.expires_at, 'assessment_successor_not_current')
+    initial = remote.original_lease(grant)
+    require(initial.fence == fence, 'assessment_successor_initial_original')
+
+    request_id = digest({'lease': fence.lease_id, 'attempt': successor})
+    lookup = {'installation_sha256': realm, 'session_id': remote.identity.session_id, 'request_id': request_id}
+    receipt = remote.transport.request('/v1/transition/original', lookup, allow_absent=True)
+    require(type(receipt) is dict and receipt.keys() == {'project', 'attempt_id', 'lease'}
+            and receipt['project'] == 'OffMenu' and receipt['attempt_id'] == successor,
+            'assessment_successor_cas_original')
+    original_lease = receipt['lease']
+    require(type(original_lease) is dict and original_lease.keys() == {'fence', 'expires_at'}
+            and wire(original_lease['fence']) == wire(asdict(fence))
+            and initial.expires_at <= wire_seconds(original_lease['expires_at']) <= lease.expires_at,
+            'assessment_successor_cas_lease')
+    # The current lease can have renewed since the committed CAS. Only its
+    # original reply contains the lease bytes used in that request fingerprint.
+    advance = {'request_id': request_id, 'current': original_lease,
+               'expected_attempt_id': previous, 'attempt_id': successor}
+    result = remote.transport.request('/v1/attempt/successor/read', {'current': asdict(lease), 'advance': advance})
+    require(type(result) is dict and result.keys() == {'matches'} and result['matches'] is True,
+            'assessment_successor_original_unverified')
+    require(composition.assignment('OffMenu', issue.id, scope_sha256) == grant
+            and remote.clock().timestamp() < lease.expires_at, 'assessment_successor_grant_changed')
+    return advance
