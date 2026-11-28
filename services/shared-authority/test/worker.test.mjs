@@ -313,6 +313,14 @@ for (const fresh of [false, true]) test(fresh
           stream: false,
         }),
       );
+    assert.equal((await call(tokens.control, 'usage/read', { route })).status, 403);
+    const usageRead = await call(jwt, 'usage/read', { route });
+    assert.equal(usageRead.status, 200);
+    const { reservation_snapshot: snapshot } = await usageRead.json();
+    assert.ok(Number.isInteger(snapshot.observed_at) && t <= snapshot.observed_at);
+    assert.deepEqual(snapshot, { receipt_sha256: quota, observed_at: snapshot.observed_at,
+      debt_millineurons: 0, ceiling_breached: false });
+    assert.equal(physical, 0);
     const request_sha256 = await digestBytes(raw),
       maximum_millineurons = models.get(route.model),
       end = t + 60;

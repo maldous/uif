@@ -625,6 +625,56 @@ test('checkpoint survives reconstruction, preserves opening and unknown debt, an
   assert.equal(f.calls.length, 0);
 });
 
+test('quota read reports only current account reservation debt without altering its durable receipt', async () => {
+  const f = fixture();
+  const review = { ...route, account_id: 'b'.repeat(32), credential_epoch_sha256: hex('7') };
+  const opening = 2489344;
+  f.config.reviewer_route = review;
+  f.config.reviewer_opening_liability = { original_id: 'opening', millineurons: opening,
+    receipt_sha256: hex('4') };
+  f.a = f.restart();
+  const first = await admitted(f);
+  const authorQuota = await f.quota(500);
+  const reviewQuota = await f.quota(500, review);
+  const original = f.a.usage(route);
+  const firstRead = (peer, exact = route) => f.call(peer, 'usage/read', { route: exact });
+  for (const role of ['native', 'morgan', 'quota']) {
+    assert.deepEqual(await firstRead(role), { ...original, reservation_snapshot: {
+      receipt_sha256: authorQuota.receipt_sha256, observed_at: start,
+      debt_millineurons: 0, ceiling_breached: false,
+    } });
+  }
+  await assert.rejects(firstRead('control'), /peer_role_not_granted/);
+  await assert.rejects(firstRead('native', { ...route, gateway_id: 'wrong' }), /usage_unavailable/);
+
+  f.setTime(start + 1);
+  await f.call('native', 'send', await f.request(first, authorQuota));
+  const scope2 = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
+  const second = (await f.call('native', 'claim', await f.addGrant(scope2, 'two'))).lease;
+  f.respond = async () => { throw new Error('fixture lost reply'); };
+  await assert.rejects(f.call('native', 'send', await f.request(second, authorQuota,
+    { id: hex('2'), attempt: 'two' })), /original_external_effect_unknown/);
+  f.a = f.restart();
+  assert.deepEqual((await firstRead('native')).reservation_snapshot, {
+    receipt_sha256: authorQuota.receipt_sha256, observed_at: start + 1,
+    debt_millineurons: 2 * models.get(route.model), ceiling_breached: false,
+  });
+  assert.deepEqual((await firstRead('native', review)).reservation_snapshot, {
+    receipt_sha256: reviewQuota.receipt_sha256, observed_at: start + 1,
+    debt_millineurons: opening, ceiling_breached: false,
+  });
+  assert.deepEqual(f.a.usage(route), original);
+  f.setTime(start + 2);
+  const refreshed = await f.quota(501);
+  assert.deepEqual((await firstRead('native')).reservation_snapshot, {
+    receipt_sha256: refreshed.receipt_sha256, observed_at: start + 2,
+    debt_millineurons: models.get(route.model), ceiling_breached: false,
+  });
+  f.setTime(start + 93);
+  assert.deepEqual(await firstRead('native'), f.a.usage(route));
+  assert.equal(f.calls.length, 2);
+});
+
 test('reported reservation overrun freezes account including unrelated issue and restart', async () => {
   const f = fixture(),
     lease = await admitted(f),
@@ -637,6 +687,10 @@ test('reported reservation overrun freezes account including unrelated issue and
     );
   await assert.rejects(f.call('native', 'send', body), /maximum_breached/);
   f.a = f.restart();
+  assert.deepEqual((await f.call('native', 'usage/read', { route })).reservation_snapshot, {
+    receipt_sha256: q.receipt_sha256, observed_at: start,
+    debt_millineurons: models.get(route.model) + 1000, ceiling_breached: true,
+  });
   const scope2 = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
   const lease2 = (await f.call('native', 'claim', await f.addGrant(scope2, 'two'))).lease;
   await assert.rejects(

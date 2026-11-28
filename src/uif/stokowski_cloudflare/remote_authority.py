@@ -28,9 +28,9 @@ from ..handoff_store import Hold, decode, digest, require, wire
 from ..provider_discovery import ProviderReadCooldown
 from ..quota_handoff import LinearKey, token
 from ..shared_issue_coordinator import _lease
-from .account_admission import AccountUsageEvidence, FreeRoute
+from .account_admission import MAX_EVIDENCE_AGE, AccountUsageEvidence, FreeRoute
 from .client import GLM_MODEL, MAX_RESPONSE_BYTES
-from .shared_admission import AccountUsageReceipt, NativeClaim, SharedFreePorts
+from .shared_admission import AccountReservationSnapshot, AccountUsageReceipt, NativeClaim, SharedFreePorts
 
 
 class AuthorityUnavailable(Hold):
@@ -390,10 +390,26 @@ class RemoteAuthority:
             return datetime.fromtimestamp(wire_seconds(p[name]), timezone.utc)
         pinned_sha(raw['source_receipt_sha256'])
         pinned_sha(raw['admission_binding_sha256'])
-        record = AccountUsageReceipt(self.quota_issuer, pinned_sha(raw['receipt_sha256']),
-            AccountUsageEvidence(route, p['utc_day'], utc('covered_through'), utc('valid_until'),
-                                 p['upper'], p['gap_upper'], p['free_standard_no_fallback'],
-                                 p['completeness_verified']))
+        receipt_sha = pinned_sha(raw['receipt_sha256'])
+        projection = AccountUsageEvidence(route, p['utc_day'], utc('covered_through'), utc('valid_until'),
+            p['upper'], p['gap_upper'], p['free_standard_no_fallback'], p['completeness_verified'])
+        snapshot = None
+        if 'reservation_snapshot' in raw:
+            value = raw['reservation_snapshot']
+            require(type(value) is dict and value.keys() == {
+                        'receipt_sha256', 'observed_at', 'debt_millineurons', 'ceiling_breached'}
+                    and value['receipt_sha256'] == receipt_sha
+                    and type(value['observed_at']) is int
+                    and p['covered_through'] <= value['observed_at'] < p['valid_until']
+                    and type(value['debt_millineurons']) is int
+                    and 0 <= value['debt_millineurons'] < 2**53
+                    and type(value['ceiling_breached']) is bool, 'authority_quota_reservation_binding')
+            observed = datetime.fromtimestamp(value['observed_at'], timezone.utc)
+            require(observed.date().isoformat() == projection.utc_day
+                    and observed - projection.covered_through <= MAX_EVIDENCE_AGE,
+                    'authority_quota_reservation_binding')
+            snapshot = AccountReservationSnapshot(**value)
+        record = AccountUsageReceipt(self.quota_issuer, receipt_sha, projection, snapshot)
         self._verified_usage.set(record)
         return record
 
