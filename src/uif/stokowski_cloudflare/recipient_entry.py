@@ -1,10 +1,13 @@
 """Single-attempt native custody for the unstarted peer recovery original."""
 import asyncio
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict
+from hashlib import sha256
 import os
 from pathlib import Path
 import stat
+from threading import Lock, current_thread
 
 from ..handoff_store import Hold, digest, require, wire
 from .intake import intake_identity
@@ -19,25 +22,78 @@ _READS = frozenset({
 })
 
 
+def recipient_entry_body(claim, transition):
+    original = {k: transition[k] for k in ('installation_sha256', 'session_id', 'request_id', 'request_sha256')}
+    return {'current': asdict(claim.lease), 'attempt_id': claim.attempt_id, 'original': original}
+
+
 class _RecipientPermit:
     """Copied contexts share revocation; only the selected event-loop task may use the secret."""
 
     def __init__(self, claim, route, task, verify_owner, secret):
         self.claim, self.route = claim, route
         self.task, self.verify_owner, self._secret = task, verify_owner, secret
+        self._delegation = ContextVar('recipient_fixed_call', default=None)
+        self.stage = None
+        self.report = None
+        self.workspace = None
+        self._owner_thread = current_thread()
+        self._lock = Lock()
+        self._prepared = set()
 
     def revoke(self):
         self._secret = None
 
-    def authorize(self, path, data, headers):
-        if path in _READS:
-            return
+    def require_actor(self, family=None, *, owner_only=False, delegate_only=False):
         try:
             task = asyncio.current_task()
         except RuntimeError:
             task = None
-        require(self._secret is not None and task is self.task and not self.task.done(),
+        require(self._secret is not None and not self.task.done() and not self.task.cancelling(),
                 'authority_recovery_selected_task')
+        require(not delegate_only or task is not self.task, 'authority_recovery_fixed_thread_required')
+        if task is not self.task:
+            delegation = self._delegation.get()
+            require(not owner_only and task is None and delegation is not None and delegation['active']
+                    and current_thread() is delegation['thread'] and family in (None, delegation['family']),
+                    'authority_recovery_selected_task')
+            delegation['validate']()
+        self.verify_owner()
+
+    def prepare_thread(self, family, target, require_thread):
+        self.require_actor(owner_only=True)
+        require(family in ('turn', 'comment', 'upload') and callable(target) and callable(require_thread),
+                'authority_recovery_thread_scope')
+        require(family not in self._prepared, 'authority_recovery_thread_already_prepared')
+        self._prepared.add(family)
+        used = False
+        def invoke():
+            nonlocal used
+            require(current_thread() is not self._owner_thread, 'authority_recovery_fixed_thread_required')
+            require_thread()
+            with self._lock:
+                require(self._secret is not None and not used, 'authority_recovery_thread_already_used')
+                used = True
+            delegation = dict(thread=current_thread(), active=True, validate=require_thread, family=family)
+            binding = self._delegation.set(delegation)
+            try:
+                self.require_actor(family)
+                return target()
+            finally:
+                delegation['active'] = False
+                self._delegation.reset(binding)
+        return invoke
+
+    def authorize(self, path, data, headers):
+        if path in _READS:
+            return
+        family = {'/v1/linear/comment': 'comment', '/v1/linear/upload': 'upload',
+                  '/v1/source/write': 'turn', '/v1/source/checkpoint': 'turn', '/v1/send': 'turn'}.get(path)
+        if self.stage == 'assess':
+            require(path in ('/v1/send', '/v1/linear/comment'), 'authority_recovery_effect_not_bound')
+            self.require_actor(family, delegate_only=True)
+        else:
+            self.require_actor(family)
         self.verify_owner(path)
         require(type(data) is dict, 'authority_recovery_egress_scope')
         expected = asdict(self.claim.lease.fence)
@@ -60,11 +116,21 @@ class _RecipientPermit:
             raise Hold('authority_recovery_effect_not_bound')
         require(type(parent) is dict and parent.get('fence') == expected and request.get('attempt_id') == self.claim.attempt_id,
                 'authority_recovery_egress_scope')
+        if self.stage == 'assess':
+            attempt = self.claim.attempt_id
+            if path == '/v1/send':
+                require(parent.get('original_id') == sha256(f'{attempt}:1'.encode()).hexdigest(),
+                        'authority_recovery_provider_original')
+            else:
+                issue_id = self.claim.lease.fence.scope.key.issue_id
+                require(self.report is not None and request.get('body') == self.report.body
+                        and parent.get('original_id') == digest({'attempt': attempt, 'slot': '_publish_run_report',
+                            'kind': 'comment', 'issue': issue_id}), 'authority_assessment_report_only_effect')
         headers['uif-dispatch-permit'] = self._secret
 
 
 @contextmanager
-def recipient_first_entry(composition, owner, issue, scope_sha, attempt):
+def recipient_first_entry(composition, owner, issue, scope_sha, attempt, *, expected=None):
     try:
         task = asyncio.current_task()
     except RuntimeError:
@@ -73,6 +139,9 @@ def recipient_first_entry(composition, owner, issue, scope_sha, attempt):
     run = owner._issue_state_runs.get(issue.id, 1)
     require(stage in ('assess', 'investigate') and type(run) is int and run > 0,
             'authority_recovery_native_stage')
+    if stage == 'assess':
+        require(expected is not None and composition._verified_assessment_report_sink is not None,
+                'authority_recovery_selected_assessment_required')
     original_attempt = 'cf-intake-' + intake_identity('OffMenu', issue.id, scope_sha, run) + '-' + stage
 
     def verify_owner():
@@ -88,8 +157,11 @@ def recipient_first_entry(composition, owner, issue, scope_sha, attempt):
     verify_owner()
     claim, grant, binding, entry_sha = composition._recipient_workspace(owner, issue, scope_sha, for_entry=True)
     require(claim.attempt_id == original_attempt == grant.attempts[0], 'authority_recovery_native_attempt')
+    if expected is not None:
+        require(expected.lease.fence == claim.lease.fence and expected.attempt_id == claim.attempt_id,
+                'authority_recovery_selected_original_changed')
     transition = binding['original_transition']
-    original = {k: transition[k] for k in ('installation_sha256', 'session_id', 'request_id', 'request_sha256')}
+    original = recipient_entry_body(claim, transition)['original']
     name = digest(transition) + '.recipient-entry'
     workspace = Path(binding['path'])
     directory = workspace / '.git/uif-original-effects'
@@ -124,7 +196,7 @@ def recipient_first_entry(composition, owner, issue, scope_sha, attempt):
             'authority_recovery_entry_changed')
     with _handoff_directory(directory) as fd:
         require(_retained_handoff_bytes(fd, name, 8192) == raw, 'authority_recovery_entry_original_changed')
-    body = {'current': asdict(current.lease), 'attempt_id': original_attempt, 'original': original}
+    body = recipient_entry_body(current, transition)
     remote = composition.remote
     if not created:
         remote.transport.observe_recipient_entry(body)
@@ -149,4 +221,17 @@ def recipient_first_entry(composition, owner, issue, scope_sha, attempt):
                     'authority_recovery_source_stage')
 
     with remote.transport._enter_journaled_recipient(body, current, remote.route, task, verify_live):
-        yield current
+        permit = remote.transport._recipient_permit.get()
+        permit.workspace = workspace
+        permit.stage = stage
+        if stage != 'assess':
+            # The original staged observer has no native turn/settlement binding.
+            yield current
+            return
+        execution = composition._recipient_execution.set(permit)
+        running = composition._running.set((grant, current))
+        try:
+            yield current
+        finally:
+            composition._running.reset(running)
+            composition._recipient_execution.reset(execution)

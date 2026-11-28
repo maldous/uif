@@ -1,6 +1,9 @@
 import asyncio
 from contextvars import copy_context
 from dataclasses import asdict, replace
+from hashlib import sha256
+from threading import Event, current_thread
+from concurrent.futures import ThreadPoolExecutor
 import os
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
@@ -8,14 +11,18 @@ from unittest.mock import Mock, patch
 
 import test_native_remote_authority as fixture
 import test_native_unstarted_recovery as recovery_fixture
+from uif.effect_authority import Operation
 from uif.handoff_store import Hold, decode, digest, wire
 from uif.stokowski_cloudflare.intake import intake_identity
 from uif.stokowski_cloudflare.native_assignment_projection import project_unstarted_assignment
-from uif.stokowski_cloudflare.native_composition import observe_clean_assignment_workspace
-from uif.stokowski_cloudflare.remote_authority import AccessTransport, AuthorityUnavailable
+from uif.stokowski_cloudflare.native_composition import _LinearClient, observe_clean_assignment_workspace
+from uif.stokowski_cloudflare.remote_authority import AccessTransport, AuthorityUnavailable, ProviderReply
+from uif.stokowski_cloudflare.shared_admission import SendIntent
 
 
-class RecipientEntryTest(IsolatedAsyncioTestCase):
+class _RecipientCheckout(IsolatedAsyncioTestCase):
+    stage = 'investigate'
+
     def setUp(self):
         self.case = case = fixture.RealCheckoutTest()
         self.addCleanup(case.doCleanups)
@@ -23,8 +30,8 @@ class RecipientEntryTest(IsolatedAsyncioTestCase):
         peer = recovery_fixture.UnstartedRecoveryTest()
         peer.setUp()
         self.issue, self.owner, self.scope = case.issue, case.owner, case.grant.scope_sha256
-        original_attempt = 'cf-intake-' + intake_identity('OffMenu', self.issue.id, self.scope, 1) + '-investigate'
-        self.attempt = SimpleNamespace(state_name='investigate', session_id=original_attempt)
+        original_attempt = 'cf-intake-' + intake_identity('OffMenu', self.issue.id, self.scope, 1) + '-' + self.stage
+        self.attempt = SimpleNamespace(state_name=self.stage, session_id=original_attempt)
         grant = replace(case.grant, attempts=(original_attempt,))
         peer.body['current']['fence']['source'] = asdict(grant.source)
         peer.body['recovery']['attempt_id'] = original_attempt
@@ -44,11 +51,12 @@ class RecipientEntryTest(IsolatedAsyncioTestCase):
         self.expected_body = dict(current=asdict(self.claim.lease), attempt_id=original_attempt, original={
             k: transition[k] for k in ('installation_sha256', 'session_id', 'request_id', 'request_sha256')})
         self.owner.claimed, self.owner.completed, self.owner._pending_gates = {self.issue.id}, set(), {}
-        self.owner._issue_state_runs, self.owner._issue_current_state = {}, {self.issue.id: 'investigate'}
+        self.owner._issue_state_runs, self.owner._issue_current_state = {}, {self.issue.id: self.stage}
         self.owner.running = {self.issue.id: self.attempt}
         self.owner.pool = SimpleNamespace(is_paused=lambda project: False)
         self.remote = peer.remote
         self.calls = []
+        self.effect_reply = None
         self.lost, self.won = False, False
         self.secret = '7' * 64
 
@@ -67,19 +75,23 @@ class RecipientEntryTest(IsolatedAsyncioTestCase):
                     result = asdict(self.claim)
                 elif path in ('/v1/recovery/enter', '/v1/recovery/observe'):
                     self.assertEqual(data, self.expected_body)
-                    self.assertTrue(self.marker.is_file())
-                    self.assertEqual(self.marker.stat().st_mode & 0o777, 0o600)
                     if path.endswith('enter'):
+                        self.assertTrue(self.marker.is_file())
+                        self.assertEqual(self.marker.stat().st_mode & 0o777, 0o600)
                         result = dict(entered=False) if self.won else dict(entered=True, permit=self.secret)
                         self.won = True
                         if self.lost:
                             raise OSError('lost reply')
                     else:
                         result = dict(entered=self.won)
+                elif self.effect_reply is not None:
+                    result = self.effect_reply(path, data)
                 else:
                     result = {}
                 reply = conn.getresponse.return_value
-                reply.status = 200
+                reply.status = 404 if result is None else 200
+                if result is None:
+                    result = {'error': 'original_absent'}
                 reply.getheader.return_value = 'application/json'
                 reply.read.return_value = wire(result)
             conn.request.side_effect = request
@@ -100,6 +112,8 @@ class RecipientEntryTest(IsolatedAsyncioTestCase):
     def paths(self):
         return [p for p, _ in self.calls]
 
+
+class RecipientEntryTest(_RecipientCheckout):
     async def test_exact_task_can_enter_once_and_raw_permit_is_scoped(self):
         self.owner._tasks = {self.issue.id: asyncio.current_task()}
         self.assertFalse(self.native.selected('OffMenu', self.issue, self.scope))
@@ -188,3 +202,172 @@ class RecipientEntryTest(IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(Hold, 'original_changed'), self.enter():
             self.fail('changed marker')
         self.assertNotIn('/v1/recovery/enter', self.paths())
+
+class RecipientAssessmentTest(_RecipientCheckout):
+    stage = 'assess'
+
+    async def asyncSetUp(self):
+        self.owner._tasks = {self.issue.id: asyncio.current_task()}
+        self.issue.title, self.issue.description = 'Fixture', 'Bounded fixture assessment'
+        self.native._verified_assessment_report_sink = object()
+
+    def enter(self):
+        return self.native.recipient_first_entry(self.owner, self.issue, self.scope, self.attempt, expected=self.claim)
+
+    def select(self):
+        return self.native.recipient_assignment(self.owner, self.issue, self.scope, self.stage, 1)
+
+    async def test_qualification_requires_pristine_selection_and_matching_registered_fence(self):
+        self.owner._tasks[self.issue.id] = asyncio.current_task()
+        selected = self.select()
+        self.assertEqual(selected, self.claim)
+        self.won = True
+        with self.assertRaisesRegex(Hold, 'already_attempted'):
+            self.select()
+        self.won = False
+        changed = replace(selected, attempt_id='other-attempt')
+        with self.assertRaisesRegex(Hold, 'selected_original_changed'), self.native.recipient_first_entry(
+                self.owner, self.issue, self.scope, self.attempt, expected=changed):
+            self.fail('registered another original')
+        self.assertFalse(self.marker.exists())
+        with self.enter():
+            self.assertTrue(self.native.recipient_task_active(self.issue.id, selected.attempt_id))
+            self.assertEqual(self.native.recipient_workspace_for_prologue(
+                self.owner, self.issue, self.scope, self.attempt), self.case.path)
+            (self.case.path / '.stokowski').mkdir()
+            self.assertEqual(self.native.verify_recipient_workspace(
+                self.owner, self.issue, self.scope, selected.attempt_id), self.case.path)
+            (self.case.path / 'guide.md').write_text('changed tracked source')
+            with self.assertRaisesRegex(Hold, 'source_tree_bytes'):
+                self.native.verify_recipient_workspace(self.owner, self.issue, self.scope, selected.attempt_id)
+            (self.case.path / 'guide.md').write_text('original\n')
+            (self.case.path / '.stokowski').rmdir()
+        with self.assertRaisesRegex(Hold, 'journal_needs_reconciliation'):
+            self.select()
+        self.assertEqual(self.paths().count('/v1/recovery/enter'), 1)
+        with patch.object(self.native, '_verified_assessment_report_sink', None):
+            with self.assertRaisesRegex(Hold, 'native_report_sink'):
+                self.select()
+        with patch.dict(self.config['assignments'], {self.issue.id: {}}):
+            self.assertIsNone(self.select())
+
+    async def test_selected_turn_thread_and_exact_report_use_distinct_one_use_calls(self):
+        self.owner._tasks[self.issue.id] = asyncio.current_task()
+        claim = self.claim
+        request_id = sha256(f'{claim.attempt_id}:1'.encode()).hexdigest()
+        op = Operation(claim.lease.fence, request_id, 'a' * 64)
+        intent = SendIntent(op, self.remote.route, claim.attempt_id, 'a' * 64, 'b' * 64, 123, 1)
+        raw = wire({'summary':'fixture', 'verdict':'blocked', 'routing': {
+            'issue':self.issue.identifier, 'state':'assess', 'run':1}})
+        self.remote.provider_result = Mock(side_effect=lambda operation: ProviderReply(
+            wire({'choices':[{'message':{'content':raw.decode()}}]}), None, 'c' * 64))
+        client = _LinearClient(None, self.native)
+        with self.enter():
+            finisher = self.native.recipient_assessment_finisher(self.issue, {
+                'scope_sha256': self.scope, 'attempt': claim.attempt_id}, 1)
+            entered = None
+            def validate():
+                if entered is not current_thread():
+                    raise Hold('wrong_executor')
+            def run():
+                self.assertEqual(self.native.current(self.issue.id), claim)
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    with self.assertRaisesRegex(Hold, 'selected_task'):
+                        executor.submit(copy_context().run, self.native.retain_intent, intent).result()
+                self.native.retain_intent(intent)
+                self.access.request('/v1/send', {'intent':asdict(intent)})
+                self.assertEqual(self.calls[-1], ('/v1/send', self.secret))
+                return finisher(request_id, raw.decode())
+            bound = self.native.prepare_recipient_turn_thread(run, validate)
+            with self.assertRaisesRegex(Hold, 'wrong_executor'):
+                await asyncio.to_thread(bound)
+            with self.assertRaisesRegex(Hold, 'already_prepared'):
+                self.native.prepare_recipient_turn_thread(run, validate)
+            async def copied():
+                self.native.retain_intent(intent)
+            with self.assertRaisesRegex(Hold, 'selected_task'):
+                await asyncio.create_task(copied())
+            self.assertFalse((self.marker.parent / (request_id + '.json')).exists())
+            def invoke():
+                nonlocal entered
+                entered = current_thread()
+                try:
+                    return bound()
+                finally:
+                    entered = None
+            proof = await asyncio.to_thread(invoke)
+            with self.assertRaisesRegex(Hold, 'already_used'):
+                await asyncio.to_thread(invoke)
+            self.assertTrue(proof.path.is_file())
+            self.native._slot.set('_publish_run_report')
+            report = self.native._recipient_execution.get().report
+            self.assertIn(claim.attempt_id, report.body)
+            with self.assertRaisesRegex(Hold, 'only_effect'):
+                await client.post_comment(self.issue.id, 'other body')
+            with self.assertRaisesRegex(Hold, 'upload_held'):
+                await client.upload_file('artifact', 'text/plain', b'data')
+
+            def effect_reply(path, data):
+                if path == '/v1/linear/receipt':
+                    return None
+                if path == '/v1/linear/comment':
+                    self.assertEqual(data['body'], report.body)
+                    return {'id': '12345678-1234-1234-1234-123456789abc', 'receipt_sha256':'d' * 64}
+                if path == '/v1/original':
+                    operation = data['operation']
+                    return {'operation':operation, 'state':'terminal', 'terminal': {
+                        'operation':operation, 'status':'verified', 'receipt_sha256':'d' * 64}}
+                self.fail(path)
+            self.effect_reply = effect_reply
+            async def copied_comment():
+                await client.post_comment(self.issue.id, report.body)
+            with self.assertRaisesRegex(Hold, 'selected_task'):
+                await asyncio.create_task(copied_comment())
+            self.assertTrue(await client.post_comment(self.issue.id, report.body))
+            with self.assertRaisesRegex(Hold, 'already_prepared'):
+                await client.post_comment(self.issue.id, report.body)
+            self.assertEqual(self.calls.count(('/v1/linear/comment', self.secret)), 1)
+            self.assertEqual(self.paths().count('/v1/send'), 1)
+            with self.assertRaisesRegex(Hold, 'later_stage_held'), self.native.settlement_context(
+                    self.owner, self.issue, self.attempt):
+                self.fail('unqualified subsequent stage')
+
+    async def test_repeated_cancellation_drains_selected_linear_thread_before_exit(self):
+        loop = asyncio.get_running_loop()
+        started, finished = asyncio.Event(), Event()
+        release = Event()
+        real = self.native.linear
+
+        def intercept(*args):
+            loop.call_soon_threadsafe(started.set)
+            if not release.wait(5):
+                raise TimeoutError('fixture failed to release executor')
+            try:
+                return real(*args)
+            finally:
+                finished.set()
+
+        async def recipient():
+            self.owner._tasks[self.issue.id] = asyncio.current_task()
+            with self.enter():
+                self.native._recipient_execution.get().report = SimpleNamespace(body='fixture')
+                self.native._slot.set('_publish_run_report')
+                await _LinearClient(None, self.native).post_comment(self.issue.id, 'fixture')
+
+        with patch.object(self.native, 'linear', side_effect=intercept):
+            winner = asyncio.create_task(recipient())
+            try:
+                await asyncio.wait_for(started.wait(), 3)
+                winner.cancel()
+                await asyncio.sleep(0)
+                winner.cancel()
+                await asyncio.sleep(0)
+                self.assertFalse(winner.done())
+                self.assertFalse(finished.is_set())
+            finally:
+                release.set()
+                with self.assertRaises(asyncio.CancelledError):
+                    await winner
+        self.assertTrue(finished.is_set())
+        self.assertEqual(list(self.marker.parent.glob('*.linear')), [])
+        self.assertNotIn('/v1/linear/comment', self.paths())

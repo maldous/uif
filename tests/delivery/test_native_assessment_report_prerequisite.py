@@ -280,6 +280,7 @@ class NativeAssessmentReportPrerequisiteTest(IsolatedAsyncioTestCase):
             raise OSError('fixture lost acknowledgement')
 
         composition = Mock(linear=Mock(side_effect=lose_ack))
+        composition._recipient_execution.get.return_value = None
         self.owner._ensure_linear_client = lambda: _LinearClient(self.reader, composition)
         with self.assertRaisesRegex(OSError, 'lost acknowledgement'):
             await self.owner._publish_run_report(self.issue, attempt, self.workspace, 'assess',
