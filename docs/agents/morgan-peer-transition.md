@@ -63,6 +63,21 @@ route whose reader or sender is unmounted. [Provider discovery and selection](..
 | Completion, refill or return to health | Observe exact terminal outcome and authenticated completion through the existing effect and publisher boundaries; verify current owner, scope and admission for the next eligible Linear issue. | Let the appointed scheduler refill. Do not issue another claim for held work, take from the other healthy peer, or substitute a new publisher. Restore capacity for eligible scopes without moving an active claim back merely because its old peer returned. |
 | Explicit owner pause or stop | Resolve the scope and current durable control state before any work; treat a shared stop as global where the authority defines it so. | Honor it across recovery and reboot. Read-only status and reconciliation do not lift it; unrelated work proceeds only outside the scope of the stop. |
 
+## Reconcile a native investigation report
+
+When the current Stokowski investigation produces a reviewable result, the
+native runtime can emit its scoped `stokowski:report` comment on the same
+Linear issue. The report binds the attempt, issue, run, scope and retained
+provider-result digest. Cloudflare checks the exact retained response and
+current fence before admitting the comment. The tracking announcement and
+the investigation report each have their own original operation.
+
+If the report reply is lost, use the retained report intent and read the
+receipt for that original. An unknown result keeps the operation held while
+readback continues. Keep the report and its receipt with the issue evidence
+for the assigned independent reviewer. Advance the workflow and refill only
+after their respective review and settlement receipts verify.
+
 ## Locate and continue the normal Foo release
 
 1. Start from the last **installation** receipt and the current service
