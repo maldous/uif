@@ -6,6 +6,8 @@ from math import isfinite
 
 from .provider_pool import ProviderRoute, RouteAvailability, select_route
 
+_MAX_RETRY_DELAY_SECONDS = 300
+
 
 @dataclass(frozen=True)
 class Adapter:
@@ -40,6 +42,8 @@ class NormalProviderDiscovery:
 
     async def _poll(self, adapter):
         key = adapter.route.route_id
+        delay = self.interval
+        max_delay = max(self.interval, _MAX_RETRY_DELAY_SECONDS)
         while True:
             old = self._inflight.get(key)
             if old is not None and not old.done():
@@ -64,7 +68,12 @@ class NormalProviderDiscovery:
                     else:
                         self._state[key] = ("observed" if self._evidence[key] is not None
                                             else "evidence-missing")
-            await asyncio.sleep(self.interval)
+            observed = self._state[key] == "observed"
+            if observed:
+                delay = self.interval
+            await asyncio.sleep(delay)
+            if not observed:
+                delay = min(delay * 2, max_delay)
 
     def status(self):
         """Bounded nonsecret reader status, not admission or quota proof."""
