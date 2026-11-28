@@ -156,9 +156,10 @@ for (;;) {
 
 class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        path = os.environ.get('UIF_PINNED_STOKOWSKI_ASSESSMENT_SOURCE')
+        path = (os.environ.get('UIF_PINNED_RECIPIENT_NATIVE')
+                or os.environ.get('UIF_PINNED_STOKOWSKI_ASSESSMENT_SOURCE'))
         if path is None:
-            self.skipTest('set UIF_PINNED_STOKOWSKI_ASSESSMENT_SOURCE to the reviewed native package')
+            self.skipTest('set UIF_PINNED_RECIPIENT_NATIVE to the reviewed native stage')
         self.shelf = Path(path).resolve(strict=True)
         for name, expected in PINNED_SOURCE.items():
             self.assertIn(sha256((self.shelf / name).read_bytes()).hexdigest(), expected)
