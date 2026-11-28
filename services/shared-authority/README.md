@@ -40,6 +40,26 @@ The installed configuration digest includes Access issuer/audience, service iden
 | `/v1/linear/comment`, `/v1/linear/upload`, `/v1/linear/receipt` | For a comment send `{operation,attempt_id,body}`. For a file send `{operation,attempt_id,filename,content_type,body_base64}`. The original binds the issue, action and exact content. Both upload allocation and PUT validate current ownership. Receipt lookup `{operation}` returns the original comment ID or private asset URL and `receipt_sha256`. |
 | `/v1/original`, `/v1/reconcile` | Original lookup is read-only and retains unknown outcomes. Control may record an independently attested exact original receipt once; it cannot overwrite a terminal result or settle an in-flight call. |
 
+### Native investigation entry after a marked assessment
+
+The native session can check the existing independent control approval using
+`/v1/attempt/attest/native` with `{current,previous,successor}`. Its boolean result
+compares the live predecessor with the original control receipt. Only the same native
+owner's `/v1/claim/attempt` can arm a new investigation entry. That transaction checks
+the retained control approval and the deterministic native request ID
+`SHA256(canonical({lease:current.fence.lease_id,attempt:successor}))`, consumes the
+attempt and stores the exact CAS body. A missing original leaves the predecessor in place.
+
+After confirming the consumed CAS, the native task uses `/v1/attempt/successor/enter`
+with `{current,advance}`. Here `current` is the live lease and `advance` is the exact
+original CAS body including its original expiry. The transaction winner alone receives
+`{entered:true,permit}`. A duplicate returns `{entered:false}`. After an uncertain reply,
+`/v1/attempt/successor/observe` returns `{entered:boolean}` for that same original.
+No read exposes a permit. Only a qualified winner can pass `uif-dispatch-permit` for
+new investigation effects. Existing stop, source, quota and original-effect checks still
+apply. Previously consumed assessments without an entry record remain available for exact
+CAS observation. They cannot acquire a new investigation permit.
+
 ### Native entry after an unstarted recovery
 
 A new `recover-unstarted/1` handoff to the configured native recipient records first-entry
