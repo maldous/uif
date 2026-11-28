@@ -737,16 +737,25 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         if provider_discovery is None:
             return await _start_with_shutdown(owner, original_start)
         # The advisory hook exists only in this configured service lifecycle.
-        selection_hook = staticmethod(provider_discovery.select)
         runtime = orchestration.MultiOrchestrator
-        if 'uif_select_provider' in vars(runtime):
+        hooks = {
+            'uif_select_provider': staticmethod(provider_discovery.select),
+            'uif_provider_roster': staticmethod(provider_discovery.roster),
+        }
+        if any(name in vars(runtime) for name in hooks):
             raise RuntimeError('Provider discovery launcher already installed')
-        runtime.uif_select_provider = selection_hook
+        for name, hook in hooks.items():
+            setattr(runtime, name, hook)
         try:
+            roster = provider_discovery.roster()
+            logger.info('Stokowski provider roster configured: %s',
+                        tuple(route_id for route_id, _ in roster['route_readers'])
+                        + tuple(item['route_id'] for item in roster['metadata_candidates']))
             return await _start_with_shutdown(
                 owner, lambda _: provider_discovery.run(lambda: original_start(owner)))
         finally:
-            if vars(runtime).get('uif_select_provider') is selection_hook:
-                del runtime.uif_select_provider
+            for name, hook in hooks.items():
+                if vars(runtime).get(name) is hook:
+                    delattr(runtime, name)
 
     orchestration.MultiOrchestrator.start = start

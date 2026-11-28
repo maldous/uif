@@ -30,7 +30,8 @@ from ..effect_authority import AuthorityIdentity, ClaimFence, Completion, Operat
 from ..handoff_store import Hold, decode, digest, require, wire
 from ..shared_issue_coordinator import _lease
 from ..quota_handoff import LinearKey
-from ..provider_discovery import Adapter, NormalProviderDiscovery
+from ..codex_metadata_bridge import CodexMetadataBinding, describe_codex_metadata
+from ..provider_discovery import Adapter, MetadataAdapter, NormalProviderDiscovery
 from ..provider_pool import ProviderRoute, RouteAvailability
 from .account_admission import FreeRoute
 from .budget import BudgetRefused
@@ -377,9 +378,26 @@ class _FreshAssessmentExecution:
     report: _VerifiedAssessmentReport | None = None
 
 
+async def _read_provider_thread(read):
+    # Canceled discovery tasks must keep the reader quarantined until its real
+    # blocking operation returns, so a timed-out account read cannot overlap.
+    thread = asyncio.create_task(asyncio.to_thread(read))
+    try:
+        return await asyncio.shield(thread)
+    except asyncio.CancelledError:
+        try:
+            await asyncio.shield(thread)
+        except Exception:
+            pass
+        raise
+
+
 class NativeComposition:
-    def __init__(self, remote, path):
+    def __init__(self, remote, path, *, codex_metadata=None):
+        require(codex_metadata is None or type(codex_metadata) is CodexMetadataBinding,
+                'authority_codex_metadata_binding')
         self.remote, self.path = remote, Path(path)
+        self._codex_metadata = codex_metadata
         self._running = ContextVar('shared_native_effect_assignment', default=None)
         self._slot = ContextVar('native_original_linear_effect', default=None)
         self._fresh_assessment = ContextVar('native_fresh_assessment_result', default=None)
@@ -1374,18 +1392,7 @@ class NativeComposition:
                     if current_usage_evidence(selected, receipt.projection, now=self.remote.clock()):
                         return receipt
                     return None
-                # Task cancellation cannot interrupt a running worker thread.
-                # Shield its real completion so discovery quarantines this route
-                # until the authenticated transport has actually returned.
-                thread = asyncio.create_task(asyncio.to_thread(current))
-                try:
-                    return await asyncio.shield(thread)
-                except asyncio.CancelledError:
-                    try:
-                        await asyncio.shield(thread)
-                    except Exception:
-                        pass
-                    raise
+                return await _read_provider_thread(current)
 
             def project(receipt, request, fixed=route, selected=exact):
                 now = self.remote.clock()
@@ -1398,8 +1405,17 @@ class NativeComposition:
                     receipt.receipt_sha256, ready, ready, ready)
 
             adapters.append(Adapter(route, observe, project))
+        async def observe_codex():
+            return await _read_provider_thread(lambda: self._codex_metadata.read(
+                lambda: int(self.remote.clock().timestamp())))
+
+        # The existing launcher candidate is visible even if the installer has
+        # no trusted no-refresh metadata port. Only Workers AI owns senders here.
+        codex = MetadataAdapter('codex-app-server',
+            observe_codex if self._codex_metadata is not None else None, describe_codex_metadata)
         self._provider_discovery = NormalProviderDiscovery(tuple(adapters),
-            clock=lambda: self.remote.clock().timestamp(), interval=20, timeout=8)
+            clock=lambda: self.remote.clock().timestamp(), interval=20, timeout=8,
+            diagnostics=(codex,))
         return self._provider_discovery
 
     def _discovered_preview(self, name, timeout):

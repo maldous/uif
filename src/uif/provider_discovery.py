@@ -41,19 +41,35 @@ def _capability_set(value):
     )
 
 
+@dataclass(frozen=True)
+class MetadataAdapter:
+    """A configured diagnostic reader without a dispatch route."""
+
+    route_id: str
+    read: object | None
+    describe: object
+
+
 class NormalProviderDiscovery:
-    def __init__(self, adapters, *, clock, interval, timeout):
+    def __init__(self, adapters, *, clock, interval, timeout, diagnostics=()):
         if (type(adapters) is not tuple
                 or any(type(a) is not Adapter or type(a.route) is not ProviderRoute
                        or not callable(a.read) or not callable(a.project)
                        or (a.capabilities is not None and not callable(a.capabilities))
                        for a in adapters)
-                or len({a.route.route_id for a in adapters}) != len(adapters)
+                or type(diagnostics) is not tuple
+                or any(type(a) is not MetadataAdapter or type(a.route_id) is not str or not a.route_id
+                       or (a.read is not None and not callable(a.read)) or not callable(a.describe)
+                       for a in diagnostics)
                 or not callable(clock)
                 or any(type(v) not in (int, float) or not isfinite(v) for v in (interval, timeout))
                 or not 0 < timeout <= interval):
             raise ValueError("Invalid installed discovery adapters")
+        keys = tuple(a.route.route_id for a in adapters) + tuple(a.route_id for a in diagnostics)
+        if len(set(keys)) != len(keys):
+            raise ValueError("Duplicate discovery route IDs")
         self.adapters = adapters
+        self.diagnostics = diagnostics
         self.clock, self.interval, self.timeout = clock, interval, timeout
         self._evidence = {}
         self._state = {}
@@ -65,8 +81,9 @@ class NormalProviderDiscovery:
         if not task.cancelled():
             task.exception()
 
-    async def _poll(self, adapter):
-        key = adapter.route.route_id
+    async def _poll(self, adapter, key=None):
+        if key is None:
+            key = adapter.route.route_id
         delay = self.interval
         max_delay = max(self.interval, _MAX_RETRY_DELAY_SECONDS)
         while True:
@@ -109,6 +126,19 @@ class NormalProviderDiscovery:
         """Bounded nonsecret reader status, not admission or quota proof."""
         return tuple((a.route.route_id, self._state.get(a.route.route_id, "not-observed"))
                      for a in self.adapters)
+
+    def roster(self):
+        """Report installed readers and diagnostics without granting eligibility."""
+        now = self.clock()
+        return {
+            "route_readers": self.status(),
+            "metadata_candidates": tuple({
+                **a.describe(self.observed(a.route_id), now=now),
+                "route_id": a.route_id,
+                "reader_status": ("reader-unmounted" if a.read is None
+                                  else self._state.get(a.route_id, "not-observed")),
+            } for a in self.diagnostics),
+        }
 
     @property
     def active(self):
@@ -171,6 +201,9 @@ class NormalProviderDiscovery:
         try:
             for adapter in self.adapters:
                 pollers.append(asyncio.create_task(self._poll(adapter)))
+            for adapter in self.diagnostics:
+                if adapter.read is not None:
+                    pollers.append(asyncio.create_task(self._poll(adapter, adapter.route_id)))
             async def start():
                 return await normal_start()
             startup = asyncio.create_task(start())

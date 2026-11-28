@@ -87,6 +87,25 @@ required tool support, approved data handling, bounded retries, and no alternate
 models or paid fallback. The first live scope remains the authorized OffMenu
 rollout under the existing shared reservation and effect fence.
 
+### Codex roster status
+
+The normal launcher exposes `uif_provider_roster()` during the existing
+discovery lifecycle. It reports each installed sender's reader state and lists
+Codex App Server as a configured candidate. The current normal installer has
+no `TrustedMetadataPort`, so it reports `reader-unmounted`. The task-host
+usage tool calls the same `account/rateLimits/read` RPC. App Server v0.172.0
+may proactively refresh managed authentication during that RPC. Passive
+`account/rateLimits/updated` provides a rate snapshot with no account binding
+or current-status guarantee for an idle worker. [App Server account handler](https://github.com/openai/codex/blob/rust-v0.172.0/codex-rs/app-server/src/request_processors/account_processor.rs#L1205)
+
+With a qualified same-account, same-session port that prevents refresh and
+inference mounted, the same discovery loop
+publishes current windows and typed credit diagnostics from the exact metered
+bucket. Changed or stale evidence drops out of the current view. The credits
+snapshot describes account state. Credit-backed dispatch requires its own
+bounded and authorized spending controls. Included-allowance dispatch still
+requires exact verified entitlement, capability, quota and sender fences.
+
 ### Reusable offline protocol fixtures from ANQR
 
 [ANQR #217](https://github.com/maldous/anqr/issues/217) records the archived
