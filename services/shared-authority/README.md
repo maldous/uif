@@ -55,3 +55,35 @@ The holder reads authorized names and current bytes via `/v1/source/list` and `/
 The author freezes a nonempty delta with `/v1/source/checkpoint`. Its digest covers the original fence, pinned source, author attempt, public retention receipt, revision, and sorted changed members with exact before/after bytes and modes. An explicitly registered successor reviewer can read the frozen candidate. The separate review binding checks its exact digest and requires the existing independent-account, original author response and finalized prompt bindings. The existing OffMenu publisher receives the accepted candidate under its own authenticated custody and must verify the source/tree, current preimages and exact postimages when materializing it. The candidate has no Git commit, PR or publication receipt until that publisher supplies one. An unsealed source attempt retains original tool responses needed for recovery.
 
 A source bind can explicitly name the authenticated author and/or control custodian in `recovery_readers`. The default list is empty. Under the same authority trust anchor, `/v1/source/original` accepts the historical fence, attempt, revision and optional expected candidate digest. It can return retained bytes after lease expiry, stop or recommission. The response distinguishes a frozen checkpoint from an earlier unsealed revision. A null revision returns the last revision and sealed digest only. This lookup cannot issue an edit, freeze, grant or publication. Control may revoke a named recovery reader with `/v1/source/recovery/revoke`.
+
+### First dispatch for explicitly enrolled fresh OffMenu assessments
+
+Only an existing authenticated control owner may request this narrower behavior, by adding
+`fresh_assessment: {attempt_id, first_intent_sha256}` to an otherwise valid OffMenu grant before
+the issue or attempt has any claim. The attempt must be the selected first automatic assess
+(`cf-intake-<64 lowercase hex>-assess`). The control owner must independently bind the exact
+approved first dispatch intent; a missing producer is not supplied by this interface.
+
+The existing configured native peer can POST `/v1/dispatch/enter` with exact
+`{current, attempt_id, first_intent_sha256}`, where `current` is the active native lease. Only
+the transaction winner receives `{entered:true, permit}`, after the existing store confirms
+durability; duplicates return only `{entered:false}`. POST `/v1/dispatch/observe` takes the same
+body and returns only `{entered:boolean}` without issuing anything. Neither status nor old
+claim receipts can recover permission. A missing or uncertain acknowledgment holds the
+attempt for supported observation and does not justify a resend or another dispatch.
+
+For that enrolled attempt, only the existing `/v1/send` endpoint accepts the winning permit
+via the `uif-dispatch-permit` header. The header is forwarded only to the private authority,
+never to the destination. The existing physical reservation transaction seals that exact first
+provider operation, including its original ID and full payload/route fingerprint. Any other
+operation refuses, even with the same permit. The seal and current permit are checked again
+after storage confirmation and immediately before the physical call. Keep the permit in the
+winning caller's memory only. The journal keeps its digest; reads and original receipts never
+return the permit. Existing current-fence, scope, result retention, quota and no-second-send
+checks still apply. A follow-up provider turn would be a different operation and is not allowed
+by this first-dispatch profile.
+
+Existing Linear comment and upload mutations for that enrolled attempt remain held until a
+separately scoped, exact canonical report effect binding is available. A provider permit is
+not that binding. Linear receipt observations, later attempts, unflagged grants, other projects
+and startup are unchanged.

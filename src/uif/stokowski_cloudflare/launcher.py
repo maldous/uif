@@ -129,27 +129,11 @@ async def _start_with_shutdown(owner, start):
 from ..provider_discovery import NormalProviderDiscovery
 
 
-def _native_dispatch_binding(authority_lifecycle, owner, issue, state, record,
-                             fresh_assessment_dispatch_verifier):
-    if authority_lifecycle is None:
-        return nullcontext()
-    if (fresh_assessment_dispatch_verifier is not None and owner.project_name == 'OffMenu'
-            and state == 'assess' and 'project_intake' in record):
-        run = owner._issue_state_runs.get(issue.id, 1)
-        return authority_lifecycle.bind_dispatch(
-            owner, issue, record['scope_sha256'], record, fresh_assessment_run=run,
-            verify_first_dispatch_applicability=fresh_assessment_dispatch_verifier)
-    return authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record)
-
-
 def configure(runner, orchestration, publication, *, policy: Path, database: Path,
               read_account_recovery=None, read_account_usage=None,
               open_fenced_connection=None, allows_native_dispatch=None, authority_lifecycle=None,
-              provider_discovery=None, fresh_assessment_dispatch_verifier=None):
+              provider_discovery=None):
     """Bind native custody and an optional trusted, cached account evidence reader."""
-    if fresh_assessment_dispatch_verifier is not None and (
-            authority_lifecycle is None or not callable(fresh_assessment_dispatch_verifier)):
-        raise ValueError('Expected an installed exclusive fresh-assessment dispatcher')
     if provider_discovery is not None and type(provider_discovery) is not NormalProviderDiscovery:
         raise ValueError('Expected installed normal provider discovery')
     if read_account_recovery is not None and not callable(read_account_recovery):
@@ -548,8 +532,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                 owner._release_slot(issue.id)
                 return None
         previous = owner.running.get(issue.id)
-        binding = _native_dispatch_binding(
-            authority_lifecycle, owner, issue, state, record, fresh_assessment_dispatch_verifier)
+        binding = (authority_lifecycle.bind_dispatch(owner, issue, record['scope_sha256'], record, stage=state)
+                   if authority_lifecycle is not None else nullcontext())
         # Enter before native dispatch consumes the retry or acquires custody.
         # The task it creates inherits the bound original via contextvars.
         try:
@@ -559,6 +543,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                     if source.list()['sealed']:
                         raise ValueError('Original source candidate already checkpointed')
                 result = original_dispatch(owner, issue, attempt_num)
+                if authority_lifecycle is not None:
+                    authority_lifecycle.attach_fresh_assessment_winner(owner, issue, previous)
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
             if authority_lifecycle is None or owner.running.get(issue.id) is not previous:
                 raise
@@ -572,6 +558,12 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
         return result
 
     async def worker(owner, issue, attempt):
+        binding = (authority_lifecycle.fresh_assessment_worker(owner, issue, attempt)
+                   if authority_lifecycle is not None else nullcontext())
+        with binding:
+            return await run_native_worker(owner, issue, attempt)
+
+    async def run_native_worker(owner, issue, attempt):
         if not native_allowed(owner, issue):
             # Native dispatch already registered this task and acquired its
             # local slot. It installs no independent done/cleanup callback.
@@ -718,7 +710,10 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
                or any(part in {'.', '..', '.git', '.stokowski'} for part in root.split('/'))
                for root in roots):
             raise ValueError('Invalid Workers AI write scope')
-        finish_original = None
+        fresh_finisher = (authority_lifecycle.fresh_assessment_finisher(
+            issue, record, owner._issue_state_runs.get(issue.id, 1))
+            if authority_lifecycle is not None and attempt.state_name == 'assess' else None)
+        finish_original = fresh_finisher
         if remote_tools is not None:
             finish_original = authority_lifecycle.retain_source_checkpoint(issue.id, record)
         elif authority_lifecycle is not None and record.get('source_candidate_sha256'):
@@ -728,7 +723,8 @@ def configure(runner, orchestration, publication, *, policy: Path, database: Pat
             Attempt(owner.project_name, record['attempt'], record.get('review_of'),
                     record.get('reviewer_project')), paths, roots, prompt,
             structured_report='project_intake' in record or 'automatic_author' in record,
-            remote_tools=remote_tools, finish_original=finish_original)
+            remote_tools=remote_tools, finish_original=finish_original,
+            one_shot_report=fresh_finisher is not None)
 
     install_native_runner(runner, orchestration, mode=mode, client=client,
                           authorize_turn=authorize, codex_available=codex_available,

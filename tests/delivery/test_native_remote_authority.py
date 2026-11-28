@@ -949,3 +949,53 @@ class RealCheckoutTest(unittest.TestCase):
         self.assertEqual(evidence.stat().st_ino,before)
         self.assertNotIn(raw,evidence.read_bytes())
         self.assertEqual(self.worker.calls,[])
+
+        # Fresh runtime handoff uses the ordinal-1 native provider original,
+        # then existing comment and terminal receipt, not Attempt.result_text.
+        from types import SimpleNamespace
+        from uif.stokowski_cloudflare.fresh_assessment_render import render_fresh_assessment
+        from uif.stokowski_cloudflare.native_composition import _FreshAssessmentExecution
+        from uif.stokowski_cloudflare.remote_authority import AuthorityUnavailable
+        execution = _FreshAssessmentExecution(claim, self.path)
+        self.c._fresh_assessment.set(execution)
+        self.c._slot.set('_publish_run_report')
+        with self.assertRaisesRegex(Hold, 'fresh_provider_original'):
+            callback(request_id, raw.decode())
+        evidence.unlink()  # isolate this second, independently bound fixture
+        first = sha256(f'{attempt}:1'.encode()).hexdigest()
+        first_intent = directory / (first + '.json')
+        first_intent.write_bytes(wire({'operation': operation | {'original_id': first},
+                                      'attempt_id': attempt, 'route': asdict(self.r.routes['OffMenu'])}))
+        first_intent.chmod(0o600)
+        finish = self.c.fresh_assessment_finisher(self.issue, record, 1)
+        state = SimpleNamespace(status='succeeded', session_id=attempt, state_name='assess',
+                                result_text='untrusted fallback not used')
+        self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        self.assertEqual(self.worker.calls, [])
+        finish(first, raw.decode())
+        expected = render_fresh_assessment(raw, issue=self.issue, run=1,
+            scope_sha256=record['scope_sha256'], attempt_id=attempt)
+        expected_op = self.c._linear_operation(fence, attempt, '_publish_run_report', 'comment',
+                                              {'body': expected})
+        post = self.r.transport.request
+
+        def lose_comment_ack(path, data=None, **opts):
+            result = post(path, data, **opts)
+            if path == '/v1/linear/comment':
+                self.assertEqual(data, {'operation': asdict(expected_op), 'attempt_id': attempt,
+                                        'body': expected})
+                raise AuthorityUnavailable('fixture lost reply')
+            return result
+
+        self.r.transport.request = lose_comment_ack
+        wrong = replace(claim, lease=replace(claim.lease, fence=replace(fence, generation=2)))
+        self.r.read_claim.return_value = wrong
+        with self.assertRaises(Hold):
+            self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        self.assertEqual(self.worker.calls, [])
+        self.r.read_claim.return_value = claim
+        self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        self.c.publish_fresh_assessment_report(self.issue, state, self.path, 'assess')
+        self.assertEqual([call[0] for call in self.worker.calls].count('/v1/linear/comment'), 1)
+        self.assertNotIn('/v1/linear/upload', [call[0] for call in self.worker.calls])
+        self.assertNotIn('private fixture', expected)

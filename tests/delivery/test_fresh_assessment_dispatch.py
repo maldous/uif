@@ -2,6 +2,8 @@ from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 import unittest
+from contextlib import contextmanager
+from hashlib import sha256
 from unittest.mock import patch
 
 from uif.effect_authority import transition_request_sha256
@@ -16,7 +18,7 @@ import test_native_remote_authority as fixture
 
 
 class FreshAssessmentDispatchTest(unittest.TestCase):
-    def exercise(self, *, admitted, old=False, drift=None):
+    def exercise(self, *, admitted, old=False, drift=None, permission=None):
         case = fixture.RealCheckoutTest()
         self.addCleanup(case.doCleanups)
         case.setUp()
@@ -109,6 +111,40 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
             self.assertEqual(tuple(path.read_bytes() for path in markers), before)
             self.assertEqual(observe(), claim)
             self.assertEqual(tuple(path.read_bytes() for path in markers), before)
+            if permission is not None:
+                case.owner._issue_state_runs = {issue.id: 1}
+                selected = {'attempt_id': previous, 'first_intent_sha256':
+                            sha256(before[0]).hexdigest() if permission != 'pin' else '0' * 64}
+                case.item['fresh_assessment'] = selected
+                entries, launch = [], []
+                observe_permit = case.r.transport.observe_fresh_assessment_permission = unittest.mock.Mock(
+                    return_value=False)
+                case.r.transport.fresh_assessment_permission = permit = unittest.mock.Mock()
+                @contextmanager
+                def entered(observed_claim, admission):
+                    entries.append((observed_claim, admission))
+                    if permission == 'lost':
+                        raise AuthorityUnavailable('lost fixture reply')
+                    yield
+                permit.side_effect = entered
+                with patch.object(case.r, 'acquire', side_effect=AssertionError('must only read retained claim')):
+                    if permission == 'first':
+                        with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
+                            launch.append(case.c._running.get()[1])
+                        self.assertEqual(launch, [claim])
+                    else:
+                        with self.assertRaisesRegex(Hold, 'authority_intent' if permission == 'pin' else 'lost'):
+                            with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
+                                self.fail('native dispatch launched')
+                    if permission != 'pin':
+                        with self.assertRaisesRegex(Hold, 'already_attempted'):
+                            with case.c.bind_dispatch(case.owner, issue, scope, stages['assess'], stage='assess'):
+                                self.fail('observed transport attempt launched')
+                        observe_permit.assert_called_once_with(claim, selected)
+                self.assertEqual(entries, [] if permission == 'pin' else [(claim, selected)])
+                self.assertIsNone(case.c._running.get())
+                self.assertEqual(tuple(path.read_bytes() for path in markers), before)
+                return
             for record, original_bytes in zip(markers, before):
                 record.write_bytes(original_bytes + b' ')
                 with self.assertRaisesRegex(Hold, 'original_changed'):
@@ -156,3 +192,12 @@ class FreshAssessmentDispatchTest(unittest.TestCase):
 
     def test_after_fsync_ownership_loss_preserves_intent_and_never_sends(self):
         self.exercise(admitted=True, drift='ownership')
+
+    def test_marked_first_current_dispatch_enters_once_and_inherits_claim(self):
+        self.exercise(admitted=True, permission='first')
+
+    def test_marked_intent_pin_mismatch_never_enters_or_dispatches(self):
+        self.exercise(admitted=True, permission='pin')
+
+    def test_marked_uncertain_permission_never_enables_dispatch(self):
+        self.exercise(admitted=True, permission='lost')
