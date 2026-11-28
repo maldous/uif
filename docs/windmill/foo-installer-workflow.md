@@ -117,6 +117,18 @@ Use the existing release handoff, recording its current callable actions and rec
    Verify the installed stage and effective service profile, including any
    inherited hooks, credential input, and service identity. The generic Foo
    transport and the OffMenu verifier shelf do not qualify this action.
+   The offline [fixed receiver renderer](../../tools/delivery/render_normal_install_receiver.py)
+   pins the reviewed installer siblings and the independently retained digest
+   of the canonical selection original. The protected release layout uses
+   `/var/lib/uif-stokowski/idle-upgrade/normal-install-v1` with its reviewed
+   Python source siblings, `selection-original.json`, `bundle.tar`,
+   `selection.json`, and `90-uif-commissioned-normal.conf`. This directory
+   and its contents require root custody with no group or world write access.
+   Invoke the mounted receiver with isolated Python flags `-I -S -B` and
+   no caller arguments. The original pins all three artifacts. A detached
+   receiver proves prepared source only. The owner must verify the mounted
+   action and retain its same-original result before moving to the manager
+   and authority operations.
 3. **Shared authority control.** Identify the existing authenticated
    `control` caller for
    [`/v1/control`](../../services/shared-authority/README.md#wire-contract).
