@@ -1,17 +1,16 @@
 from contextlib import contextmanager
 from dataclasses import replace
 import fcntl
-from io import BytesIO
 import os
 from pathlib import Path
 import sys
-import tarfile
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parents[2] / 'tools/delivery'))
 import install_commissioned_normal_selection as install
+from render_detached_normal_stage import render_detached_normal_stage
 
 g = install.guard
 s = install.staging
@@ -28,6 +27,8 @@ class FixedNormalSelection(unittest.TestCase):
         old, old_selector, lock = self.dropin.with_name('legacy'), root/'guarded', root/'lock'
         old.write_bytes(g.selector_dropin())
         old_selector.write_bytes(b'old')
+        old.chmod(0o644)
+        old_selector.chmod(0o644)
         lock.write_bytes(b'lock')
         self.lock_held = False
 
@@ -55,20 +56,13 @@ class FixedNormalSelection(unittest.TestCase):
         self.leaf = root/'uif1313-normal-fixture'
         self.enterContext(patch.object(install.normal, 'check_normal_stage',
                          side_effect=lambda stage: stage if stage == str(self.leaf) else check(stage)))
-        self.enterContext(patch.object(install.guarded, 'observe_guarded_preimage',
-                                        side_effect=self.observe_guarded))
-        self.enterContext(patch.object(install.effective, 'observe_normal_effective',
-                                        side_effect=self.observe_normal))
+        self.enterContext(patch.object(install.effective, 'check_normal_stage', install.normal.check_normal_stage))
+        self.enterContext(patch.object(install.guarded, 'observe_retained_idle_start', return_value='consumed'))
+        self.enterContext(patch.object(install.effective, '_get', side_effect=self.manager_property))
         values = {p: (p.encode(), 0o555 if p == g.INTERPRETER else 0o444) for p in s.REQUIRED}
-        buf = BytesIO()
-        with tarfile.open(fileobj=buf, mode='w') as tar:
-            for name, (raw, mode) in values.items():
-                info = tarfile.TarInfo(name)
-                info.size, info.mode = len(raw), mode
-                tar.addfile(info, BytesIO(raw))
-        self.archive = buf.getvalue()
-        self.staged = s.NormalRuntimeStageApproval('b'*64, self.leaf.name, g.digest(self.archive),
-            g.plan_digest(s._project_member_map(values)), g.digest(old.read_bytes()), g.digest(b'old'))
+        self.archive, projection = render_detached_normal_stage(values)
+        self.staged = s.NormalRuntimeStageApproval('b'*64, self.leaf.name, projection['archive_sha256'],
+            projection['members_sha256'], g.digest(old.read_bytes()), g.digest(b'old'))
         s.stage_normal_runtime(self.staged, self.archive)
         args = {key: g.digest(values[name][0]) for key, name in (
                  ('launcher_sha256','launch.py'), ('interpreter_sha256',g.INTERPRETER),
@@ -81,16 +75,17 @@ class FixedNormalSelection(unittest.TestCase):
         self.original = install.transaction.SelectionOriginal('a'*64, self.staged, None, None,
             self.staged.prior_dropin_sha256, g.digest(self.bytes), unit_pin, manager)
 
-    def observe_guarded(self, stream, prior, *, conditions, asserts):
+    def manager_property(self, interface, name, signature):
         self.assertTrue(self.lock_held)
-        self.assertEqual(prior.selector_sha256, self.staged.prior_selection_sha256)
-        return True  # Actual retained/typed-manager proof tested in separate observer tests.
-
-    def observe_normal(self, original):
-        self.assertTrue(self.lock_held)
-        self.assertEqual(self.selector.read_bytes(), self.bytes)
-        self.assertEqual(self.dropin.read_bytes(), self.unit)
-        return {'status': 'disk_matches_manager_reload_needed', 'installation_accepted': False}
+        exe = '/usr/bin/python3'
+        args = [exe, '-I', '-S', '-B', str(g.TOOL_PATH), '--profile', 'uif-idle',
+                '--stage', g.FIXED_STAGE, '--action', 'serve']
+        # No reload is performed. Once the normal drop-in exists on fixture
+        # disk, the manager still reports the old command and a pending reload.
+        return {'Id': install.normal.UNIT, 'NeedDaemonReload': self.dropin.exists(),
+                'ActiveState': 'inactive', 'SubState': 'dead', 'MainPID': 0, 'ControlPID': 0,
+                'Job': [0, '/'], 'NRestarts': 0, 'ExecMainStartTimestampMonotonic': 0,
+                'Conditions': [], 'Asserts': [], 'ExecStart': [[exe, args, False, 0, 0, 0, 0, 0, 0, 0]]}[name]
 
     def run_original(self):
         return install._install_from_trusted_owner(
@@ -189,7 +184,20 @@ class FixedNormalSelection(unittest.TestCase):
         import shutil
         from unittest.mock import Mock
         shutil.rmtree(self.leaf)
-        resolve = Mock(return_value=(self.original, self.archive, self.bytes, self.unit))
+        # Original and bytes come from a detached owner fixture. No installed
+        # Windmill binding, host paths, or manager are used.
+        retained = self.leaf.parent/'retained-original'
+        wire = install.transaction.encode_selection_original(self.original)
+        original_pin = g.digest(wire)
+        retained.write_bytes(wire)
+        retained.chmod(0o400)
+
+        def resolve_retained():
+            raw = install._snapshot(retained, (0o400,))
+            return (install.transaction.decode_selection_original(raw, original_pin),
+                    self.archive, self.bytes, self.unit)
+
+        resolve = Mock(side_effect=resolve_retained)
         previous = install.transaction.commit_normal_selection
 
         def lose_ack(*args):
@@ -206,11 +214,35 @@ class FixedNormalSelection(unittest.TestCase):
         result = install._stage_and_select_from_trusted_owner(resolve)
         self.assertEqual(resolve.call_count, 2)
         self.assertEqual([p.stat().st_ino for p in selected], before)
+        self.assertEqual(result['operation_id'], self.original.operation_id)
         self.assertEqual(result['release_sha256'], self.staged.members_sha256)
+        intent = self.receipts/(self.original.operation_id + '.normal-select-intent.json')
+        receipt = self.receipts/(self.original.operation_id + '.normal-select-committed.json')
+        self.assertEqual(intent.read_bytes(), wire)
+        self.assertEqual(result['staging_receipt_sha256'], g.digest((self.leaf/s.RECEIPT).read_bytes()))
+        self.assertEqual(result['selection_receipt_sha256'], g.digest(receipt.read_bytes()))
         self.assertEqual(result['manager_status'], 'disk_matches_manager_reload_needed')
         self.assertFalse(result['installation_accepted'])
         self.assertFalse(result['native_startup_verified'])
         self.assertNotIn('manager', result)
+
+    def test_invalid_retained_manager_history_fails_before_staging(self):
+        import shutil
+        shutil.rmtree(self.leaf)
+        for field in ('before_start_monotonic', 'before_restarts'):
+            for invalid in (False, -1, '0'):
+                with self.subTest(field=field, value=invalid):
+                    manager = replace(self.original.effective_original, **{field: invalid})
+                    wire = install.transaction.encode_selection_original(
+                        replace(self.original, effective_original=manager))
+                    restored = install.transaction.decode_selection_original(wire, g.digest(wire))
+                    with self.assertRaisesRegex(g.Held, 'exact normal observation inputs'):
+                        install._stage_and_select_from_trusted_owner(
+                            lambda: (restored, self.archive, self.bytes, self.unit))
+                    self.assertFalse(self.leaf.exists())
+                    self.assertFalse(self.selector.exists())
+                    self.assertFalse(self.dropin.exists())
+                    self.assertFalse(list(self.receipts.iterdir()))
 
     def test_fixed_action_rejects_target_before_stage_creation(self):
         import shutil
