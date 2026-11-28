@@ -1633,6 +1633,40 @@ for (const fromRole of ['native', 'morgan']) {
   });
 }
 
+test('retained handoff and live recipient claim do not distinguish first entry from an interrupted recipient', async () => {
+  for (const uncertain of [false, true]) {
+    const { f, to, claim, revoke, attest, accept } = await unstartedFixture('morgan');
+    await f.call('control', 'revoke', revoke);
+    await f.call('control', 'attest', attest);
+    const moved = await f.call(to, 'handoff', accept);
+    const status = await f.call(to, 'status', {});
+    const lookup = { installation_sha256: status.installation_sha256,
+      session_id: f.peers[to].session_id, request_id: accept.request_id };
+    const claimLookup = { project: 'OffMenu', by_attempt: true, identifier: claim.attempt_id };
+    const current = await f.call(to, 'claim/read', claimLookup);
+    const request = await f.request(current.lease, await f.quota(), { attempt: claim.attempt_id });
+    const operation = { operation: request.intent.operation };
+    assert.equal((await f.call(to, 'original', operation)).state, 'unknown');
+    if (uncertain) {
+      f.respond = async () => { throw new Error('simulated destination response loss'); };
+      await assert.rejects(f.call(to, 'send', request), /external_effect_unknown/);
+    } else {
+      await f.call(to, 'send', request);
+    }
+    f.a = f.restart();
+    assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);
+    assert.deepEqual(await f.call(to, 'claim/read', claimLookup), current);
+    assert.equal(f.a.row('SELECT state FROM effects WHERE id=?', operation.operation.original_id).state,
+      uncertain ? 'sending' : 'verified');
+    assert.equal((await f.call(to, 'original', operation)).state, uncertain ? 'unknown' : 'terminal');
+    assert.equal(f.calls.length, 1);
+    await f.call('control', 'revoke', { request_id: 'hold-recipient', fence: current.lease.fence });
+    assert.deepEqual(await f.call(to, 'transition/original', lookup), moved);
+    await assert.rejects(f.call(to, 'claim/read', claimLookup), /owner_not_current/);
+    assert.equal(f.calls.length, 1);
+  }
+});
+
 test('ordinary revocation, new hold, same-epoch grant replacement and stop exclude unstarted recovery', async () => {
   for (const reason of ['ordinary', 'explicit-hold', 'grant-replaced-restored', 'stop']) {
     const { f, to, current, revoke, attest, accept } = await unstartedFixture();
