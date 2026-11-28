@@ -41,6 +41,7 @@ const tables = [
   'CREATE TABLE IF NOT EXISTS assessment_dispatch (attempt TEXT PRIMARY KEY, issue TEXT NOT NULL, intent_sha TEXT NOT NULL, fence TEXT, permit_sha TEXT, provider_op TEXT, report_binding_sha TEXT)',
   'CREATE TABLE IF NOT EXISTS recovery_entries (fence TEXT PRIMARY KEY, attempt TEXT NOT NULL, original TEXT NOT NULL, permit_sha TEXT)',
   'CREATE TABLE IF NOT EXISTS next_attempts (fence TEXT NOT NULL, previous TEXT NOT NULL, successor TEXT NOT NULL, PRIMARY KEY(fence,previous,successor))',
+  'CREATE TABLE IF NOT EXISTS assessment_attestations (fence TEXT NOT NULL, previous TEXT NOT NULL, successor TEXT NOT NULL, issuer TEXT NOT NULL, body TEXT NOT NULL, PRIMARY KEY(fence,previous,successor))',
   'CREATE TABLE IF NOT EXISTS review_bindings (attempt TEXT PRIMARY KEY, body TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS carryovers (account TEXT NOT NULL,id TEXT NOT NULL,amount INTEGER NOT NULL,receipt TEXT NOT NULL, PRIMARY KEY(account,id))',
   'CREATE TABLE IF NOT EXISTS facts (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
@@ -543,11 +544,28 @@ export class Authority {
       only(peer, 'native');
       need(Object.values(this.c.peers).some((x) => x.role === 'native' &&
         x.session_id === peer.session_id), 'peer_role_not_granted', 403);
-      fields(body, 'current', 'original', ...(consumed ? ['advance'] : []));
-      const { current, original, advance } = body;
+      const lookup = consumed && !Object.hasOwn(body ?? {}, 'original');
+      fields(body, 'current', ...(lookup ? [] : ['original']), ...(consumed ? ['advance'] : []));
+      const { current, advance } = body;
       fields(current, 'fence', 'expires_at');
-      fields(original, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
       fenceShape(this.c, current.fence, true);
+      if (consumed) {
+        fields(advance, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
+        fields(advance.current, 'fence', 'expires_at');
+        need(token(advance.request_id) && uint(advance.current.expires_at), 'invalid_stage_transition', 400);
+        if (!token(advance.expected_attempt_id) || !token(advance.attempt_id) ||
+            !equal(advance.current.fence, current.fence)) return {matches:false};
+      }
+      const control = Object.values(this.c.peers).filter(x => x.role === 'control');
+      if (control.length !== 1) return {matches:false};
+      const issuer = this.peerKey(control[0]);
+      const readRetained = () => this.row(
+        'SELECT body FROM assessment_attestations WHERE fence=? AND previous=? AND successor=? AND issuer=?',
+        canonical(current.fence), advance.expected_attempt_id, advance.attempt_id, issuer);
+      const stored = lookup && readRetained();
+      if (lookup && !stored) return {matches:false};
+      const original = lookup ? JSON.parse(stored.body) : body.original;
+      fields(original, 'request_id', 'fence', 'previous', 'successor', 'terminal_receipt_sha256');
       fenceShape(this.c, original.fence, true);
       need(token(original.request_id) && token(original.previous) && token(original.successor) &&
         original.previous !== original.successor && sha(original.terminal_receipt_sha256),
@@ -556,11 +574,8 @@ export class Authority {
       const expected = await digest({ path: '/v1/attempt/attest', body: original });
       let advanceFingerprint;
       if (consumed) {
-        fields(advance, 'request_id', 'current', 'expected_attempt_id', 'attempt_id');
-        fields(advance.current, 'fence', 'expires_at');
-        need(token(advance.request_id) && uint(advance.current.expires_at), 'invalid_stage_transition', 400);
-        if (!equal(advance.current.fence, current.fence) || advance.expected_attempt_id !== original.previous ||
-            advance.attempt_id !== original.successor) return { matches: false };
+        if (advance.expected_attempt_id !== original.previous || advance.attempt_id !== original.successor)
+          return { matches: false };
         advanceFingerprint = await digest({path: '/v1/claim/attempt', body: advance});
       }
       // No asynchronous boundary after the live owner/lease/grant recheck.
@@ -584,10 +599,9 @@ export class Authority {
           if (receipt?.fingerprint !== advanceFingerprint || !equal(JSON.parse(receipt.result),
               {project: 'OffMenu', attempt_id: original.successor, lease: advance.current})) return { matches: false };
         } else if (row.attempt !== original.previous || successor) return { matches: false };
-        const control = Object.values(this.c.peers).filter((x) => x.role === 'control');
-        if (control.length !== 1) return { matches: false };
+        if (lookup && readRetained()?.body !== stored.body) return {matches:false};
         const receipt = this.row('SELECT fingerprint,result FROM receipts WHERE peer=? AND id=?',
-          this.peerKey(control[0]), original.request_id);
+          issuer, original.request_id);
         return { matches: receipt?.fingerprint === expected &&
           equal(JSON.parse(receipt.result), { terminal_receipt_sha256: original.terminal_receipt_sha256 }) };
       } catch (error) {
@@ -1289,7 +1303,16 @@ export class Authority {
         this.reconciled(body.fence.scope);
         // The report, current fence and admitted successor are reread inside
         // the same transaction that creates the independently controlled edge.
-        checkFreshReport?.();
+        if (checkFreshReport) {
+          checkFreshReport();
+          need(Object.values(c.peers).some(p => p.role === 'control' && p.session_id === peer.session_id),
+            'peer_role_not_granted', 403);
+          const key = [canonical(body.fence), body.previous, body.successor];
+          if (!this.row('SELECT 1 FROM next_attempts WHERE fence=? AND previous=? AND successor=?', ...key)) {
+            this.put('INSERT INTO assessment_attestations VALUES (?,?,?,?,?)',
+              ...key, this.peerKey(peer), canonical(body));
+          }
+        }
         this.put(
           'INSERT OR IGNORE INTO next_attempts VALUES (?,?,?)',
           canonical(body.fence),

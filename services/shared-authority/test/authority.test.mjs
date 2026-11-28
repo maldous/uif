@@ -2813,6 +2813,76 @@ test('native reads the consumed fresh assessment edge after CAS reply loss with 
   assert.deepEqual(await observe({...request,current:renewed.lease}), {matches:false});
 });
 
+test('native recovers the consumed assessment edge using only its current lease and exact original CAS', async () => {
+  const f = fixture(), a = await adjudicatedAssessment(f, 'approve');
+  const posted = await postExactAssessment(f, a);
+  const {original, advance} = await assessmentTransition(a, posted);
+  const query = {current:a.current,advance};
+  const read = (input = query) => f.call('native','attempt/successor/read',input);
+  assert.deepEqual(await read(), {matches:false});
+  await f.call('control','attempt/attest',original); // control loses its first ACK
+  assert.deepEqual(await read(), {matches:false});
+  // A separately accepted equivalent original must not replace the first writer.
+  await f.call('control','attempt/attest',{...original,request_id:'second-independent-original'});
+  const record = f.a.row('SELECT issuer,body FROM assessment_attestations');
+  assert.equal(record.issuer,f.a.peerKey(f.peers.control));
+  assert.equal(record.body,canonical(original));
+  await f.call('native','claim/attempt',advance); // native loses its CAS ACK
+  f.a = f.restart();
+  assert.deepEqual(await f.call('control','attempt/attest',original),
+    {terminal_receipt_sha256:original.terminal_receipt_sha256});
+  const changes = () => f.a.row('SELECT total_changes() AS n').n;
+  const before = changes();
+  assert.deepEqual(await read(),{matches:true});
+  for (const other of ['morgan','control','quota'])
+    await assert.rejects(f.call(other,'attempt/successor/read',query),/peer_role_not_granted/);
+  await assert.rejects(f.a.handle('/v1/attempt/successor/read',query,{...f.peers.native,session_id:'retired'}),
+    /peer_role_not_granted/);
+  assert.deepEqual(await read({...query,advance:{...advance,request_id:'unknown-native-original'}}),{matches:false});
+  assert.deepEqual(await read({...query,advance:{...advance,expected_attempt_id:'other'}}),{matches:false});
+  assert.equal(changes(),before);
+  f.setTime(start + 10);
+  const renewed = (await f.call('native','renew',{request_id:'renew-owner',current:a.current})).lease;
+  assert.deepEqual(await read(),{matches:false});
+  assert.deepEqual(await read({current:renewed,advance}),{matches:true});
+  const onward = {current:renewed,expected_coordinator_epoch:renewed.fence.coordinator_epoch,
+    successor_session:f.peers.morgan.session_id,quiesced_sha256:hex('7'),reconstruction_sha256:hex('c')};
+  await f.call('control','attest',{request_id:'witness-onward',fact:{kind:'handoff',...onward}});
+  const moved = (await f.call('native','handoff',{request_id:'handoff-onward',...onward})).lease;
+  assert.deepEqual(await read({current:renewed,advance}),{matches:false});
+  assert.deepEqual(await read({current:moved,advance}),{matches:false});
+  assert.equal(f.calls.length,2);
+});
+
+test('historical edge, mismatched control original and next-epoch owner cannot supply marked attestation custody', async () => {
+  for (const mode of ['historical','stop','changed-issuer','changed-hash']) {
+    const f = fixture(), a = await adjudicatedAssessment(f, 'approve');
+    const {original,advance} = await assessmentTransition(a,await postExactAssessment(f,a));
+    await f.call('control','attempt/attest',original);
+    if (mode === 'historical') {
+      // Older releases retained the edge and original control receipt only.
+      f.a.put('DELETE FROM assessment_attestations');
+      await f.call('control','attempt/attest',original);
+      await f.call('control','attempt/attest',{...original,request_id:'later-attestation'});
+      assert.equal(f.a.row('SELECT COUNT(*) AS n FROM assessment_attestations').n,0);
+    } else if (mode === 'changed-issuer') {
+      f.a.put('UPDATE assessment_attestations SET issuer=?',f.a.peerKey(f.peers.native));
+    } else if (mode === 'changed-hash') {
+      f.a.put('UPDATE assessment_attestations SET body=?',canonical({...original,terminal_receipt_sha256:hex('e')}));
+    }
+    await f.call('native','claim/attempt',advance);
+    if (mode === 'stop') {
+      await f.call('control','control',{request_id:'stop',stopped:true,expected_coordinator_epoch:2});
+      await f.call('control','control',{request_id:'resume-later',stopped:false,expected_coordinator_epoch:3});
+    }
+    f.a = f.restart();
+    const input = {current:a.current,advance};
+    assert.deepEqual(await f.call('native','attempt/successor/read',input),{matches:false});
+    if (mode === 'historical')
+      assert.deepEqual(await f.call('native','attempt/successor/read',{...input,original}),{matches:true});
+  }
+});
+
 test('only exact independently attested posted ready report allows investigate after reopen', async () => {
   const f = fixture();
   const a = await adjudicatedAssessment(f,'approve');
