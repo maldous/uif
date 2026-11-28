@@ -239,7 +239,9 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     };
     // Separate Linear issue; no native call after the initial claim.
     const recoveryScope = { ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } };
-    const recoveryGrant = { ...grant, scope: recoveryScope, attempt_ids: ['unstarted'] };
+    const recoveryGrant = { ...grant, scope: recoveryScope, attempt_ids: ['unstarted'],
+      sessions: ['native-s', 'morgan-s'] };
+    delete recoveryGrant.fresh_assessment;
     assert.equal((await call(tokens.control, 'grant', { request_id: 'grant-unstarted',
       previous_sha256: null, grant: recoveryGrant })).status, 200);
     const claimResponse = await call(tokens.native, 'claim', { ...claim, request_id: 'claim-unstarted',
