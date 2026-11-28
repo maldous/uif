@@ -299,7 +299,7 @@ def unstarted_transition(grant, identity, realm, body):
             'authority_recovery_originals')
     token(recovery['revocation_id'])
     fence = _recovery_lease(body['current']).fence
-    require(type(grant) is NativeAssignment and grant.previous is None
+    require(type(grant) is NativeAssignment and grant.previous is None and grant.first_intent_sha256 is None
             and fence.scope == grant.scope and fence.source == grant.source and fence.generation == 1
             and (fence.authority_id, fence.deployment_sha256, fence.policy_sha256)
                 == (identity.authority_id, identity.deployment_sha256, identity.policy_sha256)

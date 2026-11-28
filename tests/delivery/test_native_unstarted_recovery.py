@@ -91,6 +91,11 @@ class UnstartedRecoveryTest(unittest.TestCase):
                 self.observe()
         self.assertTrue(all(call.args == ('/v1/status',) for call in self.remote.transport.request.call_args_list))
 
+    def test_marked_assessment_cannot_adopt_unmarked_peer_handoff(self):
+        with self.assertRaisesRegex(Hold, 'recovery_assignment'):
+            self.observe(replace(GRANT, first_intent_sha256='8' * 64))
+        self.remote.transport.request.assert_not_called()
+
     def test_unprotected_input_and_transport_loss_do_not_write(self):
         with self.assertRaisesRegex(Hold, 'authority_config_path'):
             self.remote.observe_unstarted_recovery(GRANT, 'relative')
