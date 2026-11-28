@@ -30,7 +30,8 @@ from uif.stokowski_cloudflare.remote_authority import AccessTransport, RemoteAut
 ROOT = Path(__file__).resolve().parents[2]
 PINNED_SOURCE = {
     'orchestrator.py': {'610cbf97a5f36c9dd305cfe456245a9efc29625287b44211adbd5cea77c3511f',
-                        '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96'},
+                        '228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96',
+                        '3b8a3bfd6291bb96560b5ff2b3f9b2af5ef7aa61eb3bcb81f75b1e89fef3ba38'},
     'runner.py': {'2492210a8d43cae9b2e0ebae256f8d37298fc75c0f2c65c3fdbd66a925c6b351'},
 }
 WORKER = r'''
