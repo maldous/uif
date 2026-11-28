@@ -81,7 +81,7 @@ const startAuthority = () => new Authority(storage, { ...scope.key, repository_i
       const body = await req.json();
       if (body.model !== route.model || body.stream !== false) throw Error('unbound fixture request');
       const content = seed.marked && out.includes('provider')
-        ? JSON.stringify({summary:'Confirmed bounded investigation result.',verdict:'blocked'}) : report;
+        ? JSON.stringify({summary:'Confirmed @review <input> with ``` and café evidence.',verdict:'blocked'}) : report;
       out.push('provider');
       return Response.json({ model: route.model, choices: [{ message: { content } }],
         usage: { neurons: 0.001 } }, { headers: { 'cf-aig-log-id': 'fixture-only' } });
@@ -206,6 +206,8 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         original = 'cf-intake-' + intake_identity('OffMenu', self.issue.id, self.scope, 1) + '-assess'
         self.grant = replace(self.case.grant, attempts=(original,), scope_sha256=self.scope, expected_coordinator_epoch=2)
         self.calls, self.effects, self.lost = [], {}, False
+        self.lose_investigation_report_reply = False
+        self.investigation_report_reply_lost = False
         self._bridge_lock = Lock()
 
     def bridge_read(self):
@@ -281,6 +283,12 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
                 if self.marked and result['status'] == 200 and path == '/v1/linear/comment':
                     self.comments.append({'id':result['body']['id'], 'body':request['body'],
                                           'createdAt':self.now.isoformat(), 'updatedAt':self.now.isoformat()})
+                    if (self.lose_investigation_report_reply and not self.investigation_report_reply_lost
+                            and request['attempt_id'] == self.grant.attempts[-1]
+                            and request['body'].startswith('<!-- stokowski:report -->')):
+                        self.investigation_report_reply_lost = True
+                        self.exchange('@restart')
+                        raise OSError('fixture lost investigation report reply after SQLite commit')
                 if self.lost and path == '/v1/recovery/enter':
                     raise OSError('fixture lost entry acknowledgement after SQLite commit')
                 connection.getresponse.return_value = Reply(result)
@@ -361,6 +369,7 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         self.owner.workflow.config.states['investigate'] = self.config.StateConfig(
             name='investigate', runner='cloudflare', permission_mode='plan', session='fresh')
         self.start_worker(recovered=False, marked=True)
+        self.lose_investigation_report_reply = True
         self.wire_normal()
         self.assertTrue(self.composition._successor_settlement_qualified)
         self.assertTrue(self.composition._successor_native_worker_qualified)
@@ -398,13 +407,32 @@ class NormalLaunchAcceptance(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await self.owner._resume_settlement(self.issue, original), (original.error,self.calls))
         # The pinned native transition schedules its own original retry.
         async with asyncio.timeout(5):
-            while not tuple((self.case.path / '.git/uif-original-effects').glob('*.investigation-result')):
+            while not self.investigation_report_reply_lost:
                 await asyncio.sleep(0.05)
-        self.assertEqual(self.exchange('@inspect')['out'], ['provider','linear','linear','provider'])
+        active = self.owner._tasks.get(self.issue.id)
+        if active is not None:
+            await asyncio.wait_for(asyncio.shield(active), 5)
+        provider_summary = 'Confirmed @review <input> with ``` and café evidence.'
+        author_reports = [comment for comment in self.comments if '## investigate —' in comment['body']]
+        self.assertEqual(len(author_reports), 1)
+        body = author_reports[0]['body']
+        self.assertNotIn(provider_summary, body)
+        for escaped in (r'\u0040', r'\u003c', r'\u003e', r'\u0060'):
+            self.assertIn(escaped, body)
+        evidence = json.loads(body.split('```json\n', 1)[1].split('\n```', 1)[0])
+        self.assertEqual(evidence['summary'], provider_summary)
+        self.assertEqual(evidence['verdict'], 'blocked')
+        self.assertEqual(evidence['attempt_id'], successor)
+        self.assertEqual(evidence['scope_sha256'], self.scope)
+        self.assertIn('Independent review is required before a workflow transition.', body)
+        operation = self.effects['/v1/linear/comment']
+        retained = self.exchange('/v1/linear/receipt', {'operation': operation})
+        self.assertEqual(retained['body']['id'], author_reports[0]['id'])
+        self.assertEqual(self.exchange('@inspect')['out'], ['provider','linear','linear','provider','linear'])
         self.assertEqual(self.calls.count(('/v1/claim/attempt',False)),1)
         self.assertEqual(self.calls.count(('/v1/attempt/successor/enter',False)),1)
         self.assertEqual(self.calls.count(('/v1/send',True)),2)
-        self.assertEqual(self.calls.count(('/v1/linear/comment',True)),2)
+        self.assertEqual(self.calls.count(('/v1/linear/comment',True)),3)
 
     async def test_unregistered_issue_cannot_reach_any_native_worker_effect(self):
         self.start_worker(recovered=False)
