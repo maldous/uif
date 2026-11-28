@@ -3,12 +3,134 @@ from dataclasses import replace
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from uif.provider_discovery import Adapter, NormalProviderDiscovery, ProviderReadCooldown
+from uif.provider_discovery import (
+    Adapter, MetadataAdapter, NormalProviderDiscovery, ProviderReadCooldown, neutral_route_order,
+)
 from uif.provider_pool import PoolRequest, ProviderRoute, RouteAvailability
 from uif.quota_handoff import LinearKey
 
 
 class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
+    def test_unprioritized_routes_have_stable_operation_order_and_no_fixed_winner(self):
+        routes = ("codex", "groq", "workers-ai")
+        winners = set()
+        for i in range(24):
+            operation = f"original-{i}"
+            ordered = neutral_route_order(routes, operation_id=operation)
+            self.assertEqual(ordered, neutral_route_order(routes[::-1], operation_id=operation))
+            self.assertCountEqual(ordered, routes)
+            winners.add(ordered[0])
+        self.assertEqual(winners, set(routes))
+        self.assertEqual(neutral_route_order((), operation_id="idle"), ())
+        for routes, operation in ((["codex"], "original"), (("repeat", "repeat"), "original"),
+                                  (("bad/id",), "original"), (("codex",), None)):
+            with self.assertRaises(ValueError):
+                neutral_route_order(routes, operation_id=operation)
+
+    async def test_idle_runtime_probes_all_routes_and_recovers_without_rebinding_original(self):
+        key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
+        codex = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
+                             "c"*64, "d"*64, key.workspace_id, key.project_id, "owner/repo",
+                             frozenset({"author"}))
+        groq = replace(codex, route_id="groq", provider="groq", client="opencode",
+                       model="exact-groq", account_sha256="e"*64)
+        requests = {}
+        attempts = {"codex": 0, "groq": 0, "diagnostic-only": 0}
+        latest = {"codex": None, "groq": None}
+        codex_unavailable, qualified, fallback_unproved = object(), object(), object()
+        starts = []
+        permitted = ("codex", "groq")
+        for i in range(24):
+            operation = f"original-{i}"
+            neutral_first = neutral_route_order(permitted, operation_id=operation)[0]
+            requests.setdefault(neutral_first, PoolRequest(key, "owner/repo", "a"*64, "b"*64,
+                    operation, "ordinary-software", "author", "new", permitted))
+        self.assertEqual(set(requests), {"codex", "groq"})
+
+        def adapter(route):
+            async def read():
+                attempts[route.route_id] += 1
+                value = latest[route.route_id]
+                if value is codex_unavailable:
+                    raise ProviderReadCooldown(0)
+                return value
+
+            def project(value, request):
+                return RouteAvailability(route, request, "available", 99, 109, "f"*64,
+                                         True, value is qualified, True)
+
+            return Adapter(route, read, project, lambda *_: frozenset({"structured-report"}))
+
+        async def read_diagnostics():
+            attempts["diagnostic-only"] += 1
+            return "observed"
+
+        diagnostics = MetadataAdapter("diagnostic-only", read_diagnostics,
+            lambda evidence, **_: {"metadata_state": evidence})
+        discovery = NormalProviderDiscovery((adapter(codex), adapter(groq)), clock=lambda: 100,
+                                            interval=.01, timeout=.005, diagnostics=(diagnostics,))
+
+        async def until(check):
+            async with asyncio.timeout(1):
+                while not check():
+                    await asyncio.sleep(.001)
+
+        def choose(request, **options):
+            return discovery.select(request, **(dict(owner_paused=False, pending_original=False,
+                required_capabilities=frozenset({"structured-report"})) | options))
+
+        async def normal_start():
+            starts.append("started")
+            self.assertIsNone(choose(requests["codex"]).route)
+            await until(lambda: min(attempts.values()) >= 2)
+            self.assertIsNone(choose(requests["groq"]).route)
+
+            latest.update(codex=codex_unavailable, groq=qualified)
+            await until(lambda: discovery.observed("groq") is qualified and
+                        dict(discovery.status())["codex"] == "reader-throttled")
+            self.assertEqual(choose(requests["codex"]).route, groq)
+            old = replace(requests["codex"], intent="retry", route_ids=("codex",), original_route=codex)
+            self.assertIsNone(choose(old).route)
+            self.assertIsNone(choose(requests["codex"], pending_original=True).route)
+
+            latest["codex"] = qualified
+            await until(lambda: discovery.observed("codex") is qualified)
+            self.assertEqual(choose(requests["codex"]).route, codex)
+            neutral = choose(requests["groq"])
+            self.assertEqual(neutral.route, groq)
+            self.assertIs(neutral.observation.request, requests["groq"])
+            priority = choose(requests["groq"], owner_priority=True)
+            self.assertEqual(priority.route, codex)
+            self.assertIs(priority.observation.request, requests["groq"])
+            self.assertEqual(choose(requests["groq"], owner_priority="codex").hold,
+                             "owner-route-priority-invalid")
+            self.assertEqual(choose(old).route, codex)
+
+            latest.update(codex=None, groq=fallback_unproved)
+            await until(lambda: discovery.observed("codex") is None and
+                        discovery.observed("groq") is fallback_unproved)
+            held = choose(requests["codex"])
+            self.assertIsNone(held.route)
+            self.assertIn(("groq", "included-only-routing-unproved"), held.rejected)
+            self.assertIsNone(choose(replace(requests["codex"], route_ids=("diagnostic-only",))).route)
+
+        await discovery.run(normal_start)
+        self.assertEqual(starts, ["started"])
+        self.assertIsNone(choose(requests["codex"]).route)
+
+    async def test_broken_optional_diagnostics_do_not_hold_normal_start_or_other_rows(self):
+        broken = MetadataAdapter("broken", None, lambda *_args, **_kwargs: 1 / 0)
+        healthy = MetadataAdapter("healthy", None,
+            lambda _, **_kwargs: {"metadata_state": "unavailable", "dispatch_hold": "unmounted"})
+        discovery = NormalProviderDiscovery((), clock=lambda: 100, interval=.01, timeout=.005,
+                                            diagnostics=(broken, healthy))
+        failed, other = discovery.roster()["metadata_candidates"]
+        self.assertEqual(failed["dispatch_hold"], "quota-diagnostics-unavailable")
+        self.assertEqual(failed["reader_status"], "reader-unmounted")
+        self.assertEqual(other["route_id"], "healthy")
+        self.assertEqual(other["dispatch_hold"], "unmounted")
+        self.assertEqual(await discovery.run(AsyncMock(return_value="normal-started")), "normal-started")
+
     async def test_unavailable_metadata_backs_off_and_fresh_evidence_resets_delay(self):
         key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
         route = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
@@ -215,7 +337,7 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
 
         def select(required=tools):
             return discovery.select(request, owner_paused=False, pending_original=False,
-                                    required_capabilities=required)
+                                    required_capabilities=required, owner_priority=True)
 
         async def normal_start():
             nonlocal now
@@ -300,7 +422,7 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
         discovery = NormalProviderDiscovery((), clock=lambda: 100, interval=.01, timeout=.002)
         async def normal_start(owner):
             self.assertTrue(discovery._running)
-            self.assertTrue(callable(owner.uif_select_provider))
+            self.assertEqual(owner.uif_select_provider, discovery.select)
             return "fixture-stopped"
         multi = type("Multi", (), {"start": normal_start})
         runner = SimpleNamespace(run_turn=Mock())

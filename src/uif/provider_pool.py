@@ -253,13 +253,15 @@ def _availability_hold(observation, route, request, now):
     return None
 
 
-def select_route(request, *, routes, observations, now, owner_paused, pending_original):
-    """Choose from this request's explicit route order; never search the whole pool.
+def select_route(request, *, routes, observations, now, owner_paused, pending_original,
+                 route_order=None):
+    """Choose only from this request's routes.
 
     Every configured route is one project/role binding, and each observation is
-    exact to the contemplated operation. Omitted/ambiguous evidence holds that
-    route only. The caller must separately enforce current custody, an atomic
-    reservation and the original-operation fence before dispatch.
+    exact to the contemplated operation. An optional evaluation order must be
+    a permutation of the admitted route IDs. It does not change the request.
+    The caller must separately enforce custody, atomic reservation and the
+    original-operation fence before dispatch.
     """
     if owner_paused is not False:
         return PoolSelection(None, None, "owner-paused-or-unknown")
@@ -269,9 +271,15 @@ def select_route(request, *, routes, observations, now, owner_paused, pending_or
         return PoolSelection(None, None, "pool-input-unavailable")
     if not _valid_request(request):
         return PoolSelection(None, None, "request-not-admitted")
+    if route_order is None:
+        route_order = request.route_ids
+    elif (type(route_order) is not tuple or len(route_order) != len(request.route_ids)
+            or any(type(route_id) is not str for route_id in route_order)
+            or set(route_order) != set(request.route_ids)):
+        return PoolSelection(None, None, "route-order-invalid")
 
     rejected = []
-    for route_id in request.route_ids:
+    for route_id in route_order:
         matching = [route for route in routes
                     if type(route) is ProviderRoute and type(route.route_id) is str
                     and route.route_id == route_id]
