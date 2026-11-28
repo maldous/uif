@@ -1539,6 +1539,82 @@ test('normal startup bind reconciles the same authenticated original without reb
   assert.equal(reply.expires_at, start + 5);
 });
 
+test('one control action activates the installed normal release for unattended restarts', async () => {
+  const f = fixture();
+  const unit = 'stokowski-foo.service';
+  const startup = {
+    stage: 'uif1313-normal-fixture',
+    session_id: f.peers.native.session_id,
+    evidence_sha256: hex('3'),
+    coordinator_epoch: 2,
+    previous_request_id: null,
+  };
+  const activate = {
+    request_id: 'activate-installed-release',
+    expected_coordinator_epoch: 1,
+    stopped: false,
+    startup,
+  };
+  const challenge = { unit, stage: startup.stage, nonce: 'native-restart' };
+  await assert.rejects(f.call('native', 'control', activate), /peer_role_not_granted/);
+  await assert.rejects(f.call('control', 'control', { ...activate, stopped: true }), /invalid_startup_binding/);
+  await assert.rejects(f.call('control', 'control', {
+    ...activate, startup: { ...startup, session_id: f.peers.morgan.session_id },
+  }), /invalid_startup_binding/);
+  await assert.rejects(f.call('control', 'control', {
+    ...activate, startup: { ...startup, stage: 'uif1313-idle-a22fbb2' },
+  }), /invalid_startup_binding/);
+  await assert.rejects(f.call('control', 'control', {
+    ...activate, startup: { ...startup, coordinator_epoch: 1 },
+  }), /normal_startup_selection_changed/);
+  await assert.rejects(f.call('control', 'control', { ...activate, expected_coordinator_epoch: 2 }), /control_epoch_changed/);
+  assert.equal((await f.call('control', 'status', {})).stopped, true);
+
+  const result = await f.call('control', 'control', activate);
+  assert.deepEqual(result, { coordinator_epoch: 2, stopped: false, expected_coordinator_epoch: 1,
+    startup: { ...startup, unit } });
+  f.a = f.restart();
+  assert.deepEqual(await f.call('control', 'control', activate), result);
+  f.setTime(start + 86_400);
+  const proof = await f.call('native', 'startup/read', challenge);
+  assert.equal(proof.coordinator_epoch, 2);
+  assert.equal(proof.expires_at, f.clock() + 5);
+  assert.equal((await f.call('control', 'status', {})).normal_startup_request_id, activate.request_id);
+  await assert.rejects(f.call('control', 'startup/bind', {
+    request_id: 'old-binder', unit, stage: startup.stage, session_id: startup.session_id,
+    coordinator_epoch: 2, valid_until: f.clock() + 300, evidence_sha256: hex('3'),
+  }), /normal_startup_already_selected/);
+  await assert.rejects(f.call('native', 'startup/read', { ...challenge, stage: 'other-release' }), /startup_not_bound/);
+  await assert.rejects(f.call('morgan', 'startup/read', challenge), /peer_role_not_granted/);
+
+  const replacement = { ...startup, stage: 'uif1313-normal-replacement',
+    previous_request_id: activate.request_id };
+  const replace = { ...activate, request_id: 'activate-replacement',
+    expected_coordinator_epoch: 2, startup: replacement };
+  await f.call('control', 'control', replace);
+  await assert.rejects(f.call('control', 'control', {
+    ...replace, request_id: 'delayed-old-release', startup: { ...replacement, stage: startup.stage },
+  }), /normal_startup_selection_changed/);
+  await assert.rejects(f.call('native', 'startup/read', challenge), /startup_not_bound/);
+  const replacementChallenge = { ...challenge, stage: replacement.stage };
+  assert.equal((await f.call('native', 'startup/read', replacementChallenge)).coordinator_epoch, 2);
+
+  await f.call('control', 'control', {
+    request_id: 'operator-stop', expected_coordinator_epoch: 2, stopped: true,
+  });
+  f.a = f.restart();
+  await assert.rejects(f.call('native', 'startup/read', replacementChallenge), /startup_not_bound/);
+  assert.deepEqual(await f.call('control', 'control', activate), result);
+  assert.equal((await f.call('control', 'status', {})).stopped, true);
+  await f.call('control', 'control', {
+    ...replace, request_id: 'resume-installed', expected_coordinator_epoch: 3,
+    startup: { ...replacement, coordinator_epoch: 4, previous_request_id: replace.request_id },
+  });
+  assert.equal((await f.call('native', 'startup/read', replacementChallenge)).coordinator_epoch, 4);
+  f.setTime(f.peers.native.expires_at);
+  await assert.rejects(f.call('native', 'startup/read', replacementChallenge), /access_assertion_expired/);
+});
+
 test('peer transfer and return keep one claim; an independent hold does not stop refill', async () => {
   const f = fixture(), first = await admitted(f);
   const nextScope = () => ({ ...scope, key: { ...scope.key, issue_id: crypto.randomUUID() } });

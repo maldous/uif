@@ -192,9 +192,17 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     let r = await call(tokens.native, 'status');
     assert.equal(r.status, 200);
     assert.equal((await r.json()).stopped, true);
-    const ctl = { request_id: 'go', expected_coordinator_epoch: 1, stopped: false };
+    const stage = 'uif1313-normal-fixture';
+    const ctl = { request_id: 'go', expected_coordinator_epoch: 1, stopped: false,
+      startup: { stage, session_id: peers[clients[0]].session_id, evidence_sha256: '8'.repeat(64),
+        coordinator_epoch: 2, previous_request_id: null } };
+    const challenge = { unit: 'stokowski-foo.service', stage, nonce: 'fixture-restart' };
     assert.equal((await call(tokens.native, 'control', ctl)).status, 403);
     assert.equal((await call(tokens.control, 'control', ctl)).status, 200);
+    const startup = await call(tokens.native, 'startup/read', challenge);
+    assert.equal(startup.status, 200);
+    assert.equal((await startup.json()).nonce, challenge.nonce);
+    assert.equal((await call(tokens.morgan, 'startup/read', challenge)).status, 403);
     const scope = {
       repository_id: c.repository_id,
       key: { workspace_id: c.workspace_id, project_id: c.project_id, issue_id: crypto.randomUUID() },
@@ -356,6 +364,8 @@ test('workerd enforces signed Access app identity, issue claim CAS, and durable 
     await instance.dispose();
     instance = make();
     assert.equal((await (await call(jwt, 'status')).json()).stopped, true);
+    assert.equal((await call(tokens.native, 'startup/read', challenge)).status, 409);
+    assert.equal((await (await call(tokens.control, 'status')).json()).normal_startup_request_id, ctl.request_id);
     const read = {
       fence: original.lease.fence,
       attempt_id: 'one',

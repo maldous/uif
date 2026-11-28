@@ -53,6 +53,8 @@ const tables = [
   'CREATE INDEX IF NOT EXISTS effects_account ON effects(account,state,settled_at)',
 ];
 const LIMIT = 7500000;
+const NATIVE_UNIT = 'stokowski-foo.service';
+const NORMAL_STAGE = /^uif1313-normal-[a-z0-9][a-z0-9.-]{1,65}$/;
 const peerRoles = ['native', 'morgan'];
 const leaseKind = (name) => 'uif.shared-lease.' + name + '/3';
 const issueKey = (s) => s.key.workspace_id + ':' + s.key.issue_id;
@@ -205,6 +207,24 @@ export class Authority {
       id,
       this.realm,
     );
+  }
+  bindStartup(binding) {
+    const { unit, stage } = binding;
+    this.put(
+      'INSERT INTO startup VALUES (?,?,?) ON CONFLICT(unit,stage) DO UPDATE SET body=excluded.body',
+      unit,
+      stage,
+      canonical(binding),
+    );
+    this.stamp('startup', canonical([unit, stage]));
+  }
+  normalStartup() {
+    const row = this.row(
+      "SELECT stage,body FROM startup WHERE unit=? AND json_type(body,'$.valid_until')='null'",
+      NATIVE_UNIT,
+    );
+    return row && this.authorized('startup', canonical([NATIVE_UNIT, row.stage]))
+      ? JSON.parse(row.body) : null;
   }
   peerKey(peer) {
     return this.realm + ':' + peer.session_id;
@@ -461,6 +481,9 @@ export class Authority {
         commissioned_sha256: this.row('SELECT realm FROM installation WHERE singleton=1').realm,
         lease_seconds: c.lease_seconds,
         quota_issuer: identity(c, quota),
+        ...(peer.role === 'control' && {
+          normal_startup_request_id: this.normalStartup()?.request_id ?? null,
+        }),
       };
     }
     if (path === '/v1/startup/bind') {
@@ -489,13 +512,8 @@ export class Authority {
           body.coordinator_epoch === this.control().epoch && body.valid_until > this.clock(),
           'startup_binding_changed',
         );
-        this.put(
-          'INSERT INTO startup VALUES (?,?,?) ON CONFLICT(unit,stage) DO UPDATE SET body=excluded.body',
-          body.unit,
-          body.stage,
-          canonical(body),
-        );
-        this.stamp('startup', canonical([body.unit, body.stage]));
+        need(body.unit !== NATIVE_UNIT || !this.normalStartup(), 'normal_startup_already_selected');
+        this.bindStartup(body);
         return { request_id: body.request_id, unit: body.unit, stage: body.stage };
       });
     }
@@ -506,33 +524,58 @@ export class Authority {
       const ctl = this.control(),
         r = this.row('SELECT body FROM startup WHERE unit=? AND stage=?', body.unit, body.stage);
       const b = r && JSON.parse(r.body),
-        t = this.clock();
+        t = this.clock(),
+        validUntil = b?.valid_until === null ? Infinity : b?.valid_until;
       need(
         b &&
           this.authorized('startup', canonical([body.unit, body.stage])) &&
           !ctl.stopped &&
           b.coordinator_epoch === ctl.epoch &&
           b.session_id === peer.session_id &&
-          b.valid_until > t,
+          validUntil > t,
         'startup_not_bound',
       );
       return {
         ...body,
         ...identity(c, peer),
         coordinator_epoch: ctl.epoch,
-        expires_at: Math.min(t + 5, b.valid_until, peer.expires_at),
+        expires_at: Math.min(t + 5, validUntil, peer.expires_at),
       };
     }
     if (path === '/v1/control') {
       only(peer, 'control');
-      fields(body, 'request_id', 'expected_coordinator_epoch', 'stopped');
+      const bindsStartup = Object.hasOwn(body ?? {}, 'startup');
+      fields(body, 'request_id', 'expected_coordinator_epoch', 'stopped',
+        ...(bindsStartup ? ['startup'] : []));
       need(typeof body.stopped === 'boolean', 'invalid_control', 400);
+      if (bindsStartup) {
+        fields(body.startup, 'stage', 'session_id', 'evidence_sha256',
+          'coordinator_epoch', 'previous_request_id');
+        const { stage, session_id, evidence_sha256, coordinator_epoch, previous_request_id } = body.startup;
+        need(!body.stopped && token(stage) && NORMAL_STAGE.test(stage) && sha(evidence_sha256) &&
+          uint(coordinator_epoch) && coordinator_epoch > 0 &&
+          (previous_request_id === null || token(previous_request_id)) &&
+          Object.values(c.peers).some((p) => p.role === 'native' && p.session_id === session_id),
+        'invalid_startup_binding', 400);
+      }
       return this.receipt(peer, body.request_id, path, body, () => {
         const ctl = this.control();
         need(ctl.epoch === body.expected_coordinator_epoch, 'control_epoch_changed');
         const epoch = ctl.epoch + (!!ctl.stopped !== body.stopped ? 1 : 0);
+        if (bindsStartup) {
+          need(body.startup.coordinator_epoch === epoch &&
+            body.startup.previous_request_id === (this.normalStartup()?.request_id ?? null),
+          'normal_startup_selection_changed');
+          // The protected release action selects one installed stage. Its original
+          // receipt is retained even when a later selection supersedes this row.
+          this.put('DELETE FROM startup WHERE unit=? AND stage<>?', NATIVE_UNIT, body.startup.stage);
+          this.bindStartup({ ...body.startup, request_id: body.request_id, unit: NATIVE_UNIT,
+            valid_until: null });
+        }
         this.put('UPDATE control SET epoch=?,stopped=? WHERE singleton=1', epoch, Number(body.stopped));
-        return { coordinator_epoch: epoch, stopped: body.stopped };
+        const result = { coordinator_epoch: epoch, stopped: body.stopped };
+        return bindsStartup ? { ...result, expected_coordinator_epoch: body.expected_coordinator_epoch,
+          startup: { ...body.startup, unit: NATIVE_UNIT } } : result;
       });
     }
     if (path === '/v1/grant') {

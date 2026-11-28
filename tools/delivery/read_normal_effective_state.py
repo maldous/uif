@@ -113,8 +113,9 @@ def observe_normal_effective(original):
             or _condition_shape(first['Conditions']) != original.conditions
             or _condition_shape(first['Asserts']) != original.asserts):
         return result('disk_matches_effective_manager_differs')
-    if (first['ActiveState'], first['SubState'], first['MainPID'], first['ControlPID'], first['Job']) != (
-                    'inactive', 'dead', 0, 0, [0, '/']):
+    manager_state = (first['ActiveState'], first['SubState'])
+    if (manager_state not in {('inactive', 'dead'), ('failed', 'failed')}
+            or (first['MainPID'], first['ControlPID'], first['Job']) != (0, 0, [0, '/'])):
         return result('effective_normal_not_stopped')
     if (first['ExecMainStartTimestampMonotonic'], first['NRestarts']) != (
             original.before_start_monotonic, original.before_restarts):

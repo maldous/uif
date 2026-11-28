@@ -55,3 +55,14 @@ class NormalEffectiveState(unittest.TestCase):
         self.values['ExecMainStartTimestampMonotonic'] = 22
         self.assertEqual(read.observe_normal_effective(self.original)['status'],
                          'effective_normal_start_history_changed')
+
+    def test_failed_prior_launch_is_quiescent_only_with_unchanged_history_and_no_process(self):
+        self.values.update(ActiveState='failed', SubState='failed')
+        result = read.observe_normal_effective(self.original)
+        self.assertEqual(result['status'], 'effective_normal_stopped_same_original_observation')
+        self.assertFalse(result['native_startup_verified'])
+        self.values['ControlPID'] = 17
+        self.assertEqual(read.observe_normal_effective(self.original)['status'], 'effective_normal_not_stopped')
+        self.values.update(ControlPID=0, ExecMainStartTimestampMonotonic=22)
+        self.assertEqual(read.observe_normal_effective(self.original)['status'],
+                         'effective_normal_start_history_changed')
