@@ -63,7 +63,7 @@ class _RecipientPermit:
 
     def prepare_thread(self, family, target, require_thread):
         self.require_actor(owner_only=True)
-        require(family in ('turn', 'comment', 'upload') and callable(target) and callable(require_thread),
+        require(family in ('turn', 'comment', 'report-comment', 'upload') and callable(target) and callable(require_thread),
                 'authority_recovery_thread_scope')
         require(family not in self._prepared, 'authority_recovery_thread_already_prepared')
         self._prepared.add(family)
@@ -103,11 +103,23 @@ class _RecipientPermit:
                 and type(data.get('run')) is int and data == expected and text == human,
                 'authority_successor_tracking_scope')
 
+    def verify_report(self, slot, issue_id, body):
+        require(self.stage == 'marked-investigation' and slot == '_publish_run_report'
+                and issue_id == self.claim.lease.fence.scope.key.issue_id
+                and self.report is not None and type(body) is str and body == self.report.body,
+                'authority_successor_report_scope')
+
     def authorize(self, path, data, headers):
         if path in _READS:
             return
         family = {'/v1/linear/comment': 'comment', '/v1/linear/upload': 'upload',
                   '/v1/source/write': 'turn', '/v1/source/checkpoint': 'turn', '/v1/send': 'turn'}.get(path)
+        if self.stage == 'marked-investigation' and path == '/v1/linear/comment':
+            original = data.get('operation', {}).get('original_id') if type(data) is dict else None
+            report_id = digest({'attempt': self.claim.attempt_id, 'slot': '_publish_run_report',
+                                'kind': 'comment', 'issue': self.claim.lease.fence.scope.key.issue_id})
+            if original == report_id:
+                family = 'report-comment'
         if self.stage in ('assess', 'marked-investigation'):
             require(path in ('/v1/send', '/v1/linear/comment'), 'authority_recovery_effect_not_bound')
             self.require_actor(family, delegate_only=True)
@@ -142,9 +154,12 @@ class _RecipientPermit:
                         'authority_recovery_provider_original')
             elif self.stage == 'marked-investigation':
                 issue_id = self.claim.lease.fence.scope.key.issue_id
-                self.verify_tracking('_announce_state', issue_id, request.get('body'))
-                require(parent.get('original_id') == digest({'attempt': attempt, 'slot': '_announce_state',
-                        'kind': 'comment', 'issue': issue_id}), 'authority_successor_tracking_scope')
+                if family == 'report-comment':
+                    self.verify_report('_publish_run_report', issue_id, request.get('body'))
+                else:
+                    self.verify_tracking('_announce_state', issue_id, request.get('body'))
+                    require(parent.get('original_id') == digest({'attempt': attempt, 'slot': '_announce_state',
+                            'kind': 'comment', 'issue': issue_id}), 'authority_successor_tracking_scope')
             else:
                 issue_id = self.claim.lease.fence.scope.key.issue_id
                 require(self.report is not None and request.get('body') == self.report.body
