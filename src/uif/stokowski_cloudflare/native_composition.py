@@ -474,9 +474,16 @@ class NativeComposition:
 
     def _assignment_grant(self, issue_id, scope_sha, installation, data):
         key = LinearKey(self.remote.workspace_id, self.remote.project_id, issue_id)
+        mark = data.get('fresh_assessment')
+        if 'fresh_assessment' in data:
+            require(type(mark) is dict and mark.keys() == {'attempt_id', 'first_intent_sha256'}
+                    and data['attempts'] and mark['attempt_id'] == data['attempts'][0],
+                    'authority_dispatch_installation_scope')
+            pinned_sha(mark['first_intent_sha256'])
         return NativeAssignment(Scope(self.remote.repository_id, key), SourcePin(**data['source']),
              data['reconstruction_sha256'], scope_sha, installation['coordinator_epoch'], tuple(data['attempts']),
-             _lease(data['previous']) if data.get('previous') else None, data.get('previous_completion_sha256'))
+             _lease(data['previous']) if data.get('previous') else None, data.get('previous_completion_sha256'),
+             mark['first_intent_sha256'] if mark is not None else None)
 
     def observe_unstarted_assignment(self, owner, issue, scope_sha):
         """Verify the installed recipient's clean pre-dispatch workspace and original."""
@@ -614,18 +621,39 @@ class NativeComposition:
         marked = fresh is not None and fresh['attempt_id'] == record['attempt']
         if marked:
             require(stage == 'assess' and owner.project_name == 'OffMenu' and 'project_intake' in record
-                    and prior is not None and prior.attempt_id == record['attempt'],
+                    and grant.first_intent_sha256 == fresh['first_intent_sha256']
+                    and (prior is None or prior.attempt_id == record['attempt']),
                     'authority_dispatch_fresh_assessment_scope')
             require(self._verified_assessment_report_sink is not None, 'authority_assessment_native_report_sink')
-            from .fresh_assessment_dispatch import observe_fresh_assessment_dispatch
+            from .fresh_assessment_dispatch import observe_fresh_assessment_dispatch, retain_fresh_assessment_dispatch
+            selected_run = owner._issue_state_runs.get(issue.id, 1)
 
             def verify_installed(current_owner, current_issue, run, current_grant):
                 require(current_owner is owner and current_issue is issue and current_grant == grant
+                        and self.assignment(owner.project_name, issue.id, scope_sha) == grant
+                        and owner._issue_state_runs.get(issue.id, 1) == run == selected_run
                         and self.installation()['assignments'][issue.id].get('fresh_assessment') == fresh,
                         'authority_dispatch_installation_changed')
 
+            def verify_owner():
+                verify_installed(owner, issue, selected_run, grant)
+                task = owner._tasks.get(issue.id)
+                require(issue.id not in owner.running and issue.id not in owner.claimed
+                        and (task is None or task.done()) and issue.id not in owner._pending_gates
+                        and issue.id not in owner.completed and issue.id not in getattr(owner, '_terminal_observed', {})
+                        and issue.id not in owner.retry_attempts
+                        and owner._issue_current_state.get(issue.id, 'assess') == 'assess'
+                        and owner.pool is not None and not owner.pool.is_paused(owner.project_name),
+                        'authority_marked_initial_owner_busy')
+
+            def verify_initial(current_owner, current_issue, run, current_grant):
+                verify_installed(current_owner, current_issue, run, current_grant)
+                if prior is None:
+                    verify_owner()
+            prior = retain_fresh_assessment_dispatch(self, owner, issue, selected_run,
+                        scope_sha, verify_first_dispatch_applicability=verify_initial, allow_create=prior is None)
             claim = observe_fresh_assessment_dispatch(
-                self, owner, issue, owner._issue_state_runs.get(issue.id, 1), scope_sha, prior.lease,
+                self, owner, issue, selected_run, scope_sha, prior.lease,
                 verify_first_dispatch_applicability=verify_installed,
                 expected_intent_sha256=fresh['first_intent_sha256'])
         else:
@@ -654,17 +682,23 @@ class NativeComposition:
         require(len(raw) <= 8192, 'authority_dispatch_transport_intent_size')
         with _handoff_directory(evidence) as fd:
             try:
-                _publish_private_original(fd, name, raw, prefix='.assessment-dispatch-')
-            except FileExistsError:
-                created = False
+                _retained_handoff_bytes(fd, name, 8192)
+            except FileNotFoundError:
+                verify_owner()
+                try:
+                    _publish_private_original(fd, name, raw, prefix='.assessment-dispatch-', before_publish=verify_owner)
+                except FileExistsError:
+                    created = False
+                else:
+                    created = True
             else:
-                created = True
+                created = False
             require(_retained_handoff_bytes(fd, name, 8192) == raw,
                     'authority_dispatch_transport_original_changed')
         if not created:
             self.remote.transport.observe_fresh_assessment_permission(claim, fresh)
             raise Hold('authority_dispatch_transport_original_already_attempted')
-        verify_installed(owner, issue, owner._issue_state_runs.get(issue.id, 1), grant)
+        verify_owner()
         with self.remote.transport.fresh_assessment_permission(claim, fresh) as permit, bound_claim():
             scope = self._fresh_assessment.set(_FreshAssessmentExecution(claim, path, permit))
             try:

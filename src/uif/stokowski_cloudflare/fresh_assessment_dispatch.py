@@ -1,5 +1,6 @@
-"""Detached first-dispatch custody for the approved fresh assessment lane."""
+"""First-dispatch custody for a control-enrolled native assessment."""
 from dataclasses import asdict
+import os
 from pathlib import Path
 
 from ..effect_authority import Lease
@@ -15,8 +16,11 @@ _LIMIT = 8192
 
 
 def _first_dispatch_intent(grant, request, issue, run, previous, successor, item):
+    inputs = asdict(grant)
+    # The installed mark commits to this preimage. Preserve the original format.
+    del inputs['first_intent_sha256']
     return {'schema': 'uif.fresh-assessment-first-dispatch/1',
-              'grant_sha256': digest(asdict(grant)), 'claim': asdict(request),
+              'grant_sha256': digest(inputs), 'claim': asdict(request),
               'issue_identifier': issue.identifier, 'run': run,
               'previous': previous, 'successor': successor,
               'workspace_binding': dict(item['workspace_binding']),
@@ -26,16 +30,13 @@ def _first_dispatch_intent(grant, request, issue, run, previous, successor, item
 
 
 def retain_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha256, *,
-                                    verify_first_dispatch_applicability):
+                                    verify_first_dispatch_applicability, allow_create=True):
     """One initial claim under already-established exclusive native custody.
 
-    The existing coordinator's trusted verifier must prove explicit approved
-    applicability and exclusive dispatch ownership for this exact issue (also
-    across restart); no other claimant can submit the same native original
-    outside this function. No runtime wiring or provider action is present.
-    An unresolved intent with no exact authority original is held, not retried.
-    A returned claim proves this applicability binding, not that a provider
-    original is absent, retryable or authorized for send.
+    The native owner verifies local eligibility. Only the process that durably
+    publishes the enrolled intent can submit it here. Later callers observe
+    the enriched original, including when repairing a missing bound record.
+    The independent dispatch-entry permission still governs provider work.
     """
     require(owner.project_name == 'OffMenu' and type(run) is int and run > 0,
             'assessment_dispatch_scope')
@@ -62,6 +63,10 @@ def retain_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha25
     name = request.request_id + '.assessment-first-intent'
     intent = _first_dispatch_intent(grant, request, issue, run, previous, successor, item)
     raw = wire(intent)
+    intent_sha = digest(intent)
+    mark = {'attempt_id': previous, 'first_intent_sha256': intent_sha}
+    require(grant.first_intent_sha256 == intent_sha and item.get('fresh_assessment') == mark,
+            'assessment_dispatch_authority_intent')
     require(len(raw) <= _LIMIT, 'assessment_dispatch_intent_size')
 
     created = False
@@ -69,6 +74,7 @@ def retain_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha25
         with _handoff_directory(directory) as fd:
             retained = _retained_handoff_bytes(fd, name, _LIMIT)
     except FileNotFoundError:
+        require(allow_create is True, 'assessment_dispatch_existing_claim_without_intent')
         require(remote.read_claim('OffMenu', issue.id, False) is None,
                 'assessment_dispatch_existing_claim')
         try:
@@ -93,6 +99,13 @@ def retain_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha25
 
     submitted = None
     if created:
+        # The file and its containing directory have been synced. The directory
+        # itself may have been created by this invocation or a competing one.
+        parent = os.open(directory.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(parent)
+        finally:
+            os.close(parent)
         # An fsynced intent does not freeze protected authorization or workspace
         # custody. Check immediately before the only POST; on refusal leave the
         # intent in place so subsequent attempts observe only.
@@ -104,13 +117,16 @@ def retain_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha25
         require(composition.assignment('OffMenu', issue.id, scope_sha256) == grant,
                 'assessment_dispatch_grant_changed')
         current_item = composition.installation()['assignments'][issue.id]
-        require(all(current_item.get(key) == intent[key] for key in
+        require(current_item.get('fresh_assessment') == mark and all(current_item.get(key) == intent[key] for key in
                     ('workspace_binding', 'git_config_sha256', 'prepared_tree_sha256'))
                 and composition.verify_workspace(owner, issue, grant) == workspace,
                 'assessment_dispatch_workspace_changed')
         composition._first_workspace(workspace, grant, None)
+        with _handoff_directory(directory) as fd:
+            require(_retained_handoff_bytes(fd, name, _LIMIT) == raw,
+                    'assessment_dispatch_original_changed')
         try:
-            submitted = remote._submit_initial_claim_once(grant)
+            submitted = remote._submit_initial_claim_once(grant, intent_sha)
         except AuthorityUnavailable:
             pass  # A lost reply can only be reconciled by observing this original.
     original = remote.original_lease(grant)
@@ -156,8 +172,11 @@ def observe_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha2
         require(workspace == Path(item['workspace_binding']['path'])
                 and item['workspace_binding']['original_claim_id'] == request.request_id,
                 'assessment_dispatch_workspace')
-        return grant, workspace, request, _first_dispatch_intent(
-            grant, request, issue, run, previous, successor, item)
+        intent = _first_dispatch_intent(grant, request, issue, run, previous, successor, item)
+        mark = {'attempt_id': previous, 'first_intent_sha256': digest(intent)}
+        require(grant.first_intent_sha256 == mark['first_intent_sha256'] and item.get('fresh_assessment') == mark,
+                'assessment_dispatch_authority_intent')
+        return grant, workspace, request, intent
 
     first = observe_installed()
     grant, workspace, request, intent = first
