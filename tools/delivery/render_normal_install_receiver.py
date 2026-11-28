@@ -41,7 +41,7 @@ def render_normal_install_receiver(sources, original_sha256):
 
     source_lines = "\n".join(f"    ({module!r}, {pin!r})," for module, pin in pins)
     rendered = (
-        "#!/usr/bin/env python3\n"
+        "#!/usr/bin/python3 -ISB\n"
         '"""Fixed normal installer receiver in the protected maintenance release."""\n'
         f"SOURCES = (\n{source_lines}\n)\n"
         f"ORIGINAL_SHA256 = {original_sha256!r}\n"
@@ -53,13 +53,18 @@ def render_normal_install_receiver(sources, original_sha256):
 
 
 _RECEIVER = '''
+import sys
+
+# Only the built-in sys module is safe to import before checking isolation.
+if not (sys.flags.isolated and sys.flags.no_site and sys.flags.dont_write_bytecode):
+    raise PermissionError("expected isolated Python flags -I -S -B for the fixed normal installer")
+
 from contextlib import contextmanager
 from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import stat
-import sys
 from types import ModuleType
 
 
@@ -121,8 +126,7 @@ def _load_modules(inputs):
 
 
 def main():
-    if (sys.argv[1:] or os.getresuid() != (0, 0, 0) or not sys.flags.isolated
-            or not sys.flags.no_site or not sys.flags.dont_write_bytecode):
+    if sys.argv[1:] or os.getresuid() != (0, 0, 0):
         raise PermissionError("expected isolated fixed root normal installer with no arguments")
 
     with _protected_directory() as directory:
