@@ -247,18 +247,22 @@ def advance_marked_assessment(composition, owner, issue, attempt, verify_owner):
             except AuthorityUnavailable:
                 pass  # The exact retained CAS is the only way to recover.
     observed = observe_consumed_fresh_assessment_successor(composition, issue, run, scope)
+    verify_retained_successor_cas(directory, observed)
+    verify_owner()
+    return observed
+
+
+def verify_retained_successor_cas(directory, advance):
     from .native_composition import _handoff_directory, _retained_handoff_bytes
     with _handoff_directory(directory) as fd:
         try:
-            raw = _retained_handoff_bytes(fd, request_id + '.successor-cas', 8192)
+            raw = _retained_handoff_bytes(fd, advance['request_id'] + '.successor-cas', 8192)
         except FileNotFoundError:
             # An independent committed CAS still has its immutable authority
             # receipt. Local selection separately requires prospective entry.
             pass
         else:
-            require(raw == wire(observed), 'assessment_successor_cas_original')
-    verify_owner()
-    return observed
+            require(raw == wire(advance), 'assessment_successor_cas_original')
 
 
 def _saved_native_settlement(workspace):

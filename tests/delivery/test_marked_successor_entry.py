@@ -159,10 +159,13 @@ class SuccessorEntryTest(IsolatedAsyncioTestCase):
     async def test_replaced_committed_cas_journal_holds_without_replaying(self):
         advance = self.advance_claim()
         marker = self.journal / (advance['request_id'] + '.successor-cas')
+        self.completed_workspace_fixture()
         altered = dict(advance, current=dict(advance['current'], expires_at=advance['current']['expires_at'] + 1))
         marker.write_bytes(wire(altered))
         with self.assertRaisesRegex(Hold,'cas_original'):
             self.advance_claim()
+        with self.assertRaisesRegex(Hold,'cas_original'):
+            self.select()
         self.assertEqual(self.calls.count('/v1/claim/attempt'),1)
         self.assertNotIn('/v1/attempt/successor/enter',self.calls)
 

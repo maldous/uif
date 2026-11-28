@@ -603,7 +603,7 @@ class NativeComposition:
         return recipient_first_entry(self, owner, issue, scope_sha, attempt, expected=expected)
 
     def _successor_inputs(self, owner, issue, scope, run):
-        from .fresh_assessment_terminal import observe_consumed_fresh_assessment_successor
+        from .fresh_assessment_terminal import observe_consumed_fresh_assessment_successor, verify_retained_successor_cas
         require(self._successor_native_worker_qualified and callable(self._successor_stage_qualification)
                 and self._successor_stage_qualification(owner, issue, run) is True,
                 'authority_successor_worker_unqualified')
@@ -616,6 +616,7 @@ class NativeComposition:
                 and self.remote.clock().timestamp() < current.lease.expires_at,
                 'assessment_successor_not_current')
         path = self.verify_workspace(owner, issue, grant)
+        verify_retained_successor_cas(path / '.git/uif-original-effects', advance)
         self._verify_successor_checkpoint(path, grant, current, advance)
         _verify_fresh_tree(path, grant.source.head, git_env=_clean_git_environment())
         return grant, current, path, advance
