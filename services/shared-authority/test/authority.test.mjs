@@ -1576,6 +1576,53 @@ test('peer transfer and return keep one claim; an independent hold does not stop
   assert.equal(f.calls.length, 0);
 });
 
+test('ordinary handoff preserves predecessor work and its original stays with the submitting peer', async () => {
+  for (const effect of ['absent', 'verified', 'sending']) {
+    const f = fixture();
+    await f.resume();
+    const claim = await f.addGrant();
+    const prior = (await f.call('morgan', 'claim', claim)).lease;
+    if (effect !== 'absent') {
+      const request = await f.request(prior, await f.quota(), { attempt: claim.attempt_id });
+      if (effect === 'sending') {
+        f.respond = async () => { throw new Error('simulated destination response loss'); };
+        await assert.rejects(f.call('morgan', 'send', request), /external_effect_unknown/);
+      } else {
+        await f.call('morgan', 'send', request);
+      }
+    }
+    const handoff = {current: prior, successor_session: f.peers.native.session_id,
+      expected_coordinator_epoch: prior.fence.coordinator_epoch,
+      quiesced_sha256: hex('7'), reconstruction_sha256: claim.reconstruction_sha256};
+    const fact = {kind: 'handoff', ...handoff};
+    await assert.rejects(f.call('control', 'attest', {request_id: 'invented-purpose',
+      fact: {...fact, first_dispatch_purpose: 'continue'}}), /invalid_fields/);
+    await f.call('control', 'attest', {request_id: 'witness-transfer', fact});
+    const body = {...handoff, request_id: 'peer-transfer'};
+    const {installation_sha256} = await f.call('native', 'status', {});
+    const lookup = {installation_sha256, session_id: f.peers.morgan.session_id, request_id: body.request_id};
+    await assert.rejects(f.call('native', 'handoff', body), /original_owner_required/);
+    if (effect === 'sending') {
+      await assert.rejects(f.call('morgan', 'handoff', body), /uncertain_original_effect/);
+      await assert.rejects(f.call('control', 'transition/original', lookup), /original_transition_absent/);
+    } else {
+      const moved = await f.call('morgan', 'handoff', body);
+      f.a = f.restart();
+      assert.equal(moved.request_kind, 'uif.shared-lease.handoff/3');
+      assert.deepEqual(Object.keys(moved).sort(), ['lease', 'request_id', 'request_kind', 'request_sha256']);
+      assert.deepEqual(await f.call('control', 'transition/original', lookup), moved);
+      assert.deepEqual(await f.call('morgan', 'transition/original', lookup), moved);
+      await assert.rejects(f.call('native', 'transition/original', lookup), /original_owner_required/);
+      await assert.rejects(f.call('native', 'transition/original', {...lookup, session_id: f.peers.native.session_id}),
+        /original_transition_absent/);
+      assert.deepEqual(await f.call('native', 'claim/read', {
+        project: 'OffMenu', identifier: claim.attempt_id, by_attempt: true}),
+      {project: 'OffMenu', attempt_id: claim.attempt_id, lease: moved.lease});
+    }
+    assert.equal(f.calls.length, effect === 'absent' ? 0 : 1);
+  }
+});
+
 async function unstartedFixture(from = 'native') {
   const f = fixture(), to = from === 'native' ? 'morgan' : 'native';
   await f.resume();
