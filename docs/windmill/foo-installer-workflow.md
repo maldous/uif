@@ -124,11 +124,11 @@ Use the existing release handoff, recording its current callable actions and rec
    Python source siblings, `selection-original.json`, `bundle.tar`,
    `selection.json`, and `90-uif-commissioned-normal.conf`. This directory
    and its contents require root custody with no group or world write access.
-   Invoke the mounted receiver with isolated Python flags `-I -S -B` and
-   no caller arguments. The original pins all three artifacts. A detached
-   receiver proves prepared source only. The owner must verify the mounted
-   action and retain its same-original result before moving to the manager
-   and authority operations.
+   The mounted receiver uses `/usr/bin/python3` with isolated flags
+   `-I -S -B` and takes no caller arguments. The original pins all three
+   artifacts. A detached receiver proves prepared source only. The owner
+   must verify the mounted action and retain its same-original result before
+   moving to the manager and authority operations.
 3. **Shared authority control.** Identify the existing authenticated
    `control` caller for
    [`/v1/control`](../../services/shared-authority/README.md#wire-contract).

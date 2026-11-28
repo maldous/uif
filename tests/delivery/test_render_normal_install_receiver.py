@@ -180,6 +180,29 @@ class RenderNormalInstallReceiver(unittest.TestCase):
         self.assertNotEqual(invoked.returncode, 0)
         self.assertIn("with no arguments", invoked.stderr)
 
+    def test_direct_and_nonisolated_entry_do_not_import_ambient_code(self):
+        self.receiver.chmod(0o700)
+        for module in ("contextlib", "hashlib", "sitecustomize"):
+            (self.root / (module + ".py")).write_text('raise RuntimeError("ambient import ran")\n')
+        ambient_python = self.root / "python3"
+        ambient_python.write_text('#!/bin/sh\nprintf "ambient interpreter ran\\n"\n')
+        ambient_python.chmod(0o700)
+        env = {**os.environ, "PATH": str(self.root), "PYTHONPATH": str(self.root)}
+        for command, refusal in (
+            ([str(self.receiver), "unexpected"], "with no arguments"),
+            ([sys.executable, "-S", "-B", str(self.receiver), "unexpected"], "-I -S -B"),
+            ([sys.executable, "-I", "-S", str(self.receiver), "unexpected"], "-I -S -B"),
+        ):
+            with self.subTest(command=command):
+                result = subprocess.run(
+                    command, env=env, cwd=self.root, capture_output=True, text=True, timeout=15,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(refusal, result.stderr)
+                output = result.stdout + result.stderr
+                self.assertNotIn("ambient import ran", output)
+                self.assertNotIn("ambient interpreter ran", output)
+
     def test_bad_source_and_original_refused_before_import(self):
         for name in (SOURCE_MODULES[-1] + ".py", "selection-original.json"):
             with self.subTest(name=name):
