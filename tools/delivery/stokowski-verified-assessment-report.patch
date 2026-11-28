@@ -1,0 +1,121 @@
+# orchestrator.py before SHA-256 610cbf97a5f36c9dd305cfe456245a9efc29625287b44211adbd5cea77c3511f
+# orchestrator.py after SHA-256 228523e5a9e78ed5ad3ea78c8fe8f37093e5ce2cf5460068215ffb655028fa96
+--- a/stokowski/orchestrator.py
++++ b/stokowski/orchestrator.py
+@@ -3727,6 +3727,8 @@
+         attempt: RunAttempt,
+         workspace_path: Path,
+         state_name: str | None,
++        *,
++        verified_assessment_report=None,
+     ) -> None:
+         """Upload evidence, post the run report, and apply the classification label.
+
+@@ -3734,6 +3736,11 @@
+         over having captured three screenshots is exactly when you want to see
+         them. Nothing here is allowed to break the run: a Linear outage should
+         cost you the report, not the work.
++
++        The optional report-only OffMenu owner callback receives the issue id,
++        session id and run. It returns the verified provider result in the
++        runner's exact text envelope, its parsed JSON object and the approved
++        comment body. It must only read already verified evidence.
+         """
+         import json
+         if attempt.status == "canceled":
+@@ -3747,6 +3754,23 @@
+
+         state = state_name or attempt.state_name or "run"
+         run = self._issue_state_runs.get(issue.id, 1)
++        if verified_assessment_report is not None:
++            settlement = getattr(attempt, "settlement_record", None)
++            cfg = self._states_for(issue).get(state)
++            if (self.project_name != "OffMenu" or state != "assess"
++                    or attempt.state_name != state or attempt.status != "succeeded"
++                    or not cfg or not cfg.admission_review or cfg.publication
++                    or not isinstance(settlement, dict) or settlement.get("kind") != "worker"
++                    or settlement.get("phase") != "report-unknown" or attempt.report_posted
++                    or "expected_report_body" in settlement
++                    or settlement.get("issue_id") != issue.id or settlement.get("state") != state
++                    or settlement.get("run") != run or not attempt.session_id
++                    or settlement.get("session_id") != attempt.session_id
++                    or settlement.get("scope_sha256") != publication_mod.scope(issue)
++                    or self.running.get(issue.id) is not attempt
++                    or self._tasks.get(issue.id) is not asyncio.current_task()
++                    or self._issue_current_state.get(issue.id) != state):
++                raise RuntimeError("Verified assessment report requires the current unfrozen native OffMenu assessment")
+
+         # ── Evidence ────────────────────────────────────────────────────────
+         uploaded: dict[str, str] = {}
+@@ -3783,6 +3807,9 @@
+             attempt.publication_event = "report-blocked"
+             logger.warning("Native stage evidence retention failed issue=%s state=%s run=%s: %s",
+                            issue.identifier, state, run, exc)
++
++        if verified_assessment_report is not None and files:
++            raise RuntimeError("Verified assessment report cannot upload artifacts")
+
+         for path in files if retained_evidence else []:
+             try:
+@@ -3873,6 +3900,8 @@
+                 if qualified and attempt.publication_event != "report-blocked":
+                     selection = (report.get("routing") or {}).get("working_source")
+                     if selection is not None:
++                        if verified_assessment_report is not None:
++                            raise RuntimeError("Verified assessment report cannot carry a working-source selection")
+                         if report_mod.admission_event(report, issue=issue.identifier, state=state, run=run) != "complete":
+                             raise ValueError("Working source can only prepare a qualified investigate continuation")
+                         publication_mod.retain_working_source(workspace_path, current, run, selection,
+@@ -3996,7 +4025,7 @@
+                 and record["binding"].get("kind") == "source-free"):
+             record["source_free_report_body"] = body
+             publication_mod.save(workspace_path, publication_mod.RECORD, record)
+-        if getattr(attempt,"settlement_record",None):
++        if getattr(attempt,"settlement_record",None) or verified_assessment_report is not None:
+             # Freeze the final CONTROLLER disposition before the writer. A lost
+             # response may be reconciled by exact body readback, never by
+             # reinterpreting the earlier raw model report as permission.
+@@ -4004,6 +4033,33 @@
+                                    state_name=state, report=attempt.report, report_posted=True,
+                                    publication_event=acceptance_event if acceptance_record else attempt.publication_event)
+             event = self._completion_event(issue, confirmed)
++            if verified_assessment_report is not None:
++                assessed = getattr(attempt, "assessed_input", None)
++                if (not retained_evidence or attempt.error
++                        or not isinstance(assessed, dict)
++                        or not isinstance(assessed.get("dependency_observations"), list)
++                        or self.running.get(issue.id) is not attempt
++                        or getattr(attempt, "settlement_record", None) is not settlement
++                        or settlement.get("phase") != "report-unknown" or attempt.report_posted
++                        or "expected_report_body" in settlement
++                        or self._issue_state_runs.get(issue.id, 1) != run
++                        or self._issue_current_state.get(issue.id) != state):
++                    raise RuntimeError("Verified assessment report lacks current native admission evidence")
++                verified_text, verified_report, verified_body = verified_assessment_report(
++                    issue.id, attempt.session_id, run)
++                if (type(verified_text) is not str or verified_text != attempt.result_text
++                        or type(verified_report) is not dict or type(report) is not dict
++                        or json.dumps(verified_report, sort_keys=True, allow_nan=False)
++                        != json.dumps(report, sort_keys=True, allow_nan=False)):
++                    raise RuntimeError("Verified assessment provider result differs from native report")
++                expected = {"approve": "complete", "blocked": "report-blocked",
++                            "deferred": "defer"}.get(report.get("verdict"))
++                if (expected is None or event != expected
++                        or (event == "complete" and cfg.transitions.get(event) != "investigate")):
++                    raise RuntimeError("Verified assessment provider verdict differs from native admission")
++                if type(verified_body) is not str or not verified_body.startswith(report_mod.REPORT_MARKER + "\n\n"):
++                    raise RuntimeError("Verified assessment report body is unavailable")
++                body = verified_body
+             attempt.settlement_record.update(expected_report_body=body, post_disposition=dict(
+                 report=attempt.report, publication_event=confirmed.publication_event,
+                 error=attempt.error, event=event,
+@@ -4034,7 +4090,8 @@
+             logger.warning("Failed to post run report", extra={"linked_to": issue.identifier})
+
+         # ── Classification label ────────────────────────────────────────────
+-        await self._apply_classification_label(client, issue, report)
++        if verified_assessment_report is None:
++            await self._apply_classification_label(client, issue, report)
+
+         # Posting is not review/publication settlement. Keep canonical evidence
+         # on a hold; immutable copies also survive a later legitimate rework.
