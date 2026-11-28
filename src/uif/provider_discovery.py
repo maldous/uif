@@ -15,8 +15,7 @@ _MAX_RETRY_DELAY_SECONDS = 300
 def neutral_route_order(route_ids, *, operation_id):
     """Order permitted routes for a new operation without a provider priority.
 
-    Use this when forming a request that has no explicit priority. Order is
-    stable across refreshes and input ordering. Recovery uses its original route.
+    The evaluation order is stable across refreshes and input ordering.
     """
     if (type(operation_id) is not str or not TOKEN.fullmatch(operation_id)
             or type(route_ids) is not tuple
@@ -200,8 +199,9 @@ class NormalProviderDiscovery:
         """Return only this lifecycle's latest owner adapter observation."""
         return self._evidence.get(route_id) if self._running else None
 
-    def select(self, request, *, owner_paused, pending_original, required_capabilities=frozenset()):
-        """Filter current observations for the task's explicitly required capabilities."""
+    def select(self, request, *, owner_paused, pending_original, required_capabilities=frozenset(),
+               owner_priority=False):
+        """Choose from current evidence with optional owner-supplied route priority."""
         routes = tuple(a.route for a in self.adapters)
         scoped = select_route(request, routes=routes, observations=(), now=self.clock(),
                               owner_paused=owner_paused, pending_original=pending_original)
@@ -210,6 +210,11 @@ class NormalProviderDiscovery:
             return scoped
         if not _capability_set(required_capabilities):
             return PoolSelection(None, None, "required-capabilities-invalid")
+        if type(owner_priority) is not bool:
+            return PoolSelection(None, None, "owner-route-priority-invalid")
+        route_order = None
+        if request.intent == "new" and not owner_priority:
+            route_order = neutral_route_order(request.route_ids, operation_id=request.operation_id)
         rows = []
         unsupported = set()
         for adapter in self.adapters:
@@ -236,7 +241,8 @@ class NormalProviderDiscovery:
                     continue
             rows.append(row)
         selection = select_route(request, routes=routes, observations=tuple(rows), now=self.clock(),
-                                 owner_paused=owner_paused, pending_original=pending_original)
+                                 owner_paused=owner_paused, pending_original=pending_original,
+                                 route_order=route_order)
         return replace(selection, rejected=tuple(
             (route_id, "capability-unproved"
              if route_id in unsupported and reason == "evidence-missing" else reason)

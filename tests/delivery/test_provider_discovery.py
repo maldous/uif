@@ -39,10 +39,11 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
         latest = {"codex": None, "groq": None}
         codex_unavailable, qualified, fallback_unproved = object(), object(), object()
         starts = []
+        permitted = ("codex", "groq")
         for i in range(24):
             operation = f"original-{i}"
-            permitted = neutral_route_order(("codex", "groq"), operation_id=operation)
-            requests.setdefault(permitted[0], PoolRequest(key, "owner/repo", "a"*64, "b"*64,
+            neutral_first = neutral_route_order(permitted, operation_id=operation)[0]
+            requests.setdefault(neutral_first, PoolRequest(key, "owner/repo", "a"*64, "b"*64,
                     operation, "ordinary-software", "author", "new", permitted))
         self.assertEqual(set(requests), {"codex", "groq"})
 
@@ -95,7 +96,14 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
             latest["codex"] = qualified
             await until(lambda: discovery.observed("codex") is qualified)
             self.assertEqual(choose(requests["codex"]).route, codex)
-            self.assertEqual(choose(requests["groq"]).route, groq)
+            neutral = choose(requests["groq"])
+            self.assertEqual(neutral.route, groq)
+            self.assertIs(neutral.observation.request, requests["groq"])
+            priority = choose(requests["groq"], owner_priority=True)
+            self.assertEqual(priority.route, codex)
+            self.assertIs(priority.observation.request, requests["groq"])
+            self.assertEqual(choose(requests["groq"], owner_priority="codex").hold,
+                             "owner-route-priority-invalid")
             self.assertEqual(choose(old).route, codex)
 
             latest.update(codex=None, groq=fallback_unproved)
@@ -329,7 +337,7 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
 
         def select(required=tools):
             return discovery.select(request, owner_paused=False, pending_original=False,
-                                    required_capabilities=required)
+                                    required_capabilities=required, owner_priority=True)
 
         async def normal_start():
             nonlocal now
@@ -414,7 +422,7 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
         discovery = NormalProviderDiscovery((), clock=lambda: 100, interval=.01, timeout=.002)
         async def normal_start(owner):
             self.assertTrue(discovery._running)
-            self.assertTrue(callable(owner.uif_select_provider))
+            self.assertEqual(owner.uif_select_provider, discovery.select)
             return "fixture-stopped"
         multi = type("Multi", (), {"start": normal_start})
         runner = SimpleNamespace(run_turn=Mock())

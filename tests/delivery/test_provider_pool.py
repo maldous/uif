@@ -52,10 +52,11 @@ def evidence(route=ROUTE_A, request=REQUEST, **change):
 
 
 def advise(request=REQUEST, routes=(ROUTE_A, ROUTE_B), rows=None, *,
-           now=NOW, paused=False, pending=False):
+           now=NOW, paused=False, pending=False, route_order=None):
     return select_route(request, routes=routes,
                         observations=(evidence(request=request),) if rows is None else rows,
-                        now=now, owner_paused=paused, pending_original=pending)
+                        now=now, owner_paused=paused, pending_original=pending,
+                        route_order=route_order)
 
 
 class CommonPoolTests(unittest.TestCase):
@@ -80,6 +81,25 @@ class CommonPoolTests(unittest.TestCase):
         self.assertEqual(out.observation.request, plan)
         first = advise(plan, rows=(evidence(ROUTE_A, plan), evidence(ROUTE_B, plan)))
         self.assertEqual(first.route, ROUTE_A)
+
+    def test_alternative_evaluation_order_preserves_authorized_tasks_and_evidence_identity(self):
+        admitted = (ROUTE_A.route_id, ROUTE_B.route_id)
+        plan = replace(REQUEST, route_ids=admitted)
+        rows = (evidence(ROUTE_A, plan), evidence(ROUTE_B, plan))
+        self.assertEqual(advise(plan, rows=rows).route, ROUTE_A)
+        reversed_order = admitted[::-1]
+        prioritized = advise(plan, rows=rows, route_order=reversed_order)
+        self.assertEqual(prioritized.route, ROUTE_B)
+        self.assertIs(prioritized.observation.request, plan)
+        rebound = evidence(ROUTE_B, replace(plan, route_ids=reversed_order))
+        self.assertEqual(advise(plan, rows=(rebound,), route_order=reversed_order).rejected[0],
+                         (ROUTE_B.route_id, "evidence-binding-mismatch"))
+        for invalid in ((ROUTE_A.route_id,), (ROUTE_B.route_id,) * 2,
+                        (ROUTE_B.route_id, "unregistered"), list(admitted), (None, ROUTE_B.route_id)):
+            with self.subTest(invalid=invalid):
+                self.assertEqual(advise(plan, rows=rows, route_order=invalid).hold, "route-order-invalid")
+        continuation = replace(REQUEST, intent="continuation", original_route=ROUTE_A)
+        self.assertEqual(advise(continuation, route_order=(ROUTE_B.route_id,)).hold, "route-order-invalid")
 
     def test_paid_unknown_alias_and_unproved_fallback_stay_closed(self):
         bad_routes = (
