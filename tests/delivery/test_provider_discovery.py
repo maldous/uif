@@ -33,6 +33,57 @@ class TestRuntimeDiscovery(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delays, [30, 60, 120, 240, 300, 30, 30, 60])
         self.assertEqual(evidence, [None] * 5 + ["fresh", None, None])
 
+    async def test_authenticated_but_stale_account_receipts_do_not_reset_polling(self):
+        from datetime import datetime, timedelta, timezone
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        from uif.stokowski_cloudflare.account_admission import AccountUsageEvidence, FreeRoute
+        from uif.stokowski_cloudflare.client import GLM_MODEL
+        from uif.stokowski_cloudflare.native_composition import NativeComposition
+        from uif.stokowski_cloudflare.shared_admission import AccountUsageReceipt
+
+        now = datetime(2026, 11, 25, 12, tzinfo=timezone.utc)
+        route = FreeRoute('a' * 32, GLM_MODEL, None, 'b' * 64)
+        current = AccountUsageEvidence(route, '2026-11-25', now,
+                                      now + timedelta(seconds=120), 0, 0, True, True)
+        stale = replace(current, covered_through=now - timedelta(seconds=91))
+        expired = replace(current, valid_until=now)
+        partial = replace(current, completeness_verified=False)
+        exhausted = replace(current, upper=7_499_999)
+        issuer = object()
+        receipts = [AccountUsageReceipt(issuer, digit * 64, projection)
+                    for digit, projection in zip('cdef01', (current, stale, expired, partial, exhausted, current))]
+        remote = SimpleNamespace(
+            routes={'OffMenu': route}, clock=lambda: now,
+            workspace_id='00000000-0000-0000-0000-000000000001',
+            project_id='00000000-0000-0000-0000-000000000002',
+            read_usage=Mock(side_effect=receipts), verify_usage=Mock(return_value=True),
+            quota_issuer=issuer,
+        )
+        composition = NativeComposition(remote, "/not/read")
+        discovery = composition._installed_provider_discovery()
+        polls = []
+
+        async def sleep(delay):
+            polls.append((delay, discovery.status()))
+            if len(polls) in (2, 3, 4, 5):
+                self.assertIsNone(composition._discovered_preview('OffMenu', 10))
+            if len(polls) == len(receipts):
+                raise asyncio.CancelledError
+
+        with patch('uif.provider_discovery.asyncio.sleep', side_effect=sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                await discovery._poll(discovery.adapters[0])
+
+        self.assertEqual(polls, [
+            (delay, (('workers-ai-offmenu', state),))
+            for delay, state in (
+                (20, 'observed'), (20, 'evidence-missing'), (40, 'evidence-missing'),
+                (80, 'evidence-missing'), (20, 'observed'), (20, 'observed'),
+            )
+        ])
+        self.assertEqual(remote.verify_usage.call_count, len(receipts))
+
     async def test_normal_runtime_refresh_resumes_independently(self):
         key = LinearKey(*(f"00000000-0000-0000-0000-00000000000{i}" for i in (1, 2, 3)))
         a = ProviderRoute("codex", "codex", "codex", "exact-codex", "a"*64, "b"*64,
