@@ -5,6 +5,7 @@ are expected pins checked against the receiver, never caller authentication.
 There is no redirect, provider fallback, request retry or local claim store.
 """
 from base64 import b64encode
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -69,10 +70,36 @@ def _origin(value):
     return parsed.hostname
 
 
+class _DispatchPermit:
+    """Copied task contexts share this object, never an independent token."""
+
+    def __init__(self, claim, secret):
+        self.claim = claim
+        self._secret = secret
+        self.winner = None
+
+    def attach(self, task):
+        require(self.winner is None and self._secret is not None and not task.done(),
+                'authority_dispatch_winner')
+        self.winner = task
+        task.add_done_callback(self.revoke)
+
+    def revoke(self, _task=None):
+        self._secret = None
+        self.winner = None
+
+    def for_effect(self):
+        secret, winner = self._secret, self.winner
+        require(secret is not None and winner is not None and not winner.done(),
+                'authority_dispatch_permit_revoked')
+        return secret
+
+
 class AccessTransport:
     def __init__(self, origin, credential_file):
         self.host = _origin(origin)
         self._credential_file = Path(credential_file)
+        self._dispatch_permit = ContextVar("fresh_assessment_dispatch_permit", default=None)
 
     def request(self, path, data=None, *, timeout=4, allow_absent=False, provider=False):
         require(path.startswith('/v1/') and re.fullmatch(r'/v1/[a-z/]+', path),
@@ -85,6 +112,15 @@ class AccessTransport:
         headers = {'CF-Access-Client-Id': record['client_id'],
                    'CF-Access-Client-Secret': record['client_secret'],
                    'Accept': 'application/json', 'Content-Type': 'application/json'}
+        permit = self._dispatch_permit.get()
+        if permit is not None and path in {'/v1/send', '/v1/linear/comment'}:
+            claim = permit.claim
+            request = (data.get('intent') if path == '/v1/send' and type(data) is dict else data)
+            operation = request.get('operation') if type(request) is dict else None
+            require(type(operation) is dict and operation.get('fence') == asdict(claim.lease.fence)
+                    and request.get('attempt_id') == claim.attempt_id,
+                    'authority_dispatch_egress_scope')
+            headers['uif-dispatch-permit'] = permit.for_effect()
         conn = HTTPSConnection(self.host, timeout=timeout)
         try:
             conn.request('GET' if data is None else 'POST', path,
@@ -115,6 +151,42 @@ class AccessTransport:
             raise AuthorityUnavailable('authority_transport_outcome_unknown') from None
         finally:
             conn.close()
+
+
+    def observe_fresh_assessment_permission(self, claim, admission):
+        observed = self.request('/v1/dispatch/observe', {'current': asdict(claim.lease), **admission})
+        require(type(observed) is dict and observed.keys() == {'entered'}
+                and type(observed['entered']) is bool, 'authority_dispatch_observation_shape')
+        return observed['entered']
+
+    @contextmanager
+    def fresh_assessment_permission(self, claim, admission):
+        """Bind a first affirmative reply to this native task; never retry entry."""
+        require(type(claim) is NativeClaim and claim.project == 'OffMenu'
+                and type(admission) is dict and admission.keys() == {'attempt_id', 'first_intent_sha256'}
+                and admission['attempt_id'] == claim.attempt_id and self._dispatch_permit.get() is None,
+                'authority_dispatch_scope')
+        pinned_sha(admission['first_intent_sha256'])
+        body = {'current': asdict(claim.lease), **admission}
+        try:
+            result = self.request('/v1/dispatch/enter', body)
+        except AuthorityUnavailable:
+            # Neither a verified observation nor a still-live lease can recover
+            # a capability whose first reply was lost.
+            self.observe_fresh_assessment_permission(claim, admission)
+            raise AuthorityUnavailable('authority_dispatch_entry_outcome_unknown') from None
+        require(type(result) is dict and result.keys() == {'entered', 'permit'}
+                and result['entered'] is True and type(result['permit']) is str
+                and re.fullmatch(r'[a-f0-9]{64}', result['permit']) is not None,
+                'authority_dispatch_entry_not_first_confirmed')
+        holder = _DispatchPermit(claim, result['permit'])
+        binding = self._dispatch_permit.set(holder)
+        try:
+            yield holder
+        finally:
+            if holder.winner is None:
+                holder.revoke()
+            self._dispatch_permit.reset(binding)
 
 
 class ProviderReply(BytesIO):

@@ -1,3 +1,4 @@
+import { deriveFreshAssessmentCommentFromVerifiedOriginal } from './fresh-assessment-report.mjs';
 import {
   need,
   Refusal,
@@ -37,6 +38,7 @@ const tables = [
   'CREATE TABLE IF NOT EXISTS claim_generations (issue TEXT NOT NULL,generation INTEGER NOT NULL,record TEXT NOT NULL,PRIMARY KEY(issue,generation))',
   'CREATE TABLE IF NOT EXISTS provider_results (id TEXT PRIMARY KEY,response BLOB NOT NULL,gateway TEXT,issue TEXT NOT NULL,policy TEXT NOT NULL,body_sha TEXT NOT NULL,ack TEXT)',
   'CREATE TABLE IF NOT EXISTS attempts (id TEXT PRIMARY KEY, issue TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS assessment_dispatch (attempt TEXT PRIMARY KEY, issue TEXT NOT NULL, intent_sha TEXT NOT NULL, fence TEXT, permit_sha TEXT, provider_op TEXT, report_binding_sha TEXT)',
   'CREATE TABLE IF NOT EXISTS next_attempts (fence TEXT NOT NULL, previous TEXT NOT NULL, successor TEXT NOT NULL, PRIMARY KEY(fence,previous,successor))',
   'CREATE TABLE IF NOT EXISTS review_bindings (attempt TEXT PRIMARY KEY, body TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS carryovers (account TEXT NOT NULL,id TEXT NOT NULL,amount INTEGER NOT NULL,receipt TEXT NOT NULL, PRIMARY KEY(account,id))',
@@ -326,9 +328,83 @@ export class Authority {
       return result;
     });
   }
-  async handle(path, body, peer) {
+  async assessmentDispatch(path, body, peer) {
+    only(peer, 'native');
+    need(Object.values(this.c.peers).some((p) => p.role === 'native' &&
+      p.session_id === peer.session_id), 'peer_role_not_granted', 403);
+    fields(body, 'current', 'attempt_id', 'first_intent_sha256');
+    fields(body.current, 'fence', 'expires_at');
+    const fence = body.current.fence;
+    fenceShape(this.c, fence);
+    need(token(body.attempt_id) && sha(body.first_intent_sha256), 'invalid_dispatch_intent', 400);
+    const read = () => {
+      const { row, lease } = this.owner(peer, fence);
+      const selected = this.grant(fence.scope, fence.source, peer).fresh_assessment;
+      const retained = this.row('SELECT * FROM assessment_dispatch WHERE attempt=?', body.attempt_id);
+      need(equal(lease, body.current) && row.attempt === body.attempt_id &&
+        selected?.attempt_id === body.attempt_id && selected.first_intent_sha256 === body.first_intent_sha256 &&
+        retained?.issue === issueKey(fence.scope) && retained.intent_sha === body.first_intent_sha256,
+        'assessment_dispatch_not_selected');
+      return retained;
+    };
+    if (path === '/v1/dispatch/observe') {
+      const prior = read();
+      return { entered: prior.fence === canonical(fence) };
+    }
+    const capability = Array.from(crypto.getRandomValues(new Uint8Array(32)),
+      (byte) => byte.toString(16).padStart(2, '0')).join('');
+    const hash = await digest(capability);
+    const won = this.store.transactionSync(() => {
+      const prior = read();
+      if (prior.fence !== null) return false;
+      this.put('UPDATE assessment_dispatch SET fence=?,permit_sha=? WHERE attempt=? AND fence IS NULL',
+        canonical(fence), hash, body.attempt_id);
+      return true;
+    });
+    if (!won) return { entered: false };
+    await this.store.sync();
+    const current = read();
+    need(current.fence === canonical(fence) && current.permit_sha === hash,
+      'assessment_dispatch_original_changed');
+    // Not a replayable receipt: only this committing invocation sees it.
+    return { entered: true, permit: capability };
+  }
+  async assessmentPermitHash(path, operation, attempt, peer, permit) {
+    if (!token(attempt)) return; // existing endpoint validates its request shape
+    const retained = this.row('SELECT * FROM assessment_dispatch WHERE attempt=?', attempt);
+    if (!retained) return; // unflagged/legacy and all other stages remain unchanged
+    // No arbitrary report/comment/upload may inherit a provider permit.
+    need(path === '/v1/send' || (path === '/v1/linear/comment' && retained.report_binding_sha),
+      'assessment_dispatch_linear_original_unbound', 403);
+    const fence = operation?.fence;
+    need(sha(permit) && fence && retained.fence === canonical(fence) &&
+      peer.role === 'native' && peer.session_id === fence.owner_session,
+      'assessment_dispatch_permit_required', 403);
+    const hash = await digest(permit);
+    need(retained.permit_sha === hash, 'assessment_dispatch_permit_required', 403);
+    return hash;
+  }
+  bindAssessmentProviderOperation(peer, op, attempt, permitHash, confirm) {
+    const retained = this.row('SELECT * FROM assessment_dispatch WHERE attempt=?', attempt);
+    if (!retained) return;
+    need(sha(permitHash) && retained.permit_sha === permitHash &&
+      retained.issue === issueKey(op.fence.scope) && retained.fence === canonical(op.fence) &&
+      peer.role === 'native' && peer.session_id === op.fence.owner_session,
+      'assessment_dispatch_permit_required', 403);
+    const expected = canonical(op);
+    if (!confirm && retained.provider_op === null) {
+      // First exact operation pin and physical reservation are in one durable transaction.
+      this.put('UPDATE assessment_dispatch SET provider_op=? WHERE attempt=? AND provider_op IS NULL',
+        expected, attempt);
+      return;
+    }
+    need(retained.provider_op === expected, 'assessment_dispatch_provider_original_changed');
+  }
+  async handle(path, body, peer, dispatchPermit) {
     await this.realmReady;
     this.live(peer);
+    if (path === '/v1/dispatch/enter' || path === '/v1/dispatch/observe')
+      return this.assessmentDispatch(path, body, peer);
     if (path === '/v1/publication/fence/read') {
       only(peer, 'control');
       need(Object.values(this.c.peers).some((x) => x.role === 'control' &&
@@ -595,6 +671,7 @@ export class Authority {
         'allow_provider',
         'review_of',
         ...(Object.hasOwn(g, 'result_retention') ? ['result_retention'] : []),
+        ...(Object.hasOwn(g, 'fresh_assessment') ? ['fresh_assessment'] : []),
       );
       scopeSource(c, g.scope, g.source);
       if (g.result_retention != null) {
@@ -641,6 +718,29 @@ export class Authority {
         'invalid_grant',
         400,
       );
+      const fresh = Object.hasOwn(g, 'fresh_assessment') ? g.fresh_assessment : undefined;
+      let reportBindingSHA = null;
+      if (fresh !== undefined) {
+        fields(fresh, 'attempt_id', 'first_intent_sha256',
+          ...(Object.hasOwn(fresh, 'report_binding') ? ['report_binding'] : []));
+        need(/^cf-intake-[a-f0-9]{64}-assess$/.test(fresh.attempt_id) &&
+          fresh.attempt_id === g.attempt_ids[0] && !Object.hasOwn(g.review_of, fresh.attempt_id) &&
+          sha(fresh.first_intent_sha256) && Object.values(c.peers).some((p) =>
+            p.role === 'native' && g.sessions.includes(p.session_id)), 'invalid_fresh_assessment_grant', 400);
+        if (Object.hasOwn(fresh, 'report_binding')) {
+          const b = fresh.report_binding;
+          fields(b, 'scope', 'issue_identifier', 'run', 'scope_sha256');
+          need(equal(b.scope, g.scope) && typeof b.issue_identifier === 'string' &&
+            /^[A-Z][A-Z0-9]*-[0-9]+$/.test(b.issue_identifier) && uint(b.run) && b.run > 0 &&
+            sha(b.scope_sha256) && g.allow_comments && g.allow_provider && g.result_retention,
+            'invalid_fresh_assessment_report_binding', 400);
+          const bytes = new TextEncoder().encode('[' +
+            ['OffMenu', g.scope.key.issue_id, b.scope_sha256, b.run].map(x => JSON.stringify(x)).join(', ') + ']');
+          need(fresh.attempt_id === 'cf-intake-' + await digestBytes(bytes) + '-assess',
+            'invalid_fresh_assessment_report_binding', 400);
+          reportBindingSHA = await digest(b);
+        }
+      }
       const id = issueKey(g.scope),
         blob = canonical(g),
         grantSHA = await digest(g);
@@ -653,6 +753,24 @@ export class Authority {
             this.row('SELECT body FROM grants WHERE issue=?', id)?.body === prior,
           'grant_preimage_changed',
         );
+        const marked = this.row('SELECT attempt FROM assessment_dispatch WHERE issue=?', id);
+        need(!marked || this.row('SELECT 1 FROM claims WHERE issue=?', id) ||
+          fresh?.attempt_id === marked.attempt,
+          'assessment_dispatch_original_changed');
+        if (fresh !== undefined) {
+          const existing = this.row('SELECT * FROM assessment_dispatch WHERE attempt=?', fresh.attempt_id);
+          if (existing) {
+            need(existing.issue === id && existing.intent_sha === fresh.first_intent_sha256 &&
+              existing.report_binding_sha === reportBindingSHA,
+              'assessment_dispatch_original_changed');
+          } else {
+            need(!this.row('SELECT 1 FROM claims WHERE issue=?', id) &&
+              !this.row('SELECT 1 FROM attempts WHERE id=?', fresh.attempt_id),
+              'assessment_dispatch_not_fresh');
+            this.put('INSERT INTO assessment_dispatch VALUES (?,?,?,NULL,NULL,NULL,?)',
+              fresh.attempt_id, id, fresh.first_intent_sha256, reportBindingSHA);
+          }
+        }
         // Changed scope, permissions or reconstruction must never be inherited by
         // an already-issued fence, including after a peer is removed and re-added.
         if (prior && prior !== blob)
@@ -928,6 +1046,10 @@ export class Authority {
             JSON.parse(g.body).review_of[candidate.review_attempt_id] === candidate.author_attempt_id,
           'review_attempt_not_bound',
         );
+        // A flagged fresh assess can leave its stage only by the separately
+        // authenticated control attestation, never by the review-edge writer.
+        need(!this.row('SELECT 1 FROM assessment_dispatch WHERE attempt=?',
+          candidate.author_attempt_id), 'assessment_report_control_attestation_required');
         const overlay = this.row(
           'SELECT sealed,fence FROM source_attempts WHERE attempt=?',
           candidate.author_attempt_id,
@@ -996,6 +1118,16 @@ export class Authority {
         payload_sha256: body.terminal_receipt_sha256,
       });
       need(token(body.successor) && body.previous !== body.successor, 'invalid_stage_transition');
+      let checkFreshReport;
+      if (this.row('SELECT 1 FROM assessment_dispatch WHERE attempt=?', body.previous)) {
+        // Preserve same-original control replay after the stage has moved.
+        const fingerprint = await digest({path, body});
+        this.live(peer);
+        need(this.commissioned(), 'installation_recommission_required');
+        const prior = this.originalReceipt(peer, body.request_id, fingerprint);
+        if (prior !== undefined) return prior;
+        checkFreshReport = await this.freshAssessmentAttestationCheck(body);
+      }
       return this.receipt(peer, body.request_id, path, body, () => {
         const r = this.row('SELECT * FROM claims WHERE issue=?', issueKey(body.fence.scope));
         need(
@@ -1005,6 +1137,9 @@ export class Authority {
           'attempt_preimage_changed',
         );
         this.reconciled(body.fence.scope);
+        // The report, current fence and admitted successor are reread inside
+        // the same transaction that creates the independently controlled edge.
+        checkFreshReport?.();
         this.put(
           'INSERT OR IGNORE INTO next_attempts VALUES (?,?,?)',
           canonical(body.fence),
@@ -1143,13 +1278,16 @@ export class Authority {
     if (path === '/v1/publication') throw new Refusal('offmenu_sole_git_publisher_required');
     if (['/v1/send', '/v1/linear/comment', '/v1/linear/upload'].includes(path)) {
       only(peer, ...peerRoles);
-      const id = (path === '/v1/send' ? body.intent?.operation : body.operation)?.original_id;
+      const operation = path === '/v1/send' ? body.intent?.operation : body.operation;
+      const attempt = path === '/v1/send' ? body.intent?.attempt_id : body.attempt_id;
+      const permitHash = await this.assessmentPermitHash(path, operation, attempt, peer, dispatchPermit);
+      const id = operation?.original_id;
       need(token(id) && !this.inflight.has(id), 'original_in_flight');
       this.inflight.add(id);
       try {
-        if (path === '/v1/send') return await this.send(body, peer);
+        if (path === '/v1/send') return await this.send(body, peer, permitHash);
         if (path === '/v1/linear/upload') return await this.upload(body, peer);
-        return await this.comment(body, peer);
+        return await this.comment(body, peer, permitHash);
       } finally {
         this.inflight.delete(id);
       }
@@ -1443,6 +1581,8 @@ export class Authority {
             g.attempt_ids.includes(body.attempt_id),
           'reconstruction_or_attempt_unverified',
         );
+        need(!g.fresh_assessment || body.attempt_id === g.fresh_assessment.attempt_id,
+          'assessment_initial_attempt_required');
         need(
           !this.row('SELECT issue FROM claims WHERE issue=? OR attempt=?', id, body.attempt_id),
           'issue_or_attempt_already_claimed',
@@ -1575,7 +1715,113 @@ export class Authority {
       'linear_action_not_granted',
     );
   }
-  async comment(body, peer) {
+  assessmentCommentRecords(fence, attempt) {
+    const {row} = this.ownerFence(fence.owner_session, fence);
+    need(row.attempt === attempt, 'assessment_dispatch_report_original_unbound', 403);
+    const retained = this.row('SELECT * FROM assessment_dispatch WHERE attempt=?', attempt);
+    const grant = this.grant(fence.scope, fence.source, {session_id:fence.owner_session});
+    const binding = grant.fresh_assessment?.report_binding;
+    const issue = issueKey(fence.scope);
+    need(retained && sha(retained.report_binding_sha) &&
+      retained.issue === issue && retained.fence === canonical(fence) && retained.provider_op &&
+      grant.fresh_assessment?.attempt_id === attempt &&
+      grant.fresh_assessment.first_intent_sha256 === retained.intent_sha &&
+      binding && Object.values(this.c.peers).some((peer) =>
+        peer.role === 'native' && peer.session_id === fence.owner_session),
+      'assessment_dispatch_report_original_unbound', 403);
+    const operation = JSON.parse(retained.provider_op);
+    const effect = this.row('SELECT * FROM effects WHERE id=?', operation.original_id);
+    const result = this.row('SELECT * FROM provider_results WHERE id=?', operation.original_id);
+    need(effect?.op === retained.provider_op && effect?.attempt === attempt &&
+      effect.issue === issue && effect.state === 'verified' && result?.issue === issue &&
+      grant.result_retention && result.policy === canonical(grant.result_retention) &&
+      grant.result_retention.readers.includes(fence.owner_session) &&
+      (result.response instanceof ArrayBuffer || result.response instanceof Uint8Array) &&
+      result.response.byteLength <= 256 * 1024,
+      'assessment_dispatch_report_result_unavailable', 403);
+    // Clone the BLOB before any suspension; ACK is intentionally not identity.
+    const bytes = new Uint8Array(result.response).slice();
+    return {
+      binding, bindingSHA: retained.report_binding_sha, operation, bytes,
+      receipt: effect.receipt, bodySHA: result.body_sha, gateway: result.gateway,
+    };
+  }
+  assessmentReportSnapshotUnchanged(before, after) {
+    need(before.bindingSHA === after.bindingSHA && equal(before.binding, after.binding) &&
+      equal(before.operation, after.operation) && before.receipt === after.receipt &&
+      before.bodySHA === after.bodySHA && before.gateway === after.gateway &&
+      before.bytes.length === after.bytes.length && before.bytes.every((x, i) => x === after.bytes[i]),
+      'assessment_dispatch_report_evidence_changed', 403);
+  }
+  deriveAssessmentReport(fence, attempt, before) {
+    return deriveFreshAssessmentCommentFromVerifiedOriginal({
+      config: this.c, currentFence: fence, ownerBinding: before.binding,
+      ownerBindingSha256: before.bindingSHA, attempt_id: attempt,
+      sealedProviderOperation: before.operation,
+      providerEffect: { operation: before.operation, status: 'verified', attempt_id: attempt,
+        receipt_sha256: before.receipt },
+      retainedResponse: {body_sha256: before.bodySHA, gateway_receipt: before.gateway},
+      responseBytes: before.bytes,
+    });
+  }
+  async assessmentCommentCheck(peer, op, attempt, permitHash, text) {
+    const read = () => {
+      const permit = this.row('SELECT permit_sha FROM assessment_dispatch WHERE attempt=?', attempt);
+      need(peer.role === 'native' && peer.session_id === op.fence.owner_session &&
+        sha(permitHash) && permit?.permit_sha === permitHash, 'assessment_dispatch_permit_required', 403);
+      return this.assessmentCommentRecords(op.fence, attempt);
+    };
+    const before = read();
+    const expected = await this.deriveAssessmentReport(op.fence, attempt, before);
+    need(expected.body === text && equal(expected.operation, op),
+      'assessment_dispatch_report_original_changed', 403);
+    return () => this.assessmentReportSnapshotUnchanged(before, read());
+  }
+  async freshAssessmentAttestationCheck(body) {
+    const {fence, previous, successor, terminal_receipt_sha256} = body;
+    const readInputs = () => {
+      const g = this.grant(fence.scope, fence.source, {session_id:fence.owner_session});
+      need(/^cf-intake-[a-f0-9]{64}-assess$/.test(previous) &&
+        successor === previous.slice(0, -'assess'.length) + 'investigate' &&
+        g.attempt_ids.includes(successor) && !Object.hasOwn(g.review_of, successor) &&
+        !this.row('SELECT 1 FROM attempts WHERE id=?', successor),
+      'assessment_successor_not_admitted');
+      return this.assessmentCommentRecords(fence, previous);
+    };
+    const before = readInputs();
+    const report = await this.deriveAssessmentReport(fence, previous, before);
+    // Readiness only describes the exact report. It never grants independent
+    // approval; the configured control caller still owns that decision.
+    need(report.reported_ready === true, 'assessment_terminal_report_not_ready');
+    const op = report.operation;
+    const hash = await digest({kind:'uif.linear-comment-id/1', operation:op});
+    const id = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+    const readPosted = () => {
+      const effect = this.row('SELECT * FROM effects WHERE id=?', op.original_id);
+      const destination = this.row('SELECT result FROM destination_results WHERE id=?', op.original_id);
+      need(effect?.state === 'verified' && effect.attempt === previous &&
+        effect.issue === issueKey(fence.scope) && effect.account === null &&
+        effect.op === canonical(op) && sha(effect.receipt) &&
+        destination?.result === canonical({id, receipt_sha256:effect.receipt}),
+      'assessment_terminal_report_unverified');
+      return effect.receipt;
+    };
+    const receipt = readPosted();
+    const {issue_identifier, run, scope_sha256} = before.binding;
+    const expected = await digest({
+      schema:'uif.fresh-offmenu-assessment-terminal/1',
+      issue_id:fence.scope.key.issue_id, issue_identifier, run, state:'assess',
+      successor_state:'investigate', scope_sha256, previous, successor,
+      report_sha256:report.report_sha256, posted_comment_id:id,
+      posted_effect:{operation:op, status:'verified', receipt_sha256:receipt},
+    });
+    need(expected === terminal_receipt_sha256, 'assessment_terminal_digest_changed');
+    return () => {
+      this.assessmentReportSnapshotUnchanged(before, readInputs());
+      need(readPosted() === receipt, 'assessment_terminal_report_unverified');
+    };
+  }
+  async comment(body, peer, permitHash) {
     fields(body, 'operation', 'attempt_id', 'body');
     const op = body.operation;
     operationShape(this.c, op);
@@ -1595,6 +1841,12 @@ export class Authority {
       })) === op.payload_sha256,
       'linear_fingerprint_changed',
     );
+    const qualify = () => this.linearGrant(peer, op, body.attempt_id, 'allow_comments');
+    let reportCheck;
+    if (this.row('SELECT 1 FROM assessment_dispatch WHERE attempt=?', body.attempt_id)) {
+      qualify();
+      reportCheck = await this.assessmentCommentCheck(peer, op, body.attempt_id, permitHash, text);
+    }
     const hash = await digest({ kind: 'uif.linear-comment-id/1', operation: op });
     const id = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
     const out = this.linearRequest(
@@ -1606,7 +1858,7 @@ export class Authority {
       body.attempt_id,
       null,
       0,
-      () => this.linearGrant(peer, op, body.attempt_id, 'allow_comments'),
+      () => { qualify(); reportCheck?.(); },
       out,
     );
     need(response.status === 200, 'original_linear_outcome_unknown', 502);
@@ -2104,7 +2356,7 @@ export class Authority {
     return this.providerResponse(bytes, null, hash);
   }
 
-  async send(body, peer) {
+  async send(body, peer, permitHash) {
     fields(body, 'intent', 'body_base64');
     const i = body.intent;
     fields(
@@ -2199,7 +2451,10 @@ export class Authority {
       i.attempt_id,
       i.route.account_id,
       i.maximum_millineurons,
-      (include) => this.qualifySend(peer, i, promptSHA, include),
+      (include) => {
+        this.qualifySend(peer, i, promptSHA, include);
+        this.bindAssessmentProviderOperation(peer, op, i.attempt_id, permitHash, include);
+      },
       outgoing,
     );
     // Read and authenticate response at the same fixed origin. HTTP errors,

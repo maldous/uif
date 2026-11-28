@@ -37,7 +37,8 @@ from .client import FreeAdmissionWindow, GLM_MODEL
 from .account_admission import allows_request
 from .client import MODEL_RESERVATIONS
 from . import client as workers_ai_client
-from .remote_authority import AccessTransport, NativeAssignment, RemoteAuthority, protected_record
+from .remote_authority import AccessTransport, AuthorityUnavailable, NativeAssignment, RemoteAuthority, protected_record
+from .shared_admission import NativeClaim
 from .remote_source import SourceTools, pinned_members, review_diff
 
 # The installed native caller has fixed, reviewed source bytes. Only these
@@ -339,11 +340,21 @@ def workspace_recovery_digest(path):
     return digest(sorted(entries))
 
 
+@dataclass
+class _FreshAssessmentExecution:
+    claim: NativeClaim
+    workspace: Path
+    permit: object | None = None
+    body: str | None = None
+    report_started: bool = False
+
+
 class NativeComposition:
     def __init__(self, remote, path):
         self.remote, self.path = remote, Path(path)
         self._running = ContextVar('shared_native_effect_assignment', default=None)
         self._slot = ContextVar('native_original_linear_effect', default=None)
+        self._fresh_assessment = ContextVar('native_fresh_assessment_result', default=None)
         self._seen_fences = {}
         self._renew_after = {}
         self._private_postimages = {}
@@ -475,7 +486,7 @@ class NativeComposition:
 
 
     @contextmanager
-    def bind_dispatch(self, owner, issue, scope_sha, record):
+    def bind_dispatch(self, owner, issue, scope_sha, record, *, stage=None):
         grant = self.assignment(owner.project_name, issue.id, scope_sha)
         require(grant is not None and record['attempt'] in grant.attempts, 'authority_attempt_not_selected')
         role = self.attempt_account(grant, record['attempt'])
@@ -504,14 +515,99 @@ class NativeComposition:
         require(not (evidence / (key + '.settled')).exists() or (evidence / (key + '.released')).exists(),
                 'authority_original_release_pending')
         self._first_workspace(path, grant, prior)
-        claim = self.remote.acquire(grant, record['attempt'])
-        self._seen_fences[issue.id] = claim.lease.fence
-        self._private_postimages[issue.id] = workspace_recovery_digest(path)
-        binding = self._running.set((grant, claim))
+        # Only the owner's protected installation can classify this original.
+        # Unmarked existing attempts keep their existing dispatch path.
+        item = self.installation()['assignments'][issue.id]
+        fresh = item.get('fresh_assessment')
+        if 'fresh_assessment' in item:
+            require(type(fresh) is dict and fresh.keys() == {'attempt_id', 'first_intent_sha256'}
+                    and fresh['attempt_id'] == grant.attempts[0],
+                    'authority_dispatch_installation_scope')
+            pinned_sha(fresh['first_intent_sha256'])
+        marked = fresh is not None and fresh['attempt_id'] == record['attempt']
+        if marked:
+            require(stage == 'assess' and owner.project_name == 'OffMenu' and 'project_intake' in record
+                    and prior is not None and prior.attempt_id == record['attempt'],
+                    'authority_dispatch_fresh_assessment_scope')
+            from .fresh_assessment_dispatch import observe_fresh_assessment_dispatch
+
+            def verify_installed(current_owner, current_issue, run, current_grant):
+                require(current_owner is owner and current_issue is issue and current_grant == grant
+                        and self.installation()['assignments'][issue.id].get('fresh_assessment') == fresh,
+                        'authority_dispatch_installation_changed')
+
+            claim = observe_fresh_assessment_dispatch(
+                self, owner, issue, owner._issue_state_runs.get(issue.id, 1), scope_sha, prior.lease,
+                verify_first_dispatch_applicability=verify_installed,
+                expected_intent_sha256=fresh['first_intent_sha256'])
+        else:
+            claim = self.remote.acquire(grant, record['attempt'])
+        @contextmanager
+        def bound_claim():
+            self._seen_fences[issue.id] = claim.lease.fence
+            self._private_postimages[issue.id] = workspace_recovery_digest(path)
+            binding = self._running.set((grant, claim))
+            try:
+                yield
+            finally:
+                self._running.reset(binding)
+
+        if not marked:
+            with bound_claim():
+                yield
+            return
+
+        # This is a local transport-attempt fence, not an approval or a permit.
+        # Commit before requesting entry: even if an interrupted call did not
+        # reach the server, later polls/processes may only observe this original.
+        name = key + '.assessment-dispatch-enter'
+        raw = wire({'schema': 'uif.fresh-assessment-dispatch-attempt/1',
+                    'fence': asdict(claim.lease.fence), **fresh})
+        require(len(raw) <= 8192, 'authority_dispatch_transport_intent_size')
+        with _handoff_directory(evidence) as fd:
+            try:
+                _publish_private_original(fd, name, raw, prefix='.assessment-dispatch-')
+            except FileExistsError:
+                created = False
+            else:
+                created = True
+            require(_retained_handoff_bytes(fd, name, 8192) == raw,
+                    'authority_dispatch_transport_original_changed')
+        if not created:
+            self.remote.transport.observe_fresh_assessment_permission(claim, fresh)
+            raise Hold('authority_dispatch_transport_original_already_attempted')
+        verify_installed(owner, issue, owner._issue_state_runs.get(issue.id, 1), grant)
+        with self.remote.transport.fresh_assessment_permission(claim, fresh) as permit, bound_claim():
+            scope = self._fresh_assessment.set(_FreshAssessmentExecution(claim, path, permit))
+            try:
+                yield
+            finally:
+                self._fresh_assessment.reset(scope)
+
+    def attach_fresh_assessment_winner(self, owner, issue, previous):
+        execution = self._fresh_assessment.get()
+        if execution is None:
+            return
+        attempt = owner.running.get(issue.id)
+        task = owner._tasks.get(issue.id)
+        require(attempt is not None and attempt is not previous and attempt.state_name == 'assess'
+                and execution.claim.lease.fence.scope.key.issue_id == issue.id
+                and isinstance(task, asyncio.Task), 'authority_dispatch_winner')
+        execution.permit.attach(task)
+
+    @contextmanager
+    def fresh_assessment_worker(self, owner, issue, attempt):
+        execution = self._fresh_assessment.get()
+        if execution is None:
+            yield
+            return
+        task = asyncio.current_task()
+        require(task is execution.permit.winner and owner._tasks.get(issue.id) is task
+                and owner.running.get(issue.id) is attempt, 'authority_dispatch_winner')
         try:
             yield
         finally:
-            self._running.reset(binding)
+            execution.permit.revoke()
 
     @contextmanager
     def settlement_context(self, owner, issue, attempt):
@@ -630,6 +726,7 @@ class NativeComposition:
 
         def finish(request_id, content):
             token(request_id)
+            execution = self._fresh_assessment.get()
             pair = self._running.get()
             require(pair is not None, 'authority_assessment_context')
             grant, original = pair
@@ -669,6 +766,11 @@ class NativeComposition:
 
             still_current()
             workspace = frozen_workspace()
+            if execution is not None:
+                require(execution.claim == original and execution.workspace == workspace[0]
+                        and execution.body is None and not execution.report_started
+                        and request_id == sha256(f'{attempt}:1'.encode()).hexdigest(),
+                        'authority_assessment_one_fresh_provider_original')
             directory = workspace[0] / '.git/uif-original-effects'
             with _handoff_directory(directory) as fd:
                 intent_raw = _retained_handoff_bytes(fd, request_id + '.json', 8192)
@@ -690,6 +792,12 @@ class NativeComposition:
                     and message.get('content', message.get('response')) == content
                     and type(content) is str, 'authority_assessment_provider_content')
             projection = project_assessment_readiness(content.encode(), issue=issue.identifier, run=run)
+            if execution is not None:
+                from .fresh_assessment_render import render_fresh_assessment
+                require(type(choices) is list and len(choices) == 1 and message.get('content') == content,
+                        'authority_assessment_fresh_provider_shape')
+                rendered = render_fresh_assessment(content.encode(), issue=issue, run=run,
+                    scope_sha256=record['scope_sha256'], attempt_id=attempt)
             pinned_sha(response.receipt_sha256)
             fact = {'schema': 'uif.native-assessment-result/1', 'issue_id': issue.id,
                     'run': run, 'scope_sha256': record['scope_sha256'], 'attempt_id': attempt,
@@ -712,8 +820,42 @@ class NativeComposition:
                 require(_retained_handoff_sha(fd, name, 8192) == pin,
                         'authority_original_handoff_bytes_changed')
                 os.fsync(fd)
+            if execution is not None:
+                execution.body = rendered
             return _RetainedHandoffOriginal(directory / name, pin)
         return finish
+
+    def fresh_assessment_finisher(self, issue, record, run):
+        execution = self._fresh_assessment.get()
+        if execution is None:
+            return None
+        require(execution.claim.attempt_id == record['attempt']
+                and execution.claim.lease.fence.scope.key.issue_id == issue.id,
+                'authority_assessment_finisher_context')
+        return self.retain_assessment_result(issue, record, run)
+
+    def publish_fresh_assessment_report(self, issue, attempt, workspace, state):
+        execution = self._fresh_assessment.get()
+        require(execution is not None and state == 'assess' and attempt.state_name == 'assess'
+                and execution.claim.lease.fence.scope.key.issue_id == issue.id
+                and Path(workspace) == execution.workspace,
+                'authority_assessment_report_context')
+        if attempt.status != 'succeeded' or execution.body is None:
+            return
+        current = self.current(issue.id)
+        require(current.attempt_id == attempt.session_id == execution.claim.attempt_id
+                and current.lease.fence == execution.claim.lease.fence,
+                'authority_assessment_report_fence')
+        if execution.report_started:
+            require(self.observe_stage_report(current.lease.fence, current.attempt_id, execution.body)
+                    is not None, 'authority_assessment_report_outcome_unknown')
+            return
+        execution.report_started = True
+        try:
+            self.linear('comment', issue.id, {'body': execution.body})
+        except AuthorityUnavailable:
+            require(self.observe_stage_report(current.lease.fence, current.attempt_id, execution.body)
+                    is not None, 'authority_assessment_report_outcome_unknown')
 
     def retain_final_review(self, request_id, content):
         grant, original = self._running.get()
@@ -1531,10 +1673,33 @@ def install_sinks(orchestration, composition):
         async def with_original(*args, **kwargs):
             slot = composition._slot.set(name)
             try:
+                execution = composition._fresh_assessment.get()
+                if execution is not None:
+                    if name == '_publish_run_report':
+                        return await publish_fresh(*args, **kwargs)
+                    if name == '_announce_state':
+                        return await announce_fresh(native, execution, *args, **kwargs)
                 return await native(*args, **kwargs)
             finally:
                 composition._slot.reset(slot)
         return with_original
+
+    async def announce_fresh(native, execution, native_owner, issue, state, run):
+        if (native_owner.project_name == 'OffMenu' and state == 'assess'
+                and execution.claim.lease.fence.scope.key.issue_id == issue.id
+                and asyncio.current_task() is execution.permit.winner):
+            # The registered worker already logs its native dispatch locally.
+            # This advisory announcement is not the authorized report effect.
+            return None
+        return await native(native_owner, issue, state, run)
+
+    async def publish_fresh(native_owner, issue, attempt, workspace_path, state_name):
+        execution = composition._fresh_assessment.get()
+        require(native_owner.project_name == 'OffMenu'
+                and asyncio.current_task() is execution.permit.winner,
+                'authority_assessment_report_owner')
+        return await asyncio.to_thread(composition.publish_fresh_assessment_report,
+                                       issue, attempt, workspace_path, state_name)
 
     @wraps(original_settle)
     async def settle(native_owner, issue, attempt):

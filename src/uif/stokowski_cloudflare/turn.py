@@ -119,7 +119,7 @@ def repository_tools(workspace, tracked_paths, write_roots):
 
 def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
              tools: list[dict], execute_tool, active_projects, cancelled, timeout: int,
-             structured_report=False, finish_original=None) -> str:
+             structured_report=False, finish_original=None, one_shot_report=False) -> str:
     """Execute only the tools that the protected owner bound to this attempt.
 
     The executor enforces workspace scope and applies the attempt's separate
@@ -129,9 +129,13 @@ def run_turn(client: WorkersAIClient, attempt: Attempt, prompt: str, *,
         raise ValueError('Invalid turn timeout')
     tool_names = {tool['function']['name'] for tool in tools}
     messages = [{'role': 'user', 'content': prompt}]
-    report_only = False
+    if one_shot_report and (not structured_report or not callable(finish_original)):
+        raise ValueError('Fresh assessment requires a fixed final report finisher')
+    report_only = one_shot_report
+    if report_only:
+        messages.append({'role': 'user', 'content': FINAL_REPORT})
     deadline = time.monotonic() + timeout
-    for ordinal in range(1, MAX_TURN_REQUESTS + 1):
+    for ordinal in range(1, (1 if one_shot_report else MAX_TURN_REQUESTS) + 1):
         remaining = deadline - time.monotonic()
         if remaining <= 0 or cancelled():
             raise WorkersAIRequestError('Workers AI turn stopped before completion')

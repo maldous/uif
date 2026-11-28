@@ -128,7 +128,7 @@ def retain_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha25
 
 
 def observe_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha256, lease: Lease, *,
-                                     verify_first_dispatch_applicability):
+                                     verify_first_dispatch_applicability, expected_intent_sha256=None):
     """Read existing first-dispatch records in the active assess only.
 
     The existing protected coordinator still supplies an independent exclusive
@@ -164,6 +164,8 @@ def observe_fresh_assessment_dispatch(composition, owner, issue, run, scope_sha2
     directory = workspace / '.git/uif-original-effects'
     intent_name = request.request_id + '.assessment-first-intent'
     bound_name = request.request_id + '.assessment-first-bound'
+    if expected_intent_sha256 is not None:
+        require(digest(intent) == expected_intent_sha256, 'assessment_dispatch_authority_intent')
     expected_intent = wire(intent)
     expected_bound = wire({'intent_sha256': digest(intent), 'fence': asdict(lease.fence)})
     with _handoff_directory(directory) as fd:

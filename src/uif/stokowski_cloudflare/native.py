@@ -27,6 +27,7 @@ class NativeTurnBinding:
     structured_report: bool = False
     remote_tools: Callable | None = None
     finish_original: Callable | None = None
+    one_shot_report: bool = False
 
 
 def _native_report(result):
@@ -96,7 +97,8 @@ def install_native_runner(runner, orchestrator, *, mode, client: WorkersAIClient
             run_turn, client, binding.attempt, binding.scoped_prompt or prompt, tools=tools,
             execute_tool=execute_tool, active_projects=active_projects,
             cancelled=stop.is_set, timeout=min(600, claude_cfg.turn_timeout_ms // 1000),
-            structured_report=binding.structured_report, finish_original=binding.finish_original))
+            structured_report=binding.structured_report, finish_original=binding.finish_original,
+            one_shot_report=binding.one_shot_report))
         try:
             attempt.result_text = _native_report(await asyncio.shield(task))
             attempt.status = 'succeeded'

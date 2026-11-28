@@ -97,19 +97,21 @@ function fixture() {
   };
   ctx.restart = () => new Authority(storage, config, options);
   ctx.a = ctx.restart();
-  ctx.call = (role, path, body) => ctx.a.handle('/v1/' + path, body, peers[role]);
+  ctx.call = (role, path, body, permit) => ctx.a.handle('/v1/' + path, body, peers[role], permit);
   ctx.resume = () =>
     ctx.call('control', 'control', {
       request_id: 'resume',
       expected_coordinator_epoch: 1,
       stopped: false,
     });
-  ctx.addGrant = async (s = scope, attempt = 'attempt', until = time + 800, review_of = {}) => {
+  ctx.addGrant = async (s = scope, attempt = 'attempt', until = time + 800, review_of = {},
+                        fresh_assessment) => {
     const grant = {
       scope: s,
       source,
       sessions: [peers.native.session_id, peers.morgan.session_id],
-      attempt_ids: [attempt, attempt + '-next'],
+      attempt_ids: [attempt, fresh_assessment?.report_binding ?
+        attempt.slice(0,-'assess'.length) + 'investigate' : attempt + '-next'],
       reconstruction_sha256: hex('c'),
       valid_until: until,
       allow_comments: true,
@@ -123,6 +125,7 @@ function fixture() {
         evidence_sha256: 'a'.repeat(64),
       },
     };
+    if (fresh_assessment !== undefined) grant.fresh_assessment = fresh_assessment;
     await ctx.call('control', 'grant', { request_id: 'g-' + attempt, grant, previous_sha256: null });
     return {
       scope: s,
@@ -1813,4 +1816,363 @@ test('native reads only its live exact existing control attempt original', async
   await f.call('native','claim/attempt',
     {current,expected_attempt_id:'assess',attempt_id:'assess-next',request_id:'native-successor'});
   assert.deepEqual(await read(), {matches:false}, 'consumed attestation is historical only');
+});
+
+async function freshAssessment(f, attempt_id, first_intent_sha256 = hex('a')) {
+  const original = await f.addGrant(scope, attempt_id, start + 800, {}, {attempt_id, first_intent_sha256});
+  return {
+    current: (await f.call('native', 'claim', original)).lease, attempt_id, first_intent_sha256,
+  };
+}
+
+test('fresh assessment emits only from the winning scoped dispatch; duplicate is observe-only', async () => {
+  const f = fixture();
+  await f.resume();
+  const original = await freshAssessment(f, 'cf-intake-' + hex('e') + '-assess');
+  assert.deepEqual(await f.call('native', 'dispatch/observe', original), {entered:false});
+  await assert.rejects(f.call('native', 'dispatch/enter', {...original, first_intent_sha256:hex('b')}),
+    /assessment_dispatch_not_selected/);
+  await assert.rejects(f.call('native', 'dispatch/enter', {...original, current: {
+    ...original.current, fence: {...original.current.fence, generation:2},
+  }}), /claim_fence_changed/);
+  for (const role of ['control','morgan','quota']) {
+    await assert.rejects(f.call(role, 'dispatch/enter', original), /peer_role_not_granted/);
+  }
+  const admitted = await Promise.all(Array.from({length: 5}, () =>
+    f.call('native', 'dispatch/enter', original)));
+  const winners = admitted.filter((x) => x.entered);
+  assert.equal(winners.length, 1);
+  assert.equal(admitted.filter((x) => Object.hasOwn(x, 'permit')).length, 1);
+  const {permit} = winners[0];
+  assert.match(permit, /^[a-f0-9]{64}$/);
+  const stored = f.a.row('SELECT * FROM assessment_dispatch WHERE attempt=?', original.attempt_id);
+  assert.equal(stored.permit_sha, await digest(permit));
+  assert.ok(!canonical(stored).includes(permit));
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native', 'dispatch/enter', original), {entered:false});
+  assert.deepEqual(await f.call('native', 'dispatch/observe', original), {entered:true});
+
+  const quota = await f.quota();
+  const send = await f.request(original.current, quota, {attempt: original.attempt_id});
+  for (const p of [undefined, hex('f')]) {
+    await assert.rejects(f.call('native', 'send', send, p), /assessment_dispatch_permit_required/);
+  }
+  for (const path of ['linear/comment','linear/upload']) {
+    for (const input of [undefined, permit]) {
+      await assert.rejects(f.call('native', path, {
+        operation: send.intent.operation, attempt_id: original.attempt_id,
+      }, input), /assessment_dispatch_linear_original_unbound/);
+    }
+  }
+  assert.equal(f.calls.length, 0);
+  const wrongAttempt = await f.request(original.current, quota, {attempt: original.attempt_id + '-next'});
+  await assert.rejects(f.call('native', 'send', wrongAttempt, permit), /attempt_or_deadline_not_current/);
+  assert.equal(f.calls.length, 0);
+  const alternate = await f.request(original.current, quota, {
+    attempt: original.attempt_id, id: hex('a'), prompt: 'different valid provider original',
+  });
+  const races = await Promise.allSettled([send, alternate].map((input) =>
+    f.call('native','send',input,permit)));
+  const winnerIndex = races.findIndex((result) => result.status === 'fulfilled');
+  assert.ok(winnerIndex >= 0);
+  assert.equal(races[winnerIndex].value.status, 200);
+  assert.equal(races[1 - winnerIndex].status, 'rejected');
+  assert.match(races[1 - winnerIndex].reason.message, /assessment_dispatch_provider_original_changed/);
+  const first = [send, alternate][winnerIndex];
+  assert.equal(f.a.row('SELECT provider_op FROM assessment_dispatch WHERE attempt=?',
+    original.attempt_id).provider_op, canonical(first.intent.operation));
+  assert.equal(f.calls.length, 1);
+  assert.equal(f.calls[0].headers.get('uif-dispatch-permit'), null);
+  await assert.rejects(f.call('native','send',first,permit), /original_already_recorded/);
+  const changedBody = await f.request(original.current,quota,{
+    attempt:original.attempt_id,id:first.intent.operation.original_id,prompt:'changed bytes',
+  });
+  await assert.rejects(f.call('native','send',changedBody,permit), /provider_original_changed/);
+  const wrongRoute = await f.request(original.current,quota,{attempt:original.attempt_id,
+    selectedRoute:{...route,gateway_id:'other-route'}});
+  await assert.rejects(f.call('native','send',wrongRoute,permit), /send_intent_not_bound/);
+  assert.equal(f.calls.length, 1);
+  assert.ok(!JSON.stringify([...f.storage.sql.exec('SELECT * FROM receipts')]).includes(permit));
+
+  // Provider-only marking is not a report or an independently admitted
+  // investigate successor, and cannot advance via the control effect.
+  const successor = original.attempt_id + '-next';
+  await assert.rejects(f.call('control', 'attempt/attest', {request_id:'dispatch-existing-successor',
+    fence:original.current.fence, previous:original.attempt_id, successor, terminal_receipt_sha256:hex('f')}),
+    /assessment_successor_not_admitted/);
+  assert.equal(f.calls.length,1);
+});
+
+test('lost or unconfirmed dispatch acknowledgement never reissues permit', async () => {
+  const f = fixture();
+  await f.resume();
+  const original = await freshAssessment(f, 'cf-intake-' + hex('d') + '-assess');
+  const sync = f.storage.sync;
+  f.storage.sync = async () => { throw new Error('synthetic lost durability acknowledgement'); };
+  await assert.rejects(f.call('native','dispatch/enter',original), /lost durability acknowledgement/);
+  f.storage.sync = sync;
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','dispatch/observe',original), {entered:true});
+  assert.deepEqual(await f.call('native','dispatch/enter',original), {entered:false});
+  const quota = await f.quota();
+  const send = await f.request(original.current,quota,{attempt:original.attempt_id});
+  await assert.rejects(f.call('native','send',send), /assessment_dispatch_permit_required/);
+  const stop = {request_id:'dispatch-stop', expected_coordinator_epoch:2, stopped:true};
+  await f.call('control','control',stop);
+  await assert.rejects(f.call('native','dispatch/observe',original), /stopped_expired_or_superseded/);
+  assert.equal(f.calls.length, 0);
+});
+
+
+test('fresh dispatch policy cannot be retrofitted onto an existing claim or other project', async () => {
+  const f = fixture();
+  await f.resume();
+  const attempt_id = 'cf-intake-' + hex('b') + '-assess';
+  const original = await f.addGrant(scope, attempt_id);
+  await f.call('native', 'claim', original);
+  const old = JSON.parse(f.a.row('SELECT body FROM grants').body);
+  const grant = {...old, fresh_assessment:{attempt_id,first_intent_sha256:hex('a')}};
+  await assert.rejects(f.call('control','grant', {
+    request_id:'retrofit-fresh-dispatch', previous_sha256:await digest(old), grant,
+  }), /assessment_dispatch_not_fresh/);
+  await assert.rejects(f.call('control','grant', {
+    request_id:'outside-offmenu-dispatch', previous_sha256:null,
+    grant:{...grant,source:{...source,repository:'maldous/circular-quay'}},
+  }), /scope_or_source_unbound/);
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM assessment_dispatch').n,0);
+});
+
+
+test('fresh assessed provider seal is rechecked after reservation durability and before fetch', async () => {
+  const f = fixture();
+  await f.resume();
+  const original = await freshAssessment(f, 'cf-intake-' + hex('c') + '-assess');
+  const {permit} = await f.call('native','dispatch/enter',original);
+  const quota = await f.quota();
+  const send = await f.request(original.current,quota,{attempt:original.attempt_id});
+  const sync = f.storage.sync;
+  f.storage.sync = async () => {
+    await sync();
+    f.a.put('UPDATE assessment_dispatch SET provider_op=? WHERE attempt=?',
+      canonical({...send.intent.operation,original_id:hex('d')}), original.attempt_id);
+  };
+  await assert.rejects(f.call('native','send',send,permit), /assessment_dispatch_provider_original_changed/);
+  assert.equal(f.calls.length,0);
+  assert.equal(f.a.row('SELECT state FROM effects WHERE id=?',send.intent.operation.original_id).state,
+    'denied');
+});
+
+async function adjudicatedAssessment(f, verdict = 'blocked') {
+  await f.resume();
+  const report_binding = {scope, issue_identifier:'OFF-37', run:1, scope_sha256:hex('1')};
+  const attempt = 'cf-intake-' + await digestBytes(Buffer.from(
+    `["OffMenu", "${scope.key.issue_id}", "${report_binding.scope_sha256}", 1]`)) + '-assess';
+  const claim = await f.addGrant(scope, attempt, start + 800, {}, {
+    attempt_id:attempt, first_intent_sha256:hex('a'), report_binding,
+  });
+  const successor = attempt.slice(0,-'assess'.length) + 'investigate';
+  await assert.rejects(f.call('native','claim',{...claim,attempt_id:successor}),
+    /assessment_initial_attempt_required/);
+  const current = (await f.call('native','claim',claim)).lease;
+  const {permit} = await f.call('native','dispatch/enter',{
+    attempt_id:attempt, first_intent_sha256:hex('a'), current,
+  });
+  const send = await f.request(current, await f.quota(), {attempt});
+  const raw = canonical({summary:'fixture private raw text', verdict,
+    routing:{issue:'OFF-37',run:1,state:'assess',actionable:true,ownership_clear:true,deferred:false,
+      owner_pause:false,uncertain_effects:false,missing_inputs:[]}});
+  f.respond = async req => {
+    assert.notEqual(new URL(req.url).hostname, 'api.linear.app');
+    return Response.json({model:route.model,choices:[{message:{content:raw}}],
+      usage:{neurons:0.007}}, {headers:{'cf-aig-log-id':'fixture-result'}});
+  };
+  await f.call('native','send',send,permit);
+  const witness = canonical({attempt_id:attempt, issue:'OFF-37', run:1,state:'assess',
+    scope_sha256:hex('1'),report_sha256:await digestBytes(Buffer.from(raw))});
+  const body = '<!-- stokowski:report -->\n\n### Native routing evidence\n\n```json\n' + witness +
+    '\n```\n\n## assess — OFF-37\n\nAssessment report indicates ' +
+    (verdict === 'approve' ? 'readiness for bounded work.' : 'blocked work.') +
+    '\n\nThis report does not authorize a workflow transition.';
+  const op = async (text, id) => ({
+    fence:current.fence,
+    original_id:id ?? await digest({attempt,slot:'_publish_run_report',kind:'comment',issue:scope.key.issue_id}),
+    payload_sha256:await digest({kind:'uif.linear-comment/1',attempt_id:attempt,issue_id:scope.key.issue_id,body:text}),
+  });
+  return {permit, current, attempt, send, op, successor, sha:await digestBytes(Buffer.from(raw)),
+    canonicalInput:{operation:await op(body),attempt_id:attempt,body}};
+}
+
+test('control-bound fresh assessment reserves and posts exactly the authority-derived retained report', async () => {
+  const f = fixture();
+  const {permit,attempt,op,canonicalInput} = await adjudicatedAssessment(f);
+  const wrong = canonicalInput.body + ' arbitrary unbound text';
+  for (const invalid of [
+    {...canonicalInput, body:wrong, operation:await op(wrong)},
+    {...canonicalInput, operation:await op(canonicalInput.body,hex('9'))},
+    {...canonicalInput, operation:{...canonicalInput.operation,
+      fence:{...canonicalInput.operation.fence,generation:2}}},
+  ]) await assert.rejects(f.call('native','linear/comment',invalid,permit),
+    /assessment_dispatch_report_original_changed|assessment_dispatch_permit_required/);
+  await assert.rejects(f.call('native','linear/comment',canonicalInput), /assessment_dispatch_permit_required/);
+  await assert.rejects(f.call('native','linear/upload',{
+    operation:canonicalInput.operation,attempt_id:attempt,
+  },permit), /assessment_dispatch_linear_original_unbound/);
+  assert.equal(f.calls.length,1);
+  f.respond = async req => {
+    assert.equal(req.url,'https://api.linear.app/graphql');
+    assert.equal(req.headers.has('uif-dispatch-permit'),false);
+    const { variables:{input} } = await req.json();
+    assert.equal(input.issueId,scope.key.issue_id);
+    assert.equal(input.body,canonicalInput.body);
+    assert.doesNotMatch(input.body,/fixture private raw text/);
+    return Response.json({data:{commentCreate:{success:true,
+      comment:{id:input.id,body:input.body,issue:{id:input.issueId}}}}});
+  };
+  const result = await f.call('native','linear/comment',canonicalInput,permit);
+  f.a = f.restart();
+  await assert.rejects(f.call('native','linear/comment',canonicalInput,permit), /original_already_recorded/);
+  assert.deepEqual(await f.call('native','linear/receipt',{operation:canonicalInput.operation}), result);
+  const observed = await f.call('native','original',{operation:canonicalInput.operation});
+  assert.equal(observed.state,'terminal');
+  assert.equal(observed.terminal.status,'verified');
+  assert.equal(observed.terminal.receipt_sha256,result.receipt_sha256);
+  assert.equal(f.calls.length,2);
+});
+
+test('fresh report refuses missing, changed, or expired retained evidence without physical comment', async () => {
+  for (const loss of ['missing', 'tamper', 'expire']) {
+    const f = fixture();
+    const {permit,current,send,canonicalInput} = await adjudicatedAssessment(f);
+    if (loss === 'missing')
+      f.storage.sql.exec('DELETE FROM provider_results WHERE id=?', send.intent.operation.original_id);
+    if (loss === 'tamper')
+      f.storage.sync = async () => {
+        f.storage.sql.exec('UPDATE provider_results SET response=? WHERE id=?',
+          Buffer.from('{"fixture":"changed after reservation"}'), send.intent.operation.original_id);
+      };
+    if (loss === 'expire') f.storage.sync = async () => { f.setTime(current.expires_at); };
+    await assert.rejects(f.call('native','linear/comment',canonicalInput,permit),
+      /assessment_dispatch_report_result_unavailable|assessment_dispatch_report_evidence_changed|stopped_expired_or_superseded/);
+    assert.equal(f.calls.length,1);
+  }
+});
+
+test('fresh report unknown GraphQL result remains one physical original across restart', async () => {
+  const f = fixture();
+  const {permit,canonicalInput} = await adjudicatedAssessment(f);
+  f.respond = async () => { throw Error('synthetic ambiguous response'); };
+  await assert.rejects(f.call('native','linear/comment',canonicalInput,permit),
+    /original_external_effect_unknown/);
+  f.a = f.restart();
+  const original = await f.call('native','original',{operation:canonicalInput.operation});
+  assert.equal(original.state,'unknown');
+  await assert.rejects(f.call('native','linear/comment',canonicalInput,permit), /original_already_recorded/);
+  assert.equal(f.calls.length,2);
+});
+
+test('only the configured control original can create an exact same-scope report binding', async () => {
+  const f = fixture();
+  await f.resume();
+  const scope_sha256 = hex('1');
+  const attempt_id = 'cf-intake-' + await digestBytes(Buffer.from(
+    `["OffMenu", "${scope.key.issue_id}", "${scope_sha256}", 1]`)) + '-assess';
+  const report_binding = {scope,issue_identifier:'OFF-37',run:1,scope_sha256};
+  const fresh = {attempt_id,first_intent_sha256:hex('a'),report_binding};
+  const other = {...scope,key:{...scope.key,issue_id:crypto.randomUUID()}};
+  for (const delta of [{scope:other},{run:2},{scope_sha256:hex('2')}])
+    await assert.rejects(f.addGrant(scope,attempt_id,start+800,{},{
+      ...fresh,report_binding:{...report_binding,...delta},
+    }), /invalid_fresh_assessment_report_binding/);
+  await f.addGrant(scope,attempt_id,start+800,{},fresh);
+  const grant = JSON.parse(f.a.row('SELECT body FROM grants').body);
+  const input = {request_id:'rebind-first-assessment',previous_sha256:await digest(grant),
+    grant:{...grant,fresh_assessment:{...fresh,report_binding:{...report_binding,issue_identifier:'OFF-99'}}}};
+  await assert.rejects(f.call('native','grant',input), /peer_role_not_granted/);
+  await assert.rejects(f.call('control','grant',input), /assessment_dispatch_original_changed/);
+  assert.equal(f.calls.length,0);
+});
+
+async function postExactAssessment(f, a) {
+  f.respond = async req => {
+    assert.equal(req.url, 'https://api.linear.app/graphql');
+    const {variables:{input}} = await req.json();
+    return Response.json({data:{commentCreate:{success:true,
+      comment:{id:input.id,body:input.body,issue:{id:input.issueId}}}}});
+  };
+  return f.call('native','linear/comment',a.canonicalInput,a.permit);
+}
+async function assessmentTransition(a, posted = {id:crypto.randomUUID(),receipt_sha256:hex('4')}) {
+  const fence = a.current.fence;
+  const terminal = {
+    schema:'uif.fresh-offmenu-assessment-terminal/1',
+    issue_id:fence.scope.key.issue_id,issue_identifier:'OFF-37',run:1,state:'assess',
+    successor_state:'investigate',scope_sha256:hex('1'),previous:a.attempt,successor:a.successor,
+    report_sha256:a.sha,posted_comment_id:posted.id,
+    posted_effect:{operation:a.canonicalInput.operation,status:'verified',receipt_sha256:posted.receipt_sha256},
+  };
+  return {
+    original:{request_id:'exact-assess-posted-attestation',fence,previous:a.attempt,successor:a.successor,
+      terminal_receipt_sha256:await digest(terminal)},
+    advance:{request_id:'exact-investigate-transition',current:a.current,expected_attempt_id:a.attempt,
+      attempt_id:a.successor},
+  };
+}
+
+test('only exact independently attested posted ready report allows investigate after reopen', async () => {
+  const f = fixture();
+  const a = await adjudicatedAssessment(f,'approve');
+  const before = await assessmentTransition(a);
+  await assert.rejects(f.call('control','attempt/attest',before.original), /assessment_terminal_report_unverified/);
+  await assert.rejects(f.call('native','claim/attempt',before.advance), /prior_attempt_terminal_unverified/);
+  await postExactAssessment(f,a); // ignore returned result; read after cold reopen.
+  f.a = f.restart();
+  const observed = await f.call('native','linear/receipt',{operation:a.canonicalInput.operation});
+  const {original,advance} = await assessmentTransition(a,observed);
+  await assert.rejects(f.call('native','attempt/attest',original), /peer_role_not_granted/);
+  await assert.rejects(f.call('control','attempt/attest',{...original,terminal_receipt_sha256:hex('5')}),
+    /assessment_terminal_digest_changed/);
+  await assert.rejects(f.call('control','attempt/attest',{...original,successor:a.attempt+'-next'}),
+    /assessment_successor_not_admitted/);
+  await assert.rejects(f.call('native','claim/attempt',advance), /prior_attempt_terminal_unverified/);
+  assert.deepEqual(await f.call('control','attempt/attest',original),
+    {terminal_receipt_sha256:original.terminal_receipt_sha256});
+  f.a = f.restart();
+  assert.deepEqual(await f.call('native','attempt/attest/native',{current:a.current,original}), {matches:true});
+  const consumed = await f.call('native','claim/attempt',advance);
+  assert.equal(await f.call('native','claim/read',{project:'OffMenu',identifier:a.successor,by_attempt:true})
+    .then(x=>x.attempt_id),a.successor);
+  assert.deepEqual(await f.call('native','attempt/attest/native',{current:a.current,original}), {matches:false});
+  assert.deepEqual(await f.call('native','claim/attempt',advance),consumed);
+  assert.deepEqual(await f.call('control','attempt/attest',original),
+    {terminal_receipt_sha256:original.terminal_receipt_sha256});
+  assert.equal(f.a.row('SELECT COUNT(*) AS n FROM attempts WHERE id=?',a.successor).n,1);
+  // Ordinary provider edge for later, newly admitted investigate is unchanged.
+  const next = await f.request(a.current,await f.quota(),{attempt:a.successor,id:hex('b')});
+  f.respond = async () => Response.json({model:route.model,choices:[{}],usage:{neurons:0.007}},
+    {headers:{'cf-aig-log-id':'fixture-follow-on'}});
+  assert.equal((await f.call('native','send',next)).status,200);
+  assert.equal(f.calls.length,3);
+});
+
+test('blocked or unknown report cannot produce an assess successor', async () => {
+  for (const mode of ['blocked','unknown']) {
+    const f = fixture();
+    const a = await adjudicatedAssessment(f,mode === 'blocked' ? 'blocked' : 'approve');
+    if (mode === 'blocked') {
+      const posted = await postExactAssessment(f,a);
+      const {original} = await assessmentTransition(a,posted);
+      await assert.rejects(f.call('control','attempt/attest',original),/assessment_terminal_report_not_ready/);
+    } else {
+      f.respond = async () => { throw Error('synthetic lost response after external accept'); };
+      await assert.rejects(f.call('native','linear/comment',a.canonicalInput,a.permit),/original_external_effect_unknown/);
+      f.a = f.restart();
+      const {original} = await assessmentTransition(a);
+      await assert.rejects(f.call('control','attempt/attest',original),/assessment_terminal_report_unverified/);
+    }
+    const {advance} = await assessmentTransition(a);
+    await assert.rejects(f.call('native','claim/attempt',advance),
+      /prior_attempt_terminal_unverified|uncertain_original_effect/);
+    assert.equal(f.a.row('SELECT COUNT(*) AS n FROM next_attempts').n,0);
+    assert.equal(f.calls.length,2);
+  }
 });
